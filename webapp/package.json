@@ -26,8 +26,8 @@
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
     "@types/react-redux": "7.1.34",
-    "@typescript-eslint/eslint-plugin": "8.65.0",
-    "@typescript-eslint/parser": "8.65.0",
+    "@typescript-eslint/eslint-plugin": "8.66.0",
+    "@typescript-eslint/parser": "8.66.0",
     "ajv": "8.20.0",
     "babel-loader": "10.1.1",
     "babel-plugin-polyfill-corejs3": "1.0.0",
@@ -45,7 +45,7 @@
     "webpack-cli": "7.2.2"
   },
   "dependencies": {
-    "core-js": "3.49.0",
+    "core-js": "3.50.0",
     "react": "19.2.8",
     "react-redux": "9.3.0",
     "redux": "5.0.1"
