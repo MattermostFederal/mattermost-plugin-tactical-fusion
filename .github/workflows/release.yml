@@ -1,0 +1,203 @@
+# Fires on a v* tag push (normally created when the release-please PR is
+# merged). Runs the full security-gated release pipeline via `make
+# release`, which chains:
+#   release-check -> clean -> all -> sbom-audit -> codeql-analyze
+#   -> security-gate -> release-bundle -> virus-scan -> release-sign
+#   -> release-checksum
+#
+# The published tarball ships with SBOMs (sbom/) and CodeQL SARIF
+# (security/) embedded, plus a sha256 sidecar and — when a signing key
+# is configured — a detached GPG signature. Same `make release` a
+# developer runs locally, so nothing about the release is CI-only.
+#
+# To ship manually instead of via release-please:
+#   1. Bump plugin.json version + add a CHANGELOG.md entry (commit them)
+#   2. git tag -a v0.2.0 -m "release v0.2.0" && git push origin v0.2.0
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  # Called by release-please.yml when it creates a release. release-please
+  # tags with GITHUB_TOKEN, whose events can't trigger the push:tags path
+  # above (GitHub anti-recursion), so it invokes this workflow directly.
+  workflow_call:
+    inputs:
+      tag:
+        description: Tag to build and publish (set by the release-please caller).
+        required: true
+        type: string
+    # Least privilege: the caller passes only the signing secrets this
+    # workflow uses (not `secrets: inherit`, which would forward all of them).
+    # Optional — release-sign is a no-op when they're unset.
+    secrets:
+      PLUGIN_SIGNING_KEY:
+        description: GPG private key used to sign the release bundle.
+        required: false
+      PLUGIN_SIGNING_KEY_PASSPHRASE:
+        description: Passphrase for PLUGIN_SIGNING_KEY.
+        required: false
+
+permissions:
+  contents: write        # create the release + upload assets
+  security-events: write # upload SARIF to code scanning
+
+jobs:
+  build:
+    runs-on: ubuntu-latest-4-cores
+    env:
+      # Surfaced so the "Import GPG signing key" step can gate on
+      # presence. Optional — signing is skipped when unset.
+      PLUGIN_SIGNING_KEY_SECRET: ${{ secrets.PLUGIN_SIGNING_KEY }}
+      # Effective tag: the workflow_call input when release-please invokes
+      # us, else the pushed tag's short name. Used for checkout, release
+      # tag_name, notes, and prerelease detection so both paths match.
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Check out the release tag explicitly — required on the
+          # workflow_call path, where the run's ref is main, not the tag.
+          ref: ${{ env.RELEASE_TAG }}
+          # action-gh-release generates notes from git history between
+          # tags; the default depth-1 checkout makes those notes empty.
+          fetch-depth: 0
+          # Don't leave the git token in the workspace — later steps run
+          # third-party code (npm ci, playwright, Go builds) and this job
+          # never pushes. action-gh-release uses GITHUB_TOKEN directly.
+          persist-credentials: false
+
+      # Resolve the checked-out tag's commit SHA so the SARIF uploads can
+      # attribute findings to the release tag, not the caller's ref (which is
+      # main on the workflow_call path).
+      - name: Resolve release SHA
+        id: relsha
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: webapp/package-lock.json
+
+      - name: Install webapp dependencies
+        run: cd webapp && npm ci
+
+      - name: Install Playwright browsers
+        run: cd webapp && npx playwright install --with-deps chromium
+
+      # Pre-install ClamAV and seed its DB so `make virus-scan` finds
+      # clamscan already present. freshclam is best-effort — the apt
+      # package ships a baseline DB, so a failed update won't sink the
+      # release.
+      - name: Install ClamAV
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clamav
+          sudo systemctl stop clamav-freshclam 2>/dev/null || true
+          sudo freshclam || true
+
+      # Import the GPG key only when the secret is set. The step exports
+      # the resolved key ID as PLUGIN_SIGNING_KEY so `make release-sign`
+      # picks it up; without it, signing is a no-op.
+      - name: Import GPG signing key
+        if: env.PLUGIN_SIGNING_KEY_SECRET != ''
+        env:
+          PLUGIN_SIGNING_KEY: ${{ secrets.PLUGIN_SIGNING_KEY }}
+          PLUGIN_SIGNING_KEY_PASSPHRASE: ${{ secrets.PLUGIN_SIGNING_KEY_PASSPHRASE }}
+        run: |
+          echo "$PLUGIN_SIGNING_KEY" | gpg --batch --import
+          echo "PLUGIN_SIGNING_KEY=$(gpg --list-secret-keys --keyid-format=long | awk -F'/' '/^sec/{print $2; exit}' | awk '{print $1}')" >> "$GITHUB_ENV"
+
+      # The whole security-gated pipeline in one target — keeps CI and
+      # local `make release` identical.
+      - name: Build release (full security pipeline)
+        run: make release
+
+      - name: Get plugin info
+        id: plugin_info
+        run: |
+          PLUGIN_ID=$(build/bin/manifest id)
+          PLUGIN_VERSION=$(build/bin/manifest version)
+          BUNDLE_NAME="${PLUGIN_ID}-${PLUGIN_VERSION}.tar.gz"
+          echo "plugin_id=${PLUGIN_ID}" >> "$GITHUB_OUTPUT"
+          echo "plugin_version=${PLUGIN_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "bundle_name=${BUNDLE_NAME}" >> "$GITHUB_OUTPUT"
+
+      # Push CodeQL findings to the Security tab for this release ref.
+      # Best-effort per-language — a webapp-only or server-only plugin
+      # won't produce both SARIFs.
+      - name: Upload Go CodeQL SARIF to code scanning
+        if: always() && hashFiles('dist/codeql-go.sarif') != ''
+        uses: github/codeql-action/upload-sarif@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4.37.4
+        with:
+          sarif_file: dist/codeql-go.sarif
+          category: codeql-go-release
+          # Attribute to the release tag/commit, not the caller ref (main on
+          # the workflow_call path).
+          ref: refs/tags/${{ env.RELEASE_TAG }}
+          sha: ${{ steps.relsha.outputs.sha }}
+
+      - name: Upload JS/TS CodeQL SARIF to code scanning
+        if: always() && hashFiles('dist/codeql-js.sarif') != ''
+        uses: github/codeql-action/upload-sarif@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4.37.4
+        with:
+          sarif_file: dist/codeql-js.sarif
+          category: codeql-js-release
+          # Attribute to the release tag/commit, not the caller ref (main on
+          # the workflow_call path).
+          ref: refs/tags/${{ env.RELEASE_TAG }}
+          sha: ${{ steps.relsha.outputs.sha }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          # Pin the target tag — on the workflow_call path github.ref is main,
+          # so the action's default (github.ref) would target the wrong ref.
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ steps.plugin_info.outputs.plugin_id }} v${{ steps.plugin_info.outputs.plugin_version }}
+          files: |
+            dist/${{ steps.plugin_info.outputs.bundle_name }}
+            dist/${{ steps.plugin_info.outputs.bundle_name }}.sha256
+            dist/${{ steps.plugin_info.outputs.bundle_name }}.sig
+            dist/sbom/server-sbom.json
+            dist/sbom/webapp-sbom.json
+            dist/codeql-go.sarif
+            dist/codeql-js.sarif
+          fail_on_unmatched_files: false
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(env.RELEASE_TAG, '-rc') || contains(env.RELEASE_TAG, '-beta') || contains(env.RELEASE_TAG, '-alpha') }}
+          body: |
+            ## ${{ steps.plugin_info.outputs.plugin_id }} ${{ env.RELEASE_TAG }}
+
+            See [`CHANGELOG.md`](${{ github.server_url }}/${{ github.repository }}/blob/${{ env.RELEASE_TAG }}/CHANGELOG.md) for curated release notes.
+
+            ### Install
+
+            1. Download `${{ steps.plugin_info.outputs.bundle_name }}` from the assets below.
+            2. (Optional) Verify the checksum:
+               ```bash
+               sha256sum -c ${{ steps.plugin_info.outputs.bundle_name }}.sha256
+               ```
+            3. (Optional) Verify the GPG signature, if a `.sig` is attached:
+               ```bash
+               gpg --verify ${{ steps.plugin_info.outputs.bundle_name }}.sig ${{ steps.plugin_info.outputs.bundle_name }}
+               ```
+            4. Upload via **System Console → Plugin Management → Choose File → Enable**.
+
+            ### Supply-chain artifacts
+
+            - **SBOM** (CycloneDX JSON): `server-sbom.json` / `webapp-sbom.json` list every dependency in the shipped bundle. Also embedded under `sbom/` inside the tarball.
+            - **CodeQL SARIF**: `codeql-go.sarif` / `codeql-js.sarif` are the static-analysis results that gated this build. Also embedded under `security/` inside the tarball.
+
+            ### Auto-generated changelog

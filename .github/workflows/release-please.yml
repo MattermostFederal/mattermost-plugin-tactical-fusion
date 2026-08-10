@@ -1,0 +1,60 @@
+# release-please keeps a "Release PR" open and current on every push to
+# main. It reads the conventional-commit messages since the last tag,
+# computes the next semver bump, updates plugin.json's version field and
+# CHANGELOG.md, and waits for you to merge when you're ready to ship.
+#
+# Merging that Release PR creates the v* tag, which fires release.yml —
+# the full security-gated build + GitHub Release publish pipeline.
+#
+# Conventional commit prefixes driving the bump:
+#   feat: ...            -> minor  (0.1.x -> 0.2.0)
+#   fix:  ...            -> patch  (0.1.0 -> 0.1.1)
+#   feat!: / BREAKING    -> major  (0.x.y -> 1.0.0)
+#   chore:/docs:/test:   -> no version bump, no changelog entry
+#
+# Subject lines that don't match a conventional prefix are left out of
+# the changelog. Use feat: and fix: deliberately.
+name: Release Please
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write       # commit the release PR + create the tag
+  pull-requests: write  # open/update the release PR
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: .release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  # Build + publish the release assets when release-please actually cut a
+  # release. Its GITHUB_TOKEN-created tag can't trigger release.yml's
+  # push:tags path (GitHub anti-recursion), so we call release.yml as a
+  # reusable workflow from within this human-merge-triggered run — no PAT or
+  # App token needed. Without this, releases were published with no bundle.
+  publish:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    permissions:
+      contents: write
+      security-events: write
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.release-please.outputs.tag_name }}
+    # Least privilege — pass only the signing secrets release.yml declares,
+    # not `secrets: inherit` (which forwards every secret in the repo).
+    secrets:
+      PLUGIN_SIGNING_KEY: ${{ secrets.PLUGIN_SIGNING_KEY }}
+      PLUGIN_SIGNING_KEY_PASSPHRASE: ${{ secrets.PLUGIN_SIGNING_KEY_PASSPHRASE }}

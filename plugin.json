@@ -1,0 +1,26 @@
+{
+    "id": "com.mattermost.plugin-mission-context",
+    "name": "Mission Context",
+    "version": "0.1.0",
+    "description": "Enriches conversations with mission-relevant context, including geospatial data, CoT, time zones, IP intelligence, CVEs, and other operational information.",
+    "homepage_url": "https://github.com/MattermostFederal/mattermost-plugin-mission-context",
+    "support_url": "https://github.com/MattermostFederal/mattermost-plugin-mission-context/issues",
+    "icon_path": "assets/icon.svg",
+    "min_server_version": "11.8.0",
+    "server": {
+        "executables": {
+            "linux-amd64": "server/dist/plugin-linux-amd64",
+            "linux-arm64": "server/dist/plugin-linux-arm64",
+            "darwin-amd64": "server/dist/plugin-darwin-amd64",
+            "darwin-arm64": "server/dist/plugin-darwin-arm64"
+        }
+    },
+    "webapp": {
+        "bundle_path": "webapp/dist/main.js"
+    },
+    "settings_schema": {
+        "header": "",
+        "footer": "",
+        "settings": []
+    }
+}
