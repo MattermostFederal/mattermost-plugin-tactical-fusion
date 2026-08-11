@@ -63,7 +63,7 @@ export const FORCE_PAGE_PARAM = '_page';
  * The name is namespaced because a browsing context name is shared with every
  * other page on the origin.
  */
-export const PAGE_TARGET = 'mission-context-decorator-page';
+export const PAGE_TARGET = 'tactical-fusion-decorator-page';
 
 /**
  * Carries the reader's Mattermost theme to the standalone page.

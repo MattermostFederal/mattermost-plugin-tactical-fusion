@@ -1,8 +1,8 @@
-# Mission Context Plugin Guidelines
+# Tactical Fusion Plugin Guidelines
 
 ## Overview
 
-Mattermost Mission Context enriches conversations with mission-relevant context, including geospatial data, CoT, time zones, IP intelligence, CVEs, and other operational information. The server is written in Go and the webapp in TypeScript/React.
+Mattermost Tactical Fusion enriches conversations with mission-relevant context, including geospatial data, CoT, time zones, IP intelligence, CVEs, and other operational information. The server is written in Go and the webapp in TypeScript/React.
 
 The repo ships the decorator framework and one decorator (DTG). The remaining enrichment features are not implemented yet.
 
@@ -147,7 +147,7 @@ framework, so decorators can name their own params freely. There are two:
   operating system fallback. Only the two keywords are accepted, since the value
   reaches a stylesheet.
 
-`/mission-context examples` posts a live demonstration: each example raw in a
+`/tactical-fusion examples` posts a live demonstration: each example raw in a
 code fence, then the same text after decoration, including the near-misses that
 are deliberately declined, plus a ready-made `_page=1` link. The command runs the
 tagger itself rather than relying on the message hook, because its own output is

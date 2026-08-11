@@ -1,6 +1,6 @@
 import {all, decoratePathPrefix} from './registry';
 
-const STYLE_ELEMENT_ID = 'mission-context-decorator-styles';
+const STYLE_ELEMENT_ID = 'tactical-fusion-decorator-styles';
 
 /** Escapes a value for use inside a CSS attribute selector string. */
 function cssEscape(value: string): string {

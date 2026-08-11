@@ -7,20 +7,20 @@ import (
 	"github.com/mattermost/mattermost/server/public/plugin"
 )
 
-const commandTrigger = "mission-context"
+const commandTrigger = "tactical-fusion"
 
 const subcommandList = "examples"
 
 func getCommand() *model.Command {
-	autocomplete := model.NewAutocompleteData(commandTrigger, "[command]", "Mission Context commands")
+	autocomplete := model.NewAutocompleteData(commandTrigger, "[command]", "Tactical Fusion commands")
 	autocomplete.AddCommand(model.NewAutocompleteData("examples", "", "Show what the decorators do, with live examples"))
 
 	return &model.Command{
 		Trigger:          commandTrigger,
 		AutoComplete:     true,
-		AutoCompleteDesc: "Mission Context commands",
+		AutoCompleteDesc: "Tactical Fusion commands",
 		AutoCompleteHint: "[command]",
-		DisplayName:      "Mission Context",
+		DisplayName:      "Tactical Fusion",
 		AutocompleteData: autocomplete,
 	}
 }

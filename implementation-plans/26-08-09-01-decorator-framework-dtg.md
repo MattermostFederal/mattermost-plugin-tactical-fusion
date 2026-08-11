@@ -10,7 +10,7 @@ Decoration happens **on the server**, once, in `MessageWillBePosted`. That is th
 
 ## Problem Statement
 
-Mission Context exists to enrich conversation with mission-relevant context (geospatial, CoT, time zones, IP intel, CVEs). Every one of those is the same shape: *find a token in a message, make it interactive, show detail somewhere*. Built ad hoc, that is N copies of pattern scanning, link generation, click interception, and RHS routing.
+Tactical Fusion exists to enrich conversation with mission-relevant context (geospatial, CoT, time zones, IP intel, CVEs). Every one of those is the same shape: *find a token in a message, make it interactive, show detail somewhere*. Built ad hoc, that is N copies of pattern scanning, link generation, click interception, and RHS routing.
 
 `mattermost-plugin-aocanywhere` solved this shape once (`webapp/src/enhanced_text/`), but two ways we do not want to copy:
 
@@ -19,7 +19,7 @@ Mission Context exists to enrich conversation with mission-relevant context (geo
 
 We want a registry so adding a decorator means adding one directory per side, and server-side decoration so the link exists everywhere.
 
-Today mission-context is a bare scaffold: `/mission-context hello` and a channel-header button that fires `window.alert`.
+Today the plugin is a bare scaffold: `/tactical-fusion hello` and a channel-header button that fires `window.alert`.
 
 ## Current State
 
@@ -343,7 +343,7 @@ const RhsView = () => {
 };
 ```
 
-`RhsTitle` lives in the same file and renders `d.summary(sel.payload)` or `'Mission Context'` when there is no selection.
+`RhsTitle` lives in the same file and renders `d.summary(sel.payload)` or `'Tactical Fusion'` when there is no selection.
 
 ### RHS lifecycle
 
@@ -402,7 +402,7 @@ public async initialize(registry: PluginRegistry, store: Store<GlobalState>) {
 
     registry.registerChannelHeaderButtonAction(
         <HeaderIcon/>, () => { clearSelection(); toggleRhs(); },
-        'Mission Context', 'Mission Context',
+        'Tactical Fusion', 'Tactical Fusion',
     );
 }
 
@@ -607,7 +607,7 @@ No `registerMessageWillFormatHook`: the link is already in the message. `uniniti
 ## Checklist
 
 - [ ] **Diagnostics**: N/A, this repo has no diagnostics channel.
-- [ ] **Slash command**: `/mission-context dtg <value>` to open the panel without a post, Phase 2.
+- [ ] **Slash command**: `/tactical-fusion dtg <value>` to open the panel without a post, Phase 2.
 - [ ] **Conventional commit**: `feat: add decorator framework and DTG decorator` (server + webapp), minor bump.
 
 ---

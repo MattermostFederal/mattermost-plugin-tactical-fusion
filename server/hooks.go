@@ -60,7 +60,7 @@ func (p *Plugin) decoratePost(post *model.Post, ref time.Time) (result *model.Po
 		if r := recover(); r != nil {
 			result = nil
 			if api != nil {
-				api.LogWarn("mission-context: recovered from panic while decorating; post left unmodified",
+				api.LogWarn("tactical-fusion: recovered from panic while decorating; post left unmodified",
 					"panic", r)
 			}
 		}
@@ -87,7 +87,7 @@ func (p *Plugin) decoratePost(post *model.Post, ref time.Time) (result *model.Po
 		// is visibly well under the limit can cross it here. Rejecting the post
 		// would show the author an opaque "too long" error for text they can
 		// see fits, so drop the decoration instead.
-		p.API.LogWarn("mission-context: decoration would exceed the maximum post size; posting undecorated",
+		p.API.LogWarn("tactical-fusion: decoration would exceed the maximum post size; posting undecorated",
 			"channel_id", post.ChannelId)
 		return nil
 	}

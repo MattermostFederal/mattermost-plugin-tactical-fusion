@@ -11,7 +11,7 @@ import (
 	"github.com/MattermostFederal/mattermost-plugin-mission-context/server/decorators/dtg"
 )
 
-// commandExample is one line of the /mission-context examples output: the text
+// commandExample is one line of the /tactical-fusion examples output: the text
 // a user would type, and a short reason when the outcome is not self-evident.
 type commandExample struct {
 	text string

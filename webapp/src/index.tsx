@@ -42,8 +42,8 @@ export default class Plugin {
                 clearSelection();
                 toggleRhs();
             },
-            'Mission Context',
-            'Mission Context',
+            'Tactical Fusion',
+            'Tactical Fusion',
         );
     }
 

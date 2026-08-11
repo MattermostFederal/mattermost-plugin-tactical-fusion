@@ -21,7 +21,7 @@ func TestExamplesCommand(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 
 	response, appErr := p.ExecuteCommand(&plugin.Context{}, &model.CommandArgs{
-		Command: "/mission-context examples",
+		Command: "/tactical-fusion examples",
 	})
 	if appErr != nil {
 		t.Fatalf("ExecuteCommand returned an error: %v", appErr)
@@ -58,7 +58,7 @@ func TestExamplesShowRealTaggerOutput(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 
 	response, _ := p.ExecuteCommand(&plugin.Context{}, &model.CommandArgs{
-		Command: "/mission-context examples",
+		Command: "/tactical-fusion examples",
 	})
 	text := response.Text
 
@@ -81,7 +81,7 @@ func TestExamplesFitInOneMessage(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 
 	response, _ := p.ExecuteCommand(&plugin.Context{}, &model.CommandArgs{
-		Command: "/mission-context examples",
+		Command: "/tactical-fusion examples",
 	})
 
 	if runes := utf8.RuneCountInString(response.Text); runes > maxPostRunes {
@@ -96,7 +96,7 @@ func TestExamplesIncludeLiveTimes(t *testing.T) {
 
 	before := time.Now().UTC()
 	response, _ := p.ExecuteCommand(&plugin.Context{}, &model.CommandArgs{
-		Command: "/mission-context examples",
+		Command: "/tactical-fusion examples",
 	})
 	after := time.Now().UTC()
 	text := response.Text
@@ -128,7 +128,7 @@ func TestLiveExamplesComeFirst(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 
 	response, _ := p.ExecuteCommand(&plugin.Context{}, &model.CommandArgs{
-		Command: "/mission-context examples",
+		Command: "/tactical-fusion examples",
 	})
 	text := response.Text
 
@@ -193,7 +193,7 @@ func TestExamplesLinkToTheStandalonePage(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 
 	response, _ := p.ExecuteCommand(&plugin.Context{}, &model.CommandArgs{
-		Command: "/mission-context examples",
+		Command: "/tactical-fusion examples",
 	})
 	text := response.Text
 
@@ -227,7 +227,7 @@ func TestExamplesBeforeActivation(t *testing.T) {
 	p.decorators = nil
 
 	response, appErr := p.ExecuteCommand(&plugin.Context{}, &model.CommandArgs{
-		Command: "/mission-context examples",
+		Command: "/tactical-fusion examples",
 	})
 	if appErr != nil {
 		t.Fatalf("ExecuteCommand returned an error: %v", appErr)
@@ -241,7 +241,7 @@ func TestExamplesNoteWhenDecorationIsOff(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", false)
 
 	response, _ := p.ExecuteCommand(&plugin.Context{}, &model.CommandArgs{
-		Command: "/mission-context examples",
+		Command: "/tactical-fusion examples",
 	})
 
 	if !strings.Contains(response.Text, "currently **off**") {
@@ -253,7 +253,7 @@ func TestUnknownSubcommandListsAvailable(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 
 	response, _ := p.ExecuteCommand(&plugin.Context{}, &model.CommandArgs{
-		Command: "/mission-context nope",
+		Command: "/tactical-fusion nope",
 	})
 
 	if !strings.Contains(response.Text, "examples") {

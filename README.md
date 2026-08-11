@@ -1,6 +1,6 @@
-# Mattermost Mission Context
+# Mattermost Tactical Fusion
 
-Mattermost Mission Context enriches conversations with mission-relevant context, including geospatial data, CoT, time zones, IP intelligence, CVEs, and other operational information.
+Mattermost Tactical Fusion enriches conversations with mission-relevant context, including geospatial data, CoT, time zones, IP intelligence, CVEs, and other operational information.
 
 > **Status:** early. The decorator framework and the first decorator, date-time
 > groups, are implemented. The remaining enrichment features described above are
@@ -10,10 +10,10 @@ Mattermost Mission Context enriches conversations with mission-relevant context,
 
 - **Decorators**: date-time groups in posted messages become links that open a
   timezone conversion panel in the right-hand sidebar, or a plugin-rendered page
-  on clients that do not run the webapp. Run `/mission-context examples` to see
+  on clients that do not run the webapp. Run `/tactical-fusion examples` to see
   what is recognised and what is deliberately left alone.
 - **Server**: Go plugin that decorates new messages, serves the decorator pages,
-  and registers the `/mission-context` slash command.
+  and registers the `/tactical-fusion` slash command.
 - **Webapp**: React plugin registering the right-hand sidebar and the channel
   header button.
 - **Build tooling**: Makefile, mattermost-plugin-starter-template build scripts, CI workflows.

@@ -1,6 +1,6 @@
 {
     "id": "com.mattermost.plugin-mission-context",
-    "name": "Mission Context",
+    "name": "Mattermost Tactical Fusion",
     "version": "0.1.0",
     "description": "Enriches conversations with mission-relevant context, including geospatial data, CoT, time zones, IP intelligence, CVEs, and other operational information.",
     "homepage_url": "https://github.com/MattermostFederal/mattermost-plugin-mission-context",

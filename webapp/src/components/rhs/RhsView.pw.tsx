@@ -6,7 +6,7 @@ import RhsHarness from './RhsHarness';
 test('shows the empty state with no selection', async ({mount, page}) => {
     await mount(<RhsHarness/>);
 
-    await expect(page.getByText('Mission Context')).toBeVisible();
+    await expect(page.getByText('Tactical Fusion')).toBeVisible();
     await expect(page.getByTestId('fixture-panel')).toHaveCount(0);
 });
 
@@ -26,14 +26,14 @@ test('renders the selected decorator panel', async ({mount, page}) => {
 test('falls back to the empty state for an unknown type', async ({mount, page}) => {
     await mount(<RhsHarness selectionType='not-registered'/>);
 
-    await expect(page.getByText('Mission Context')).toBeVisible();
+    await expect(page.getByText('Tactical Fusion')).toBeVisible();
     await expect(page.getByTestId('fixture-panel')).toHaveCount(0);
 });
 
 test('title is null-safe with no selection', async ({mount, page}) => {
     await mount(<RhsHarness title={true}/>);
 
-    await expect(page.getByText('Mission Context')).toBeVisible();
+    await expect(page.getByText('Tactical Fusion')).toBeVisible();
 });
 
 test('title uses the decorator summary', async ({mount, page}) => {
@@ -86,5 +86,5 @@ test('title falls back for an unknown type', async ({mount, page}) => {
         />,
     );
 
-    await expect(page.getByText('Mission Context')).toBeVisible();
+    await expect(page.getByText('Tactical Fusion')).toBeVisible();
 });

@@ -122,7 +122,7 @@ func WriteError(w http.ResponseWriter, status int, message string) {
 	setPageHeaders(w)
 	w.WriteHeader(status)
 	writePageBody(w, Page{
-		Title:    "Mission Context",
+		Title:    "Tactical Fusion",
 		BodyHTML: `<p class="sub">` + html.EscapeString(message) + `</p>`,
 	})
 }

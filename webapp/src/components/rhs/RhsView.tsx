@@ -22,7 +22,7 @@ function useSelection(): Selection | null {
 
 export const EmptyState: React.FC = () => (
     <div style={styles.empty}>
-        <p style={styles.emptyLead}>{'Mission Context'}</p>
+        <p style={styles.emptyLead}>{'Tactical Fusion'}</p>
         <p style={styles.emptyHint}>
             {'Highlighted values in a message, such as date-time groups, open their details here.'}
         </p>
@@ -70,7 +70,7 @@ export const RhsTitle: React.FC = () => {
     const decorator = selection ? get(selection.type) : undefined;
 
     if (!selection || !decorator) {
-        return <span>{'Mission Context'}</span>;
+        return <span>{'Tactical Fusion'}</span>;
     }
 
     const {Title} = decorator;
