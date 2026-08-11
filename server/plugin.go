@@ -3,7 +3,12 @@ package main
 import (
 	"sync"
 
+	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
+	"github.com/pkg/errors"
+
+	"github.com/MattermostFederal/mattermost-plugin-mission-context/server/decorators"
+	"github.com/MattermostFederal/mattermost-plugin-mission-context/server/decorators/dtg"
 )
 
 type Plugin struct {
@@ -11,8 +16,60 @@ type Plugin struct {
 
 	configurationLock sync.RWMutex
 	configuration     *configuration
+
+	// decorators is built once in OnActivate and only read afterwards, by the
+	// message hook and by ServeHTTP. Owning it here rather than in a package
+	// level variable keeps those concurrent readers race-free and makes
+	// activation repeatable.
+	decorators *decorators.Registry
+
+	// preferences is the per-reader view settings store, cached in memory.
+	// Built in OnActivate alongside the registry, and read from the API
+	// handlers.
+	preferences *cachingPreferenceStore
+}
+
+// dtgFormats reports which date-time group formats the admin has left on.
+//
+// Read fresh for every message rather than captured at activation, so a change
+// in the admin console takes effect without a restart. The decorator stays
+// registered whatever this returns, so the pages behind links already in
+// existing messages keep rendering.
+func (p *Plugin) dtgFormats() dtg.Formats {
+	config := p.getConfiguration()
+	if !config.EnableDTG {
+		return dtg.Formats{}
+	}
+
+	return dtg.Formats{
+		Military:  config.EnableDTGMilitary,
+		Moniker:   config.EnableDTGMoniker,
+		Timestamp: config.EnableDTGTimestamp,
+	}
 }
 
 func (p *Plugin) OnActivate() error {
+	// Adding a decorator is one line here plus one directory. Nothing in
+	// server/decorators needs to change.
+	registry, err := decorators.NewDefaultRegistry(
+		&dtg.Decorator{Enabled: p.dtgFormats},
+	)
+	if err != nil {
+		return errors.Wrap(err, "failed to register decorators")
+	}
+	p.decorators = registry
+
+	p.preferences = newCachingPreferenceStore(&kvPreferenceStore{api: p.API}, p.API)
+
 	return p.API.RegisterCommand(getCommand())
+}
+
+// OnPluginClusterEvent keeps the preferences cache honest across nodes.
+//
+// Without it, a reader who changes their timezones on one node keeps seeing the
+// old table on every other node for as long as the cache TTL lasts.
+func (p *Plugin) OnPluginClusterEvent(_ *plugin.Context, ev model.PluginClusterEvent) {
+	if p.preferences != nil {
+		p.preferences.HandleClusterEvent(ev)
+	}
 }

@@ -21,6 +21,35 @@
     "settings_schema": {
         "header": "",
         "footer": "",
-        "settings": []
+        "settings": [
+            {
+                "key": "EnableDTG",
+                "display_name": "Decorate date-time groups",
+                "type": "bool",
+                "default": true,
+                "help_text": "Recognise times in messages and rewrite them as links that open a Date/Time panel. The formats below are matched individually and all apply while this is on."
+            },
+            {
+                "key": "EnableDTGMilitary",
+                "display_name": "Format: military date-time group",
+                "type": "bool",
+                "default": true,
+                "help_text": "Matches 091630ZAUG26, 091630ZAUG2026 and the short form 091630Z. Only applies while \"Decorate date-time groups\" is on. Turning a format off stops new messages being decorated with it; links already in existing messages keep working."
+            },
+            {
+                "key": "EnableDTGMoniker",
+                "display_name": "Format: labelled date-time group",
+                "type": "bool",
+                "default": true,
+                "help_text": "Matches a time introduced by the \"DTG:\" label, as some military formats write it, and drops the label from the link. Only labels the formats that are themselves on. Only applies while \"Decorate date-time groups\" is on. Turning a format off stops new messages being decorated with it; links already in existing messages keep working."
+            },
+            {
+                "key": "EnableDTGTimestamp",
+                "display_name": "Format: RFC 3339 timestamp",
+                "type": "bool",
+                "default": true,
+                "help_text": "Matches 2026-08-09T16:30:00Z and 2026-08-09T20:30:00+04:00. Only applies while \"Decorate date-time groups\" is on. Turning a format off stops new messages being decorated with it; links already in existing messages keep working."
+            }
+        ]
     }
 }

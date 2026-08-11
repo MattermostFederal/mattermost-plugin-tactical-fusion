@@ -2,14 +2,20 @@
 
 Mattermost Mission Context enriches conversations with mission-relevant context, including geospatial data, CoT, time zones, IP intelligence, CVEs, and other operational information.
 
-> **Status:** early scaffold. The server and webapp currently ship the starter
-> `/mission-context hello` command and channel header button; the context
-> enrichment features described above are not implemented yet.
+> **Status:** early. The decorator framework and the first decorator, date-time
+> groups, are implemented. The remaining enrichment features described above are
+> not.
 
 ## What's included
 
-- **Server**: Go plugin registering a `/mission-context hello` slash command.
-- **Webapp**: React plugin registering a channel header button.
+- **Decorators**: date-time groups in posted messages become links that open a
+  timezone conversion panel in the right-hand sidebar, or a plugin-rendered page
+  on clients that do not run the webapp. Run `/mission-context examples` to see
+  what is recognised and what is deliberately left alone.
+- **Server**: Go plugin that decorates new messages, serves the decorator pages,
+  and registers the `/mission-context` slash command.
+- **Webapp**: React plugin registering the right-hand sidebar and the channel
+  header button.
 - **Build tooling**: Makefile, mattermost-plugin-starter-template build scripts, CI workflows.
 - **CI/CD automation**: PR validation, security scanning (SBOM + Grype + CodeQL), automated releases via [release-please](https://github.com/googleapis/release-please), and Dependabot updates. See [Automation](#automation) below.
 - **Editor integration**: `.claude/` (Claude Code agents, commands, skills) and `.vscode/` settings.

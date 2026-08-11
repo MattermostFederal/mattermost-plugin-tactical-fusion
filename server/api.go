@@ -1,0 +1,137 @@
+package main
+
+import (
+	"encoding/json"
+	"net/http"
+)
+
+// apiPath is the route prefix for the authenticated JSON API, relative to the
+// plugin's own base path.
+//
+// Deliberately a sibling of decoratePath rather than a branch inside it. The
+// two have opposite security postures: /decorate is public and reads no
+// workspace data, while everything under here is per-reader and refuses a
+// request without a session. Keeping them apart means neither can inherit the
+// other's rules by accident.
+const apiPath = "/api/v1"
+
+// preferencesPath is the one resource this API has.
+const preferencesPath = apiPath + "/preferences"
+
+// maxPreferencesBody caps a submitted blob. The largest legitimate one is a few
+// hundred bytes, so this is only here to keep a hostile client from making the
+// decoder do unbounded work.
+const maxPreferencesBody = 8 * 1024
+
+// serveAPI handles the authenticated routes.
+//
+// Mattermost sets Mattermost-User-Id itself and strips any copy a client tries
+// to send, so an empty value here means there is no session, and a non-empty
+// one is trustworthy. This is the only place in the plugin that reads it.
+func (p *Plugin) serveAPI(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("Mattermost-User-Id")
+	if userID == "" {
+		writeAPIError(w, http.StatusUnauthorized, "Not authorized.")
+		return
+	}
+
+	if r.URL.Path != preferencesPath {
+		writeAPIError(w, http.StatusNotFound, "Not found.")
+		return
+	}
+
+	if p.preferences == nil {
+		// Only reachable if a request lands between activation and OnActivate
+		// finishing. Nothing to serve yet, and nothing worth failing over.
+		writeAPIError(w, http.StatusServiceUnavailable, "Not ready.")
+		return
+	}
+
+	// These are per-reader and change the moment they are saved, so no shared
+	// cache anywhere between here and the browser may hold on to them.
+	w.Header().Set("Cache-Control", "no-store")
+
+	switch r.Method {
+	case http.MethodGet:
+		p.handleGetPreferences(w, userID)
+	case http.MethodPut:
+		p.handleSetPreferences(w, r, userID)
+	case http.MethodDelete:
+		p.handleDeletePreferences(w, userID)
+	default:
+		writeAPIError(w, http.StatusMethodNotAllowed, "Method not allowed.")
+	}
+}
+
+func (p *Plugin) handleGetPreferences(w http.ResponseWriter, userID string) {
+	prefs, err := p.preferences.Get(userID)
+	if err != nil {
+		p.API.LogError("Failed to read preferences", "user_id", userID, "error", err.Error())
+		writeAPIError(w, http.StatusInternalServerError, "Could not read your settings.")
+		return
+	}
+
+	writeAPIJSON(w, http.StatusOK, forWire(prefs))
+}
+
+func (p *Plugin) handleSetPreferences(w http.ResponseWriter, r *http.Request, userID string) {
+	var prefs UserPreferences
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxPreferencesBody))
+	if err := decoder.Decode(&prefs); err != nil {
+		writeAPIError(w, http.StatusBadRequest, "That is not a valid settings payload.")
+		return
+	}
+
+	// The message is the validator's, not a generic one: a rejected timezone or
+	// an out-of-range threshold is something the reader can act on, and burying
+	// it would leave the panel able only to say "something went wrong".
+	if err := prefs.validate(); err != nil {
+		writeAPIError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := p.preferences.Set(userID, prefs); err != nil {
+		p.API.LogError("Failed to save preferences", "user_id", userID, "error", err.Error())
+		writeAPIError(w, http.StatusInternalServerError, "Could not save your settings.")
+		return
+	}
+
+	// The saved blob rather than an empty body, so the panel renders exactly
+	// what was stored instead of what it hoped was stored.
+	writeAPIJSON(w, http.StatusOK, forWire(prefs))
+}
+
+// handleDeletePreferences is "Restore defaults". It removes the blob rather
+// than writing today's defaults into it, so the reader goes back to tracking
+// whatever the defaults become.
+func (p *Plugin) handleDeletePreferences(w http.ResponseWriter, userID string) {
+	if err := p.preferences.Delete(userID); err != nil {
+		p.API.LogError("Failed to clear preferences", "user_id", userID, "error", err.Error())
+		writeAPIError(w, http.StatusInternalServerError, "Could not restore the defaults.")
+		return
+	}
+
+	writeAPIJSON(w, http.StatusOK, forWire(UserPreferences{}))
+}
+
+// forWire fills in the empty slice JSON would otherwise render as null, so the
+// client never has to treat "no zones chosen" as two different values.
+func forWire(prefs UserPreferences) UserPreferences {
+	if prefs.DTG.Zones == nil {
+		prefs.DTG.Zones = []ZoneSelection{}
+	}
+	return prefs
+}
+
+func writeAPIJSON(w http.ResponseWriter, status int, body any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+
+	// Nothing useful to do if this fails: the status line is already sent, so
+	// the client sees a truncated body either way.
+	_ = json.NewEncoder(w).Encode(body)
+}
+
+func writeAPIError(w http.ResponseWriter, status int, message string) {
+	writeAPIJSON(w, status, map[string]string{"message": message})
+}
