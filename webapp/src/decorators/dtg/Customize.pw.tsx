@@ -1,10 +1,10 @@
-import {expect, test} from '@playwright/experimental-ct-react';
 import type {Page} from '@playwright/test';
 import React from 'react';
 
 import Customize from './Customize';
 import {DEFAULT_ZONE_IDS} from './zones';
 
+import {expect, test} from '../../../playwright/ct-coverage';
 import {savedEntries, savedMinutes, savedZones, stubPreferencesRoute} from '../../preferences/stub_route';
 
 const instant = new Date(Date.UTC(2026, 7, 9, 16, 30, 0));

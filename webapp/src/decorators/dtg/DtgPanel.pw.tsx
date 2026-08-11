@@ -1,10 +1,10 @@
-import {expect, test} from '@playwright/experimental-ct-react';
 import type {Locator} from '@playwright/test';
 import React from 'react';
 
 import DtgPanel from './DtgPanel';
 import {DISPLAY_ZONES} from './zones';
 
+import {expect, test} from '../../../playwright/ct-coverage';
 import {stubPreferencesRoute} from '../../preferences/stub_route';
 
 import type {Dtg} from './index';

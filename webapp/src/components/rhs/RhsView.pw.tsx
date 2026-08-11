@@ -1,7 +1,8 @@
-import {expect, test} from '@playwright/experimental-ct-react';
 import React from 'react';
 
 import RhsHarness from './RhsHarness';
+
+import {expect, test} from '../../../playwright/ct-coverage';
 
 test('shows the empty state with no selection', async ({mount, page}) => {
     await mount(<RhsHarness/>);

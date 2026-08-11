@@ -1,7 +1,8 @@
-import {expect, test} from '@playwright/experimental-ct-react';
 import React from 'react';
 
 import ClickHarness from './ClickHarness';
+
+import {expect, test} from '../../playwright/ct-coverage';
 
 // The DOM wiring is exercised through a harness because the routing half is
 // already covered without a browser in click_handler.spec.ts. This file only

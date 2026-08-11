@@ -1,7 +1,8 @@
-import {expect, test} from '@playwright/experimental-ct-react';
 import React from 'react';
 
 import {HeaderIcon} from './HeaderIcon';
+
+import {expect, test} from '../playwright/ct-coverage';
 
 test('renders the plugin mark', async ({mount, page}) => {
     await mount(<HeaderIcon/>);

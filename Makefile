@@ -305,7 +305,10 @@ ifneq ($(HAS_WEBAPP),)
 	rm -fr webapp/node_modules
 	rm -fr webapp/coverage
 	rm -fr webapp/coverage-ct
+	rm -fr webapp/coverage-merged
 	rm -fr webapp/.v8-ct-coverage
+	rm -fr webapp/.v8-unit-coverage
+	rm -fr webapp/.v8-merged-coverage
 endif
 
 ## Nuke everything: Docker containers, data, and all build artifacts
@@ -317,7 +320,8 @@ nuke: docker-kill-orphans
 	@rm -fr dist/
 	@rm -fr server/coverage.txt server/dist
 	@rm -fr webapp/junit.xml webapp/dist webapp/node_modules
-	@rm -fr webapp/coverage webapp/coverage-ct webapp/.v8-ct-coverage
+	@rm -fr webapp/coverage webapp/coverage-ct webapp/coverage-merged
+	@rm -fr webapp/.v8-ct-coverage webapp/.v8-unit-coverage webapp/.v8-merged-coverage
 	@rm -fr build/bin/
 	@echo "Everything removed. Run 'make docker-setup' to start fresh."
 

@@ -1,7 +1,8 @@
-import {expect, test} from '@playwright/experimental-ct-react';
 import React from 'react';
 
 import TooltipHarness from './TooltipHarness';
+
+import {expect, test} from '../../playwright/ct-coverage';
 
 const PREFIX = '/plugins/com.mattermost.plugin-tactical-fusion/decorate/';
 

@@ -1,8 +1,8 @@
-import {expect, test} from '@playwright/experimental-ct-react';
 import React from 'react';
 
 import DtgHover from './DtgHover';
 
+import {expect, test} from '../../../playwright/ct-coverage';
 import {stubPreferencesRoute} from '../../preferences/stub_route';
 
 import type {Dtg} from './index';
