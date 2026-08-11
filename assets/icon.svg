@@ -1,4 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <rect width="64" height="64" rx="12" fill="#1E325C"/>
-  <path d="M20 20h24v4H20zM20 30h24v4H20zM20 40h16v4H20z" fill="#FFFFFF"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="Tactical Fusion">
+  <title>Tactical Fusion</title>
+
+  <!-- Gunmetal rather than black: this is rendered on a light card in the
+       plugin list and on a dark one in some themes, and true black loses its
+       silhouette against the dark one. -->
+  <rect width="64" height="64" rx="12" fill="#1F262D"/>
+
+  <!-- Compass: a ring with cardinal points. Triangles rather than straight
+       ticks, which read as a reticle instead. -->
+  <circle cx="32" cy="32" r="21" stroke="#D5DBE0" stroke-width="3"/>
+  <g fill="#D5DBE0">
+    <path d="M32 4 36 11h-8Z"/>
+    <path d="M32 60 28 53h8Z"/>
+    <path d="M4 32 11 28v8Z"/>
+    <path d="M60 32 53 36v-8Z"/>
+  </g>
+
+  <!-- The dropped pin, filling most of the compass and in high-visibility
+       orange: it is the marked place, and everything else is the frame around
+       it. Its hole is punched in the plate colour, which is the one thing here
+       that would have to change if the plate ever did. -->
+  <path
+    d="M22.5 26.5A9.5 9.5 0 1 1 41.5 26.5C41.5 33.5 35 41 32 48 29 41 22.5 33.5 22.5 26.5Z"
+    fill="#FF6A13"
+  />
+  <circle cx="32" cy="26.5" r="3.8" fill="#1F262D"/>
 </svg>
