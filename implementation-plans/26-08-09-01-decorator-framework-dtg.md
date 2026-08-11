@@ -1,5 +1,25 @@
 # Decorator Framework + DTG Decorator
 
+> **Status: superseded. This is a historical record of what was planned, not a
+> description of what shipped.** It is kept for the reasoning behind the design,
+> particularly the revision history at the foot. Read `CLAUDE.md` for the
+> implemented contract; where the two disagree, `CLAUDE.md` is right and this
+> file is not to be used to "restore" anything.
+>
+> Known divergences, all deliberate:
+>
+> - **Admin settings.** The plan specifies a single `EnableDecoration` switch.
+>   What shipped is `EnableDTG` plus one switch per format under it
+>   (`EnableDTGMilitary`, `EnableDTGMoniker`, `EnableDTGTimestamp`), with the
+>   parent enforced in `Plugin.dtgFormats`. There is deliberately no global
+>   "decorate at all" switch.
+> - **RFC 3339 timestamps** are implemented and share the DTG decorator. The
+>   plan lists them as out of scope.
+> - **Reader preferences** ("Customize your view", `/api/v1/preferences`) are
+>   implemented. The plan lists them as out of scope.
+> - **The browser-local row** described under "Timezone display list" was not
+>   built. Readers choose their own rows instead.
+
 ## Overview
 
 Introduce a generic **decorator** framework that scans posts for domain patterns and rewrites the matches into markdown links whose query string carries the **already-parsed** data. Clicking a link in the webapp opens a decorator-owned RHS panel; following the same link from a client that resolves relative URLs against the server (the mobile app, a browser tab) lands on a page the plugin renders from those same params.

@@ -227,9 +227,13 @@ sidebar dead until a page reload.
 Query parameters starting with `_` are reserved for the framework, so decorators
 can name their own params freely. There are two:
 
-- **`_page=1`** makes the webapp stand aside so the browser follows the link to
+- **`_page`** makes the webapp stand aside so the browser follows the link to
   the server-rendered page instead. Purely for testing, since the page is
   otherwise only reachable from a client that does not run the webapp bundle.
+  Its **presence** is what counts, not its value: the click handler tests
+  `params.has`, and a test pins `_page=` with an empty value as still honoured.
+  Everything that emits one writes `_page=1`, so that is what you will see, but
+  nothing checks for the `1`.
   Every such link is pointed at one shared window (`PAGE_TARGET`), so following
   a second one replaces the first rather than collecting a tab per link. That
   needs `noopener` and `noreferrer` stripped from the link's `rel`: either token

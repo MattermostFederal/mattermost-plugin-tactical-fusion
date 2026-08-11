@@ -327,8 +327,9 @@ func TestRegistrationOrderBreaksEqualLengthTies(t *testing.T) {
 
 func TestLabelIsEscaped(t *testing.T) {
 	// A label carrying markdown syntax must not be re-parsed as markdown.
-	// Brackets are not exercised here because a message containing one is
-	// skipped outright, which TestSkipsMessagesWithRiskyConstructs covers.
+	// Brackets are not exercised here because a bracketed span is protected
+	// rather than decorated, so the token never reaches the escaper.
+	// TestProtectedSpansAreNeverRewritten covers that instead.
 	tagger := taggerWith(t, testPrefix, newFixture("tok", `A\*B_C~D`))
 
 	got := tagger.Decorate(`x A*B_C~D y`, testRef)
