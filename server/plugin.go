@@ -19,14 +19,27 @@ type Plugin struct {
 	configuration     *configuration
 
 	// decorators is built once in OnActivate and only read afterwards, by the
-	// message hook and by ServeHTTP. Owning it here rather than in a package
-	// level variable keeps those concurrent readers race-free and makes
-	// activation repeatable.
+	// message hook and by ServeHTTP.
+	//
+	// Owning it here rather than in a package level variable buys two things,
+	// and it is worth being exact about which: activation is repeatable, since
+	// a global would fail permanently on "already registered" the second time
+	// round, and no reader can observe a half-populated registry, since the
+	// whole thing is built before this field is assigned rather than being
+	// filled in by Register calls a reader could interleave with.
+	//
+	// What it does NOT do is establish a happens-before edge between the write
+	// here and those reads. That ordering is the plugin framework's to provide
+	// by not dispatching hooks until OnActivate returns, and we have not
+	// confirmed it does. The nil checks in http.go and api.go assume it might
+	// not, and if that assumption is right then those checks are themselves
+	// racing and this wants an atomic.Pointer with an accessor. Do not read the
+	// paragraph above as a claim that the reads are synchronised.
 	decorators *decorators.Registry
 
 	// preferences is the per-reader view settings store, cached in memory.
 	// Built in OnActivate alongside the registry, and read from the API
-	// handlers.
+	// handlers. The same caveat about ordering applies.
 	preferences *cachingPreferenceStore
 }
 
