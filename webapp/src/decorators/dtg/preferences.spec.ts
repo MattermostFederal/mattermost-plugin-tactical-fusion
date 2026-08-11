@@ -51,7 +51,7 @@ test('a bare built-in zone reads as its city', () => {
     const [row] = resolvedZones(prefs(bare('America/Los_Angeles')), instant);
 
     expect(row.name).toBe('Los Angeles');
-    expect(row.abbr).toBe('PST');
+    expect(row.abbr).toBe('PT');
 });
 
 test('a zone the reader added is described from its identifier', () => {

@@ -38,6 +38,14 @@ type DisplayZone struct {
 	IANA string
 
 	// Abbr is a short hint shown next to the name.
+	//
+	// Season-neutral for any zone that observes daylight saving, because this
+	// label is hand-written and the row beside it is not: the time is measured
+	// at the DTG's instant, so a standard-time-only abbreviation would say
+	// "PST" next to a clock reading PDT for eight months of the year. American
+	// English has neutral forms (ET, MT, PT) and European usage does not, which
+	// is why Ramstein names both halves rather than inventing a "CE" nobody
+	// writes. Do not "tidy" that into a single token.
 	Abbr string
 }
 
@@ -49,9 +57,9 @@ var DisplayZones = []DisplayZone{
 	{Name: "Zulu (UTC)", IANA: "UTC", Abbr: "Z"},
 	{Name: "Washington, DC", IANA: "America/New_York", Abbr: "ET"},
 	{Name: "Colorado Springs", IANA: "America/Denver", Abbr: "MT"},
-	{Name: "San Diego", IANA: "America/Los_Angeles", Abbr: "PST"},
+	{Name: "San Diego", IANA: "America/Los_Angeles", Abbr: "PT"},
 	{Name: "Honolulu", IANA: "Pacific/Honolulu", Abbr: "HST"},
-	{Name: "Ramstein", IANA: "Europe/Berlin", Abbr: "CET"},
+	{Name: "Ramstein", IANA: "Europe/Berlin", Abbr: "CET/CEST"},
 	{Name: "Al Udeid", IANA: "Asia/Qatar", Abbr: "AST"},
 	{Name: "Yokota", IANA: "Asia/Tokyo", Abbr: "JST"},
 	{Name: "Andersen, Guam", IANA: "Pacific/Guam", Abbr: "ChST"},

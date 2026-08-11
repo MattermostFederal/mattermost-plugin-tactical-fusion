@@ -57,9 +57,9 @@ export const DISPLAY_ZONES: DisplayZone[] = [
     {name: 'Zulu (UTC)', iana: 'UTC', abbr: 'Z'},
     {name: 'Washington, DC', iana: 'America/New_York', abbr: 'ET'},
     {name: 'Colorado Springs', iana: 'America/Denver', abbr: 'MT'},
-    {name: 'San Diego', iana: 'America/Los_Angeles', abbr: 'PST'},
+    {name: 'San Diego', iana: 'America/Los_Angeles', abbr: 'PT'},
     {name: 'Honolulu', iana: 'Pacific/Honolulu', abbr: 'HST'},
-    {name: 'Ramstein', iana: 'Europe/Berlin', abbr: 'CET'},
+    {name: 'Ramstein', iana: 'Europe/Berlin', abbr: 'CET/CEST'},
     {name: 'Al Udeid', iana: 'Asia/Qatar', abbr: 'AST'},
     {name: 'Yokota', iana: 'Asia/Tokyo', abbr: 'JST'},
     {name: 'Andersen, Guam', iana: 'Pacific/Guam', abbr: 'ChST'},
@@ -203,7 +203,8 @@ function humanize(iana: string): string {
  *
  * Computed per instant rather than stored, because the answer changes with
  * daylight saving. The built-in rows keep their hand-written labels instead,
- * which is why `San Diego` reads `PST` all year.
+ * which is why those are season-neutral: `San Diego` reads `PT` in either
+ * season rather than claiming `PST` beside a clock showing PDT.
  */
 function shortName(iana: string, instant: Date): string {
     try {
