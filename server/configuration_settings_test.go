@@ -13,6 +13,9 @@ import (
 // built from.
 type settingsSchema struct {
 	SettingsSchema struct {
+		// Header is markdown shown above the settings. It is where the built-in
+		// documentation is advertised to admins; see help_docs_test.go.
+		Header   string `json:"header"`
 		Settings []struct {
 			Key         string `json:"key"`
 			DisplayName string `json:"display_name"`

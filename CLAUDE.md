@@ -388,6 +388,82 @@ Also unverified: which post sources actually reach `MessageWillBePosted`
 (`p.API.CreatePost`, incoming webhooks, bot posts, `in_channel` command
 responses). Record the real behaviour here once tested.
 
+## Built-in documentation
+
+`public/help/` holds seven static HTML pages and one stylesheet. Mattermost
+serves the bundle's `public/` directory at `/plugins/<id>/public/**`, so
+**there is no route for this in the server code** and nothing to add to
+`ServeHTTP`. The build already copies it: `build/setup.mk` sets `HAS_PUBLIC`
+from the directory's existence and the `bundle` target acts on it.
+
+| Page | Covers | Kept in sync with |
+|---|---|---|
+| `help.html` | Landing page, what a decorator is, the consequences of server-side decoration, nav cards | The overall surface |
+| `formats.html` | Every recognised grammar, the declined list with reasons, protected spans | `server/decorators/dtg/dtg.go`, `parse.go`, `tagger.go` |
+| `panel.html` | The sidebar, the hover, the standalone page, Customize your view, the picker, zone ordering | `webapp/src/decorators/dtg/` |
+| `admin.html` | One section per switch, and what a switch does not do | `plugin.json` `settings_schema.settings` |
+| `commands.html` | `/tactical-fusion examples`, bare and unknown subcommands | `server/command.go` |
+| `troubleshooting.html` | Symptom, cause, fix, quoting the exact user-facing strings | Every message in the server |
+| `error-codes.html` | The `TF-NNNN` registry, grouped by source file | `server/errcode/codes.go` |
+
+Three things discover it, and `server/help_docs_test.go` guards the first:
+
+- **`plugin.json` `settings_schema.header`**, a markdown link. This is the one
+  place the plugin id is written out, which is correct: `plugin.json` defines
+  it.
+- **The sidebar panel**, a Documentation link beside "Customize your view",
+  built from `docsUrl()` in `webapp/src/plugin_url.ts`.
+- **`README.md`**.
+
+There is deliberately **no slash command surface**. Were one added, note the
+trap the sibling plugin documents: a Go helper building the URL from
+`manifest.Id` must be a **function, not a package-level `var`**, because var
+initialisers run before the generated `init()` populates the manifest and a var
+would read nil and panic at activation.
+
+The pages are **static, light-only, and self-contained**: no JavaScript, no
+remote fonts or assets, no dark mode. They must render on an air-gapped host.
+A test enforces this, along with the repo-wide em dash ban, which
+`check-style` does not cover because it does not lint HTML.
+
+**Anchor ids are a contract.** Pages deep-link into each other, and a renamed id
+fails silently: the browser lands at the top and the reader never learns they
+missed the section. `TestEveryCrossPageAnchorResolves` walks every
+`href="page.html#id"` in the bundle and is the reason renaming one is safe.
+
+Admin setting headings carry `data-setting="EnableDTG"` alongside a readable
+`id`. The attribute exists only so `TestEverySettingIsDocumented` can pair a
+section with a manifest key exactly, rather than encoding a
+PascalCase-to-kebab convention that would break the first time a key was named
+something the rule did not expect.
+
+## Error codes
+
+Every user-facing failure and every `p.API.Log*` call carries a stable
+`TF-NNNN` identifier, so the code a reader quotes from the sidebar and the code
+an operator greps out of the log are the same one. Wording can be improved; a
+code cannot change.
+
+`server/errcode` holds the catalogue. Codes are allocated in thousand-wide
+ranges, one per source file, listed in the package documentation. Within a range
+they go in source order the first time a file is instrumented and drift
+afterwards, which is fine. What is not fine is renumbering a committed code or
+reusing a retired one: both are quoted in support tickets. Retire a number by
+leaving a comment in its place.
+
+- `WithCode(code, msg)` suffixes a string. `Errorf(code, format, ...)` builds an
+  error already suffixed, for `preferences.go`, whose `err.Error()` reaches the
+  reader verbatim.
+- A log call takes `"error_code", errcode.X` as its **first** key/value pair.
+- Where a failure is both logged and returned, the two share one code. They are
+  one failure.
+
+Adding a code means four edits that go together: the constant, the `AllCodes`
+entry, the call site, and a row in `public/help/error-codes.html`.
+`TestAllCodesComplete` parses `codes.go` with `go/ast` to enforce the first two
+(nothing at runtime can see a constant that is never mentioned), and
+`TestEveryCodeIsDocumented` enforces the fourth.
+
 ## Coding conventions
 
 - Match the style of surrounding code.

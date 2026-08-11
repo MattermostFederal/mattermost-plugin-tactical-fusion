@@ -8,6 +8,7 @@ import {resolvedUrgentWithinMs, resolvedZones} from './preferences';
 import {EDITOR_TITLE} from './titles';
 
 import LinkButton from '../../components/LinkButton';
+import {docsUrl} from '../../plugin_url';
 import {usePreferences} from '../../preferences/store';
 
 import type {Dtg} from './index';
@@ -60,10 +61,14 @@ const styles: Record<string, React.CSSProperties> = {
     // Deliberately quiet: a way out of the panel, not a call to action. The
     // table's own last rule already separates it from the rows above, so it
     // needs no line of its own either.
-    customize: {
-        display: 'inline-block',
+    footer: {
         marginTop: '14px',
         fontSize: '12px',
+    },
+    separator: {
+        color: 'var(--center-channel-color)',
+        opacity: 0.4,
+        margin: '0 8px',
     },
     badge: {
         fontSize: '10px',
@@ -201,10 +206,11 @@ const DtgPanel: React.FC<{payload: Dtg}> = ({payload}) => {
                 </tbody>
             </table>
 
-            <LinkButton
-                style={styles.customize}
-                onClick={() => setEditing(true)}
-            >{EDITOR_TITLE}</LinkButton>
+            <div style={styles.footer}>
+                <LinkButton onClick={() => setEditing(true)}>{EDITOR_TITLE}</LinkButton>
+                <span style={styles.separator}>{'·'}</span>
+                <LinkButton href={docsUrl()}>{'Documentation'}</LinkButton>
+            </div>
         </div>
     );
 };

@@ -19,10 +19,16 @@ const base: React.CSSProperties = {
 
 interface Props {
 
-    /** What the link does. */
-    onClick: () => void;
+    /** What the link does. Ignored when `href` is set. */
+    onClick?: () => void;
 
-    /** Greyed out and inert while something is in flight. */
+    /**
+     * Where the link goes, for the one case that is a real destination. Renders
+     * an anchor instead of a button.
+     */
+    href?: string;
+
+    /** Greyed out and inert while something is in flight. Buttons only. */
     disabled?: boolean;
 
     /** Placement and type size. The link colouring is not overridable. */
@@ -32,25 +38,47 @@ interface Props {
 }
 
 /**
- * A button that looks and behaves like a Mattermost link.
+ * Something that looks and behaves like a Mattermost link.
  *
- * A button rather than an anchor because it goes nowhere the browser knows
- * about: it swaps what the sidebar is showing. That keeps it keyboard
- * operable and announced correctly without pretending to be a URL.
+ * Renders a button by default, because most of these go nowhere the browser
+ * knows about: they swap what the sidebar is showing. A button keeps that
+ * keyboard operable and announced correctly without pretending to be a URL.
+ *
+ * Pass `href` for the exception, a link to somewhere that really is a page. It
+ * opens in a new tab, since the sidebar sits inside the app and navigating it
+ * away would lose the reader's place in the channel.
+ *
+ * One component rather than two so the hover and focus underline, which only
+ * exists because inline styles cannot express `:hover`, is defined once.
  */
-const LinkButton: React.FC<Props> = ({onClick, disabled, style, children}) => {
+const LinkButton: React.FC<Props> = ({onClick, href, disabled, style, children}) => {
     const [pointed, setPointed] = useState(false);
+
+    const shared = {
+        onMouseEnter: () => setPointed(true),
+        onMouseLeave: () => setPointed(false),
+        onFocus: () => setPointed(true),
+        onBlur: () => setPointed(false),
+        style: {...base, ...style, textDecoration: pointed ? 'underline' : 'none'},
+    };
+
+    if (href !== undefined) {
+        return (
+            <a
+                href={href}
+                target='_blank'
+                rel='noopener noreferrer'
+                {...shared}
+            >{children}</a>
+        );
+    }
 
     return (
         <button
             type='button'
             disabled={disabled}
             onClick={onClick}
-            onMouseEnter={() => setPointed(true)}
-            onMouseLeave={() => setPointed(false)}
-            onFocus={() => setPointed(true)}
-            onBlur={() => setPointed(false)}
-            style={{...base, ...style, textDecoration: pointed ? 'underline' : 'none'}}
+            {...shared}
         >{children}</button>
     );
 };

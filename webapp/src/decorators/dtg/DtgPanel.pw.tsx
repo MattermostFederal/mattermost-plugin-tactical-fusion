@@ -430,3 +430,69 @@ test('the back link returns to the DTG unchanged', async ({mount, page}) => {
     await expect(page.getByText('091630ZAUG26')).toBeVisible();
     await expect(page.locator('tbody tr')).toHaveCount(DISPLAY_ZONES.length);
 });
+
+// The panel is one of the three places the built-in documentation is
+// advertised, and the only one a reader who never opens the System Console will
+// ever see.
+test('offers the documentation beside the editor link', async ({mount, page}) => {
+    await stubPreferencesRoute(page);
+    await mount(<DtgPanel payload={zulu}/>);
+
+    const docs = page.getByRole('link', {name: 'Documentation'});
+    await expect(docs).toBeVisible();
+
+    // Served by Mattermost straight out of the bundle, so the path has to be the
+    // plugin's own public directory and not a route in the server code.
+    const href = await docs.getAttribute('href');
+    expect(href).toContain('/public/help/help.html');
+    expect(href).toContain('/plugins/');
+
+    // A new tab: the sidebar lives inside the app, and navigating it away would
+    // lose the reader's place in the channel.
+    await expect(docs).toHaveAttribute('target', '_blank');
+    await expect(docs).toHaveAttribute('rel', 'noopener noreferrer');
+});
+
+// It is a real destination, so it has to survive being opened deliberately
+// rather than only being clicked.
+test('the documentation link is an anchor, not a button', async ({mount, page}) => {
+    await stubPreferencesRoute(page);
+    await mount(<DtgPanel payload={zulu}/>);
+
+    const tag = await page.getByRole('link', {name: 'Documentation'}).evaluate((el) => el.tagName);
+    expect(tag).toBe('A');
+});
+
+// The same quiet-until-pointed-at treatment as every other link here. Inline
+// styles cannot express :hover, so this is driven from React state and would be
+// easy to lose on the anchor branch without noticing.
+test('underlines the documentation link on hover and on focus', async ({mount, page}) => {
+    await stubPreferencesRoute(page);
+    await mount(<DtgPanel payload={zulu}/>);
+
+    const docs = page.getByRole('link', {name: 'Documentation'});
+    expect(await decorationOf(docs)).toBe('none');
+
+    await docs.hover();
+    await expect.poll(() => decorationOf(docs)).toBe('underline');
+
+    await page.mouse.move(0, 0);
+    await expect.poll(() => decorationOf(docs)).toBe('none');
+
+    await docs.focus();
+    await expect.poll(() => decorationOf(docs)).toBe('underline');
+});
+
+// Opening the editor replaces the whole panel, so the footer goes with it. A
+// documentation link left floating over the editor would be a second way out of
+// a view that already has Back, Save and Restore defaults.
+test('the footer does not follow the reader into the editor', async ({mount, page}) => {
+    await stubPreferencesRoute(page);
+    await mount(<DtgPanel payload={zulu}/>);
+
+    await expect(page.getByRole('link', {name: 'Documentation'})).toBeVisible();
+
+    await page.getByRole('button', {name: 'Customize your view'}).click();
+
+    await expect(page.getByRole('link', {name: 'Documentation'})).toHaveCount(0);
+});

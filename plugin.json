@@ -19,7 +19,7 @@
         "bundle_path": "webapp/dist/main.js"
     },
     "settings_schema": {
-        "header": "",
+        "header": "Recognise mission-relevant context in messages and enrich it in place. [View the full documentation](/plugins/com.mattermost.plugin-tactical-fusion/public/help/help.html) for the formats, the sidebar panel, and troubleshooting.",
         "footer": "",
         "settings": [
             {

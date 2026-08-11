@@ -16,6 +16,11 @@ Mattermost Tactical Fusion enriches conversations with mission-relevant context,
   and registers the `/tactical-fusion` slash command.
 - **Webapp**: React plugin registering the right-hand sidebar and the channel
   header button.
+- **Built-in documentation**: static help pages bundled in `public/help/` and served
+  by Mattermost at `/plugins/com.mattermost.plugin-tactical-fusion/public/help/help.html`.
+  Linked from the System Console settings page and from the sidebar panel. Covers the
+  supported formats, the panel, the admin switches, troubleshooting, and the `TF-NNNN`
+  error code registry.
 - **Build tooling**: Makefile, mattermost-plugin-starter-template build scripts, CI workflows.
 - **CI/CD automation**: PR validation, security scanning (SBOM + Grype + CodeQL), automated releases via [release-please](https://github.com/googleapis/release-please), and Dependabot updates. See [Automation](#automation) below.
 - **Editor integration**: `.claude/` (Claude Code agents, commands, skills) and `.vscode/` settings.

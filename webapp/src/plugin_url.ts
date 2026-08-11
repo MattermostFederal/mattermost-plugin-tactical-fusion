@@ -14,3 +14,15 @@ export function pluginBaseUrl(): string {
     const basename = globalWindow?.basename ?? '';
     return `${basename}/plugins/${manifest.id}`;
 }
+
+/**
+ * The built-in documentation, which Mattermost serves out of the bundle's
+ * `public/` directory. There is no route for it in the server code.
+ *
+ * Derived from the plugin id rather than written out, so the link cannot drift
+ * from whatever `plugin.json` says. The one place the id is spelled in full is
+ * `plugin.json` itself, which is where it is defined.
+ */
+export function docsUrl(): string {
+    return `${pluginBaseUrl()}/public/help/help.html`;
+}

@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error Codes - Tactical Fusion</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <h2>Tactical Fusion</h2>
+            <span class="version">Plugin Documentation</span>
+        </div>
+        <nav>
+            <span class="nav-section">Documentation</span>
+            <a href="help.html">Overview</a>
+            <a href="formats.html">Date and Time Formats</a>
+            <a href="panel.html">The Sidebar Panel</a>
+            <a href="admin.html">Admin Settings</a>
+            <a href="commands.html">Slash Commands</a>
+            <span class="nav-section">Reference</span>
+            <a href="troubleshooting.html">Troubleshooting</a>
+            <a href="error-codes.html" class="active">Error Codes</a>
+        </nav>
+    </aside>
+
+    <main class="content">
+        <div class="breadcrumb">
+            <a href="help.html">Docs</a>
+            <span class="separator">/</span>
+            Error Codes
+        </div>
+
+        <h1>Error Codes</h1>
+        <p class="tagline">Every failure message and every log line carries a <code>TF-NNNN</code> identifier.</p>
+
+        <p>
+            The point is that the code a reader sees in the sidebar and the code an
+            operator greps out of the server log are the same one. Wording can be
+            improved; a code cannot change. Quote it in a report and it names the exact
+            branch that fired.
+        </p>
+
+        <div class="alert alert-info">
+            <p>
+                Codes are allocated in thousand-wide ranges, one per source file. A
+                committed code is <strong>never renumbered and never reused</strong>, so
+                numbers drift out of source order as a file grows. If a code is retired,
+                its number is retired with it.
+            </p>
+        </div>
+
+        <p>
+            Looking for a fix rather than a definition? Start at
+            <a href="troubleshooting.html">Troubleshooting</a>, which maps symptoms onto
+            causes.
+        </p>
+
+        <h2 id="plugin">Activation <code>10000</code> to <code>10999</code></h2>
+
+        <table>
+            <thead>
+                <tr><th>Code</th><th>Name and level</th><th>Meaning</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>TF-10000</code></td>
+                    <td><code>PluginRegistryFailed</code> <span class="level">Error</span></td>
+                    <td>A decorator could not be registered, so the plugin has no registry and refuses to start. Two decorators claiming the same type, or one with an empty type, are the only ways to reach this.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="hooks">Message decoration <code>11000</code> to <code>11999</code></h2>
+
+        <table>
+            <thead>
+                <tr><th>Code</th><th>Name and level</th><th>Meaning</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>TF-11000</code></td>
+                    <td><code>HooksDecoratePanic</code> <span class="level">Warn</span></td>
+                    <td>A decorator panicked while decorating a message. The panic was recovered and the post was left exactly as written. A bug here must never stop somebody from posting.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-11001</code></td>
+                    <td><code>HooksDecorationTooLong</code> <span class="level">Warn</span></td>
+                    <td>Decorating would have pushed the message over the maximum post size, so it was posted undecorated. See <a href="troubleshooting.html#not-linked">why a time was not linked</a>.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="http">Public routing <code>12000</code> to <code>12999</code></h2>
+
+        <p>
+            These are rendered as a page, because this route serves browsers. All four
+            reach a reader who followed a decorator link.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Code</th><th>Name and status</th><th>Message and meaning</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>TF-12000</code></td>
+                    <td><code>HTTPMethodNotAllowed</code> <span class="level">405</span></td>
+                    <td><code>Method not allowed.</code> Anything other than a GET on the decorator route.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-12001</code></td>
+                    <td><code>HTTPDecoratePathInvalid</code> <span class="level">404</span></td>
+                    <td><code>Not found.</code> The path names no decorator type, or carries more than one path segment.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-12002</code></td>
+                    <td><code>HTTPDecoratorsNotReady</code> <span class="level">404</span></td>
+                    <td><code>Not found.</code> The request landed between the plugin loading and activation finishing. Retrying works.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-12003</code></td>
+                    <td><code>HTTPDecoratorUnknown</code> <span class="level">404</span></td>
+                    <td><code>Not found.</code> The type is not one this build registers. A link from a newer version of the plugin, or a hand-edited URL.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="api">Reader settings API <code>13000</code> to <code>13999</code></h2>
+
+        <p>These are returned as JSON to the sidebar, which shows the message when a save fails.</p>
+
+        <table>
+            <thead>
+                <tr><th>Code</th><th>Name and status</th><th>Message and meaning</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>TF-13000</code></td>
+                    <td><code>APINotAuthorized</code> <span class="level">401</span></td>
+                    <td><code>Not authorized.</code> The request carried no Mattermost session. Unlike the decorator route, this one is never public.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-13001</code></td>
+                    <td><code>APINotFound</code> <span class="level">404</span></td>
+                    <td><code>Not found.</code> A path under the API that names no resource.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-13002</code></td>
+                    <td><code>APINotReady</code> <span class="level">503</span></td>
+                    <td><code>Not ready.</code> The request landed before activation built the settings store. Retrying works.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-13003</code></td>
+                    <td><code>APIMethodNotAllowed</code> <span class="level">405</span></td>
+                    <td><code>Method not allowed.</code> The settings resource supports GET, PUT and DELETE only.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-13004</code></td>
+                    <td><code>APIPreferencesReadFailed</code> <span class="level">500</span></td>
+                    <td><code>Could not read your settings.</code> The KV store could not be read. Logged with the same code.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-13005</code></td>
+                    <td><code>APIPreferencesInvalidBody</code> <span class="level">400</span></td>
+                    <td><code>That is not a valid settings payload.</code> The body was not decodable, or exceeded the size cap.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-13006</code></td>
+                    <td><code>APIPreferencesSaveFailed</code> <span class="level">500</span></td>
+                    <td><code>Could not save your settings.</code> The KV store could not be written. Logged with the same code.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-13007</code></td>
+                    <td><code>APIPreferencesClearFailed</code> <span class="level">500</span></td>
+                    <td><code>Could not restore the defaults.</code> The stored blob could not be deleted. Logged with the same code.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="preferences">Settings validation <code>14000</code> to <code>14999</code></h2>
+
+        <p>
+            These reach the reader verbatim, on purpose: a rejected timezone is something
+            they can act on, and a generic "something went wrong" would not be.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Code</th><th>Name and level</th><th>Message and meaning</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>TF-14000</code></td>
+                    <td><code>PreferencesZoneNameTooLong</code> <span class="level">400</span></td>
+                    <td><code>a timezone label may be at most N characters</code></td>
+                </tr>
+                <tr>
+                    <td><code>TF-14001</code></td>
+                    <td><code>PreferencesZoneNameControlCharacters</code> <span class="level">400</span></td>
+                    <td><code>a timezone label may not contain control characters</code>. A control character would disturb the layout of its row, and no real name contains one.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-14002</code></td>
+                    <td><code>PreferencesZoneIDMalformed</code> <span class="level">400</span></td>
+                    <td><code>"..." is not a timezone identifier</code>. The string is not shaped like one at all.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-14003</code></td>
+                    <td><code>PreferencesZoneIDLocal</code> <span class="level">400</span></td>
+                    <td><code>"Local" is not a timezone identifier</code>. It resolves to whatever zone the server process runs in, which is not a place and can differ between nodes of one cluster.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-14004</code></td>
+                    <td><code>PreferencesZoneIDUnknown</code> <span class="level">400</span></td>
+                    <td><code>unknown timezone "..."</code>. Shaped like an identifier but naming nowhere the embedded timezone database knows.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-14005</code></td>
+                    <td><code>PreferencesTooManyZones</code> <span class="level">400</span></td>
+                    <td><code>at most N timezones may be selected</code>. Counted after duplicates are collapsed.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-14006</code></td>
+                    <td><code>PreferencesThresholdOutOfRange</code> <span class="level">400</span></td>
+                    <td><code>the flash threshold must be between N and N minutes</code>. Zero is not out of range: it means "use the default".</td>
+                </tr>
+                <tr>
+                    <td><code>TF-14007</code></td>
+                    <td><code>PreferencesBlobUnreadable</code> <span class="level">Warn</span></td>
+                    <td>A stored settings blob could not be parsed, so the reader was served the defaults. Not an error: view settings must never be able to take the panel down. The reader's next save replaces the blob.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="cache">Settings cache <code>15000</code> to <code>15999</code></h2>
+
+        <table>
+            <thead>
+                <tr><th>Code</th><th>Name and level</th><th>Meaning</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>TF-15000</code></td>
+                    <td><code>PreferencesCachePublishFailed</code> <span class="level">Warn</span></td>
+                    <td>A cache invalidation could not be published to the other nodes in the cluster. Delivery is best effort by design: the cost is one reader seeing a stale table until the cache expires, which does not justify failing their save.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="command">Slash commands <code>16000</code> to <code>16999</code></h2>
+
+        <table>
+            <thead>
+                <tr><th>Code</th><th>Name</th><th>Message</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>TF-16000</code></td>
+                    <td><code>CommandUnknownSubcommand</code></td>
+                    <td><code>Unknown subcommand. Available: examples</code></td>
+                </tr>
+                <tr>
+                    <td><code>TF-16001</code></td>
+                    <td><code>CommandExamplesNotReady</code></td>
+                    <td><code>Decorators are not registered yet. Try again once the plugin has finished activating.</code></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="decorators">Decorator pages <code>17000</code> to <code>17999</code></h2>
+
+        <table>
+            <thead>
+                <tr><th>Code</th><th>Name and status</th><th>Message and meaning</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>TF-17000</code></td>
+                    <td><code>DTGPageParamsInvalid</code> <span class="level">400</span></td>
+                    <td><code>That link is missing or has an invalid date-time group.</code> The query string carries no usable instant. See <a href="troubleshooting.html#invalid-link">the troubleshooting entry</a>.</td>
+                </tr>
+            </tbody>
+        </table>
+    </main>
+</div>
+</body>
+</html>
