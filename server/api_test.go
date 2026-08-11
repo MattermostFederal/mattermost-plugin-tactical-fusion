@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
@@ -344,5 +345,65 @@ func TestSaveAcceptsABareIdentifier(t *testing.T) {
 
 	if saved := decodePreferences(t, rec); !reflect.DeepEqual(saved.DTG.Zones, []ZoneSelection{{IANA: "UTC"}}) {
 		t.Fatalf("saved zones = %v", saved.DTG.Zones)
+	}
+}
+
+// The three 500s below carry TF-13004, TF-13006 and TF-13007, which
+// public/help/troubleshooting.html tells readers they might see. Nothing
+// previously proved any of them was reachable, which makes the documentation a
+// claim rather than a description.
+
+func TestGetPreferencesSurfacesAReadFailure(t *testing.T) {
+	p, api := newAPIPlugin(t)
+	api.kvGetErr = model.NewAppError("KVGet", "kv.read", nil, "boom", http.StatusInternalServerError)
+
+	rec := call(p, http.MethodGet, preferencesPath, testUserID, "")
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500 (%s)", rec.Code, rec.Body.String())
+	}
+	assertCode(t, rec.Body.String(), errcode.APIPreferencesReadFailed)
+
+	// Logged as well as returned, so an operator can find the cause behind the
+	// message the reader saw.
+	if len(api.errors) == 0 {
+		t.Fatal("the read failure was returned to the reader but never logged")
+	}
+}
+
+func TestSavePreferencesSurfacesAWriteFailure(t *testing.T) {
+	p, api := newAPIPlugin(t)
+	api.kvSetErr = model.NewAppError("KVSet", "kv.write", nil, "boom", http.StatusInternalServerError)
+
+	body := `{"dtg":{"zones":[{"iana":"UTC"}],"urgent_within_minutes":15}}`
+	rec := call(p, http.MethodPut, preferencesPath, testUserID, body)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500 (%s)", rec.Code, rec.Body.String())
+	}
+	assertCode(t, rec.Body.String(), errcode.APIPreferencesSaveFailed)
+	if len(api.errors) == 0 {
+		t.Fatal("the write failure was returned to the reader but never logged")
+	}
+
+	// The reader's stored settings are untouched. A failed save that had
+	// partially applied would be worse than one that failed outright.
+	if len(api.kv) != 0 {
+		t.Fatalf("a failed save still wrote to the store: %v", api.kv)
+	}
+}
+
+func TestDeletePreferencesSurfacesAClearFailure(t *testing.T) {
+	p, api := newAPIPlugin(t)
+	api.kvDeleteErr = model.NewAppError("KVDelete", "kv.delete", nil, "boom", http.StatusInternalServerError)
+
+	rec := call(p, http.MethodDelete, preferencesPath, testUserID, "")
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500 (%s)", rec.Code, rec.Body.String())
+	}
+	assertCode(t, rec.Body.String(), errcode.APIPreferencesClearFailed)
+	if len(api.errors) == 0 {
+		t.Fatal("the clear failure was returned to the reader but never logged")
 	}
 }

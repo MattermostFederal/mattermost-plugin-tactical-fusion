@@ -1,6 +1,7 @@
 package dtg
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -281,5 +282,60 @@ func TestDaysInMonth(t *testing.T) {
 		if got := daysInMonth(tc.year, tc.month); got != tc.want {
 			t.Fatalf("daysInMonth(%d, %s) = %d, want %d", tc.year, tc.month, got, tc.want)
 		}
+	}
+}
+
+// Carrying an offset in minutes rather than as a military zone letter is the
+// whole reason RFC 3339 timestamps and date-time groups can share a decorator:
+// a letter cannot name +05:30. Only the Z branch was previously exercised, so
+// the sign handling and the minutes remainder, which is the part that half and
+// quarter hour zones depend on, went untested.
+func TestFormatOffset(t *testing.T) {
+	cases := []struct {
+		name    string
+		minutes int
+		want    string
+	}{
+		{"UTC", 0, "Z"},
+		{"whole hour east", 4 * 60, "+04:00"},
+		{"whole hour west", -60, "-01:00"},
+		{"half hour east", 330, "+05:30"},
+		{"half hour west", -210, "-03:30"},
+		{"quarter hour east", 345, "+05:45"},
+		{"quarter hour west", -570, "-09:30"},
+		{"the eastern extreme", 14 * 60, "+14:00"},
+		{"the western extreme", -12 * 60, "-12:00"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := FormatOffset(tc.minutes); got != tc.want {
+				t.Fatalf("FormatOffset(%d) = %q, want %q", tc.minutes, got, tc.want)
+			}
+		})
+	}
+}
+
+// Round-tripping is the property that matters: whatever parseISO read out of a
+// timestamp, FormatOffset has to write back the same way, or the canonical form
+// shown in the panel would not match the text the author typed.
+func TestFormatOffsetRoundTripsWhatParseISORead(t *testing.T) {
+	for _, written := range []string{
+		"2026-08-09T16:30:00Z",
+		"2026-08-09T20:30:00+04:00",
+		"2026-08-09T22:15:00+05:45",
+		"2026-08-09T13:00:00-03:30",
+	} {
+		t.Run(written, func(t *testing.T) {
+			parsed, ok := parseISO(written)
+			if !ok {
+				t.Fatalf("parseISO(%q) declined it", written)
+			}
+
+			if got := FormatOffset(parsed.OffsetMinutes); !strings.HasSuffix(written, got) {
+				t.Fatalf("FormatOffset(%d) = %q, which does not end %q",
+					parsed.OffsetMinutes, got, written)
+			}
+		})
 	}
 }

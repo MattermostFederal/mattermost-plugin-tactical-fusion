@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -46,6 +47,16 @@ type fakeAPI struct {
 
 	// publishErr forces publication to fail, which must not fail the save.
 	publishErr error
+
+	// commands records what OnActivate registered, and registerErr forces the
+	// registration to fail.
+	commands    []*model.Command
+	registerErr error
+
+	// loadedConfig is the JSON OnConfigurationChange unmarshals into the
+	// destination it is handed, and loadErr forces the load to fail.
+	loadedConfig string
+	loadErr      error
 }
 
 func (a *fakeAPI) GetConfig() *model.Config { return a.config }
@@ -83,6 +94,33 @@ func (a *fakeAPI) KVDelete(key string) *model.AppError {
 func (a *fakeAPI) PublishPluginClusterEvent(ev model.PluginClusterEvent, _ model.PluginClusterEventSendOptions) error {
 	a.published = append(a.published, ev)
 	return a.publishErr
+}
+
+func (a *fakeAPI) RegisterCommand(command *model.Command) error {
+	if a.registerErr != nil {
+		return a.registerErr
+	}
+	a.commands = append(a.commands, command)
+	return nil
+}
+
+// LoadPluginConfiguration fills the destination from loadedConfig.
+//
+// The real one unmarshals the admin console's saved JSON into whatever it is
+// handed, so this does the same rather than assigning a prepared struct: that
+// way a field the manifest declares but the struct cannot receive fails here
+// exactly as it would on a server.
+func (a *fakeAPI) LoadPluginConfiguration(dest any) error {
+	if a.loadErr != nil {
+		return a.loadErr
+	}
+
+	blob := a.loadedConfig
+	if blob == "" {
+		blob = "{}"
+	}
+
+	return json.Unmarshal([]byte(blob), dest)
 }
 
 // newTestPlugin returns a plugin wired to a fake API, with the DTG decorator
@@ -443,4 +481,45 @@ func TestPagesStillRenderForADisabledFormat(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), "091630ZAUG26") {
 		t.Fatal("the page did not render the DTG")
 	}
+}
+
+// referenceTime decides the month and year a short form such as 091630Z gets,
+// so it is worth pinning rather than leaving to whichever branch a test happens
+// to take.
+func TestReferenceTime(t *testing.T) {
+	created := time.Date(2026, time.March, 4, 9, 15, 0, 0, time.UTC)
+
+	t.Run("an existing CreateAt is honoured", func(t *testing.T) {
+		// An imported or scheduled post carries its real timestamp, and
+		// resolving against "now" would date it wrong by however long ago it
+		// was written.
+		got := referenceTime(&model.Post{CreateAt: model.GetMillis()})
+		if got.IsZero() {
+			t.Fatal("referenceTime returned the zero time")
+		}
+
+		got = referenceTime(&model.Post{CreateAt: created.UnixMilli()})
+		if !got.Equal(created) {
+			t.Fatalf("referenceTime = %v, want %v", got, created)
+		}
+		if got.Location() != time.UTC {
+			t.Fatalf("referenceTime returned %v, want a UTC time", got.Location())
+		}
+	})
+
+	// CreateAt is normally unset at this point: the server fills it in after
+	// the hook runs, so "now" is the right answer for an ordinary new post.
+	t.Run("falls back to now", func(t *testing.T) {
+		before := time.Now().UTC()
+
+		for name, post := range map[string]*model.Post{
+			"nil post":       nil,
+			"unset CreateAt": {CreateAt: 0},
+		} {
+			got := referenceTime(post)
+			if got.Before(before) || got.After(time.Now().UTC().Add(time.Second)) {
+				t.Errorf("%s: referenceTime = %v, want approximately now", name, got)
+			}
+		}
+	})
 }

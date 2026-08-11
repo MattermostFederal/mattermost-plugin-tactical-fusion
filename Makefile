@@ -267,7 +267,12 @@ endif
 .PHONY: coverage-backend
 coverage-backend: apply
 ifneq ($(HAS_SERVER),)
-	$(GO) test $(GO_TEST_FLAGS) -coverprofile=server/coverage.txt ./server/...
+# -coverpkg is load-bearing. Without it each package is measured only by its own
+# tests, so every call across a package boundary is invisible: the shared page
+# shell in server/decorators reads as 0% while being fully exercised by the
+# tests in server. That under-reports the total and, worse, points anybody
+# reading this output at the wrong files.
+	$(GO) test $(GO_TEST_FLAGS) -coverpkg=./server/... -coverprofile=server/coverage.txt ./server/...
 	$(GO) tool cover -func=server/coverage.txt
 endif
 

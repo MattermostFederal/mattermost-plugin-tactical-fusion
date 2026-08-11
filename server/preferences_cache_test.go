@@ -278,3 +278,35 @@ func TestSaveSucceedsWhenTheBroadcastFails(t *testing.T) {
 		t.Fatal("a failed broadcast was swallowed without a warning")
 	}
 }
+
+// The mirror of TestAFailedSaveDoesNotInvalidate, for the delete side. A delete
+// that failed has changed nothing, so dropping the cached copy would send every
+// node back to the store for a value that is still exactly what they hold.
+func TestAFailedDeleteDoesNotInvalidate(t *testing.T) {
+	inner := newCountingStore()
+	inner.deleteErr = errors.New("boom")
+	api := newPreferenceAPI()
+	cache := newCachingPreferenceStore(inner, api)
+
+	if _, err := cache.Get(testUserID); err != nil {
+		t.Fatalf("Get() = %v", err)
+	}
+
+	err := cache.Delete(testUserID)
+	if err == nil {
+		t.Fatal("Delete() succeeded despite a failing store")
+	}
+	if !errors.Is(err, inner.deleteErr) {
+		t.Fatalf("Delete() = %v, which does not carry the store's failure", err)
+	}
+
+	if _, err := cache.Get(testUserID); err != nil {
+		t.Fatalf("Get() = %v", err)
+	}
+	if inner.gets != 1 {
+		t.Fatalf("durable reads = %d, want 1 (a failed delete must leave the cache alone)", inner.gets)
+	}
+	if len(api.published) != 0 {
+		t.Fatalf("published %d cluster events, want 0", len(api.published))
+	}
+}

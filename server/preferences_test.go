@@ -272,3 +272,19 @@ func TestStoredBlobKeepsItsWireNames(t *testing.T) {
 		t.Fatalf("stored blob has no urgent_within_minutes field: %v", dtg)
 	}
 }
+
+// The mirror of TestKVStoreSurfacesWriteFailures. "Restore defaults" is a
+// delete, so a failure here is the one the reader sees as TF-13007.
+func TestKVStoreSurfacesDeleteFailures(t *testing.T) {
+	api := newPreferenceAPI()
+	api.kvDeleteErr = model.NewAppError("KVDelete", "kv.delete", nil, "boom", 500)
+	store := &kvPreferenceStore{api: api}
+
+	err := store.Delete(testUserID)
+	if err == nil {
+		t.Fatal("Delete() succeeded despite the KV store failing")
+	}
+	if !strings.Contains(err.Error(), "failed to clear preferences") {
+		t.Fatalf("Delete() = %v, want the failure wrapped with what was being attempted", err)
+	}
+}
