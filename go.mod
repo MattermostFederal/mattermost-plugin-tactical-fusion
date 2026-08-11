@@ -1,8 +1,9 @@
-module github.com/MattermostFederal/mattermost-plugin-mission-context
+module github.com/MattermostFederal/mattermost-plugin-tactical-fusion
 
 go 1.26.3
 
 require (
+	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/mattermost/mattermost/server/public v0.4.3
 	github.com/pkg/errors v0.9.1
 )

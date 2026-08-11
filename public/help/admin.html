@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Settings - Tactical Fusion</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <h2>Tactical Fusion</h2>
+            <span class="version">Plugin Documentation</span>
+        </div>
+        <nav>
+            <span class="nav-section">Documentation</span>
+            <a href="help.html">Overview</a>
+            <a href="formats.html">Date and Time Formats</a>
+            <a href="panel.html">The Sidebar Panel</a>
+            <a href="admin.html" class="active">Admin Settings</a>
+            <a href="commands.html">Slash Commands</a>
+            <span class="nav-section">Reference</span>
+            <a href="troubleshooting.html">Troubleshooting</a>
+            <a href="error-codes.html">Error Codes</a>
+        </nav>
+    </aside>
+
+    <main class="content">
+        <div class="breadcrumb">
+            <a href="help.html">Docs</a>
+            <span class="separator">/</span>
+            Admin Settings
+        </div>
+
+        <h1>Admin Settings</h1>
+        <p class="tagline">System Console, Plugins, Tactical Fusion. Four switches, all on by default.</p>
+
+        <h2>How the four relate</h2>
+
+        <p>
+            <a href="#enable-dtg"><code>EnableDTG</code></a> is the parent. The three
+            below it select individual formats and only apply while the parent is on.
+            Mattermost's settings schema has no nesting, so the grouping is expressed
+            through ordering and naming, and enforced in code.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Setting</th><th>Governs</th><th>Default</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><a href="#enable-dtg"><code>EnableDTG</code></a></td><td>Date-time group decoration as a whole</td><td>On</td></tr>
+                <tr><td><a href="#enable-dtg-military"><code>EnableDTGMilitary</code></a></td><td><code>091630ZAUG26</code> and the short form</td><td>On</td></tr>
+                <tr><td><a href="#enable-dtg-moniker"><code>EnableDTGMoniker</code></a></td><td>The <code>DTG:</code> label</td><td>On</td></tr>
+                <tr><td><a href="#enable-dtg-timestamp"><code>EnableDTGTimestamp</code></a></td><td>RFC 3339 timestamps</td><td>On</td></tr>
+            </tbody>
+        </table>
+
+        <h2>What a switch does and does not do</h2>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">A switch governs new decoration only.</p>
+            <p>
+                Links already written into existing messages keep working after their
+                format is switched off. Turning one off stops new messages being
+                decorated with it, and that is all. The decorator stays registered even
+                with everything off, precisely so that the history keeps rendering.
+            </p>
+        </div>
+
+        <p>
+            Changes take effect immediately. The configuration is read fresh for every
+            message, so no restart is needed.
+        </p>
+
+        <h3>There is no "decorate at all" switch</h3>
+
+        <p>
+            With one decorator it would only duplicate <code>EnableDTG</code>. A second
+            decorator should bring its own switch rather than reviving a global one.
+        </p>
+
+        <div class="alert alert-danger">
+            <p class="alert-title">Disabling the plugin is not a substitute for switching a format off.</p>
+            <p>
+                Disabling the plugin also stops the route that serves the decorator pages,
+                so every link already written into a message returns a 404.
+                <code>EnableDTG</code> stops new decoration and leaves the history
+                working. That is almost always what you actually want.
+            </p>
+        </div>
+
+        <h2>The settings</h2>
+
+        <h3 id="enable-dtg" data-setting="EnableDTG">Decorate date-time groups <code>EnableDTG</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>No new message is decorated at all, whatever the three format switches say.</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Recognise times in messages and rewrite them as links that open a Date/Time
+            panel. The formats below are matched individually and all apply while this
+            is on.
+        </p>
+
+        <h3 id="enable-dtg-military" data-setting="EnableDTGMilitary">Format: military date-time group <code>EnableDTGMilitary</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Matches</td><td><code>091630ZAUG26</code>, <code>091630ZAUG2026</code>, and the short form <code>091630Z</code></td></tr>
+                <tr><td>Requires</td><td><a href="#enable-dtg"><code>EnableDTG</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Full details of what these forms accept are on the
+            <a href="formats.html#military">formats page</a>.
+        </p>
+
+        <h3 id="enable-dtg-moniker" data-setting="EnableDTGMoniker">Format: labelled date-time group <code>EnableDTGMoniker</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Matches</td><td>A time introduced by the <code>DTG:</code> label, dropping the label from the link</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-dtg"><code>EnableDTG</code></a>, plus the format being labelled</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            This one <strong>composes</strong>: it only labels formats that are themselves
+            on. Turning military formats off therefore also stops
+            <code>DTG: 091630ZAUG26</code>, and a label with nothing left to label is
+            dropped entirely. See <a href="formats.html#moniker">the formats page</a>.
+        </p>
+
+        <h3 id="enable-dtg-timestamp" data-setting="EnableDTGTimestamp">Format: RFC 3339 timestamp <code>EnableDTGTimestamp</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Matches</td><td><code>2026-08-09T16:30:00Z</code> and <code>2026-08-09T20:30:00+04:00</code></td></tr>
+                <tr><td>Requires</td><td><a href="#enable-dtg"><code>EnableDTG</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Worth knowing before leaving this on in a channel that receives machine
+            output: RFC 3339 timestamps are common in pasted logs, and a log excerpt
+            outside a code fence will have every timestamp in it linked. Pasting logs
+            inside a fence avoids this, since
+            <a href="formats.html#protected">fenced code is never rewritten</a>.
+        </p>
+
+        <h2>Checking the current behaviour</h2>
+
+        <p>
+            <a href="commands.html#examples"><code>/tactical-fusion examples</code></a>
+            runs the real matcher against a set of samples and posts what it did,
+            including a note when decoration is switched off entirely. It is the quickest
+            way to confirm a settings change took effect.
+        </p>
+
+        <h2>Reader settings are not admin settings</h2>
+
+        <p>
+            Timezone rows and the countdown flash threshold are chosen
+            <a href="panel.html#customize">by each reader</a> and stored per user. There
+            is no server-wide default for them beyond the built-in one, and an admin
+            cannot set them on somebody's behalf.
+        </p>
+    </main>
+</div>
+</body>
+</html>

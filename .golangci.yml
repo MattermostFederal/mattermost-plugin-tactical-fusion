@@ -59,4 +59,4 @@ formatters:
           replacement: any
     goimports:
       local-prefixes:
-        - github.com/MattermostFederal/mattermost-plugin-mission-context
+        - github.com/MattermostFederal/mattermost-plugin-tactical-fusion

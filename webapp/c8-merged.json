@@ -1,0 +1,18 @@
+{
+    "all": false,
+    "excludeAfterRemap": true,
+    "exclude": [
+        "**/node_modules/**",
+        "**/*.spec.ts",
+        "**/*.pw.tsx",
+        "**/*Harness.tsx",
+        "**/*_fixtures.ts",
+        "**/stub_route.ts",
+        "**/decorators/types.ts",
+        "**/types/**",
+        "**/manifest.ts",
+        "playwright.config.ts",
+        "playwright-ct.config.ts"
+    ],
+    "reporter": ["text", "html"]
+}

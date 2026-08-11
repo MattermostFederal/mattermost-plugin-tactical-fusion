@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Sidebar Panel - Tactical Fusion</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <h2>Tactical Fusion</h2>
+            <span class="version">Plugin Documentation</span>
+        </div>
+        <nav>
+            <span class="nav-section">Documentation</span>
+            <a href="help.html">Overview</a>
+            <a href="formats.html">Date and Time Formats</a>
+            <a href="panel.html" class="active">The Sidebar Panel</a>
+            <a href="admin.html">Admin Settings</a>
+            <a href="commands.html">Slash Commands</a>
+            <span class="nav-section">Reference</span>
+            <a href="troubleshooting.html">Troubleshooting</a>
+            <a href="error-codes.html">Error Codes</a>
+        </nav>
+    </aside>
+
+    <main class="content">
+        <div class="breadcrumb">
+            <a href="help.html">Docs</a>
+            <span class="separator">/</span>
+            The Sidebar Panel
+        </div>
+
+        <h1>The Sidebar Panel</h1>
+        <p class="tagline">Reading a date-time group, and making the table your own.</p>
+
+        <h2 id="hover">Hovering a link</h2>
+
+        <p>
+            Point at a decorated time and a small card appears showing the
+            <strong>countdown only</strong>: how long until that instant, or how long
+            since. That is deliberately all it shows. The reading and the timezone table
+            are worth opening the sidebar for; a countdown is worth a glance.
+        </p>
+
+        <h2 id="panel">Clicking a link</h2>
+
+        <p>
+            Clicking opens the right-hand sidebar. The browser does not navigate, so you
+            do not lose your place in the channel. The panel has four parts:
+        </p>
+
+        <table class="field-table">
+            <tbody>
+                <tr>
+                    <td>Countdown</td>
+                    <td>Time remaining until the instant, counting down live. It flashes once the instant is close, which by default means within 30 minutes.</td>
+                </tr>
+                <tr>
+                    <td>Reading</td>
+                    <td>The instant written out in full, in the offset it was originally written in.</td>
+                </tr>
+                <tr>
+                    <td>Canonical form</td>
+                    <td>The token as the parser understood it, in monospace. Useful for confirming that a short form was read the way you meant.</td>
+                </tr>
+                <tr>
+                    <td>Timezone table</td>
+                    <td>The same instant in each of your timezones, ordered west to east.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>The date column badges</h3>
+
+        <p>
+            A <code>+1</code> or <code>-1</code> next to a date means that row falls on a
+            different calendar day from the token itself. The comparison is against the
+            <strong>token's own zone</strong>, not UTC, so a group written in
+            <code>+04:00</code> does not badge half the table as a day out.
+        </p>
+
+        <h3>Short forms say what they assumed</h3>
+
+        <p>
+            A short form such as <code>091630Z</code> carries no month and no year, so
+            both are taken from the date the message was posted. The panel states this
+            in italics beneath the reading rather than presenting an inferred date as
+            fact.
+        </p>
+
+        <h2 id="page">The standalone page</h2>
+
+        <p>
+            Clients that do not run the plugin's web bundle, notably the mobile app, get
+            a server-rendered page instead of the sidebar. It shows the same countdown
+            and the same table.
+        </p>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">The standalone page always shows the built-in defaults.</p>
+            <p>
+                It is served without a Mattermost session, so it has no reader to ask. If
+                you have <a href="#customize">customised your view</a>, the sidebar and
+                the page will disagree about the same date-time group. This is inherent
+                to serving a page that has to work without a login, not an oversight.
+            </p>
+        </div>
+
+        <h2 id="customize">Customize your view</h2>
+
+        <p>
+            Below the timezone table is a <strong>Customize your view</strong> link. It
+            replaces the panel rather than expanding underneath it, because its timezone
+            picker runs to several hundred rows and putting that below the table would
+            bury the date-time group you opened the sidebar to read. A
+            <strong>Back</strong> link returns without saving.
+        </p>
+
+        <p>Two things are yours to set:</p>
+
+        <table class="field-table">
+            <tbody>
+                <tr>
+                    <td>Timezones</td>
+                    <td>Which rows the table shows, up to 25. Chosen from a catalogue of named military installations, or from every timezone your browser knows.</td>
+                </tr>
+                <tr>
+                    <td>Flash threshold</td>
+                    <td>How close the instant has to be before the countdown flashes, in minutes. Between 1 and 1440.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>
+            Saving closes the editor, because the changed table behind it is the receipt.
+            A save that <em>fails</em> does the opposite and stays open with the reason on
+            screen, since closing would throw away both the message and your edits.
+        </p>
+
+        <h3>Restore defaults</h3>
+
+        <p>
+            <strong>Restore defaults</strong> deletes your settings rather than writing
+            today's defaults into them. The difference matters: a reader who has never
+            chosen keeps tracking whatever the defaults become, instead of being frozen at
+            the list that happened to ship in this version.
+        </p>
+
+        <p>
+            For the same reason, a selection that is exactly the defaults collapses back
+            to "nothing chosen" when you save it. Opening the editor and pressing Save
+            does not quietly pin your table forever.
+        </p>
+
+        <h3>Your settings are per user</h3>
+
+        <p>
+            They are yours alone and follow you between clients. They are never shown to
+            anyone else and never change what is stored in a message.
+        </p>
+
+        <h2 id="zones">Choosing timezones</h2>
+
+        <p>
+            The picker is a combobox: type to filter, arrow keys to move, Enter to pick,
+            Escape to close. Every term you type has to match, in any order, so
+            <code>berlin spang</code> works. The identifier is searched both as written
+            and with its separators opened out, so both <code>america/los</code> and
+            <code>los angeles</code> find Los Angeles. The offset is searchable too, so
+            <code>+05:45</code> works.
+        </p>
+
+        <p>The list has two groups:</p>
+
+        <ul>
+            <li><strong>Military installations</strong>, a curated catalogue with names.</li>
+            <li><strong>All timezones</strong>, every zone the browser knows, unnamed.</li>
+        </ul>
+
+        <div class="alert alert-info">
+            <p class="alert-title">Several installations can share one timezone, and you can pick both.</p>
+            <p>
+                Somebody at Stuttgart wants a row that says Stuttgart, not the Ramstein
+                row that keeps the same clock. The two rows read identically to the
+                minute, which is the accepted cost of naming both.
+            </p>
+            <p>
+                Names are never guessed from a timezone. Picking a bare
+                <code>Europe/Berlin</code> out of "All timezones" gives a row reading
+                Berlin, not Ramstein, so it cannot sit next to a real Ramstein row
+                looking identical.
+            </p>
+        </div>
+
+        <h2 id="ordering">Row order</h2>
+
+        <p>
+            Rows are always ordered <strong>west to east by UTC offset</strong>, in the
+            sidebar, the editor and the standalone page alike. The order you add them in
+            carries no meaning and is not stored.
+        </p>
+
+        <p>
+            Offsets are <strong>measured at the date-time group's own instant</strong>,
+            never looked up from a table. Roughly half of these zones observe daylight
+            saving, so a stored offset would be an hour wrong for part of the year, and
+            two rows can swap places between summer and winter. That is correct
+            behaviour, not a bug.
+        </p>
+
+        <p>
+            A zone whose offset cannot be measured sorts last rather than as UTC. Filing
+            an unknown under Zulu would be a claim rather than an admission.
+        </p>
+
+        <h2>Nothing here may fail the panel</h2>
+
+        <p>
+            A settings read that fails, a stored blob that will not parse, and a timezone
+            this browser cannot format each fall back to a default rather than taking the
+            panel down. A <em>save</em> is the exception and reports its error, because a
+            save that quietly did nothing is worse than one that says so. If you see a
+            message when saving, <a href="troubleshooting.html">Troubleshooting</a> lists
+            them all.
+        </p>
+    </main>
+</div>
+</body>
+</html>

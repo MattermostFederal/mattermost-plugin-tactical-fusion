@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Troubleshooting - Tactical Fusion</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <h2>Tactical Fusion</h2>
+            <span class="version">Plugin Documentation</span>
+        </div>
+        <nav>
+            <span class="nav-section">Documentation</span>
+            <a href="help.html">Overview</a>
+            <a href="formats.html">Date and Time Formats</a>
+            <a href="panel.html">The Sidebar Panel</a>
+            <a href="admin.html">Admin Settings</a>
+            <a href="commands.html">Slash Commands</a>
+            <span class="nav-section">Reference</span>
+            <a href="troubleshooting.html" class="active">Troubleshooting</a>
+            <a href="error-codes.html">Error Codes</a>
+        </nav>
+    </aside>
+
+    <main class="content">
+        <div class="breadcrumb">
+            <a href="help.html">Docs</a>
+            <span class="separator">/</span>
+            Troubleshooting
+        </div>
+
+        <h1>Troubleshooting</h1>
+        <p class="tagline">Symptoms, causes, and fixes. Codes link into the <a href="error-codes.html">registry</a>.</p>
+
+        <h2 id="not-linked">A time was not turned into a link</h2>
+
+        <p>Working from most to least likely:</p>
+
+        <table>
+            <thead>
+                <tr><th>Cause</th><th>How to tell</th><th>Fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>The format is not one that is recognised</td>
+                    <td>Compare against the <a href="formats.html#declined">declined list</a>. Epoch seconds, 12 hour clocks, bare dates and <code>CST</code> style abbreviations are all deliberately absent.</td>
+                    <td>Write it as a <a href="formats.html#military">date-time group</a> or an <a href="formats.html#timestamp">RFC 3339 timestamp</a>.</td>
+                </tr>
+                <tr>
+                    <td>It is inside a protected span</td>
+                    <td>It sits in a code fence, inline code, a link, or inline HTML.</td>
+                    <td>Working as intended. Move it into ordinary prose if you want it linked. See <a href="formats.html#protected">protected spans</a>.</td>
+                </tr>
+                <tr>
+                    <td>The format is switched off</td>
+                    <td>Run <a href="commands.html#examples"><code>/tactical-fusion examples</code></a>. It ends with a note when decoration is off, and shows each format's real result.</td>
+                    <td>Turn the format on in <a href="admin.html">System Console, Plugins, Tactical Fusion</a>.</td>
+                </tr>
+                <tr>
+                    <td>The message was edited</td>
+                    <td>The time was added or changed in an edit rather than the original post.</td>
+                    <td>Working as intended. Edits are stored verbatim, on purpose, so the plugin never transforms text you deliberately authored.</td>
+                </tr>
+                <tr>
+                    <td>The message predates the plugin</td>
+                    <td>It was posted before the plugin was installed or enabled.</td>
+                    <td>Working as intended. There is no backfill; only new posts pass through the hook.</td>
+                </tr>
+                <tr>
+                    <td>The message would have been too long</td>
+                    <td>Server log carries <a href="error-codes.html#hooks"><code>TF-11001</code></a>.</td>
+                    <td>Working as intended. Decorating would have pushed the post over the maximum size, so it was posted undecorated rather than rejected. Shorten the message or split it.</td>
+                </tr>
+                <tr>
+                    <td>A decorator panicked</td>
+                    <td>Server log carries <a href="error-codes.html#hooks"><code>TF-11000</code></a>.</td>
+                    <td>A genuine bug. The post was left unmodified, so nothing was lost. Report it with the log line.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="only-me">Nobody else sees the link, or only some clients do</h2>
+
+        <p>
+            The link is in the stored message, so every client sees the same text. What
+            differs is what happens on <em>clicking</em> it: clients running the plugin's
+            web bundle open the sidebar, and everything else follows the link to the
+            <a href="panel.html#page">server-rendered page</a>. Both show the same
+            instant.
+        </p>
+
+        <h2 id="raw-markdown">Editing a post shows markdown instead of the time I typed</h2>
+
+        <p>
+            Working as intended, and the main cost of decorating on the server. The link
+            <em>is</em> the stored text. Deleting the link syntax while editing is the
+            supported way to opt one post out; the plugin will not put it back.
+        </p>
+
+        <h2 id="404">Old links return "Not found"</h2>
+
+        <table>
+            <thead>
+                <tr><th>Code</th><th>Cause</th><th>Fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><a href="error-codes.html#http"><code>TF-12001</code></a></td>
+                    <td>The plugin is disabled or removed, so nothing serves the route any more.</td>
+                    <td>Re-enable the plugin. To stop new decoration while keeping the history working, switch <a href="admin.html#enable-dtg"><code>EnableDTG</code></a> off instead of disabling the plugin.</td>
+                </tr>
+                <tr>
+                    <td><a href="error-codes.html#http"><code>TF-12002</code></a></td>
+                    <td>The request landed while the plugin was still activating.</td>
+                    <td>Reload the page. If it persists, the plugin is failing to activate; check the server log for <a href="error-codes.html#plugin"><code>TF-10000</code></a>.</td>
+                </tr>
+                <tr>
+                    <td><a href="error-codes.html#http"><code>TF-12003</code></a></td>
+                    <td>The link names a decorator type this build does not have, usually a link written by a newer version.</td>
+                    <td>Upgrade the plugin.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="invalid-link">"That link is missing or has an invalid date-time group"</h2>
+
+        <p>
+            Code <a href="error-codes.html#decorators"><code>TF-17000</code></a>. The
+            query string carries no usable instant. Almost always a hand-edited or
+            truncated URL, or a link copied out of a message and reassembled by something
+            that mangled the query string. Click the original link in the channel rather
+            than a copy.
+        </p>
+
+        <h2 id="wrong-timezones">The panel and the standalone page show different timezones</h2>
+
+        <p>
+            Expected if you have <a href="panel.html#customize">customised your view</a>.
+            The standalone page is served without a Mattermost session, so it has no
+            reader to ask and always shows the built-in defaults. There is no fix; it is
+            inherent to a page that has to work for a client with no login.
+        </p>
+
+        <h2 id="wrong-order">Two timezone rows swapped places</h2>
+
+        <p>
+            Expected across a daylight saving boundary. Rows are ordered west to east by
+            the offset <strong>measured at the date-time group's own instant</strong>, so
+            two zones that observe daylight saving differently will genuinely change
+            places between summer and winter. London and Reykjavik are the usual pair.
+        </p>
+
+        <h2 id="stale-table">My new timezones did not appear</h2>
+
+        <table>
+            <thead>
+                <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>The table updated for a while, then reverted</td>
+                    <td>You are on a cluster and one node missed the cache invalidation. Server log carries <a href="error-codes.html#cache"><code>TF-15000</code></a>.</td>
+                    <td>It corrects itself within ten minutes when the cache entry expires. Persistent occurrences mean cluster messaging is not working.</td>
+                </tr>
+                <tr>
+                    <td>The table shows the defaults and never changed</td>
+                    <td>The stored settings could not be parsed. Server log carries <a href="error-codes.html#preferences"><code>TF-14007</code></a>.</td>
+                    <td>Open the editor and save again. The next save replaces the unreadable blob.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="save-failures">Messages when saving your view</h2>
+
+        <p>
+            A failed save stays open with the reason on screen, rather than closing and
+            losing your edits. Every message below carries its code.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Message</th><th>Code</th><th>Cause and fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>Not authorized.</code></td>
+                    <td><a href="error-codes.html#api"><code>TF-13000</code></a></td>
+                    <td>Your session expired. Reload Mattermost and sign in again.</td>
+                </tr>
+                <tr>
+                    <td><code>Not ready.</code></td>
+                    <td><a href="error-codes.html#api"><code>TF-13002</code></a></td>
+                    <td>The plugin was still activating. Try again in a moment.</td>
+                </tr>
+                <tr>
+                    <td><code>That is not a valid settings payload.</code></td>
+                    <td><a href="error-codes.html#api"><code>TF-13005</code></a></td>
+                    <td>The request body was not decodable or exceeded the size cap. Not reachable from the editor; it means something other than the sidebar sent the request.</td>
+                </tr>
+                <tr>
+                    <td><code>Could not read your settings.</code></td>
+                    <td><a href="error-codes.html#api"><code>TF-13004</code></a></td>
+                    <td>The plugin key-value store could not be read. A server side problem; check the log for the matching line.</td>
+                </tr>
+                <tr>
+                    <td><code>Could not save your settings.</code></td>
+                    <td><a href="error-codes.html#api"><code>TF-13006</code></a></td>
+                    <td>The store could not be written. As above.</td>
+                </tr>
+                <tr>
+                    <td><code>Could not restore the defaults.</code></td>
+                    <td><a href="error-codes.html#api"><code>TF-13007</code></a></td>
+                    <td>The stored blob could not be deleted. As above.</td>
+                </tr>
+                <tr>
+                    <td><code>at most N timezones may be selected</code></td>
+                    <td><a href="error-codes.html#preferences"><code>TF-14005</code></a></td>
+                    <td>Remove some rows. The count is taken after duplicates are collapsed.</td>
+                </tr>
+                <tr>
+                    <td><code>the flash threshold must be between N and N minutes</code></td>
+                    <td><a href="error-codes.html#preferences"><code>TF-14006</code></a></td>
+                    <td>Choose a value in range. Clearing the field entirely means "use the default", which is always accepted.</td>
+                </tr>
+                <tr>
+                    <td><code>"Local" is not a timezone identifier</code></td>
+                    <td><a href="error-codes.html#preferences"><code>TF-14003</code></a></td>
+                    <td>Pick a real zone. <code>Local</code> means whatever zone the server process runs in, which is not a place and can differ between nodes.</td>
+                </tr>
+                <tr>
+                    <td><code>unknown timezone "..."</code></td>
+                    <td><a href="error-codes.html#preferences"><code>TF-14004</code></a></td>
+                    <td>Your browser offered a zone the server's timezone database does not have. Pick a neighbouring zone and report the identifier.</td>
+                </tr>
+                <tr>
+                    <td><code>"..." is not a timezone identifier</code></td>
+                    <td><a href="error-codes.html#preferences"><code>TF-14002</code></a></td>
+                    <td>Not reachable from the picker; it means something other than the sidebar sent the request.</td>
+                </tr>
+                <tr>
+                    <td><code>a timezone label may be at most N characters</code></td>
+                    <td><a href="error-codes.html#preferences"><code>TF-14000</code></a></td>
+                    <td>As above.</td>
+                </tr>
+                <tr>
+                    <td><code>a timezone label may not contain control characters</code></td>
+                    <td><a href="error-codes.html#preferences"><code>TF-14001</code></a></td>
+                    <td>As above.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="plugin-wont-start">The plugin will not activate</h2>
+
+        <p>
+            Check the server log for
+            <a href="error-codes.html#plugin"><code>TF-10000</code></a>. It means two
+            decorators claimed the same type, or one declared an empty type. That is a
+            build problem rather than a configuration one, so report it with the version
+            number.
+        </p>
+
+        <h2>Reporting something not listed here</h2>
+
+        <p>Include, if you have them:</p>
+
+        <ul>
+            <li>The <code>TF-NNNN</code> code, from the message or the server log</li>
+            <li>The exact text you typed, and what was stored</li>
+            <li>The output of <a href="commands.html#examples"><code>/tactical-fusion examples</code></a>, which shows the live behaviour of your server</li>
+            <li>Which of the four <a href="admin.html">settings</a> are on</li>
+        </ul>
+    </main>
+</div>
+</body>
+</html>

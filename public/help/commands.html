@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slash Commands - Tactical Fusion</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <h2>Tactical Fusion</h2>
+            <span class="version">Plugin Documentation</span>
+        </div>
+        <nav>
+            <span class="nav-section">Documentation</span>
+            <a href="help.html">Overview</a>
+            <a href="formats.html">Date and Time Formats</a>
+            <a href="panel.html">The Sidebar Panel</a>
+            <a href="admin.html">Admin Settings</a>
+            <a href="commands.html" class="active">Slash Commands</a>
+            <span class="nav-section">Reference</span>
+            <a href="troubleshooting.html">Troubleshooting</a>
+            <a href="error-codes.html">Error Codes</a>
+        </nav>
+    </aside>
+
+    <main class="content">
+        <div class="breadcrumb">
+            <a href="help.html">Docs</a>
+            <span class="separator">/</span>
+            Slash Commands
+        </div>
+
+        <h1>Slash Commands</h1>
+        <p class="tagline">One trigger, <code>/tactical-fusion</code>, with one subcommand.</p>
+
+        <table>
+            <thead>
+                <tr><th>Command</th><th>Does</th><th>Who can run it</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><a href="#examples"><code>/tactical-fusion examples</code></a></td>
+                    <td>Posts a live demonstration of what the decorators recognise and what they leave alone</td>
+                    <td>Any user</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>
+            Every response is <strong>ephemeral</strong>: only you see it, and it is not
+            stored in the channel.
+        </p>
+
+        <h2 id="examples">/tactical-fusion examples</h2>
+
+        <h3>Arguments</h3>
+        <p>None.</p>
+
+        <h3>What it shows</h3>
+
+        <p>
+            Each example appears twice, first raw in a code fence and then as it would be
+            stored after decoration. The output has four sections:
+        </p>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Recognised</td><td>What each supported format becomes, including a live example resolved against the current time.</td></tr>
+                <tr><td>Declined</td><td>The <a href="formats.html#declined">near misses</a>, shown unchanged so you can see they really are declined.</td></tr>
+                <tr><td>Left as written</td><td>Tokens inside <a href="formats.html#protected">protected spans</a> such as code fences and links.</td></tr>
+                <tr><td>Standalone page</td><td>A ready-made link that opens the <a href="panel.html#page">server-rendered page</a> rather than the sidebar, so you can check it from a desktop browser.</td></tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-tip">
+            <p class="alert-title">The output is genuinely the matcher's, not a hand-written table.</p>
+            <p>
+                The command runs the matcher itself rather than relying on the message
+                hook, because its own output is full of code fences and links and so would
+                be skipped. That is also what keeps the "Declined" rows honest: they are
+                the real result, so they cannot drift away from the code.
+            </p>
+        </div>
+
+        <h3>When decoration is off</h3>
+
+        <p>
+            If <a href="admin.html#enable-dtg"><code>EnableDTG</code></a> or every format
+            beneath it is switched off, the output ends with a note saying so. Everything
+            in the Recognised section will appear undecorated, which is the correct
+            result rather than a failure.
+        </p>
+
+        <h3>Before the plugin has finished activating</h3>
+
+        <p>
+            Run in the moment between the plugin loading and its decorators being
+            registered, the command replies:
+        </p>
+
+        <pre><code>Decorators are not registered yet. Try again once the plugin has finished activating. (TF-16001)</code></pre>
+
+        <h2>Other input</h2>
+
+        <table>
+            <thead>
+                <tr><th>You type</th><th>You get</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>/tactical-fusion</code></td>
+                    <td><code>Available subcommands: examples</code></td>
+                </tr>
+                <tr>
+                    <td><code>/tactical-fusion nope</code></td>
+                    <td><code>Unknown subcommand. Available: examples (TF-16000)</code></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>
+            There is no <code>help</code> subcommand. This documentation is reached from
+            the System Console settings page and from the
+            <strong>Documentation</strong> link at the bottom of the
+            <a href="panel.html">sidebar panel</a>.
+        </p>
+    </main>
+</div>
+</body>
+</html>
