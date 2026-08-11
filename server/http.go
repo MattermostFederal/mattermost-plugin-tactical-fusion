@@ -7,6 +7,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/plugin"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
 // decoratePath is the route prefix for decorator pages, relative to the
@@ -35,24 +36,28 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 	}
 
 	if r.Method != http.MethodGet {
-		decorators.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed.")
+		decorators.WriteError(w, http.StatusMethodNotAllowed,
+			errcode.WithCode(errcode.HTTPMethodNotAllowed, "Method not allowed."))
 		return
 	}
 
 	typ, ok := strings.CutPrefix(r.URL.Path, decoratePath+"/")
 	if !ok || typ == "" || strings.Contains(typ, "/") {
-		decorators.WriteError(w, http.StatusNotFound, "Not found.")
+		decorators.WriteError(w, http.StatusNotFound,
+			errcode.WithCode(errcode.HTTPDecoratePathInvalid, "Not found."))
 		return
 	}
 
 	if p.decorators == nil {
-		decorators.WriteError(w, http.StatusNotFound, "Not found.")
+		decorators.WriteError(w, http.StatusNotFound,
+			errcode.WithCode(errcode.HTTPDecoratorsNotReady, "Not found."))
 		return
 	}
 
 	decorator := p.decorators.Get(typ)
 	if decorator == nil {
-		decorators.WriteError(w, http.StatusNotFound, "Not found.")
+		decorators.WriteError(w, http.StatusNotFound,
+			errcode.WithCode(errcode.HTTPDecoratorUnknown, "Not found."))
 		return
 	}
 

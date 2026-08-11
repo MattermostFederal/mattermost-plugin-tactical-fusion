@@ -9,6 +9,8 @@ import (
 
 	"github.com/mattermost/mattermost/server/public/plugin"
 	"github.com/pkg/errors"
+
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
 // preferencesVersion is stamped on every blob written.
@@ -145,12 +147,14 @@ func (p *UserPreferences) validate() error {
 		zones = append(zones, zone)
 	}
 	if len(zones) > maxZones {
-		return errors.Errorf("at most %d timezones may be selected", maxZones)
+		return errcode.Errorf(errcode.PreferencesTooManyZones,
+			"at most %d timezones may be selected", maxZones)
 	}
 	p.DTG.Zones = zones
 
 	if m := p.DTG.UrgentWithinMinutes; m != 0 && (m < minUrgentWithinMinutes || m > maxUrgentWithinMinutes) {
-		return errors.Errorf("the flash threshold must be between %d and %d minutes",
+		return errcode.Errorf(errcode.PreferencesThresholdOutOfRange,
+			"the flash threshold must be between %d and %d minutes",
 			minUrgentWithinMinutes, maxUrgentWithinMinutes)
 	}
 
@@ -164,14 +168,16 @@ func (p *UserPreferences) validate() error {
 // therefore about keeping something absurd out of the store, not about safety.
 func validZoneName(name string) error {
 	if len([]rune(name)) > maxZoneNameLength {
-		return errors.Errorf("a timezone label may be at most %d characters", maxZoneNameLength)
+		return errcode.Errorf(errcode.PreferencesZoneNameTooLong,
+			"a timezone label may be at most %d characters", maxZoneNameLength)
 	}
 
 	// Control characters would let a label disturb the layout of the row it
 	// sits in, and no real name contains one.
 	for _, r := range name {
 		if unicode.IsControl(r) {
-			return errors.New("a timezone label may not contain control characters")
+			return errcode.Errorf(errcode.PreferencesZoneNameControlCharacters,
+				"a timezone label may not contain control characters")
 		}
 	}
 
@@ -181,21 +187,24 @@ func validZoneName(name string) error {
 // validZoneID reports whether a string names a timezone this server can resolve.
 func validZoneID(zone string) error {
 	if len(zone) > maxZoneIDLength || !zoneIDRe.MatchString(zone) {
-		return errors.Errorf("%q is not a timezone identifier", zone)
+		return errcode.Errorf(errcode.PreferencesZoneIDMalformed,
+			"%q is not a timezone identifier", zone)
 	}
 
 	// "Local" resolves to whatever zone the server process happens to be in.
 	// That is not a place, it is not the reader's zone, and two nodes of the
 	// same cluster can disagree about it.
 	if zone == "Local" {
-		return errors.New(`"Local" is not a timezone identifier`)
+		return errcode.Errorf(errcode.PreferencesZoneIDLocal,
+			`"Local" is not a timezone identifier`)
 	}
 
 	// The tzdata this resolves against is embedded by the blank import in
 	// server/main.go, so this does not depend on the host having a zoneinfo
 	// database.
 	if _, err := time.LoadLocation(zone); err != nil {
-		return errors.Errorf("unknown timezone %q", zone)
+		return errcode.Errorf(errcode.PreferencesZoneIDUnknown,
+			"unknown timezone %q", zone)
 	}
 
 	return nil
@@ -237,7 +246,7 @@ func (s *kvPreferenceStore) Get(userID string) (UserPreferences, error) {
 		// a blob this build can no longer read must not be able to take the
 		// panel down with it, and the reader's next save replaces it.
 		s.api.LogWarn("Discarding an unreadable preferences blob",
-			"user_id", userID, "error", err.Error())
+			"error_code", errcode.PreferencesBlobUnreadable, "user_id", userID, "error", err.Error())
 		return UserPreferences{}, nil
 	}
 

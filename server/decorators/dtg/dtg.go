@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
 // Type is the URL path segment and the key shared with the webapp decorator.
@@ -219,7 +220,8 @@ const (
 func (d *Decorator) RenderPage(w http.ResponseWriter, params url.Values) {
 	page, ok := validateParams(params)
 	if !ok {
-		decorators.WriteError(w, http.StatusBadRequest, "That link is missing or has an invalid date-time group.")
+		decorators.WriteError(w, http.StatusBadRequest, errcode.WithCode(errcode.DTGPageParamsInvalid,
+			"That link is missing or has an invalid date-time group."))
 		return
 	}
 

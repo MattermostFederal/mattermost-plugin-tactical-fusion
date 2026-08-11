@@ -9,6 +9,7 @@ import (
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
 // commandExample is one line of the /tactical-fusion examples output: the text
@@ -100,7 +101,8 @@ var skippedExamples = []commandExample{
 // rows honest: they are its real output, not hand-written.
 func (p *Plugin) examplesResponse() *model.CommandResponse {
 	if p.decorators == nil {
-		return ephemeralResponse("Decorators are not registered yet. Try again once the plugin has finished activating.")
+		return ephemeralResponse(errcode.WithCode(errcode.CommandExamplesNotReady,
+			"Decorators are not registered yet. Try again once the plugin has finished activating."))
 	}
 
 	tagger := &decorators.Tagger{Registry: p.decorators, URLPrefix: p.decorateURLPrefix()}

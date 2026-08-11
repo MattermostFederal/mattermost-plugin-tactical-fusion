@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/mattermost/mattermost/server/public/model"
+
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
 const testUserID = "user1234567890123456789012"
@@ -46,23 +48,36 @@ func TestValidateNormalisesZones(t *testing.T) {
 }
 
 func TestValidateRejectsBadZones(t *testing.T) {
-	cases := map[string]string{
-		"unknown identifier": "Mars/Olympus_Mons",
+	// The code separates "that is not shaped like an identifier" from "that is
+	// shaped like one but names nowhere", which the reader sees and which are
+	// two quite different mistakes to have made.
+	cases := []struct {
+		name string
+		zone string
+		code int
+	}{
+		{"unknown identifier", "Mars/Olympus_Mons", errcode.PreferencesZoneIDUnknown},
 		// Resolves to whatever zone the server process runs in, which is not a
 		// place and can differ between nodes of one cluster.
-		"Local":            "Local",
-		"path traversal":   "../../etc/passwd",
-		"absolute path":    "/etc/passwd",
-		"stray characters": "Asia/Tokyo; DROP",
-		"far too long":     strings.Repeat("a", maxZoneIDLength+1),
+		{"Local", "Local", errcode.PreferencesZoneIDLocal},
+		{"path traversal", "../../etc/passwd", errcode.PreferencesZoneIDMalformed},
+		// Clears the shape check, because the regexp permits a leading slash.
+		// time.LoadLocation is what stops it: Go refuses any name beginning
+		// with a separator or containing "..", so the traversal defence holds
+		// either way, just one step further along.
+		{"absolute path", "/etc/passwd", errcode.PreferencesZoneIDUnknown},
+		{"stray characters", "Asia/Tokyo; DROP", errcode.PreferencesZoneIDMalformed},
+		{"far too long", strings.Repeat("a", maxZoneIDLength+1), errcode.PreferencesZoneIDMalformed},
 	}
 
-	for name, zone := range cases {
-		t.Run(name, func(t *testing.T) {
-			prefs := UserPreferences{DTG: DTGPreferences{Zones: []ZoneSelection{{IANA: zone}}}}
-			if err := prefs.validate(); err == nil {
-				t.Fatalf("validate() accepted %q", zone)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			prefs := UserPreferences{DTG: DTGPreferences{Zones: []ZoneSelection{{IANA: tc.zone}}}}
+			err := prefs.validate()
+			if err == nil {
+				t.Fatalf("validate() accepted %q", tc.zone)
 			}
+			assertCode(t, err.Error(), tc.code)
 		})
 	}
 }
@@ -91,10 +106,12 @@ func TestValidateRejectsTooManyZones(t *testing.T) {
 	}
 
 	prefs := UserPreferences{DTG: DTGPreferences{Zones: zones}}
-	if err := prefs.validate(); err == nil {
+	err := prefs.validate()
+	if err == nil {
 		t.Fatalf("validate() accepted %d zones, want a rejection above %d",
 			len(tooManyZones), maxZones)
 	}
+	assertCode(t, err.Error(), errcode.PreferencesTooManyZones)
 }
 
 func TestValidateThreshold(t *testing.T) {
@@ -117,6 +134,9 @@ func TestValidateThreshold(t *testing.T) {
 			err := prefs.validate()
 			if (err != nil) != c.wantErr {
 				t.Fatalf("validate(%d) = %v, wantErr %v", c.minutes, err, c.wantErr)
+			}
+			if err != nil {
+				assertCode(t, err.Error(), errcode.PreferencesThresholdOutOfRange)
 			}
 		})
 	}

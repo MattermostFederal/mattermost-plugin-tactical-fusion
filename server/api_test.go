@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/mattermost/mattermost/server/public/plugin"
+
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
 // newAPIPlugin returns a plugin with a working preferences store, wired the way
@@ -70,6 +72,7 @@ func TestPreferencesRequireASession(t *testing.T) {
 			if rec.Code != http.StatusUnauthorized {
 				t.Fatalf("status = %d, want 401", rec.Code)
 			}
+			assertCode(t, rec.Body.String(), errcode.APINotAuthorized)
 		})
 	}
 }
@@ -141,24 +144,33 @@ func TestSavePreferencesRoundTrips(t *testing.T) {
 }
 
 func TestSavePreferencesRejectsBadInput(t *testing.T) {
-	cases := map[string]string{
-		"not json":       `{`,
-		"unknown zone":   `{"dtg":{"zones":[{"iana":"Mars/Olympus_Mons"}]}}`,
-		"local zone":     `{"dtg":{"zones":[{"iana":"Local"}]}}`,
-		"threshold high": `{"dtg":{"urgent_within_minutes":100000}}`,
-		"threshold low":  `{"dtg":{"urgent_within_minutes":-5}}`,
-		"wrong type":     `{"dtg":{"zones":"UTC"}}`,
-		"control label":  `{"dtg":{"zones":[{"iana":"UTC","name":"a\u0007b"}]}}`,
+	// Every one of these is a 400, so the status says nothing about which rule
+	// the payload broke. The code does, and the reader sees it: the validator's
+	// own message is what reaches the panel, deliberately, so a rejected
+	// timezone is something they can act on.
+	cases := []struct {
+		name string
+		body string
+		code int
+	}{
+		{"not json", `{`, errcode.APIPreferencesInvalidBody},
+		{"wrong type", `{"dtg":{"zones":"UTC"}}`, errcode.APIPreferencesInvalidBody},
+		{"unknown zone", `{"dtg":{"zones":[{"iana":"Mars/Olympus_Mons"}]}}`, errcode.PreferencesZoneIDUnknown},
+		{"local zone", `{"dtg":{"zones":[{"iana":"Local"}]}}`, errcode.PreferencesZoneIDLocal},
+		{"threshold high", `{"dtg":{"urgent_within_minutes":100000}}`, errcode.PreferencesThresholdOutOfRange},
+		{"threshold low", `{"dtg":{"urgent_within_minutes":-5}}`, errcode.PreferencesThresholdOutOfRange},
+		{"control label", `{"dtg":{"zones":[{"iana":"UTC","name":"a\u0007b"}]}}`, errcode.PreferencesZoneNameControlCharacters},
 	}
 
-	for name, body := range cases {
-		t.Run(name, func(t *testing.T) {
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
 			p, api := newAPIPlugin(t)
 
-			rec := call(p, http.MethodPut, preferencesPath, testUserID, body)
+			rec := call(p, http.MethodPut, preferencesPath, testUserID, tc.body)
 			if rec.Code != http.StatusBadRequest {
 				t.Fatalf("status = %d, want 400 (%s)", rec.Code, rec.Body.String())
 			}
+			assertCode(t, rec.Body.String(), tc.code)
 			if len(api.kv) != 0 {
 				t.Fatalf("a rejected payload still wrote to the store: %v", api.kv)
 			}
@@ -234,12 +246,17 @@ func TestPreferencesAreScopedToTheReader(t *testing.T) {
 func TestAPIRejectsUnknownRoutesAndMethods(t *testing.T) {
 	p, _ := newAPIPlugin(t)
 
-	if rec := call(p, http.MethodGet, apiPath+"/nope", testUserID, ""); rec.Code != http.StatusNotFound {
+	rec := call(p, http.MethodGet, apiPath+"/nope", testUserID, "")
+	if rec.Code != http.StatusNotFound {
 		t.Fatalf("unknown route status = %d, want 404", rec.Code)
 	}
-	if rec := call(p, http.MethodPost, preferencesPath, testUserID, "{}"); rec.Code != http.StatusMethodNotAllowed {
+	assertCode(t, rec.Body.String(), errcode.APINotFound)
+
+	rec = call(p, http.MethodPost, preferencesPath, testUserID, "{}")
+	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("POST status = %d, want 405", rec.Code)
 	}
+	assertCode(t, rec.Body.String(), errcode.APIMethodNotAllowed)
 }
 
 // A request that lands before OnActivate finishes has nothing to serve, and
@@ -252,6 +269,7 @@ func TestAPIBeforeActivation(t *testing.T) {
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want 503", rec.Code)
 	}
+	assertCode(t, rec.Body.String(), errcode.APINotReady)
 }
 
 // Two installations sharing a zone are two rows. Deduplicating on the zone

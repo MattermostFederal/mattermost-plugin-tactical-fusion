@@ -10,6 +10,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/plugin"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
 // maxPostRunes is the ceiling a decorated message must stay under.
@@ -61,7 +62,7 @@ func (p *Plugin) decoratePost(post *model.Post, ref time.Time) (result *model.Po
 			result = nil
 			if api != nil {
 				api.LogWarn("tactical-fusion: recovered from panic while decorating; post left unmodified",
-					"panic", r)
+					"error_code", errcode.HooksDecoratePanic, "panic", r)
 			}
 		}
 	}()
@@ -88,7 +89,7 @@ func (p *Plugin) decoratePost(post *model.Post, ref time.Time) (result *model.Po
 		// would show the author an opaque "too long" error for text they can
 		// see fits, so drop the decoration instead.
 		p.API.LogWarn("tactical-fusion: decoration would exceed the maximum post size; posting undecorated",
-			"channel_id", post.ChannelId)
+			"error_code", errcode.HooksDecorationTooLong, "channel_id", post.ChannelId)
 		return nil
 	}
 

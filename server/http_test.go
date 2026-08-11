@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -12,7 +13,24 @@ import (
 	"github.com/mattermost/mattermost/server/public/plugin"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
+
+// assertCode fails unless a rendered failure carries the given error code.
+//
+// A status alone cannot tell two failures apart: four different things answer
+// 404 here. The code is what distinguishes them in a log or a support ticket,
+// so it is worth asserting that each path emits its own.
+//
+// One helper serves both surfaces, because the HTML shell and the JSON error
+// body each put the message into the payload verbatim.
+func assertCode(t *testing.T, body string, code int) {
+	t.Helper()
+
+	if want := fmt.Sprintf("(%s-%d)", errcode.Prefix, code); !strings.Contains(body, want) {
+		t.Fatalf("response does not carry %s: %s", want, body)
+	}
+}
 
 // panicDecorator panics on Parse. Used by the hook tests to prove a bug in a
 // decorator cannot stop somebody from posting.
@@ -70,16 +88,20 @@ func TestServeHTTPServesWithoutAuthenticationHeaders(t *testing.T) {
 func TestServeHTTPNotFound(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 
+	// The code says which 404 this is. A path that names no decorator at all
+	// and a path naming one that does not exist are different failures, and
+	// only the code tells an operator which happened.
 	cases := []struct {
 		name string
 		path string
+		code int
 	}{
-		{"unknown decorator type", "/decorate/nope"},
-		{"no type", "/decorate/"},
-		{"decorate root", "/decorate"},
-		{"nested path", "/decorate/dtg/extra"},
-		{"unrelated path", "/something-else"},
-		{"root", "/"},
+		{"unknown decorator type", "/decorate/nope", errcode.HTTPDecoratorUnknown},
+		{"no type", "/decorate/", errcode.HTTPDecoratePathInvalid},
+		{"decorate root", "/decorate", errcode.HTTPDecoratePathInvalid},
+		{"nested path", "/decorate/dtg/extra", errcode.HTTPDecoratePathInvalid},
+		{"unrelated path", "/something-else", errcode.HTTPDecoratePathInvalid},
+		{"root", "/", errcode.HTTPDecoratePathInvalid},
 	}
 
 	for _, tc := range cases {
@@ -90,8 +112,26 @@ func TestServeHTTPNotFound(t *testing.T) {
 			if rec.Code != http.StatusNotFound {
 				t.Fatalf("status = %d, want 404 for %s", rec.Code, tc.path)
 			}
+			assertCode(t, rec.Body.String(), tc.code)
 		})
 	}
+}
+
+// A request that lands before OnActivate has built the registry answers 404
+// like an unknown type, but for an entirely different reason. Only the code
+// separates the two, and telling an operator "the plugin was still starting"
+// from "that decorator does not exist" is the whole point of having codes.
+func TestServeHTTPBeforeActivationSaysSo(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	p.decorators = nil
+
+	rec := httptest.NewRecorder()
+	p.ServeHTTP(&plugin.Context{}, rec, httptest.NewRequest(http.MethodGet, "/decorate/dtg", nil))
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", rec.Code)
+	}
+	assertCode(t, rec.Body.String(), errcode.HTTPDecoratorsNotReady)
 }
 
 func TestServeHTTPRejectsNonGET(t *testing.T) {
@@ -105,6 +145,7 @@ func TestServeHTTPRejectsNonGET(t *testing.T) {
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("status = %d, want 405", rec.Code)
 	}
+	assertCode(t, rec.Body.String(), errcode.HTTPMethodNotAllowed)
 }
 
 // A page whose params fail validation must not be cached publicly.
@@ -122,4 +163,5 @@ func TestServeHTTPInvalidParamsAreNotCached(t *testing.T) {
 	if got := rec.Header().Get("Cache-Control"); got != "no-store" {
 		t.Fatalf("Cache-Control = %q, want no-store", got)
 	}
+	assertCode(t, rec.Body.String(), errcode.DTGPageParamsInvalid)
 }

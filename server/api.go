@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
 // apiPath is the route prefix for the authenticated JSON API, relative to the
@@ -31,19 +33,22 @@ const maxPreferencesBody = 8 * 1024
 func (p *Plugin) serveAPI(w http.ResponseWriter, r *http.Request) {
 	userID := r.Header.Get("Mattermost-User-Id")
 	if userID == "" {
-		writeAPIError(w, http.StatusUnauthorized, "Not authorized.")
+		writeAPIError(w, http.StatusUnauthorized,
+			errcode.WithCode(errcode.APINotAuthorized, "Not authorized."))
 		return
 	}
 
 	if r.URL.Path != preferencesPath {
-		writeAPIError(w, http.StatusNotFound, "Not found.")
+		writeAPIError(w, http.StatusNotFound,
+			errcode.WithCode(errcode.APINotFound, "Not found."))
 		return
 	}
 
 	if p.preferences == nil {
 		// Only reachable if a request lands between activation and OnActivate
 		// finishing. Nothing to serve yet, and nothing worth failing over.
-		writeAPIError(w, http.StatusServiceUnavailable, "Not ready.")
+		writeAPIError(w, http.StatusServiceUnavailable,
+			errcode.WithCode(errcode.APINotReady, "Not ready."))
 		return
 	}
 
@@ -59,15 +64,18 @@ func (p *Plugin) serveAPI(w http.ResponseWriter, r *http.Request) {
 	case http.MethodDelete:
 		p.handleDeletePreferences(w, userID)
 	default:
-		writeAPIError(w, http.StatusMethodNotAllowed, "Method not allowed.")
+		writeAPIError(w, http.StatusMethodNotAllowed,
+			errcode.WithCode(errcode.APIMethodNotAllowed, "Method not allowed."))
 	}
 }
 
 func (p *Plugin) handleGetPreferences(w http.ResponseWriter, userID string) {
 	prefs, err := p.preferences.Get(userID)
 	if err != nil {
-		p.API.LogError("Failed to read preferences", "user_id", userID, "error", err.Error())
-		writeAPIError(w, http.StatusInternalServerError, "Could not read your settings.")
+		p.API.LogError("Failed to read preferences",
+			"error_code", errcode.APIPreferencesReadFailed, "user_id", userID, "error", err.Error())
+		writeAPIError(w, http.StatusInternalServerError,
+			errcode.WithCode(errcode.APIPreferencesReadFailed, "Could not read your settings."))
 		return
 	}
 
@@ -78,21 +86,25 @@ func (p *Plugin) handleSetPreferences(w http.ResponseWriter, r *http.Request, us
 	var prefs UserPreferences
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxPreferencesBody))
 	if err := decoder.Decode(&prefs); err != nil {
-		writeAPIError(w, http.StatusBadRequest, "That is not a valid settings payload.")
+		writeAPIError(w, http.StatusBadRequest,
+			errcode.WithCode(errcode.APIPreferencesInvalidBody, "That is not a valid settings payload."))
 		return
 	}
 
 	// The message is the validator's, not a generic one: a rejected timezone or
 	// an out-of-range threshold is something the reader can act on, and burying
-	// it would leave the panel able only to say "something went wrong".
+	// it would leave the panel able only to say "something went wrong". It
+	// arrives already carrying its own code, so nothing is added here.
 	if err := prefs.validate(); err != nil {
 		writeAPIError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	if err := p.preferences.Set(userID, prefs); err != nil {
-		p.API.LogError("Failed to save preferences", "user_id", userID, "error", err.Error())
-		writeAPIError(w, http.StatusInternalServerError, "Could not save your settings.")
+		p.API.LogError("Failed to save preferences",
+			"error_code", errcode.APIPreferencesSaveFailed, "user_id", userID, "error", err.Error())
+		writeAPIError(w, http.StatusInternalServerError,
+			errcode.WithCode(errcode.APIPreferencesSaveFailed, "Could not save your settings."))
 		return
 	}
 
@@ -106,8 +118,10 @@ func (p *Plugin) handleSetPreferences(w http.ResponseWriter, r *http.Request, us
 // whatever the defaults become.
 func (p *Plugin) handleDeletePreferences(w http.ResponseWriter, userID string) {
 	if err := p.preferences.Delete(userID); err != nil {
-		p.API.LogError("Failed to clear preferences", "user_id", userID, "error", err.Error())
-		writeAPIError(w, http.StatusInternalServerError, "Could not restore the defaults.")
+		p.API.LogError("Failed to clear preferences",
+			"error_code", errcode.APIPreferencesClearFailed, "user_id", userID, "error", err.Error())
+		writeAPIError(w, http.StatusInternalServerError,
+			errcode.WithCode(errcode.APIPreferencesClearFailed, "Could not restore the defaults."))
 		return
 	}
 

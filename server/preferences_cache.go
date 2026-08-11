@@ -6,6 +6,8 @@ import (
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
+
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
 const (
@@ -111,6 +113,6 @@ func (c *cachingPreferenceStore) invalidate(userID string) {
 		SendType: model.PluginClusterEventSendTypeBestEffort,
 	}); err != nil {
 		c.api.LogWarn("Failed to publish a preferences cache invalidation",
-			"user_id", userID, "error", err.Error())
+			"error_code", errcode.PreferencesCachePublishFailed, "user_id", userID, "error", err.Error())
 	}
 }

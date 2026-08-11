@@ -9,6 +9,7 @@ import (
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
 type Plugin struct {
@@ -55,7 +56,7 @@ func (p *Plugin) OnActivate() error {
 		&dtg.Decorator{Enabled: p.dtgFormats},
 	)
 	if err != nil {
-		return errors.Wrap(err, "failed to register decorators")
+		return errors.Wrap(err, errcode.WithCode(errcode.PluginRegistryFailed, "failed to register decorators"))
 	}
 	p.decorators = registry
 

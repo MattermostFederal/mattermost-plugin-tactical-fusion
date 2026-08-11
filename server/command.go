@@ -5,6 +5,8 @@ import (
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
+
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
 const commandTrigger = "tactical-fusion"
@@ -35,7 +37,8 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 	case "examples":
 		return p.examplesResponse(), nil
 	default:
-		return ephemeralResponse("Unknown subcommand. Available: " + subcommandList), nil
+		return ephemeralResponse(errcode.WithCode(errcode.CommandUnknownSubcommand,
+			"Unknown subcommand. Available: "+subcommandList)), nil
 	}
 }
 
