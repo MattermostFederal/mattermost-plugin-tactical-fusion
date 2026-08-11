@@ -47,6 +47,12 @@ test('rejects unusable params', () => {
         ['fractional t', {t: '123.5'}],
         ['negative t', {t: '-1'}],
         ['absurdly large t', {t: '99999999999999'}],
+
+        // Number("") is 0, and 0 is a valid instant, so an empty t once read as
+        // the Unix epoch and rendered a panel counting down to 1970.
+        ['empty t', {t: ''}],
+        ['t with leading space', {t: ' 1'}],
+        ['exponential t', {t: '1e12'}],
         ['malformed dtg', {dtg: 'not-a-dtg'}],
         ['dtg with markup', {dtg: '<script>alert(1)</script>'}],
         ['lowercase zone', {z: 'z'}],
@@ -71,6 +77,17 @@ test('rejects unusable params', () => {
 test('rejects missing params', () => {
     expect(fromParams(new URLSearchParams())).toBeNull();
     expect(fromParams(new URLSearchParams('t=' + INSTANT_MS))).toBeNull();
+});
+
+// Number(null) is 0, which is inside the accepted range, so an absent t was
+// read as the Unix epoch and the panel rendered 1970 beside a token claiming
+// 2026. Everything else here is valid, which is what let it through: the empty
+// URLSearchParams above is rejected on the zone parameters long before t.
+test('rejects an absent t even when every other param is valid', () => {
+    const withoutT = params();
+    withoutT.delete('t');
+
+    expect(fromParams(withoutT)).toBeNull();
 });
 
 // The sidebar header names the category, not the value. The canonical DTG is

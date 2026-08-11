@@ -79,7 +79,17 @@ const MAX_INSTANT_MS = 7258118400000;
  * source of drift.
  */
 export function fromParams(params: URLSearchParams): Dtg | null {
-    const millis = Number(params.get('t'));
+    // Matched before Number(), which is not a validator here: it reads null as
+    // 0 and "" as 0, and 0 is inside the accepted range, so a link with no "t"
+    // at all would otherwise resolve to the Unix epoch and render a panel
+    // counting down to 1970 beside whatever token "dtg" claimed. The Go side
+    // rejects both through ParseInt; this keeps the two ends agreeing.
+    const raw = params.get('t');
+    if (raw === null || !(/^\d+$/).test(raw)) {
+        return null;
+    }
+
+    const millis = Number(raw);
     if (!Number.isInteger(millis) || millis < MIN_INSTANT_MS || millis > MAX_INSTANT_MS) {
         return null;
     }
