@@ -8,17 +8,28 @@ The repo ships the decorator framework and one decorator (DTG). The remaining en
 
 ## Architecture
 
-- `server/` - Go plugin code. Entry point is `main.go` which calls `plugin.ClientMain(&Plugin{})`. The `Plugin` struct in `plugin.go` embeds `plugin.MattermostPlugin` and implements lifecycle hooks (`OnActivate`, `OnConfigurationChange`).
+- `server/` - Go plugin code. Entry point is `main.go`, which calls `plugin.ClientMain(&Plugin{})` and blank-imports `time/tzdata` so the zone database travels in the binary: minimal container images often ship no copy, and without this UTC keeps working while every other zone fails at runtime.
+  - `plugin.go` - the `Plugin` struct, which embeds `plugin.MattermostPlugin`, plus `OnActivate` and `OnPluginClusterEvent`. `OnConfigurationChange` lives in `configuration.go` beside the config struct.
   - `decorators/` - the decorator framework: registry, tagger, and the shared HTML page shell.
-  - `decorators/dtg/` - the Date-Time Group decorator.
+  - `decorators/dtg/` - the Date-Time Group decorator: token grammar, parser, zones, and the standalone page.
   - `hooks.go` - `MessageWillBePosted` and `decoratePost`.
-  - `http.go` - `ServeHTTP`, routing `/decorate/<type>` to a decorator page.
+  - `http.go` - `ServeHTTP`, routing `/decorate/<type>` to a decorator page and `/api/v1/*` to `api.go`.
+  - `api.go` - the authenticated JSON API, whose one resource is `/api/v1/preferences`.
+  - `preferences.go` / `preferences_cache.go` - the per-reader KV store and its cluster-aware cache.
+  - `command.go` / `command_examples.go` - the `/tactical-fusion` slash command.
+  - `errcode/` - the `TF-NNNN` catalogue.
 - `webapp/` - TypeScript/React webapp. Entry point is `src/index.tsx`. The `Plugin` class's `initialize()` method receives a `PluginRegistry` and Redux `Store` and is where components and hooks are registered.
-  - `src/decorators/` - the webapp half of the framework: registry, click handler, styles, selection store.
+  - `src/decorators/` - the webapp half of the framework: registry, click handler, styles, selection store, theme sniffing, and the shared `Tooltip`.
+  - `src/decorators/dtg/` - the DTG panel, hover, title, countdown, zone catalogue and preference editor.
   - `src/components/rhs/` - `RhsView` and `RhsTitle`, which look the panel up by decorator type.
+  - `src/preferences/` - the wire types and the module-state cache in front of `/api/v1/preferences`.
+  - `src/HeaderIcon.tsx` - the channel header button, registered in `index.tsx`. It clears the selection and toggles the sidebar, so it always lands on the empty state, which is also the only way back from a decorator panel. The mark is `assets/icon.svg` without its plate, and `server/icon_test.go` asserts the two keep the same pin colour.
 - `plugin.json` - plugin manifest. Generates `server/manifest.go` and `webapp/src/manifest.ts` at build time (both gitignored).
 - `build/` - build tooling from mattermost-plugin-starter-template (`setup.mk`, `custom.mk`, `manifest/`, `pluginctl/`).
 - `assets/` - plugin icon and other static assets bundled at the top level.
+- `public/help/` - the built-in documentation, bundled and served by Mattermost.
+- `docker-compose.dev.yml` and `docker/` - the local Mattermost and PostgreSQL stack `make deploy` targets. `docker/` is generated and is not committed content.
+- `implementation-plans/` - the plan the decorator framework and DTG were built from.
 
 ## Decorators
 
@@ -26,12 +37,44 @@ A decorator finds a token in a posted message, rewrites it into a markdown link
 whose query string carries the **already-parsed** data, and renders the detail
 behind it.
 
-The DTG decorator claims two grammars: military date-time groups
-(`091630ZAUG26`, `091630Z`) and **RFC 3339 timestamps** in the extended form
-(`2026-08-09T16:30:00Z`, `2026-08-09T20:30:00+04:00`, seconds optional,
-fractional seconds parsed and discarded). Downstream of parsing the two are the
-same thing, an instant plus the offset it was written in, which is why they
-share one decorator rather than being two.
+The DTG decorator claims two grammars: military date-time groups and **RFC 3339
+timestamps** in the extended form (`2026-08-09T16:30:00Z`,
+`2026-08-09T20:30:00+04:00`, seconds optional, fractional seconds parsed and
+discarded). Downstream of parsing the two are the same thing, an instant plus
+the offset it was written in, which is why they share one decorator rather than
+being two.
+
+The military grammar is three shapes, longest first, and the order matters
+because Go's regexp is leftmost-first and the bare form would otherwise match
+the head of a longer token and stop there:
+
+| Shape | Example | Notes |
+|---|---|---|
+| `DDHHMM<Z>MMMYYYY` | `091630ZAUG2026` | canonicalises to the two-digit year |
+| `DDHHMM<Z>MMMYY` | `091630ZAUG26` | two-digit years always mean 20NN |
+| `DDHHMMZ` | `091630Z` | literal `Z` only; month and year inferred |
+
+Zone letters are every military letter except **I** and **J**. I is skipped in
+the alphabet because it reads as a 1. J is the observer's own local time, which
+cannot resolve to one instant for every reader, so a J date-time group is
+declined rather than guessed at.
+
+The short form is Zulu-only for the same reason the basic ISO form is absent: a
+bare six-digit run followed by any letter collides with part numbers, serials
+and truncated hashes. Its **month and year are taken from the reference time**,
+which is the post's `CreateAt` when it has one (an imported or scheduled post)
+and "now" otherwise. That inference travels in the `a` parameter and the UI says
+so rather than presenting an inferred date as fact.
+
+Years are clamped to **2000-2099**, because the canonical form carries two year
+digits and accepting 2150 would canonicalise to "50" and read back as a
+different century from the text the author typed. Instants are clamped to
+**1970-2200** on both sides. Decoration and rendering have to agree about what
+is representable: a token accepted at decoration but rejected at render would be
+rewritten permanently into a link whose own page answers 400, and editing the
+post by hand would be the only way back. The military grammar cannot reach that
+bound, but RFC 3339 can, and `1918-11-11T11:00:00Z` is an ordinary thing to
+write.
 
 Only formats that **resolve to a single instant** are eligible, since the URL
 bakes one in and the panel counts down to it. That rules out bare dates and
@@ -57,12 +100,23 @@ Both the bare patterns and the labelled one are built from the same token
 sub-expressions, so a change to what a token looks like cannot reach one and
 miss the other.
 
-The two forms are told apart by which zone parameter the URL carries, and only
-there: a date-time group says `z` (a military letter), a timestamp says `o` (an
-offset in minutes, because RFC 3339 offsets can be half or quarter hours and a
-letter cannot name those). Exactly one is ever present, and a link carrying both
-or neither is rejected. Links already written into messages carry `z` and are
-untouched by this.
+The URL carries four parameters: `t` (the resolved instant in milliseconds),
+`dtg` (the canonical token), `a` (which components were inferred: `""` or `my`),
+and exactly one of `z` or `o`. **That last pair is the only thing telling the
+two forms apart**: a date-time group says `z` (a military letter), a timestamp
+says `o` (an offset in minutes, because RFC 3339 offsets can be half or quarter
+hours and a letter cannot name those). A link carrying both or neither is
+rejected. Links already written into messages carry `z` and are untouched by
+this.
+
+Both the page and the panel **re-derive the whole payload from `dtg` and require
+it to reproduce every other parameter**. Validating each in isolation is not
+enough on a public route where the URL is user-supplied: a crafted link could
+pair an arbitrary token with an unrelated instant and a third zone, and the page
+would render all three side by side as though they agreed. Round-tripping the
+canonical form removes that whole class rather than the individual
+combinations, which is also why `canonical()` on both types is held to an exact
+round trip.
 
 Decoration happens **on the server**, in `MessageWillBePosted`. That is the only
 way the link reaches clients that never run the webapp bundle, notably the
@@ -77,11 +131,22 @@ mobile app. It also means:
   authored. Deleting the link syntax while editing is the supported way to opt
   one post out. A test asserts the hook does not exist so this cannot be undone
   by accident.
-- Decoration is skipped, and the post left alone, when `EnableDTG` is off, when
-  the format in question is off, or when the result would exceed the maximum
-  post size. A panic in a
-  decorator is recovered and the post passes through unmodified: nothing here
-  may ever stop somebody from posting.
+- **System posts are skipped**, matched on `model.PostSystemMessagePrefix`. The
+  deny list is deliberately that narrow: skipping every non-empty `Type` would
+  also skip custom post types from integrations and other plugins, which may
+  carry real mission content.
+- Decoration is otherwise skipped, and the post left alone, when `EnableDTG` is
+  off, when the format in question is off, or when the result would exceed the
+  maximum post size (`PostMessageMaxRunesV1`, the conservative choice, since an
+  admin can lower the effective limit below V2). A 12-character DTG becomes
+  roughly 120 once linked, so a message that visibly fits can cross the limit
+  here; dropping the decoration beats showing the author an opaque "too long"
+  error for text they can see fits. A panic in a decorator is recovered and the
+  post passes through unmodified. Nothing here may ever stop somebody from
+  posting, which is also why the recover and the size warning both log through
+  an API handle captured *before* the deferred call: logging through `p.API`
+  inside the recover would panic again from within the deferred function and
+  escape the hook entirely.
 
 Stored URLs are **root-relative** and never carry a scheme or host, so they
 follow whichever server the reader is on and a domain migration does not break
@@ -101,7 +166,10 @@ link alone.
 Protected spans are fenced code (including unterminated and `~~~` fences),
 indented code, inline code of any backtick width, links, images, reference
 definitions, any bracketed span, angle autolinks, inline HTML tags, and bare
-`scheme://` and `www.` URLs.
+`scheme://` and `www.` URLs. Overlapping spans are **merged, never discarded**:
+dropping one because it overlapped an earlier one let a construct lose its
+protection entirely and have a link written into its interior, which is the
+opposite of what a protected range is for.
 
 `findProtectedRanges` is the entire safety story here, so anything it fails to
 recognise is a corruption bug in code that permanently rewrites what a user
@@ -111,6 +179,24 @@ URL. Block constructs are scanned line by line rather than matched with regexes,
 because Go's RE2 has no backreferences and so cannot express "a closing fence
 matching the opener" or bound an unterminated one. Widen this only with a
 regression test per construct.
+
+Links and bracketed spans allow **balanced delimiters**, because CommonMark
+does: `[link [foo [bar]]](/uri)` is a link verbatim from the spec, and so are
+`[x](/a(b)c)` and `` [x](/a "(note)") ``. RE2 has no recursion, so "balanced to
+any depth" cannot be written as a pattern and the nesting is spelled out to
+`nestDepth = 4`. **That is a bound on how much protection there is, not a tuning
+knob**: past it the failure mode is a rewrite rather than a missed decoration,
+so raise it before narrowing it. The simpler non-nesting expressions are kept
+alongside the balanced ones rather than replaced by them, since protection is
+the union of every expression and a balanced expression matches *nothing* when
+the delimiters do not balance. Removing the limit outright needs a hand-written
+scanner counting delimiters, the way the fences are scanned, which is the honest
+fix if this ever bites.
+
+Two more things the framework owns rather than the decorator: link labels are
+escaped (`labelEscaper`) so a token cannot be re-parsed as markdown inside the
+brackets, and `Decorate` is **idempotent**, because a decorator link it already
+wrote is itself a protected span.
 
 `/decorate/*` is a **public** route. The clients it serves have no Mattermost
 session. That is safe only because a decorator page is a pure function of its
@@ -123,8 +209,23 @@ optional `Hover` component, so the tooltip is registered once for the whole
 plugin and nothing in the bootstrap changes when a decorator adds one. Keep a
 hover to the one thing worth knowing without opening the sidebar: the DTG hover
 is the countdown and nothing else, and leaves the reading and the timezone table
-to the panel. Query parameters starting with `_` are reserved for the
-framework, so decorators can name their own params freely. There are two:
+to the panel. It still honours the reader's flash threshold, or pointing at a
+link and opening it could disagree about whether the same DTG is imminent.
+
+The sidebar also opens from a **channel header button**, which clears the
+selection first so it always lands on the empty state. That state is the only
+way back out of a decorator panel, and it carries the plugin version, which is
+the fastest thing to ask a reporter for.
+
+`index.tsx` keeps a disposer list and runs it in `uninitialize()`. Without that,
+a re-registration leaves the old capture listener attached and every click is
+dispatched twice. `registerBuiltinDecorators()` is idempotent for the same
+reason: the registry lives in module state that survives a re-registration while
+`initialize()` runs again, and throwing on the second pass would leave the
+sidebar dead until a page reload.
+
+Query parameters starting with `_` are reserved for the framework, so decorators
+can name their own params freely. There are two:
 
 - **`_page=1`** makes the webapp stand aside so the browser follows the link to
   the server-rendered page instead. Purely for testing, since the page is
@@ -147,19 +248,27 @@ framework, so decorators can name their own params freely. There are two:
   operating system fallback. Only the two keywords are accepted, since the value
   reaches a stylesheet.
 
-`/tactical-fusion examples` posts a live demonstration: each example raw in a
-code fence, then the same text after decoration, including the near-misses that
-are deliberately declined, plus a ready-made `_page=1` link. The command runs the
-tagger itself rather than relying on the message hook, because its own output is
-full of fences and links and would therefore be skipped. That also keeps the
-"declined" rows honest, since they are genuinely the tagger's output rather than
-hand-written.
+`/tactical-fusion examples` posts a live demonstration, in four groups: examples
+built from the moment the command runs (so the panel opens on a countdown that
+is actually moving, including a negative offset, which counts up and is the half
+of the behaviour easiest to forget exists), fixed examples of each grammar, the
+near-misses that are deliberately **declined**, and tokens **skipped** because
+they sit inside a protected span. A ready-made `_page=1` link follows. The
+command runs the tagger itself rather than relying on the message hook, because
+its own output is full of fences and links and would therefore be skipped. That
+also keeps the "declined" and "skipped" rows honest, since they are genuinely
+the tagger's output rather than hand-written, and the live rows go through the
+decorator's own `FormatZulu`, so an example cannot drift into something the
+decorator declines.
+
+`/tactical-fusion` with no subcommand lists the subcommands; an unknown one is
+an error carrying a `TF-NNNN` code. Both replies are ephemeral.
 
 ### Adding a decorator
 
 1. **Server**: create `server/decorators/<type>/` implementing
-   `decorators.Decorator`, then add one `decorators.Register(...)` line to
-   `OnActivate`.
+   `decorators.Decorator`, then add one argument to the
+   `decorators.NewDefaultRegistry(...)` call in `OnActivate`.
 2. **Webapp**: create `webapp/src/decorators/<type>/` exporting a
    `Decorator<T>`, then add one `register(...)` line to
    `registerBuiltinDecorators()`. Add a `Hover` component if a glance at the
@@ -282,6 +391,19 @@ their copy. The TTL is the backstop for a lost event, not the mechanism. The
 webapp caches too, in module state in `preferences/store.ts`, so a channel full
 of DTG links makes one request rather than one per hover.
 
+Two details in that cache are load-bearing and easy to undo. A **generation
+counter** guarded by the same lock as the fill, so a read that started before an
+invalidation can tell that it did and decline to cache what it found: removing a
+key is not enough on its own, because a key still being read is not yet in the
+cache to remove, so the write invalidates nothing and the slower read then
+installs the value the write had just replaced. And every value handed out is
+**cloned**, since the cache returns the same value to every caller and a caller
+that appended to `Zones` would be editing what the next reader gets.
+
+Stored blobs are stamped with `preferencesVersion`. Nothing reads it yet; it is
+there so a later change of shape can tell an old blob from a new one, which is
+far cheaper to add now than to retrofit onto data already in the KV store.
+
 Zone identifiers are validated server side against the embedded tzdata.
 `"Local"` is rejected: it resolves to whatever zone the server process runs in,
 which is not a place and can differ between nodes.
@@ -303,7 +425,7 @@ the zone alone.
 
 **Names are never inferred from a zone.** A name reaches a row only by being
 stored with it, so a bare `Europe/Berlin` picked out of "All timezones" reads
-"Berlin", not "Ramstein" — otherwise it would sit next to a real Ramstein row
+"Berlin", not "Ramstein", or it would sit next to a real Ramstein row
 looking identical. Abbreviations are the exception: those are keyed off the
 zone, because only the nine curated ones are hand-written and the rest are
 measured, which moves with the season.
@@ -476,7 +598,26 @@ entry, the call site, and a row in `public/help/error-codes.html`.
 - `make dist` - build the plugin bundle
 - `make check-style` - lint both Go and webapp code
 - `make test` - run tests
-- `make deploy` - build and deploy to a running Mattermost server
+- `make coverage` - backend and frontend coverage summaries. The backend one
+  passes `-coverpkg=./server/...`, which is load-bearing: without it each
+  package is measured only by its own tests, so the shared page shell in
+  `server/decorators` reads as 0% while being fully exercised from `server`,
+  which under-reports the total and points a reader at the wrong files. The
+  frontend one merges Playwright unit and component runs.
+
+The repo ships a Docker Compose stack, which is what `make deploy` targets:
+
+- `make docker-setup` - start Mattermost and PostgreSQL, wait for readiness, and
+  create the `admin` / `password` system admin and a default team. Serves on
+  `http://localhost:8065`; override with `MM_PORT`.
+- `make deploy` - build the bundle, install it into that stack, and enable it
+  (an alias for `docker-deploy`).
+- `make deploy-local` - deploy to your own running server instead, via the
+  bundled `pluginctl`. Authenticates through local mode, `MM_ADMIN_TOKEN`, or
+  `MM_ADMIN_USERNAME` + `MM_ADMIN_PASSWORD`.
+- `make docker-logs`, `docker-reset`, `docker-stop`, `docker-down` - operate the
+  stack. `make nuke` tears down everything, including `docker/`, `node_modules`
+  and every build artifact.
 
 ## Commits and releases
 
@@ -490,7 +631,7 @@ in [`docs/RELEASING.md`](docs/RELEASING.md); the essentials:
   `test:`/`refactor:`/`style:`/`build:`/`ci:` don't bump or appear in the
   changelog.
 - **Do not** hand-edit `plugin.json`'s `version` or `CHANGELOG.md` for a normal
-  release — release-please owns them via its Release PR. The version is seeded at
+  release. release-please owns them via its Release PR. The version is seeded at
   `0.1.0`.
 - A release ships when the maintainer merges the open "chore(main): release
   X.Y.Z" PR, which tags `vX.Y.Z` and fires `release.yml`.
@@ -499,7 +640,7 @@ in [`docs/RELEASING.md`](docs/RELEASING.md); the essentials:
 
 Workflows live in `.github/workflows/`: `pr.yml` (style/test/build), `security.yml`
 (SBOM + Grype + CodeQL → Code Scanning), `release-please.yml`, and `release.yml`.
-Everything is reproducible locally through `make` — CI runs the same targets, so
+Everything is reproducible locally through `make`, and CI runs the same targets, so
 verify changes with these before pushing:
 
 - `make check-style && make test` - what `pr.yml` gates on
@@ -514,4 +655,4 @@ process, the Code Scanning requirement, and release signing.
 
 GitHub Actions are pinned to full commit SHAs with a `# vX.Y.Z` comment. When
 adding or bumping an action, resolve the tag to its commit SHA and keep the
-comment accurate — don't use floating tags like `@v4`.
+comment accurate. Don't use floating tags like `@v4`.

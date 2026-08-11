@@ -4,11 +4,12 @@
 //
 // # Adding a decorator
 //
-// A decorator is one directory implementing Decorator, plus one line in
+// A decorator is one directory implementing Decorator, plus one argument in
 // OnActivate registering it. No file in this package needs to change.
 //
 //  1. Create server/decorators/<type>/ with a type implementing Decorator.
-//  2. Register it: decorators.Register(&mytype.Decorator{}).
+//  2. Pass it to the NewDefaultRegistry call in OnActivate:
+//     decorators.NewDefaultRegistry(&dtg.Decorator{...}, &mytype.Decorator{}).
 //  3. Add the matching TypeScript decorator under webapp/src/decorators/<type>/
 //     and register it in registerBuiltinDecorators().
 //

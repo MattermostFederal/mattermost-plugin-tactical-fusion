@@ -43,8 +43,9 @@ func (r *Registry) Get(t string) Decorator {
 	return r.byType[t]
 }
 
-// NewDefaultRegistry builds a registry containing every decorator this plugin
-// ships. Adding a decorator is one line here plus one directory.
+// NewDefaultRegistry builds a registry from the decorators this plugin ships.
+// They are passed in by OnActivate, so adding one is one argument there plus one
+// directory, and nothing in this package changes.
 //
 // This deliberately returns a fresh registry rather than mutating a package
 // level one. A global would be written by Register while MessageWillBePosted
