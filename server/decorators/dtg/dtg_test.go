@@ -940,6 +940,68 @@ func TestMonikerDoesNotWidenWhatIsAccepted(t *testing.T) {
 	}
 }
 
+// The moniker composes: it only ever labels a grammar that is switched on in
+// its own right, so a moniker with nothing left to label is dropped entirely
+// rather than left matching a token the admin has turned off.
+func TestMonikerForFollowsTheEnabledGrammars(t *testing.T) {
+	cases := []struct {
+		name    string
+		formats Formats
+		want    *decorators.Pattern
+	}{
+		{"moniker off", Formats{Military: true, Timestamp: true}, nil},
+		{"both grammars on", Formats{Moniker: true, Military: true, Timestamp: true}, &monikerAny},
+		{"military only", Formats{Moniker: true, Military: true}, &monikerMilitary},
+		{"timestamp only", Formats{Moniker: true, Timestamp: true}, &monikerTimestamp},
+		{"nothing left to label", Formats{Moniker: true}, nil},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, ok := monikerFor(tc.formats)
+
+			if tc.want == nil {
+				if ok {
+					t.Fatalf("monikerFor(%+v) returned a pattern, want none", tc.formats)
+				}
+				if got.Regexp != nil {
+					t.Fatalf("monikerFor(%+v) returned %v with ok=false, want the zero Pattern", tc.formats, got.Regexp)
+				}
+				return
+			}
+
+			if !ok {
+				t.Fatalf("monikerFor(%+v) returned no pattern, want one", tc.formats)
+			}
+			if got.Regexp != tc.want.Regexp {
+				t.Fatalf("monikerFor(%+v) = %v, want %v", tc.formats, got.Regexp, tc.want.Regexp)
+			}
+		})
+	}
+}
+
+// The same rule seen from the outside: a decorator with only the moniker
+// switched on contributes no patterns at all, so nothing matches and the post
+// takes the same path as a message with no token in it.
+func TestMonikerAloneContributesNoPatterns(t *testing.T) {
+	d := &Decorator{Enabled: func() Formats { return Formats{Moniker: true} }}
+
+	if got := d.Patterns(); len(got) != 0 {
+		t.Fatalf("Patterns() returned %d patterns, want none", len(got))
+	}
+
+	registry, err := decorators.NewDefaultRegistry(d)
+	if err != nil {
+		t.Fatalf("failed to build the registry: %v", err)
+	}
+	tagger := &decorators.Tagger{Registry: registry, URLPrefix: "/p"}
+
+	message := "DTG: 091630ZAUG26 and 091630ZAUG26"
+	if got := tagger.Decorate(message, ref); got != message {
+		t.Fatalf("Decorate(%q) rewrote it to %q", message, got)
+	}
+}
+
 // A labelled token inside a protected span is left exactly as written, moniker
 // and all.
 func TestMonikerIsLeftAloneWhenProtected(t *testing.T) {

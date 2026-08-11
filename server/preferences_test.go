@@ -82,6 +82,93 @@ func TestValidateRejectsBadZones(t *testing.T) {
 	}
 }
 
+// A label is the reader's own free text, so the only thing worth enforcing is
+// that it cannot be absurd. The limit counts runes rather than bytes, or a name
+// in a non-Latin script would be rejected at a third of the length an ASCII one
+// is allowed.
+func TestValidateBoundsTheZoneLabel(t *testing.T) {
+	cases := []struct {
+		name     string
+		label    string
+		accepted bool
+	}{
+		{"empty label is an unnamed zone", "", true},
+		{"ordinary label", "Ramstein", true},
+		{"exactly at the limit", strings.Repeat("a", maxZoneNameLength), true},
+		{"one rune over", strings.Repeat("a", maxZoneNameLength+1), false},
+		// Well inside the limit by runes, well over it by bytes. Counting bytes
+		// would reject this.
+		{"multi-byte label inside the limit", strings.Repeat("東", maxZoneNameLength/2), true},
+		{"multi-byte label over the limit", strings.Repeat("東", maxZoneNameLength+1), false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			prefs := UserPreferences{DTG: DTGPreferences{
+				Zones: []ZoneSelection{{IANA: "UTC", Name: tc.label}},
+			}}
+
+			err := prefs.validate()
+
+			if tc.accepted {
+				if err != nil {
+					t.Fatalf("validate() = %v, want the label accepted", err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("validate() accepted a %d-rune label", len([]rune(tc.label)))
+			}
+			assertCode(t, err.Error(), errcode.PreferencesZoneNameTooLong)
+		})
+	}
+}
+
+// A zone entry is written as an object, but blobs stored before names existed
+// hold a bare identifier. Both have to decode, and anything else has to fail
+// rather than quietly yield a zone with no identifier, which validate() would
+// then skip as empty and silently drop from the reader's table.
+func TestZoneSelectionUnmarshalJSON(t *testing.T) {
+	cases := []struct {
+		name    string
+		blob    string
+		want    ZoneSelection
+		wantErr bool
+	}{
+		{"object form", `{"iana":"Europe/Berlin","name":"Ramstein"}`, ZoneSelection{IANA: "Europe/Berlin", Name: "Ramstein"}, false},
+		{"object with no name", `{"iana":"UTC"}`, ZoneSelection{IANA: "UTC"}, false},
+		// Written before names existed. It reads as an unnamed zone, which is
+		// exactly what it was.
+		{"bare identifier", `"Asia/Tokyo"`, ZoneSelection{IANA: "Asia/Tokyo"}, false},
+
+		{"number", `5`, ZoneSelection{}, true},
+		{"array", `[1,2]`, ZoneSelection{}, true},
+		{"iana of the wrong type", `{"iana":5}`, ZoneSelection{}, true},
+		{"name of the wrong type", `{"iana":"UTC","name":[]}`, ZoneSelection{}, true},
+		{"not json at all", `{`, ZoneSelection{}, true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var got ZoneSelection
+			err := json.Unmarshal([]byte(tc.blob), &got)
+
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("Unmarshal(%s) = %+v, want an error", tc.blob, got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Unmarshal(%s) = %v, want nil", tc.blob, err)
+			}
+			if got != tc.want {
+				t.Fatalf("Unmarshal(%s) = %+v, want %+v", tc.blob, got, tc.want)
+			}
+		})
+	}
+}
+
 // Distinct identifiers, since duplicates are collapsed before the count is
 // taken. There must be more than maxZones of them.
 var tooManyZones = []string{

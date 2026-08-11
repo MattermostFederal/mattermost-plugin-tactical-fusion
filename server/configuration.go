@@ -49,6 +49,10 @@ func (p *Plugin) setConfiguration(configuration *configuration) {
 	defer p.configurationLock.Unlock()
 
 	if configuration != nil && p.configuration == configuration {
+		// Boilerplate from the plugin starter template, for a configuration with
+		// no fields at all: re-setting one is harmless because there is nothing
+		// to change. Unreachable here and expected to stay uncovered, since
+		// configuration has four fields.
 		if reflect.ValueOf(*configuration).NumField() == 0 {
 			return
 		}

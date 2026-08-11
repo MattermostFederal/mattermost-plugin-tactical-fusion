@@ -55,6 +55,11 @@ func (p *Plugin) OnActivate() error {
 	registry, err := decorators.NewDefaultRegistry(
 		&dtg.Decorator{Enabled: p.dtgFormats},
 	)
+	// Expected to stay uncovered: Register only rejects a duplicate or empty
+	// type, and there is one decorator here with a constant one. It is what
+	// turns a bad set into a failed activation once there are two, which is the
+	// last moment an operator can still be told about it. The error path itself
+	// is covered in server/decorators/registry_test.go.
 	if err != nil {
 		return errors.Wrap(err, errcode.WithCode(errcode.PluginRegistryFailed, "failed to register decorators"))
 	}

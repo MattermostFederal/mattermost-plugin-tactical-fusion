@@ -114,6 +114,12 @@ func TestParseRejections(t *testing.T) {
 		{"month-only, no year", "091630ZAUG", "the year is not optional on the long form"},
 		{"three digit year", "091630ZAUG263", "years are two or four digits"},
 
+		// Right length, right month, but the year is not a number. Atoi would
+		// return 0 and the DTG would silently become year 2000.
+		{"letters where the two-digit year goes", "091630ZAUGXY", "the year must be digits"},
+		{"letters where the four-digit year goes", "091630ZAUG20XY", "the year must be digits"},
+		{"signed year", "091630ZAUG+6", "the year must be digits"},
+
 		// The canonical form carries two year digits. Accepting these would
 		// canonicalise 2150 to "50", which reads back as 2050, so the link
 		// would describe a different century from the author's text.
@@ -311,6 +317,42 @@ func TestFormatOffset(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := FormatOffset(tc.minutes); got != tc.want {
 				t.Fatalf("FormatOffset(%d) = %q, want %q", tc.minutes, got, tc.want)
+			}
+		})
+	}
+}
+
+// RFC 3339 says nothing about how large an offset may be, and Go's time.Parse
+// accepts anything up to +/-23:59, so parseISO bounds it itself. The bound is
+// symmetric at +/-14:00, which is the eastern extreme: it is wider than the
+// -12:00 western extreme any real zone uses, and deliberately so, since a single
+// magnitude is easier to reason about than a lopsided pair and the point is to
+// exclude crafted values rather than to police the tz database.
+func TestParseISOBoundsTheOffset(t *testing.T) {
+	accepted := []string{
+		"2026-08-09T16:30:00+14:00",
+		"2026-08-09T16:30:00-14:00",
+		"2026-08-09T16:30:00-12:00",
+	}
+	for _, written := range accepted {
+		t.Run("accepted "+written, func(t *testing.T) {
+			if _, ok := parseISO(written); !ok {
+				t.Fatalf("parseISO(%q) declined an offset inside the bound", written)
+			}
+		})
+	}
+
+	declined := []string{
+		"2026-08-09T16:30:00+14:01",
+		"2026-08-09T16:30:00+15:00",
+		"2026-08-09T16:30:00+23:00",
+		"2026-08-09T16:30:00-14:01",
+		"2026-08-09T16:30:00-23:00",
+	}
+	for _, written := range declined {
+		t.Run("declined "+written, func(t *testing.T) {
+			if _, ok := parseISO(written); ok {
+				t.Fatalf("parseISO(%q) accepted an offset beyond the bound", written)
 			}
 		})
 	}

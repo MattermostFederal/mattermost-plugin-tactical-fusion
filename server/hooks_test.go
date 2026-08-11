@@ -316,6 +316,89 @@ func TestDecoratePostHandlesNilAndEmpty(t *testing.T) {
 	}
 }
 
+// A post can reach the hook before OnActivate has built the registry, and a
+// deactivated plugin can still have the hook called. Nothing here may stop
+// somebody from posting, so a missing registry means "decorate nothing" rather
+// than a nil dereference.
+func TestDecoratePostWithoutARegistry(t *testing.T) {
+	config := &model.Config{}
+	config.SetDefaults()
+	config.ServiceSettings.SiteURL = model.NewPointer("https://example.com")
+
+	p := &Plugin{}
+	p.SetAPI(&fakeAPI{config: config})
+	p.setConfiguration(&configuration{
+		EnableDTG:          true,
+		EnableDTGMilitary:  true,
+		EnableDTGMoniker:   true,
+		EnableDTGTimestamp: true,
+	})
+
+	if p.decorators != nil {
+		t.Fatal("test plugin already has a registry, which does not exercise the guard")
+	}
+
+	if got := p.decoratePost(&model.Post{Message: "091630ZAUG26"}, hookRef); got != nil {
+		t.Fatalf("decoratePost = %+v, want nil when no decorator is registered", got)
+	}
+}
+
+// SiteURL is read straight off the server configuration, and both the config
+// and the pointer inside it can be absent. Neither is a reason to skip
+// decoration: no subpath simply means the link starts at the root.
+func TestSiteURLPathToleratesAMissingConfiguration(t *testing.T) {
+	withSiteURL := func(siteURL *string) *model.Config {
+		config := &model.Config{}
+		config.SetDefaults()
+		config.ServiceSettings.SiteURL = siteURL
+		return config
+	}
+
+	cases := []struct {
+		name   string
+		config *model.Config
+	}{
+		{"no configuration at all", nil},
+		{"configuration with no SiteURL", withSiteURL(nil)},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := siteURLPath(tc.config); got != "" {
+				t.Fatalf("siteURLPath() = %q, want an empty prefix", got)
+			}
+		})
+	}
+}
+
+// The same absence seen from the post path: a plugin whose API reports no
+// SiteURL still decorates, with a root-relative link.
+func TestDecoratePostWorksWhenSiteURLIsAbsent(t *testing.T) {
+	config := &model.Config{}
+	config.SetDefaults()
+	config.ServiceSettings.SiteURL = nil
+
+	p := &Plugin{}
+	p.SetAPI(&fakeAPI{config: config})
+	p.setConfiguration(&configuration{
+		EnableDTG:          true,
+		EnableDTGMilitary:  true,
+		EnableDTGMoniker:   true,
+		EnableDTGTimestamp: true,
+	})
+	registerDTGForTest(t, p)
+
+	got := p.decoratePost(&model.Post{Message: "091630ZAUG26"}, hookRef)
+	if got == nil {
+		t.Fatal("decoratePost skipped; an absent SiteURL is not a reason to skip")
+	}
+
+	want := "(/plugins/" + manifest.Id + "/decorate/dtg?"
+	if !strings.Contains(got.Message, want) {
+		t.Fatalf("message = %q, want a root-relative link starting %q", got.Message, want)
+	}
+}
+
 func TestMessageWillBePostedNeverRejects(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 

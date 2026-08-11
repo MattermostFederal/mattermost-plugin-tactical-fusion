@@ -89,6 +89,38 @@ func TestRegistryGetMissReturnsNil(t *testing.T) {
 	}
 }
 
+// NewDefaultRegistry must surface a bad decorator set rather than returning a
+// half-built registry. OnActivate turns this into a failed activation, which is
+// the only moment a duplicate type can still be fixed by an operator.
+func TestNewDefaultRegistrySurfacesRegistrationFailure(t *testing.T) {
+	r, err := decorators.NewDefaultRegistry(
+		newFixture("dup", `\bAAA\b`),
+		newFixture("dup", `\bBBB\b`),
+	)
+
+	if err == nil {
+		t.Fatal("NewDefaultRegistry() accepted two decorators sharing a type, want an error")
+	}
+	if r != nil {
+		t.Fatalf("NewDefaultRegistry() = %v on failure, want a nil registry", r)
+	}
+}
+
+func TestNewDefaultRegistryRegistersInOrder(t *testing.T) {
+	r, err := decorators.NewDefaultRegistry(
+		newFixture("first", `\bAAA\b`),
+		newFixture("second", `\bBBB\b`),
+	)
+	if err != nil {
+		t.Fatalf("NewDefaultRegistry() = %v, want nil", err)
+	}
+
+	all := r.All()
+	if len(all) != 2 || all[0].Type() != "first" || all[1].Type() != "second" {
+		t.Fatalf("All() = %v, want [first second]", all)
+	}
+}
+
 func mustRegister(t *testing.T, r *decorators.Registry, d decorators.Decorator) {
 	t.Helper()
 	if err := r.Register(d); err != nil {

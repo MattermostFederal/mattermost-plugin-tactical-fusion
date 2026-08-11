@@ -114,6 +114,9 @@ func (t *Tagger) Decorate(message string, ref time.Time) string {
 		return message
 	}
 
+	// Defensive, and expected to stay uncovered: resolveOverlaps always accepts
+	// its first candidate, since nothing is claimed yet, so an empty result here
+	// means an empty input, which the check above already returned on.
 	accepted := resolveOverlaps(candidates)
 	if len(accepted) == 0 {
 		return message

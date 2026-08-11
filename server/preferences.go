@@ -254,6 +254,8 @@ func (s *kvPreferenceStore) Get(userID string) (UserPreferences, error) {
 }
 
 func (s *kvPreferenceStore) Set(userID string, prefs UserPreferences) error {
+	// Expected to stay uncovered: UserPreferences is plain structs, slices and
+	// ints, so there is no value it can hold that Marshal refuses.
 	data, err := json.Marshal(prefs)
 	if err != nil {
 		return errors.Wrap(err, "failed to encode preferences")

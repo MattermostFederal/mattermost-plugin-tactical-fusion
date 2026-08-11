@@ -3,6 +3,8 @@ package main
 import (
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -202,6 +204,70 @@ func TestExamplesLinkToTheStandalonePage(t *testing.T) {
 	}
 	if !strings.Contains(text, " as a page](/plugins/"+manifest.Id+"/decorate/dtg?") {
 		t.Fatal("the force-page link does not point at a decorator page")
+	}
+}
+
+// decliningDecorator matches an example but refuses to parse it. A decorator
+// whose pattern is broader than its grammar is the normal case rather than a
+// pathological one: the DTG decorator itself matches shapes that Parse then
+// rejects, such as an impossible calendar date.
+type decliningDecorator struct{}
+
+func (*decliningDecorator) Type() string { return "declining" }
+
+func (*decliningDecorator) Patterns() []decorators.Pattern {
+	return []decorators.Pattern{{Regexp: regexp.MustCompile(`\d{6}[A-Z][A-Za-z]{3}\d{2}`)}}
+}
+
+func (*decliningDecorator) Parse(string, time.Time) (url.Values, bool) { return nil, false }
+
+func (*decliningDecorator) RenderPage(http.ResponseWriter, url.Values) {}
+
+// A decorator that matches an example but declines it must not consume the
+// example: the search moves on to the next decorator rather than giving up and
+// dropping the section. Otherwise registering a second decorator whose pattern
+// happened to be broad would silently delete the standalone-page link from the
+// examples output.
+func TestStandalonePageLinkSkipsADecliningDecorator(t *testing.T) {
+	registry, err := decorators.NewDefaultRegistry(&decliningDecorator{}, &dtg.Decorator{})
+	if err != nil {
+		t.Fatalf("failed to build the registry: %v", err)
+	}
+	tagger := &decorators.Tagger{Registry: registry, URLPrefix: "/plugins/test/decorate"}
+
+	link, ok := standalonePageLink(registry, tagger, hookRef)
+	if !ok {
+		t.Fatal("standalonePageLink gave up after a declining decorator")
+	}
+
+	if !strings.Contains(link, "/decorate/dtg?") {
+		t.Fatalf("link = %q, want it built by the decorator that accepted the example", link)
+	}
+	if strings.Contains(link, "/decorate/declining") {
+		t.Fatalf("link = %q, want nothing from the declining decorator", link)
+	}
+	if !strings.Contains(link, decorators.ForcePageParam+"=1") {
+		t.Fatalf("link = %q, want the force-page flag set", link)
+	}
+}
+
+// With nothing able to parse an example there is no link to offer, and the
+// section is left out rather than emitted empty.
+func TestStandalonePageLinkGivesUpWhenNothingParses(t *testing.T) {
+	registry, err := decorators.NewDefaultRegistry(&decliningDecorator{})
+	if err != nil {
+		t.Fatalf("failed to build the registry: %v", err)
+	}
+	tagger := &decorators.Tagger{Registry: registry, URLPrefix: "/plugins/test/decorate"}
+
+	if link, ok := standalonePageLink(registry, tagger, hookRef); ok {
+		t.Fatalf("standalonePageLink = %q, want no link when nothing parses", link)
+	}
+
+	var b strings.Builder
+	writeStandalonePageSection(&b, registry, tagger, hookRef)
+	if b.String() != "" {
+		t.Fatalf("writeStandalonePageSection wrote %q, want nothing", b.String())
 	}
 }
 

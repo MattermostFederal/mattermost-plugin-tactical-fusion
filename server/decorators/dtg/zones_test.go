@@ -161,6 +161,50 @@ func TestOrderedZonesFollowTheSeason(t *testing.T) {
 	}
 }
 
+// Several bases share a zone, so ties are routine rather than exotic: Ramstein
+// and Stuttgart keep the same clock and a reader may well have picked both. The
+// order they land in has to be decided by something, and it is the name.
+//
+// Must agree with orderedZones in webapp/src/decorators/dtg/zones.ts, which is
+// the whole reason the tiebreak is spelled out rather than left to the sort.
+func TestOrderedZonesBreakOffsetTiesOnName(t *testing.T) {
+	instant := time.Date(2026, time.August, 9, 16, 30, 0, 0, time.UTC)
+
+	// Listed out of order so a pass cannot come from the input order surviving.
+	zones := []DisplayZone{
+		{Name: "Stuttgart", IANA: "Europe/Berlin", Abbr: "CET"},
+		{Name: "Ramstein", IANA: "Europe/Berlin", Abbr: "CET"},
+		{Name: "Aviano", IANA: "Europe/Rome", Abbr: "CET"},
+	}
+
+	ordered := OrderedZones(zones, instant)
+
+	want := []string{"Aviano", "Ramstein", "Stuttgart"}
+	for i, name := range want {
+		if ordered[i].Name != name {
+			t.Fatalf("position %d = %q, want %q", i, ordered[i].Name, name)
+		}
+	}
+}
+
+// Identity is the (IANA, Name) pair, so two entries can share a name and still
+// be distinct rows. The identifier is the last tiebreak, and without it the
+// order of such a pair would depend on the input order.
+func TestOrderedZonesBreakNameTiesOnIdentifier(t *testing.T) {
+	instant := time.Date(2026, time.August, 9, 16, 30, 0, 0, time.UTC)
+
+	zones := []DisplayZone{
+		{Name: "Central Europe", IANA: "Europe/Rome", Abbr: "CET"},
+		{Name: "Central Europe", IANA: "Europe/Berlin", Abbr: "CET"},
+	}
+
+	ordered := OrderedZones(zones, instant)
+
+	if ordered[0].IANA != "Europe/Berlin" || ordered[1].IANA != "Europe/Rome" {
+		t.Fatalf("order = %s, %s; want Europe/Berlin, Europe/Rome", ordered[0].IANA, ordered[1].IANA)
+	}
+}
+
 // Treating an unknown offset as zero would file it under UTC, which is a claim
 // rather than an admission.
 func TestOrderedZonesPutUnresolvableZonesLast(t *testing.T) {
