@@ -106,13 +106,13 @@ Today the plugin is a bare scaffold: `/tactical-fusion hello` and a channel-head
 ### URL contract
 
 ```
-<siteurl-path>/plugins/com.mattermost.plugin-mission-context/decorate/<type>?<params>
+<siteurl-path>/plugins/com.mattermost.plugin-tactical-fusion/decorate/<type>?<params>
 ```
 
 **The stored URL is root-relative. It never contains the scheme or host.** In the common case where SiteURL has no path component, that is literally:
 
 ```
-/plugins/com.mattermost.plugin-mission-context/decorate/dtg?...
+/plugins/com.mattermost.plugin-tactical-fusion/decorate/dtg?...
 ```
 
 This is a deliberate and fairly important choice, because the URL is written into `post.Message` permanently. An absolute `https://old-host/plugins/...` would be frozen into every historical post, and the day the server moves to a new hostname every one of those links breaks with no way to re-render them. Relative URLs simply follow the server.
@@ -145,7 +145,7 @@ Example rewrite:
 ```
 ARCT 091630ZAUG26 confirmed
 ->
-ARCT [091630ZAUG26](/plugins/com.mattermost.plugin-mission-context/decorate/dtg?t=1786293000000&dtg=091630ZAUG26&z=Z&a=) confirmed
+ARCT [091630ZAUG26](/plugins/com.mattermost.plugin-tactical-fusion/decorate/dtg?t=1786293000000&dtg=091630ZAUG26&z=Z&a=) confirmed
 ```
 
 ### Server: the `Decorator` contract
@@ -480,7 +480,7 @@ No `registerMessageWillFormatHook`: the link is already in the message. `uniniti
 
 **Step 0: prerequisite spike (do this before writing any framework code)**
 
-0. [ ] **Confirm search still matches a decorated DTG.** By hand on a scratch server: post `ARCT 091630ZAUG26 confirmed`, edit the message in the database (or post the decorated form directly) so it reads `ARCT [091630ZAUG26](/plugins/com.mattermost.plugin-mission-context/decorate/dtg?t=1786293000000&dtg=091630ZAUG26&z=Z&a=) confirmed`, then search for `091630ZAUG26`.
+0. [ ] **Confirm search still matches a decorated DTG.** By hand on a scratch server: post `ARCT 091630ZAUG26 confirmed`, edit the message in the database (or post the decorated form directly) so it reads `ARCT [091630ZAUG26](/plugins/com.mattermost.plugin-tactical-fusion/decorate/dtg?t=1786293000000&dtg=091630ZAUG26&z=Z&a=) confirmed`, then search for `091630ZAUG26`.
 
     This is a **design stop**, not a checkbox. The whole plan rests on rewriting `post.Message`, and if Mattermost's indexer splits on `[` or `]` then decorated posts become unfindable by the exact token operators search for. Test against the same search backend the deployment will use (database search and Bleve tokenize differently). If it fails, stop and reconsider: the fallbacks are decorating only inside `post.Props` with a custom post type, or reverting to client-side decoration and giving up the mobile promise.
 

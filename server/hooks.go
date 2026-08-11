@@ -9,7 +9,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 
-	"github.com/MattermostFederal/mattermost-plugin-mission-context/server/decorators"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 )
 
 // maxPostRunes is the ceiling a decorated message must stay under.

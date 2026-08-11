@@ -79,7 +79,7 @@ export const THEME_PARAM = '_theme';
 
 /**
  * The path every decorator link starts with, e.g.
- * `/plugins/com.mattermost.plugin-mission-context/decorate/`.
+ * `/plugins/com.mattermost.plugin-tactical-fusion/decorate/`.
  *
  * The server builds the stored URLs from SiteURL's path component, which is the
  * same value `pluginBaseUrl` reads from `window.basename`.

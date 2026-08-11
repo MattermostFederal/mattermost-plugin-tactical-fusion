@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/MattermostFederal/mattermost-plugin-mission-context/server/decorators"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 )
 
 // Type is the URL path segment and the key shared with the webapp decorator.

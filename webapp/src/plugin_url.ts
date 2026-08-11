@@ -1,7 +1,7 @@
 import manifest from 'manifest';
 
 /**
- * The plugin's own base path, e.g. `/plugins/com.mattermost.plugin-mission-context`.
+ * The plugin's own base path, e.g. `/plugins/com.mattermost.plugin-tactical-fusion`.
  *
  * `window.basename` carries the subpath when Mattermost is served from one, so
  * a hardcoded root-relative path would break those installs.

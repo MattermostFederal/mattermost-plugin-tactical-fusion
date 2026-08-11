@@ -12,8 +12,8 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 
-	"github.com/MattermostFederal/mattermost-plugin-mission-context/server/decorators"
-	"github.com/MattermostFederal/mattermost-plugin-mission-context/server/decorators/dtg"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
 )
 
 var hookRef = time.Date(2026, time.August, 9, 12, 0, 0, 0, time.UTC)

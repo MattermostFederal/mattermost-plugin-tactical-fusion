@@ -61,7 +61,7 @@ type Tagger struct {
 	Registry *Registry
 
 	// URLPrefix is everything before the decorator type, with no scheme or
-	// host, e.g. "/plugins/com.mattermost.plugin-mission-context/decorate".
+	// host, e.g. "/plugins/com.mattermost.plugin-tactical-fusion/decorate".
 	// On a subpath install it carries SiteURL's path, e.g.
 	// "/mattermost/plugins/.../decorate".
 	URLPrefix string

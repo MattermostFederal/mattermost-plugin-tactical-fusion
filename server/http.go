@@ -6,7 +6,7 @@ import (
 
 	"github.com/mattermost/mattermost/server/public/plugin"
 
-	"github.com/MattermostFederal/mattermost-plugin-mission-context/server/decorators"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 )
 
 // decoratePath is the route prefix for decorator pages, relative to the

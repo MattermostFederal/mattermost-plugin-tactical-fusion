@@ -3,7 +3,7 @@ import React from 'react';
 
 import TooltipHarness from './TooltipHarness';
 
-const PREFIX = '/plugins/com.mattermost.plugin-mission-context/decorate/';
+const PREFIX = '/plugins/com.mattermost.plugin-tactical-fusion/decorate/';
 
 test('shows the decorator hover card', async ({mount, page}) => {
     await mount(<TooltipHarness href={`${PREFIX}fix?v=hello`}/>);

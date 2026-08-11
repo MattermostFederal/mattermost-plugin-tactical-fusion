@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MattermostFederal/mattermost-plugin-mission-context/server/decorators"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 )
 
 func TestParseProducesResolvedParams(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MattermostFederal/mattermost-plugin-mission-context/server/decorators"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 )
 
 // fixtureDecorator is defined entirely in the test package. It is the only real

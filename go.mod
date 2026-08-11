@@ -1,4 +1,4 @@
-module github.com/MattermostFederal/mattermost-plugin-mission-context
+module github.com/MattermostFederal/mattermost-plugin-tactical-fusion
 
 go 1.26.3
 

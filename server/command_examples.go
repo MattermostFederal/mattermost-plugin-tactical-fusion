@@ -7,8 +7,8 @@ import (
 
 	"github.com/mattermost/mattermost/server/public/model"
 
-	"github.com/MattermostFederal/mattermost-plugin-mission-context/server/decorators"
-	"github.com/MattermostFederal/mattermost-plugin-mission-context/server/decorators/dtg"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
 )
 
 // commandExample is one line of the /tactical-fusion examples output: the text

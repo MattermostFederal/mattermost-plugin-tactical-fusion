@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MattermostFederal/mattermost-plugin-mission-context/server/decorators"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 )
 
-const testPrefix = "/plugins/com.mattermost.plugin-mission-context/decorate"
+const testPrefix = "/plugins/com.mattermost.plugin-tactical-fusion/decorate"
 
 var testRef = time.Date(2026, time.August, 9, 12, 0, 0, 0, time.UTC)
 
@@ -299,8 +299,8 @@ func TestURLIsRootRelative(t *testing.T) {
 		{"root install", testPrefix, "[AAA](" + testPrefix + "/tok?v=AAA)"},
 		{
 			"subpath install",
-			"/mattermost/plugins/com.mattermost.plugin-mission-context/decorate",
-			"[AAA](/mattermost/plugins/com.mattermost.plugin-mission-context/decorate/tok?v=AAA)",
+			"/mattermost/plugins/com.mattermost.plugin-tactical-fusion/decorate",
+			"[AAA](/mattermost/plugins/com.mattermost.plugin-tactical-fusion/decorate/tok?v=AAA)",
 		},
 	}
 

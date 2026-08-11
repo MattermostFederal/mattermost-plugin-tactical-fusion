@@ -11,7 +11,7 @@ import (
 
 	"github.com/mattermost/mattermost/server/public/plugin"
 
-	"github.com/MattermostFederal/mattermost-plugin-mission-context/server/decorators"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 )
 
 // panicDecorator panics on Parse. Used by the hook tests to prove a bug in a
