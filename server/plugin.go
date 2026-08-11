@@ -67,7 +67,12 @@ func (p *Plugin) OnActivate() error {
 
 	p.preferences = newCachingPreferenceStore(&kvPreferenceStore{api: p.API}, p.API)
 
-	return p.API.RegisterCommand(getCommand())
+	if err := p.API.RegisterCommand(getCommand()); err != nil {
+		return errors.Wrap(err, errcode.WithCode(errcode.PluginCommandRegistrationFailed,
+			"failed to register the slash command"))
+	}
+
+	return nil
 }
 
 // OnPluginClusterEvent keeps the preferences cache honest across nodes.

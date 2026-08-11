@@ -262,6 +262,18 @@ func parseISO(value string) (ISO, bool) {
 			return ISO{}, false
 		}
 
+		// The same window validateParams enforces on "t". Decoration and
+		// rendering have to agree about what is representable: a timestamp
+		// accepted here but rejected there would be rewritten permanently into
+		// a link whose own page answers 400, and editing the post by hand is
+		// the only way back. The military grammar cannot reach this, since its
+		// years are clamped to a single century, but RFC 3339 has no such
+		// limit and "1918-11-11T11:00:00Z" is an ordinary thing to write.
+		millis := parsed.UnixMilli()
+		if millis < minInstantMillis || millis > maxInstantMillis {
+			return ISO{}, false
+		}
+
 		// Truncated, not rounded: the countdown ticks in whole seconds and the
 		// canonical form has nowhere to put a fraction.
 		return ISO{Instant: parsed.Truncate(time.Second).UTC(), OffsetMinutes: offset}, true

@@ -175,13 +175,25 @@ const ZonePicker: React.FC<Props> = ({groups, disabled, onPick}) => {
 
     const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
         switch (event.key) {
+        // Both arrows reopen a closed list without moving, which is what the
+        // ARIA combobox pattern asks for. Moving as well would skip the option
+        // the reader is being shown for the first time, and it would undo the
+        // position pick() deliberately holds: after adding a zone, the one that
+        // slid into its place is the likely next choice, not the one after it.
         case 'ArrowDown':
             event.preventDefault();
-            setOpen(true);
+            if (!open) {
+                setOpen(true);
+                break;
+            }
             setActive((current) => Math.min(current + 1, flat.length - 1));
             break;
         case 'ArrowUp':
             event.preventDefault();
+            if (!open) {
+                setOpen(true);
+                break;
+            }
             setActive((current) => Math.max(current - 1, 0));
             break;
         case 'Enter':
@@ -207,7 +219,12 @@ const ZonePicker: React.FC<Props> = ({groups, disabled, onPick}) => {
             <input
                 type='text'
                 role='combobox'
-                aria-expanded={open}
+
+                // Only expanded when there is a listbox to point at. A query
+                // that matches nothing leaves this open with the list unmounted,
+                // and announcing an expanded popup that is not in the document
+                // leaves a screen reader hunting for something that is not there.
+                aria-expanded={open && flat.length > 0}
                 aria-controls={listId}
                 aria-autocomplete='list'
                 aria-activedescendant={open && flat[active] ? `${listId}-${active}` : undefined}
@@ -272,8 +289,17 @@ const ZonePicker: React.FC<Props> = ({groups, disabled, onPick}) => {
                 </ul>
             )}
 
+            {/*
+              * Announced, not just shown. Filtering is the one thing here with
+              * no other feedback for somebody who cannot see the list shrink,
+              * and "nothing matches" is exactly when they most need telling.
+              */}
             {query !== '' && (
-                <p style={{fontSize: '12px', opacity: 0.6, margin: '6px 0 0'}}>
+                <p
+                    role='status'
+                    aria-live='polite'
+                    style={{fontSize: '12px', opacity: 0.6, margin: '6px 0 0'}}
+                >
                     {flat.length === 0 ? 'Nothing matches that.' : `${flat.length} matching.`}
                 </p>
             )}

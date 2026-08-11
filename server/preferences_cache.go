@@ -1,6 +1,7 @@
 package main
 
 import (
+	"sync"
 	"time"
 
 	"github.com/hashicorp/golang-lru/v2/expirable"
@@ -40,6 +41,14 @@ type cachingPreferenceStore struct {
 
 	api   plugin.API
 	cache *expirable.LRU[string, UserPreferences]
+
+	// generation counts invalidations, so a read that started before one can
+	// tell that it did and decline to cache what it found. Removing a key is
+	// not enough on its own: a key still being read is not yet in the cache to
+	// remove, so the write invalidates nothing and the slower read then
+	// installs the value the write had just replaced.
+	generationLock sync.Mutex
+	generation     uint64
 }
 
 var _ preferenceStore = (*cachingPreferenceStore)(nil)
@@ -52,6 +61,22 @@ func newCachingPreferenceStore(inner preferenceStore, api plugin.API) *cachingPr
 	}
 }
 
+// currentGeneration reads the invalidation counter.
+func (c *cachingPreferenceStore) currentGeneration() uint64 {
+	c.generationLock.Lock()
+	defer c.generationLock.Unlock()
+
+	return c.generation
+}
+
+// bumpGeneration marks every read now in flight as stale.
+func (c *cachingPreferenceStore) bumpGeneration() {
+	c.generationLock.Lock()
+	defer c.generationLock.Unlock()
+
+	c.generation++
+}
+
 // Get serves from the cache when it can, and caches what it reads otherwise.
 //
 // The zero value is cached too. A reader who has never saved anything is the
@@ -62,12 +87,21 @@ func (c *cachingPreferenceStore) Get(userID string) (UserPreferences, error) {
 		return cached.clone(), nil
 	}
 
+	// Read the generation before the store, so a write landing during the read
+	// is guaranteed to change it.
+	started := c.currentGeneration()
+
 	prefs, err := c.preferenceStore.Get(userID)
 	if err != nil {
 		return UserPreferences{}, err
 	}
 
-	c.cache.Add(userID, prefs.clone())
+	// Somebody wrote while this read was in flight, so what it holds is already
+	// out of date. Return it, because it is what the store said when asked, but
+	// do not install it: the next reader has to go and look again.
+	if c.currentGeneration() == started {
+		c.cache.Add(userID, prefs.clone())
+	}
 
 	return prefs, nil
 }
@@ -95,6 +129,10 @@ func (c *cachingPreferenceStore) Delete(userID string) error {
 // HandleClusterEvent drops a key another node just wrote.
 func (c *cachingPreferenceStore) HandleClusterEvent(ev model.PluginClusterEvent) {
 	if ev.Id == clusterEventInvalidatePreferences {
+		// Bump first: a read in flight here is racing the other node's write
+		// exactly as it would race a local one, and removing a key that is not
+		// there yet would leave that read free to install the old value.
+		c.bumpGeneration()
 		c.cache.Remove(string(ev.Data))
 	}
 }
@@ -104,6 +142,7 @@ func (c *cachingPreferenceStore) HandleClusterEvent(ev model.PluginClusterEvent)
 // Best effort delivery: a lost event costs one reader a stale table until the
 // TTL expires, which does not justify blocking a save on cluster traffic.
 func (c *cachingPreferenceStore) invalidate(userID string) {
+	c.bumpGeneration()
 	c.cache.Remove(userID)
 
 	if err := c.api.PublishPluginClusterEvent(model.PluginClusterEvent{

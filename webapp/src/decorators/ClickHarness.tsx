@@ -118,6 +118,21 @@ const ClickHarness: React.FC<{installTwice?: boolean; centerChannelBg?: string}>
                 href='/some/other/place'
             >{'other'}</a>
 
+            {/*
+              * Somebody else's host wearing our path. Anything the handler
+              * accepts is trusted afterwards, and on the _page branch that
+              * means a named window with noopener and noreferrer stripped.
+              */}
+            <a
+                data-testid='cross-origin-link'
+                href={`https://evil.example${prefix}fix?v=hello`}
+            >{'cross origin'}</a>
+            <a
+                data-testid='cross-origin-page-link'
+                href={`https://evil.example${prefix}fix?v=hello&_page=1`}
+                rel='noopener noreferrer'
+            >{'cross origin page'}</a>
+
             <button
                 data-testid='dispose'
                 onClick={() => {

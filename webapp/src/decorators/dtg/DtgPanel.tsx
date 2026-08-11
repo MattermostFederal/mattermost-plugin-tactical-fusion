@@ -1,4 +1,4 @@
-import React, {useEffect} from 'react';
+import React, {useLayoutEffect} from 'react';
 
 import Countdown from './Countdown';
 import Customize from './Customize';
@@ -81,17 +81,46 @@ const styles: Record<string, React.CSSProperties> = {
     },
 };
 
-/** The calendar date, in a given IANA zone, as a comparable number. */
-function zoneDateKey(instant: Date, iana: string): number {
-    const parts = new Intl.DateTimeFormat('en-US', {
-        timeZone: iana,
-        year: 'numeric',
-        month: 'numeric',
-        day: 'numeric',
-    }).formatToParts(instant);
+/**
+ * The calendar date, in a given IANA zone, as a comparable number.
+ *
+ * Null when the browser cannot format the zone, which a saved blob can outlive
+ * its browser to produce: the server validates against Go's embedded tzdata and
+ * the two catalogues disagree, so `Factory` and `posixrules` are storable here
+ * and throw in `Intl`.
+ */
+function zoneDateKey(instant: Date, iana: string): number | null {
+    let parts: Intl.DateTimeFormatPart[];
+    try {
+        parts = new Intl.DateTimeFormat('en-US', {
+            timeZone: iana,
+            year: 'numeric',
+            month: 'numeric',
+            day: 'numeric',
+        }).formatToParts(instant);
+    } catch {
+        return null;
+    }
 
     const value = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? '0');
     return Date.UTC(value('year'), value('month') - 1, value('day'));
+}
+
+/**
+ * Formats an instant in a zone, or null if this browser cannot.
+ *
+ * Nothing may fail the panel. `orderedZones` deliberately keeps a zone it could
+ * not measure rather than dropping it, so an unformattable one reaches this
+ * table and has to render as a visible gap. Throwing here would take the whole
+ * sidebar down, including the "Customize your view" link that is the only way
+ * for the reader to remove the offending row.
+ */
+function formatInZone(instant: Date, iana: string, options: Intl.DateTimeFormatOptions): string | null {
+    try {
+        return new Intl.DateTimeFormat('en-GB', {...options, timeZone: iana}).format(instant);
+    } catch {
+        return null;
+    }
 }
 
 /**
@@ -130,8 +159,12 @@ const DtgPanel: React.FC<{payload: Dtg}> = ({payload}) => {
     // the editor rather than on the DTG that was clicked. React keeps this
     // component mounted across a change of selection, so nothing else resets
     // it.
+    //
+    // Before paint, not after: a passive effect would commit one frame of the
+    // editor carrying the new selection, and that frame recomputes the picker's
+    // few hundred offset measurements for a view discarded immediately after.
     const instantMs = payload.instant.getTime();
-    useEffect(() => {
+    useLayoutEffect(() => {
         setEditing(false);
     }, [instantMs, payload.canonical]);
 
@@ -167,33 +200,32 @@ const DtgPanel: React.FC<{payload: Dtg}> = ({payload}) => {
                 </thead>
                 <tbody>
                     {zones.map((zone) => {
-                        const time = new Intl.DateTimeFormat('en-GB', {
-                            timeZone: zone.iana,
+                        const time = formatInZone(payload.instant, zone.iana, {
                             hour: '2-digit',
                             minute: '2-digit',
                             hour12: false,
-                        }).format(payload.instant);
+                        });
 
-                        const date = new Intl.DateTimeFormat('en-GB', {
-                            timeZone: zone.iana,
+                        const date = formatInZone(payload.instant, zone.iana, {
                             weekday: 'short',
                             day: 'numeric',
                             month: 'short',
-                        }).format(payload.instant);
+                        });
 
-                        const delta = Math.round(
-                            (zoneDateKey(payload.instant, zone.iana) - reference) / 86400000,
-                        );
+                        // No badge for a zone this browser cannot place. An
+                        // unmeasurable offset is not a claim that it matches.
+                        const dateKey = zoneDateKey(payload.instant, zone.iana);
+                        const delta = dateKey === null ? 0 : Math.round((dateKey - reference) / 86400000);
 
                         return (
-                            <tr key={zone.iana}>
+                            <tr key={zone.key}>
                                 <td style={styles.td}>
                                     {zone.name}
                                     <span style={styles.abbr}>{zone.abbr}</span>
                                 </td>
-                                <td style={{...styles.td, ...styles.time}}>{time}</td>
+                                <td style={{...styles.td, ...styles.time}}>{time ?? 'n/a'}</td>
                                 <td style={styles.td}>
-                                    {date}
+                                    {date ?? 'n/a'}
                                     {delta !== 0 && (
                                         <span style={styles.badge}>
                                             {delta > 0 ? `+${delta}` : String(delta)}

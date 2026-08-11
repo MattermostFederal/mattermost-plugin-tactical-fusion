@@ -105,6 +105,16 @@ export function parseDecoratorHref(href: string): {type: string; params: URLSear
         return null;
     }
 
+    // Same origin only. The path is resolved against this origin, so an
+    // absolute cross-origin URL carrying the right path used to pass: the
+    // decorated links this plugin writes are always root-relative, and anything
+    // else is somebody else's destination wearing our path. It would otherwise
+    // collect a genuine hover card from us, and, on the _page branch, have its
+    // rel stripped and be opened in a named window with a live opener.
+    if (url.origin !== window.location.origin) {
+        return null;
+    }
+
     const prefix = decoratePathPrefix();
     if (!url.pathname.startsWith(prefix)) {
         return null;

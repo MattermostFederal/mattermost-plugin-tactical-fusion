@@ -126,6 +126,13 @@ var zoneIDRe = regexp.MustCompile(`^[A-Za-z0-9_+/-]+$`)
 func (p *UserPreferences) validate() error {
 	p.Version = preferencesVersion
 
+	// Trimmed and deduplicated first, then counted, then resolved.
+	//
+	// The count has to come after the dedup, because two entries that collapse
+	// were never two rows. It has to come before validZoneID, because that
+	// reaches the timezone database: doing it in one pass bought a LoadLocation
+	// for every entry of a blob that was going to be refused on its size
+	// anyway.
 	zones := make([]ZoneSelection, 0, len(p.DTG.Zones))
 	seen := make(map[ZoneSelection]bool, len(p.DTG.Zones))
 	for _, zone := range p.DTG.Zones {
@@ -137,19 +144,24 @@ func (p *UserPreferences) validate() error {
 		if zone.IANA == "" || seen[zone] {
 			continue
 		}
+		seen[zone] = true
+		zones = append(zones, zone)
+	}
+
+	if len(zones) > maxZones {
+		return errcode.Errorf(errcode.PreferencesTooManyZones,
+			"at most %d timezones may be selected", maxZones)
+	}
+
+	for _, zone := range zones {
 		if err := validZoneID(zone.IANA); err != nil {
 			return err
 		}
 		if err := validZoneName(zone.Name); err != nil {
 			return err
 		}
-		seen[zone] = true
-		zones = append(zones, zone)
 	}
-	if len(zones) > maxZones {
-		return errcode.Errorf(errcode.PreferencesTooManyZones,
-			"at most %d timezones may be selected", maxZones)
-	}
+
 	p.DTG.Zones = zones
 
 	if m := p.DTG.UrgentWithinMinutes; m != 0 && (m < minUrgentWithinMinutes || m > maxUrgentWithinMinutes) {

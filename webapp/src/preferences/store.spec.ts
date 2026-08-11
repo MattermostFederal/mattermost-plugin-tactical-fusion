@@ -201,3 +201,81 @@ test('the snapshot keeps its identity until something changes', async () => {
 
     expect(getState()).toBe(first);
 });
+
+/*
+ * A save is authoritative and a load is not.
+ *
+ * A GET still in the air when a PUT lands used to overwrite the saved blob with
+ * whatever the server held before the save. The reader watched their new table
+ * revert, with nothing reported wrong and the server holding the right data.
+ */
+test('a load still in flight does not overwrite a save that landed', async () => {
+    let releaseGet = (): void => {};
+    const getReached = new Promise<void>((resolve) => {
+        releaseGet = resolve;
+    });
+
+    globalThis.fetch = ((url: string, init: {method: string; body?: string}) => {
+        if (init.method === 'GET') {
+            return getReached.then(() => ({
+                ok: true,
+                status: 200,
+                json: () => Promise.resolve(savedBlob),
+            }));
+        }
+        return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve({dtg: {zones: [{iana: 'Europe/Berlin'}], urgent_within_minutes: 99}}),
+        });
+    }) as unknown as typeof globalThis.fetch;
+
+    // The load starts first and is still waiting.
+    const loading = loadPreferences();
+
+    await savePreferences({dtg: {zones: [{iana: 'Europe/Berlin'}], urgentWithinMinutes: 99}});
+    expect(getState().preferences.dtg.urgentWithinMinutes).toBe(99);
+
+    // Now let the older read land.
+    releaseGet();
+    await loading;
+
+    expect(getState().preferences.dtg.urgentWithinMinutes).toBe(99);
+    expect(getState().preferences.dtg.zones).toEqual([{iana: 'Europe/Berlin'}]);
+});
+
+// The same race on the failing path, which was the worse of the two: it
+// replaced the save with the defaults and left `loaded` set, so nothing ever
+// fetched again and the reader saw the built-in table for the rest of the
+// session.
+test('a load that fails after a save does not revert to the defaults', async () => {
+    let failGet = (): void => {};
+    const getReached = new Promise<void>((resolve) => {
+        failGet = resolve;
+    });
+
+    globalThis.fetch = ((url: string, init: {method: string; body?: string}) => {
+        if (init.method === 'GET') {
+            return getReached.then(() => ({
+                ok: false,
+                status: 503,
+                json: () => Promise.resolve({message: 'Not ready.'}),
+            }));
+        }
+        return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve({dtg: {zones: [{iana: 'Europe/Berlin'}], urgent_within_minutes: 99}}),
+        });
+    }) as unknown as typeof globalThis.fetch;
+
+    const loading = loadPreferences();
+
+    await savePreferences({dtg: {zones: [{iana: 'Europe/Berlin'}], urgentWithinMinutes: 99}});
+
+    failGet();
+    await loading;
+
+    expect(getState().preferences.dtg.urgentWithinMinutes).toBe(99);
+    expect(getState().error).toBeNull();
+});

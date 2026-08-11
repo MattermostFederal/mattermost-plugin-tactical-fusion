@@ -83,6 +83,27 @@ func TestProtectedSpansAreNeverRewritten(t *testing.T) {
 
 		// Attributes can carry anything.
 		{"html tag attribute", `<span title="AAA">x</span>`},
+
+		// Balanced brackets are legal in link text. The label expression used to
+		// refuse a raw "[", so a link with one was not recognised as a link at
+		// all and a token in its destination was rewritten, nesting a new link
+		// inside the reader's.
+		{"link label containing brackets", "[a [b] AAA](https://example.com)"},
+		{"token in the destination of a bracketed label", "[a [b] c](https://example.com/AAA)"},
+		{"doubly nested label", "[a [b [c]] AAA](https://example.com)"},
+		{"image with a bracketed label", "![a [b] AAA](https://example.com/x.png)"},
+
+		// Balanced parentheses are legal in a destination, and a title may
+		// contain them freely. Stopping at the first ")" left the rest open.
+		{"balanced parentheses in the destination", "[x](/a(foo)AAA)"},
+		{"parentheses in the title", `[x](/a "(note) AAA")`},
+
+		// A closing fence takes no info string, so this one is still open.
+		{"fence closer with trailing text", "```\ncode\n```js\nAAA\nstill inside\n```"},
+
+		// A closer must be at least as long as its opener.
+		{"four-backtick fence closed by three", "````\ncode\n```\nAAA"},
+		{"four-tilde fence closed by three", "~~~~\ncode\n~~~\nAAA"},
 	}
 
 	for _, tc := range cases {

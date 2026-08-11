@@ -166,3 +166,38 @@ test('leaves a sidebar link with no target', async ({mount, page}) => {
 
     await expect(page.getByTestId('decorator-link')).not.toHaveAttribute('target', /.*/);
 });
+
+/*
+ * A decorator link is always root-relative, so anything on another host is not
+ * one however closely its path matches.
+ *
+ * The href is resolved against this origin so a relative one is parseable, and
+ * an absolute cross-origin URL used to survive that. Everything the handler
+ * accepts is trusted from then on: it opens the sidebar, it collects a hover
+ * card, and on the _page branch it is opened in a named window with noopener
+ * and noreferrer taken off the rel.
+ */
+test('does not intercept a cross-origin link wearing the decorator path', async ({mount, page}) => {
+    await mount(<ClickHarness/>);
+
+    const link = page.getByTestId('cross-origin-link');
+    await link.evaluate((node) => node.setAttribute('href', '#blocked'));
+    await link.click();
+
+    await expect(page.getByTestId('selection')).toHaveText('none');
+    await expect(page.getByTestId('default-prevented')).toHaveText('false');
+});
+
+// The rel matters most here: stripping it on a link this plugin does not own
+// hands the destination a live window.opener onto the reader's Mattermost tab.
+test('leaves the rel alone on a cross-origin page link', async ({mount, page}) => {
+    await mount(<ClickHarness/>);
+
+    const link = page.getByTestId('cross-origin-page-link');
+    await link.evaluate((node) => node.setAttribute('href', '#blocked'));
+    await link.click();
+
+    await expect(page.getByTestId('selection')).toHaveText('none');
+    await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    await expect(link).not.toHaveAttribute('target', /.+/);
+});

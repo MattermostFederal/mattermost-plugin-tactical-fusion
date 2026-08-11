@@ -88,8 +88,13 @@ func (p *Plugin) decoratePost(post *model.Post, ref time.Time) (result *model.Po
 		// is visibly well under the limit can cross it here. Rejecting the post
 		// would show the author an opaque "too long" error for text they can
 		// see fits, so drop the decoration instead.
-		p.API.LogWarn("tactical-fusion: decoration would exceed the maximum post size; posting undecorated",
-			"error_code", errcode.HooksDecorationTooLong, "channel_id", post.ChannelId)
+		// Through the captured api, for the same reason the recover above uses
+		// it: this function must not be the thing that stops somebody posting,
+		// and that includes its own logging.
+		if api != nil {
+			api.LogWarn("tactical-fusion: decoration would exceed the maximum post size; posting undecorated",
+				"error_code", errcode.HooksDecorationTooLong, "channel_id", post.ChannelId)
+		}
 		return nil
 	}
 

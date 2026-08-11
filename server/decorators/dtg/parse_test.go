@@ -358,6 +358,51 @@ func TestParseISOBoundsTheOffset(t *testing.T) {
 	}
 }
 
+// What decoration accepts and what the page will render must be the same set.
+// A timestamp accepted here but rejected by validateParams gets written
+// permanently into somebody's message as a link that answers 400, and hand
+// editing the post is the only way back.
+func TestParseISOAgreesWithTheRenderableRange(t *testing.T) {
+	accepted := []string{
+		"1970-01-01T00:00:00Z",
+		"2026-08-09T16:30:00Z",
+		"2200-01-01T00:00:00Z",
+	}
+	for _, written := range accepted {
+		t.Run("accepted "+written, func(t *testing.T) {
+			parsed, ok := parseISO(written)
+			if !ok {
+				t.Fatalf("parseISO(%q) declined a renderable instant", written)
+			}
+
+			// The decisive check: the params this produces must survive the
+			// validation the public page applies to them.
+			params, ok := (&Decorator{}).Parse(written, ref)
+			if !ok {
+				t.Fatalf("Parse(%q) declined it", written)
+			}
+			if _, ok := validateParams(params); !ok {
+				t.Fatalf("validateParams rejected params built from %q (t=%d)",
+					written, parsed.Instant.UnixMilli())
+			}
+		})
+	}
+
+	declined := []string{
+		"1918-11-11T11:00:00Z", // before the epoch
+		"1969-12-31T23:59:59Z", // one second before it
+		"2201-06-01T12:00:00Z", // past the upper bound
+		"9999-12-31T23:59:59Z", // far past it
+	}
+	for _, written := range declined {
+		t.Run("declined "+written, func(t *testing.T) {
+			if _, ok := parseISO(written); ok {
+				t.Fatalf("parseISO(%q) accepted an instant the page will not render", written)
+			}
+		})
+	}
+}
+
 // Round-tripping is the property that matters: whatever parseISO read out of a
 // timestamp, FormatOffset has to write back the same way, or the canonical form
 // shown in the panel would not match the text the author typed.

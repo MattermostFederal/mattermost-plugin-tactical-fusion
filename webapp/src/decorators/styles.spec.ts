@@ -36,7 +36,18 @@ test('emits one rule per registered decorator', () => {
 test('selectors carry the full plugin path', () => {
     register(fixture('alpha', '#111111'));
 
-    expect(buildDecoratorStyles()).toContain(`a[href*="/plugins/${manifest.id}/decorate/alpha?"]`);
+    expect(buildDecoratorStyles()).toContain(`a[href^="/plugins/${manifest.id}/decorate/alpha?"]`);
+});
+
+// Matched from the start of the href, not anywhere inside it. A substring match
+// also styled an absolute URL that merely carried the path in its query string,
+// which handed an arbitrary posted link this plugin's own chip.
+test('selectors match from the start of the href', () => {
+    register(fixture('alpha', '#111111'));
+
+    const css = buildDecoratorStyles();
+    expect(css).toContain('a[href^=');
+    expect(css).not.toContain('a[href*=');
 });
 
 // The trailing "?" stops "dtg" from also matching a future "dtg2".

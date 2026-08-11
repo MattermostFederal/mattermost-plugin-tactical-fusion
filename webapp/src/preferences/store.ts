@@ -37,6 +37,19 @@ let loaded = false;
 let inflight: Promise<void> | null = null;
 const listeners = new Set<() => void>();
 
+/*
+ * Counts completed writes, so a load that started before one can tell that it
+ * did and keep its hands off the state.
+ *
+ * A save is authoritative and a load is not. Without this, a GET still in
+ * flight when a PUT lands overwrites the saved blob with what the server held
+ * before the save, and the reader watches their new table revert with nothing
+ * reported wrong. The failed-load path is worse: it replaces the save with the
+ * defaults, and savePreferences has already set `loaded`, so nothing ever
+ * fetches again.
+ */
+let writes = 0;
+
 function setState(next: PreferencesState): void {
     state = next;
     listeners.forEach((listener) => listener());
@@ -112,12 +125,23 @@ export function loadPreferences(): Promise<void> {
 
     setState({...state, loading: true, error: null});
 
+    const startedAt = writes;
+
     inflight = request('GET').
         then((preferences) => {
+            // A write finished while this was in the air, so it already knows
+            // better than the answer being carried here.
+            if (writes !== startedAt) {
+                return;
+            }
             loaded = true;
             setState({preferences, loading: false, error: null});
         }).
         catch((error: unknown) => {
+            if (writes !== startedAt) {
+                return;
+            }
+
             // loaded stays false, so the next panel to open tries again.
             setState({preferences: EMPTY_PREFERENCES, loading: false, error: messageOf(error)});
         }).
@@ -136,6 +160,7 @@ export function loadPreferences(): Promise<void> {
  */
 export async function savePreferences(next: Preferences): Promise<void> {
     const preferences = await request('PUT', next);
+    writes++;
     loaded = true;
     setState({preferences, loading: false, error: null});
 }
@@ -148,6 +173,7 @@ export async function savePreferences(next: Preferences): Promise<void> {
  */
 export async function resetPreferences(): Promise<void> {
     const preferences = await request('DELETE');
+    writes++;
     loaded = true;
     setState({preferences, loading: false, error: null});
 }
@@ -176,5 +202,6 @@ export function _resetForTesting(): void { // eslint-disable-line no-underscore-
     state = INITIAL_STATE;
     loaded = false;
     inflight = null;
+    writes = 0;
     listeners.clear();
 }

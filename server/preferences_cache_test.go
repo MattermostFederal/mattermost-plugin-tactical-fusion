@@ -51,6 +51,97 @@ func (s *countingStore) Delete(userID string) error {
 	return nil
 }
 
+// hookedStore runs a callback in the middle of a read, so a test can land a
+// write inside the window between the store answering and the cache being
+// filled.
+type hookedStore struct {
+	*countingStore
+
+	duringGet func()
+}
+
+func (s *hookedStore) Get(userID string) (UserPreferences, error) {
+	prefs, err := s.countingStore.Get(userID)
+	if s.duringGet != nil {
+		during := s.duringGet
+		s.duringGet = nil
+		during()
+	}
+	return prefs, err
+}
+
+// A save that lands while a read is in flight must not be undone by that read.
+//
+// Removing the key is not enough on its own: a key still being read is not in
+// the cache yet, so there is nothing for the write to remove, and the slower
+// read then installs the value the write had just replaced. The reader saves,
+// the editor closes on the strength of it, and every later read serves the old
+// table until the TTL runs out, which is indistinguishable from a save that
+// silently did nothing.
+func TestASaveDuringAReadIsNotOverwritten(t *testing.T) {
+	inner := newCountingStore()
+	inner.prefs[testUserID] = UserPreferences{DTG: DTGPreferences{UrgentWithinMinutes: 5}}
+
+	api := newPreferenceAPI()
+	store := newCachingPreferenceStore(&hookedStore{countingStore: inner}, api)
+
+	// The write lands after the store has answered the read below, but before
+	// that read reaches the cache.
+	hooked := store.preferenceStore.(*hookedStore)
+	hooked.duringGet = func() {
+		if err := store.Set(testUserID, UserPreferences{DTG: DTGPreferences{UrgentWithinMinutes: 99}}); err != nil {
+			t.Errorf("Set() = %v", err)
+		}
+	}
+
+	if _, err := store.Get(testUserID); err != nil {
+		t.Fatalf("Get() = %v", err)
+	}
+
+	// The next reader must see the saved value, not the one the in-flight read
+	// was carrying.
+	got, err := store.Get(testUserID)
+	if err != nil {
+		t.Fatalf("Get() = %v", err)
+	}
+	if got.DTG.UrgentWithinMinutes != 99 {
+		t.Fatalf("UrgentWithinMinutes = %d, want 99: the in-flight read overwrote the save",
+			got.DTG.UrgentWithinMinutes)
+	}
+}
+
+// The same race across nodes, which is the one the cluster event exists for.
+func TestAClusterInvalidationDuringAReadIsNotOverwritten(t *testing.T) {
+	inner := newCountingStore()
+	inner.prefs[testUserID] = UserPreferences{DTG: DTGPreferences{UrgentWithinMinutes: 5}}
+
+	api := newPreferenceAPI()
+	store := newCachingPreferenceStore(&hookedStore{countingStore: inner}, api)
+
+	hooked := store.preferenceStore.(*hookedStore)
+	hooked.duringGet = func() {
+		// Another node saved and told us to drop our copy. We have none yet.
+		inner.prefs[testUserID] = UserPreferences{DTG: DTGPreferences{UrgentWithinMinutes: 99}}
+		store.HandleClusterEvent(model.PluginClusterEvent{
+			Id:   clusterEventInvalidatePreferences,
+			Data: []byte(testUserID),
+		})
+	}
+
+	if _, err := store.Get(testUserID); err != nil {
+		t.Fatalf("Get() = %v", err)
+	}
+
+	got, err := store.Get(testUserID)
+	if err != nil {
+		t.Fatalf("Get() = %v", err)
+	}
+	if got.DTG.UrgentWithinMinutes != 99 {
+		t.Fatalf("UrgentWithinMinutes = %d, want 99: the in-flight read outlived the invalidation",
+			got.DTG.UrgentWithinMinutes)
+	}
+}
+
 func TestCacheServesTheSecondRead(t *testing.T) {
 	inner := newCountingStore()
 	inner.prefs[testUserID] = UserPreferences{DTG: DTGPreferences{Zones: []ZoneSelection{{IANA: "UTC"}}}}

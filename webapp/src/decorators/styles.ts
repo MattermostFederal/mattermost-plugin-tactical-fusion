@@ -13,12 +13,19 @@ function cssEscape(value: string): string {
  * Selectors key on the full plugin path rather than the bare `/decorate/<type>`
  * suffix, so an unrelated link elsewhere in the page cannot match. The prefix
  * comes from the same helper the click handler uses, so the two cannot drift.
+ *
+ * Matched from the start of the href, not anywhere inside it. The server only
+ * ever writes root-relative destinations, so every real decorator link begins
+ * with this prefix, while a substring match also styled anybody's absolute URL
+ * that merely carried the path in its query string. That handed an arbitrary
+ * posted link the plugin's own chip, which is a claim this stylesheet has no
+ * business making about a destination it does not own.
  */
 export function buildDecoratorStyles(): string {
     const prefix = decoratePathPrefix();
 
     const rules = all().map((decorator) => {
-        const selector = `a[href*="${cssEscape(prefix + decorator.type)}?"]`;
+        const selector = `a[href^="${cssEscape(prefix + decorator.type)}?"]`;
         return [
             `${selector} {`,
             '    text-decoration: none;',

@@ -97,21 +97,46 @@ test.describe('an empty list', () => {
 });
 
 test.describe('the keyboard edges', () => {
-    // ArrowDown reopens a closed list; ArrowUp deliberately does not, so a
-    // reader stepping back up out of the list does not reopen it.
-    test('ArrowUp does not reopen a closed list', async ({mount, page}) => {
+    // Either arrow reopens a closed list, which is what the ARIA combobox
+    // pattern asks for. ArrowUp used to do nothing at all, so a reader who hit
+    // Escape by reflex had no way back to the list from the keyboard.
+    test('either arrow reopens a closed list', async ({mount, page}) => {
         await mount(<ZonePickerHarness/>);
 
         const input = page.getByRole('combobox', {name: 'Search timezones'});
+
         await openList(page);
         await input.press('Escape');
         await expect(page.getByRole('listbox')).toHaveCount(0);
 
         await input.press('ArrowUp');
+        await expect(page.getByRole('listbox')).toBeVisible();
+
+        await input.press('Escape');
         await expect(page.getByRole('listbox')).toHaveCount(0);
 
         await input.press('ArrowDown');
         await expect(page.getByRole('listbox')).toBeVisible();
+    });
+
+    // Reopening is not also a move. Advancing as well skipped the option the
+    // reader was being shown for the first time, and made the first option
+    // unreachable by ArrowDown entirely.
+    test('reopening does not skip an option', async ({mount, page}) => {
+        await mount(<ZonePickerHarness/>);
+
+        const input = page.getByRole('combobox', {name: 'Search timezones'});
+
+        await openList(page);
+        const firstOption = page.getByRole('option').first();
+        const firstId = await firstOption.getAttribute('id');
+
+        await input.press('Escape');
+        await input.press('ArrowDown');
+
+        // Still on the option it was on, not the one after it.
+        await expect(input).toHaveAttribute('aria-activedescendant', firstId ?? '');
+        await expect(firstOption).toHaveAttribute('data-active', 'true');
     });
 
     // Enter is only swallowed when there is something to pick with it.
@@ -228,9 +253,10 @@ test.describe('the query', () => {
         await expect(page.getByText('Nothing matches that.')).toHaveCount(0);
     });
 
-    // Filtering the list empty leaves nothing to render, so aria-expanded is
-    // true with no listbox to point at. Pinned as it behaves.
-    test('a filter that empties the list closes it', async ({mount, page}) => {
+    // Filtering the list empty unmounts it, so the combobox has to stop
+    // claiming to be expanded: aria-expanded pointing at a listbox that is not
+    // in the document leaves a screen reader hunting for it.
+    test('a filter that empties the list is not announced as expanded', async ({mount, page}) => {
         await mount(<ZonePickerHarness/>);
 
         const input = page.getByRole('combobox', {name: 'Search timezones'});
@@ -238,7 +264,21 @@ test.describe('the query', () => {
 
         await expect(page.getByRole('listbox')).toHaveCount(0);
         await expect(page.getByText('Nothing matches that.')).toBeVisible();
-        await expect(input).toHaveAttribute('aria-expanded', 'true');
+        await expect(input).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    // The count is the only feedback filtering gives somebody who cannot see
+    // the list shrink.
+    test('the result count is announced', async ({mount, page}) => {
+        await mount(<ZonePickerHarness/>);
+
+        const input = page.getByRole('combobox', {name: 'Search timezones'});
+
+        await input.fill('nowhere at all');
+        await expect(page.getByRole('status')).toHaveText('Nothing matches that.');
+
+        await input.fill('berlin');
+        await expect(page.getByRole('status')).toContainText('matching.');
     });
 });
 

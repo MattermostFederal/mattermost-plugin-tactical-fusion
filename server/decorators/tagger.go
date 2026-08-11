@@ -18,12 +18,47 @@ import (
 // instead, because Go's regexp is RE2: it has no backreferences, so "a closing
 // fence matching the opener" cannot be expressed here, and an unterminated
 // fence cannot be bounded by a pattern that requires a closing one.
+// nestDepth is how many levels of balanced delimiters the link expressions
+// below match.
+//
+// Go's regexp is RE2, which has no recursion, so "balanced to any depth" cannot
+// be written as a pattern. It is spelled out to a fixed depth instead. Four
+// covers anything a person writes by hand; the cost of another level is a
+// longer expression and nothing else, since RE2 matches in linear time
+// regardless.
+//
+// The failure mode past the limit is a rewrite, not a missed one, so this is a
+// bound on how much protection there is rather than a tuning knob. Raise it
+// before narrowing it.
+const nestDepth = 4
+
+// balancedExpr builds an expression matching open/close delimited spans nested
+// to the given depth. inner is the character class for ordinary content.
+func balancedExpr(open, close, inner string, depth int) string {
+	expr := open + `(?:` + inner + `)*` + close
+	for i := 1; i < depth; i++ {
+		expr = open + `(?:` + inner + `|` + expr + `)*` + close
+	}
+	return expr
+}
+
+// linkLabelExpr is the text between a link's brackets, and linkDestExpr is the
+// parenthesised destination behind it.
+//
+// Both allow balanced delimiters, because CommonMark does: "[link [foo [bar]]]
+// (/uri)" is a link verbatim from the spec, and "[x](/a(b)c)" and
+// `[x](/a "(note)")` are links too. Refusing a raw "[" in the label, or ending
+// the destination at the first ")", meant the construct was not recognised as a
+// link at all and the text behind it was left open to rewriting.
+var (
+	linkLabelExpr = balancedExpr(`\[`, `\]`, `[^\[\]\\]|\\.`, nestDepth)
+	linkDestExpr  = balancedExpr(`\(`, `\)`, `[^()\n\\]|\\.`, nestDepth)
+)
+
 var inlineProtectedRes = []*regexp.Regexp{
-	// Inline and reference links, and images. The label class excludes a raw
-	// "[" so a match starts at the nearest opening bracket rather than the
-	// earliest one, which is what CommonMark does.
-	regexp.MustCompile(`!?\[(?:[^\[\]\\]|\\.)*\]\([^)\n]*\)`),
-	regexp.MustCompile(`!?\[(?:[^\[\]\\]|\\.)*\]\[[^\]\n]*\]`),
+	// Inline and reference links, and images.
+	regexp.MustCompile(`!?` + linkLabelExpr + linkDestExpr),
+	regexp.MustCompile(`!?` + linkLabelExpr + `\[[^\]\n]*\]`),
 
 	// Link reference definitions, e.g. "[plan]: https://example.com".
 	regexp.MustCompile(`(?m)^ {0,3}\[[^\]\n]*\]:[^\n]*`),
@@ -32,7 +67,7 @@ var inlineProtectedRes = []*regexp.Regexp{
 	// and there is no way to know from the text alone whether a definition for
 	// it exists elsewhere. Protecting the span costs only the decoration of a
 	// token that was inside brackets.
-	regexp.MustCompile(`\[[^\]\n]*\]`),
+	regexp.MustCompile(linkLabelExpr),
 
 	// Angle autolinks and inline HTML, whose attributes can carry anything.
 	regexp.MustCompile(`<[a-zA-Z][a-zA-Z0-9+.\-]*:[^<>\s]*>`),
@@ -154,7 +189,7 @@ func findProtectedRanges(message string) []byteRange {
 func blockRanges(message string) []byteRange {
 	var ranges []byteRange
 
-	fenceStart, fenceMarker := -1, ""
+	fenceStart, fenceChar, fenceWidth := -1, byte(0), 0
 
 	for offset := 0; offset < len(message); {
 		end := strings.IndexByte(message[offset:], '\n')
@@ -169,17 +204,16 @@ func blockRanges(message string) []byteRange {
 
 		switch {
 		case fenceStart >= 0:
-			// Only a marker of the same kind closes the block.
-			if indent <= 3 && strings.HasPrefix(trimmed, fenceMarker) {
+			if indent <= 3 && closesFence(trimmed, fenceChar, fenceWidth) {
 				ranges = append(ranges, byteRange{fenceStart, lineEnd})
-				fenceStart, fenceMarker = -1, ""
+				fenceStart, fenceChar, fenceWidth = -1, 0, 0
 			}
 
-		case indent <= 3 && strings.HasPrefix(trimmed, "```"):
-			fenceStart, fenceMarker = offset, "```"
+		case indent <= 3 && fenceWidthOf(trimmed, '`') >= 3:
+			fenceStart, fenceChar, fenceWidth = offset, '`', fenceWidthOf(trimmed, '`')
 
-		case indent <= 3 && strings.HasPrefix(trimmed, "~~~"):
-			fenceStart, fenceMarker = offset, "~~~"
+		case indent <= 3 && fenceWidthOf(trimmed, '~') >= 3:
+			fenceStart, fenceChar, fenceWidth = offset, '~', fenceWidthOf(trimmed, '~')
 
 		case isIndentedCode(line):
 			ranges = append(ranges, byteRange{offset, lineEnd})
@@ -197,6 +231,31 @@ func blockRanges(message string) []byteRange {
 	}
 
 	return ranges
+}
+
+// fenceWidthOf returns the length of the run of marker characters a line opens
+// with, or 0 if it does not start with one.
+func fenceWidthOf(trimmed string, marker byte) int {
+	width := 0
+	for width < len(trimmed) && trimmed[width] == marker {
+		width++
+	}
+	return width
+}
+
+// closesFence reports whether a line ends a fenced block opened with the given
+// marker and width.
+//
+// Two rules, and getting either wrong means rewriting text the reader sees as
+// code. The run must be at least as long as the opener, so "```" does not close
+// "````". And nothing may follow it but spaces: an info string is allowed on an
+// opening fence only, so "```js" continues the block rather than ending it.
+func closesFence(trimmed string, marker byte, width int) bool {
+	run := fenceWidthOf(trimmed, marker)
+	if run < width {
+		return false
+	}
+	return strings.TrimLeft(trimmed[run:], " ") == ""
 }
 
 // isIndentedCode reports whether a line is indented far enough to render as a

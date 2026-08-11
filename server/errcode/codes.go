@@ -38,6 +38,10 @@ const (
 	// registered, so the plugin has no registry and refuses to start.
 	PluginRegistryFailed = 10000
 
+	// PluginCommandRegistrationFailed is an activation failure: the slash
+	// command could not be registered, so the plugin refuses to start.
+	PluginCommandRegistrationFailed = 10001
+
 	// server/hooks.go (11000-11999)
 
 	// HooksDecoratePanic is a warn recording that a decorator panicked while
@@ -166,6 +170,7 @@ const (
 // index.
 var AllCodes = []int{
 	PluginRegistryFailed,
+	PluginCommandRegistrationFailed,
 
 	HooksDecoratePanic,
 	HooksDecorationTooLong,
