@@ -126,13 +126,10 @@ var zoneIDRe = regexp.MustCompile(`^[A-Za-z0-9_+/-]+$`)
 func (p *UserPreferences) validate() error {
 	p.Version = preferencesVersion
 
-	// Trimmed and deduplicated first, then counted, then resolved.
+	// Trimmed and deduplicated first, then checked in two passes.
 	//
 	// The count has to come after the dedup, because two entries that collapse
-	// were never two rows. It has to come before validZoneID, because that
-	// reaches the timezone database: doing it in one pass bought a LoadLocation
-	// for every entry of a blob that was going to be refused on its size
-	// anyway.
+	// were never two rows.
 	zones := make([]ZoneSelection, 0, len(p.DTG.Zones))
 	seen := make(map[ZoneSelection]bool, len(p.DTG.Zones))
 	for _, zone := range p.DTG.Zones {
@@ -148,6 +145,22 @@ func (p *UserPreferences) validate() error {
 		zones = append(zones, zone)
 	}
 
+	// Shape before size, and both before the timezone database.
+	//
+	// A malformed identifier is reported ahead of the count because it names
+	// the thing the reader got wrong, where "too many" only says to remove
+	// something. Neither check resolves a zone, so a blob that fails either
+	// costs no lookups at all: that is the whole reason validZoneID is split
+	// from the LoadLocation behind it.
+	for _, zone := range zones {
+		if err := validZoneShape(zone.IANA); err != nil {
+			return err
+		}
+		if err := validZoneName(zone.Name); err != nil {
+			return err
+		}
+	}
+
 	if len(zones) > maxZones {
 		return errcode.Errorf(errcode.PreferencesTooManyZones,
 			"at most %d timezones may be selected", maxZones)
@@ -155,9 +168,6 @@ func (p *UserPreferences) validate() error {
 
 	for _, zone := range zones {
 		if err := validZoneID(zone.IANA); err != nil {
-			return err
-		}
-		if err := validZoneName(zone.Name); err != nil {
 			return err
 		}
 	}
@@ -196,8 +206,12 @@ func validZoneName(name string) error {
 	return nil
 }
 
-// validZoneID reports whether a string names a timezone this server can resolve.
-func validZoneID(zone string) error {
+// validZoneShape reports whether a string is shaped like a timezone identifier.
+//
+// Split from the lookup below so validate can reject an obviously wrong blob
+// without resolving anything: a request carrying dozens of entries would
+// otherwise buy a tzdata lookup each before being refused on its size.
+func validZoneShape(zone string) error {
 	if len(zone) > maxZoneIDLength || !zoneIDRe.MatchString(zone) {
 		return errcode.Errorf(errcode.PreferencesZoneIDMalformed,
 			"%q is not a timezone identifier", zone)
@@ -209,6 +223,15 @@ func validZoneID(zone string) error {
 	if zone == "Local" {
 		return errcode.Errorf(errcode.PreferencesZoneIDLocal,
 			`"Local" is not a timezone identifier`)
+	}
+
+	return nil
+}
+
+// validZoneID reports whether a string names a timezone this server can resolve.
+func validZoneID(zone string) error {
+	if err := validZoneShape(zone); err != nil {
+		return err
 	}
 
 	// The tzdata this resolves against is embedded by the blank import in

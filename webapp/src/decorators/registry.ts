@@ -84,8 +84,13 @@ export const THEME_PARAM = '_theme';
  * The server builds the stored URLs from SiteURL's path component, which is the
  * same value `pluginBaseUrl` reads from `window.basename`.
  *
- * Both the click handler and the stylesheet key off this single helper, so the
- * selector they use can never drift apart.
+ * Both the click handler and the stylesheet build from this single helper, so
+ * the path they look for cannot drift apart. What they accept around it does
+ * differ: the stylesheet matches from the start of the href, while
+ * parseDecoratorHref accepts any same-origin form of the same path. A reader
+ * who pastes the standalone page's absolute address into a channel therefore
+ * gets the sidebar and the hover but no chip. The server only ever writes the
+ * root-relative form, so this only shows up on a hand-written link.
  */
 export function decoratePathPrefix(): string {
     return `${pluginBaseUrl()}/decorate/`;

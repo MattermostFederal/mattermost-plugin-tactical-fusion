@@ -181,7 +181,6 @@ test('does not intercept a cross-origin link wearing the decorator path', async 
     await mount(<ClickHarness/>);
 
     const link = page.getByTestId('cross-origin-link');
-    await link.evaluate((node) => node.setAttribute('href', '#blocked'));
     await link.click();
 
     await expect(page.getByTestId('selection')).toHaveText('none');
@@ -194,7 +193,6 @@ test('leaves the rel alone on a cross-origin page link', async ({mount, page}) =
     await mount(<ClickHarness/>);
 
     const link = page.getByTestId('cross-origin-page-link');
-    await link.evaluate((node) => node.setAttribute('href', '#blocked'));
     await link.click();
 
     await expect(page.getByTestId('selection')).toHaveText('none');

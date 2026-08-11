@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"reflect"
+	"sync"
 	"testing"
 
 	"github.com/mattermost/mattermost/server/public/model"
@@ -139,6 +140,117 @@ func TestAClusterInvalidationDuringAReadIsNotOverwritten(t *testing.T) {
 	if got.DTG.UrgentWithinMinutes != 99 {
 		t.Fatalf("UrgentWithinMinutes = %d, want 99: the in-flight read outlived the invalidation",
 			got.DTG.UrgentWithinMinutes)
+	}
+}
+
+// lockedStore is a minimal thread-safe store, for the concurrent test below.
+// countingStore is not safe to share between goroutines.
+type lockedStore struct {
+	mu    sync.Mutex
+	prefs UserPreferences
+}
+
+func (s *lockedStore) Get(string) (UserPreferences, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.prefs.clone(), nil
+}
+
+func (s *lockedStore) Set(_ string, prefs UserPreferences) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.prefs = prefs.clone()
+
+	return nil
+}
+
+func (s *lockedStore) Delete(string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.prefs = UserPreferences{}
+
+	return nil
+}
+
+// fillIfCurrent is the whole of the guarantee, so it is tested directly.
+//
+// The hook-based tests above reach the window between the store answering and
+// the check. They cannot reach the one between the check and the fill, and no
+// timing-based test reliably can: that window is a map write, and reproducing
+// it took hundreds of thousands of attempts. It is closed structurally, by
+// holding the lock across both, and pinned here by contract instead.
+func TestFillIfCurrentDeclinesAStaleGeneration(t *testing.T) {
+	store := newCachingPreferenceStore(newCountingStore(), newPreferenceAPI())
+
+	started := store.currentGeneration()
+	store.bumpGeneration()
+
+	store.fillIfCurrent(testUserID, started, UserPreferences{DTG: DTGPreferences{UrgentWithinMinutes: 5}})
+
+	if _, ok := store.cache.Get(testUserID); ok {
+		t.Fatal("fillIfCurrent cached a value read before an invalidation")
+	}
+
+	// And still fills when nothing moved, or the cache would never work.
+	current := store.currentGeneration()
+	store.fillIfCurrent(testUserID, current, UserPreferences{DTG: DTGPreferences{UrgentWithinMinutes: 5}})
+
+	if _, ok := store.cache.Get(testUserID); !ok {
+		t.Fatal("fillIfCurrent declined a value read after the last invalidation")
+	}
+}
+
+// A concurrency smoke test, run under -race by `make test`.
+//
+// It does NOT reliably reproduce the check-to-fill window; it exercises the
+// concurrent path for the race detector and asserts the invariant on every
+// round it does happen to interleave.
+func TestNoStaleFillUnderConcurrency(t *testing.T) {
+	const rounds = 2000
+
+	// A large selection widens the clone, and with it the window between the
+	// check and the fill.
+	zones := make([]ZoneSelection, 0, maxZones)
+	for j := range maxZones {
+		zones = append(zones, ZoneSelection{IANA: "UTC", Name: string(rune('a' + (j % 26)))})
+	}
+
+	for i := range rounds {
+		inner := &lockedStore{prefs: UserPreferences{DTG: DTGPreferences{
+			UrgentWithinMinutes: 5,
+			Zones:               zones,
+		}}}
+
+		store := newCachingPreferenceStore(inner, newPreferenceAPI())
+
+		start := make(chan struct{})
+		var wg sync.WaitGroup
+		wg.Add(2)
+
+		go func() {
+			defer wg.Done()
+			<-start
+			_, _ = store.Get(testUserID)
+		}()
+		go func() {
+			defer wg.Done()
+			<-start
+			_ = store.Set(testUserID, UserPreferences{DTG: DTGPreferences{UrgentWithinMinutes: 99}})
+		}()
+
+		close(start)
+		wg.Wait()
+
+		// Set finished, so its Remove has run. Anything cached now was put
+		// there by the read, and the read carried the pre-save value.
+		if cached, ok := store.cache.Get(testUserID); ok && cached.DTG.UrgentWithinMinutes != 99 {
+			t.Fatalf("round %d: the read installed the pre-save value after the invalidation "+
+				"(UrgentWithinMinutes = %d, want 99 or nothing cached)",
+				i, cached.DTG.UrgentWithinMinutes)
+		}
 	}
 }
 

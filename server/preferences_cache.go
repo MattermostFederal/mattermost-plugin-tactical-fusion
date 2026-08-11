@@ -47,6 +47,21 @@ type cachingPreferenceStore struct {
 	// not enough on its own: a key still being read is not yet in the cache to
 	// remove, so the write invalidates nothing and the slower read then
 	// installs the value the write had just replaced.
+	//
+	// The lock covers the fill as well as the counter, because checking and
+	// filling separately leaves the same race in miniature: a read can pass the
+	// check, a write can bump and find nothing to remove, and the read can then
+	// install its value into the gap. That window is microseconds rather than a
+	// KV round trip, which makes it rare enough to look correct under a test
+	// and still reachable in production.
+	//
+	// One counter for every reader, not one per key. A write for somebody else
+	// therefore makes this read decline to cache, which costs a KV read and
+	// nothing else. The alternative is a per-key map with its own lifecycle,
+	// and at any plausible rate of preference saves the coupling is not worth
+	// it: the drop rate is the chance a write lands inside one KV read. It is
+	// worth knowing that a degraded KV inverts that, since the window is the
+	// read itself, so the cache stops filling exactly when it would help most.
 	generationLock sync.Mutex
 	generation     uint64
 }
@@ -70,11 +85,31 @@ func (c *cachingPreferenceStore) currentGeneration() uint64 {
 }
 
 // bumpGeneration marks every read now in flight as stale.
+//
+// Called before the key is removed, never after. A reader that gets past the
+// check has to find a Remove still ahead of it; bumping second would let one
+// slip in behind the Remove with nothing left to undo it.
 func (c *cachingPreferenceStore) bumpGeneration() {
 	c.generationLock.Lock()
 	defer c.generationLock.Unlock()
 
 	c.generation++
+}
+
+// fillIfCurrent caches a value only if no invalidation has happened since the
+// read that produced it began.
+//
+// The check and the write are one critical section on purpose. Splitting them
+// is what the counter exists to prevent, only smaller.
+func (c *cachingPreferenceStore) fillIfCurrent(userID string, startedAt uint64, prefs UserPreferences) {
+	c.generationLock.Lock()
+	defer c.generationLock.Unlock()
+
+	if c.generation != startedAt {
+		return
+	}
+
+	c.cache.Add(userID, prefs)
 }
 
 // Get serves from the cache when it can, and caches what it reads otherwise.
@@ -96,12 +131,11 @@ func (c *cachingPreferenceStore) Get(userID string) (UserPreferences, error) {
 		return UserPreferences{}, err
 	}
 
-	// Somebody wrote while this read was in flight, so what it holds is already
-	// out of date. Return it, because it is what the store said when asked, but
-	// do not install it: the next reader has to go and look again.
-	if c.currentGeneration() == started {
-		c.cache.Add(userID, prefs.clone())
-	}
+	// Somebody writing while this read was in flight means what it holds is
+	// already out of date. It is still returned, because it is what the store
+	// said when asked, but it is not installed: the next reader has to go and
+	// look again. Cloned outside the lock to keep the section to a map write.
+	c.fillIfCurrent(userID, started, prefs.clone())
 
 	return prefs, nil
 }

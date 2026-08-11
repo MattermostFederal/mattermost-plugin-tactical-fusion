@@ -104,6 +104,27 @@ func TestProtectedSpansAreNeverRewritten(t *testing.T) {
 		// A closer must be at least as long as its opener.
 		{"four-backtick fence closed by three", "````\ncode\n```\nAAA"},
 		{"four-tilde fence closed by three", "~~~~\ncode\n~~~\nAAA"},
+
+		// Balanced matching recognises nothing at all when the delimiters do
+		// not balance, so an unpaired "(" inside a title lost the link its
+		// protection entirely. The simple destination form is kept as a
+		// fallback for exactly this.
+		{"unbalanced parenthesis in the title", `[x](/u "a (b AAA")`},
+		{"unbalanced parenthesis in the destination", `[x](/u(a AAA)`},
+
+		// A real link label may wrap. Bounding it to one line would leave the
+		// destination behind it open, which is corruption rather than a missed
+		// decoration, so this one deliberately does cross a newline.
+		{"link label wrapped over two lines", "[see\nbelow AAA](https://example.com)"},
+		{"token in the destination of a wrapped label", "[see\nbelow](https://example.com/AAA)"},
+
+		// A backslash before the closing bracket is an escape to the balanced
+		// expression, so the span never terminates and it matches nothing. The
+		// simple form never looked for escapes and still covers it.
+		{"bracketed span ending in a backslash", `[backup AAA in C:\logs\] done`},
+
+		// The interior of a CRLF fence is still protected.
+		{"inside a crlf fence", "```\r\nAAA\r\n```\r\n"},
 	}
 
 	for _, tc := range cases {
@@ -144,6 +165,34 @@ func TestTokensOutsideProtectedSpansAreDecorated(t *testing.T) {
 			"after a fenced block",
 			"```\ncode\n```\nlaunch AAA",
 			"```\ncode\n```\nlaunch [AAA](" + testPrefix + "/tok?v=AAA)",
+		},
+		{
+			// A closer may be followed by whitespace, tabs included. Reading
+			// one as content left the block open over the rest of the message.
+			"after a fenced block closed with a tab",
+			"```\ncode\n```\t\nlaunch AAA",
+			"```\ncode\n```\t\nlaunch [AAA](" + testPrefix + "/tok?v=AAA)",
+		},
+		{
+			// A client sending CRLF leaves a carriage return on every line,
+			// including the closer, so every message from one lost decoration
+			// after its first code block.
+			"after a fenced block with crlf line endings",
+			"```\r\ncode\r\n```\r\nlaunch AAA",
+			"```\r\ncode\r\n```\r\nlaunch [AAA](" + testPrefix + "/tok?v=AAA)",
+		},
+		{
+			// A standalone bracket is bounded to its line. Letting it span the
+			// message meant one stray "[" reached forward to any later "]" and
+			// silently suppressed decoration for everything in between.
+			"inside a bracket span opened on an earlier line",
+			"status [see below\n\nlaunch AAA] confirmed",
+			"status [see below\n\nlaunch [AAA](" + testPrefix + "/tok?v=AAA)] confirmed",
+		},
+		{
+			"inside a bracket span opened on the previous line",
+			"status [see below\nlaunch AAA] confirmed",
+			"status [see below\nlaunch [AAA](" + testPrefix + "/tok?v=AAA)] confirmed",
 		},
 		{
 			"in a block quote",

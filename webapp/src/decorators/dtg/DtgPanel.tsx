@@ -86,8 +86,9 @@ const styles: Record<string, React.CSSProperties> = {
  *
  * Null when the browser cannot format the zone, which a saved blob can outlive
  * its browser to produce: the server validates against Go's embedded tzdata and
- * the two catalogues disagree, so `Factory` and `posixrules` are storable here
- * and throw in `Intl`.
+ * the two catalogues disagree, so `posixrules` is storable here and throws in
+ * Chromium's `Intl`. Which identifiers those are is engine and version
+ * specific, so the guard is on the call rather than on a list of names.
  */
 function zoneDateKey(instant: Date, iana: string): number | null {
     let parts: Intl.DateTimeFormatPart[];
@@ -160,9 +161,11 @@ const DtgPanel: React.FC<{payload: Dtg}> = ({payload}) => {
     // component mounted across a change of selection, so nothing else resets
     // it.
     //
-    // Before paint, not after: a passive effect would commit one frame of the
-    // editor carrying the new selection, and that frame recomputes the picker's
-    // few hundred offset measurements for a view discarded immediately after.
+    // Before paint, not after, so the editor is never flashed on screen
+    // carrying a DTG the reader did not open it from. This does not save the
+    // picker's few hundred offset measurements: children's render bodies run
+    // before any effect, layout or passive, so that frame is computed either
+    // way. Avoiding the work needs the decision made during render, not here.
     const instantMs = payload.instant.getTime();
     useLayoutEffect(() => {
         setEditing(false);

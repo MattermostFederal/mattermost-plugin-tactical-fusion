@@ -496,3 +496,52 @@ test('the footer does not follow the reader into the editor', async ({mount, pag
 
     await expect(page.getByRole('link', {name: 'Documentation'})).toHaveCount(0);
 });
+
+/*
+ * Nothing may fail the panel.
+ *
+ * The server validates a zone against Go's embedded tzdata and the browser
+ * formats it with Intl, and the two catalogues do not agree. A zone that is
+ * storable and unformattable therefore reaches this table, and an unguarded
+ * Intl call took the whole sidebar down with it, including the Customize link
+ * that is the only way for the reader to remove the offending row.
+ */
+test('a zone this browser cannot format degrades to a visible gap', async ({mount, page}) => {
+    await stubPreferencesRoute(page, {
+        stored: {
+            zones: [{iana: 'posixrules', name: 'Broken Base'}, {iana: 'UTC', name: 'Zulu'}],
+            urgentWithinMinutes: 0,
+        },
+    });
+
+    await mount(<DtgPanel payload={zulu}/>);
+
+    // The row is still there, named, rather than dropped or fatal.
+    const broken = page.locator('tbody tr').filter({hasText: 'Broken Base'});
+    await expect(broken).toHaveCount(1);
+    await expect(broken.getByText('n/a')).toHaveCount(2);
+
+    // And the rest of the panel survived, which is the actual point.
+    await expect(page.getByText('091630ZAUG26')).toBeVisible();
+    await expect(page.getByRole('button', {name: /customize/i})).toBeVisible();
+});
+
+// Identity is the (zone, name) pair, so two bases sharing a zone are two rows.
+// Keying them on the zone alone gave React duplicate keys.
+test('two bases sharing a zone render as two rows', async ({mount, page}) => {
+    await stubPreferencesRoute(page, {
+        stored: {
+            zones: [
+                {iana: 'Europe/Berlin', name: 'Ramstein'},
+                {iana: 'Europe/Berlin', name: 'USAG Stuttgart'},
+            ],
+            urgentWithinMinutes: 0,
+        },
+    });
+
+    await mount(<DtgPanel payload={zulu}/>);
+
+    await expect(page.locator('tbody tr').filter({hasText: 'Ramstein'})).toHaveCount(1);
+    await expect(page.locator('tbody tr').filter({hasText: 'USAG Stuttgart'})).toHaveCount(1);
+    await expect(page.locator('tbody tr')).toHaveCount(2);
+});

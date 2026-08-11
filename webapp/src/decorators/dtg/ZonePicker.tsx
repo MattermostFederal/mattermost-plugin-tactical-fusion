@@ -124,6 +124,11 @@ interface Props {
  * below, but the input keeps focus and one arrow key brings the rest back, with
  * whatever was just added gone from it.
  */
+/** What the live region says about a filtered list. */
+function countLabel(count: number): string {
+    return count === 0 ? 'Nothing matches that.' : `${count} matching.`;
+}
+
 const ZonePicker: React.FC<Props> = ({groups, disabled, onPick}) => {
     const [query, setQuery] = useState('');
     const [open, setOpen] = useState(false);
@@ -152,6 +157,15 @@ const ZonePicker: React.FC<Props> = ({groups, disabled, onPick}) => {
         setActive(0);
     }, [query]);
 
+    // The list can also shrink with the query unchanged: the preferences load
+    // landing replaces the whole selection, and everything already chosen drops
+    // out of the offering at once. Nothing else pulls the position back in
+    // range, and an out-of-range one shows no highlight, tells a screen reader
+    // nothing, and makes Enter pick nothing at all.
+    useEffect(() => {
+        setActive((current) => Math.min(Math.max(current, 0), Math.max(flat.length - 1, 0)));
+    }, [flat]);
+
     // Whatever is active has to be on screen, or the arrow keys appear to do
     // nothing once the list is longer than its box.
     useEffect(() => {
@@ -175,11 +189,15 @@ const ZonePicker: React.FC<Props> = ({groups, disabled, onPick}) => {
 
     const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
         switch (event.key) {
-        // Both arrows reopen a closed list without moving, which is what the
-        // ARIA combobox pattern asks for. Moving as well would skip the option
-        // the reader is being shown for the first time, and it would undo the
-        // position pick() deliberately holds: after adding a zone, the one that
-        // slid into its place is the likely next choice, not the one after it.
+        // Both arrows reopen a closed list without moving.
+        //
+        // A deliberate departure from the APG, which assigns open-without-
+        // moving to Alt+ArrowDown and has the plain arrows move as they open.
+        // Moving here would skip the option being shown for the first time, and
+        // would undo the position pick() holds on purpose: after adding a zone,
+        // the one that slid into its place is the likely next choice, not the
+        // one after it. Retaining `active` means there is still a visible
+        // highlight on reopen, which is what the APG's rule is protecting.
         case 'ArrowDown':
             event.preventDefault();
             if (!open) {
@@ -293,6 +311,14 @@ const ZonePicker: React.FC<Props> = ({groups, disabled, onPick}) => {
               * Announced, not just shown. Filtering is the one thing here with
               * no other feedback for somebody who cannot see the list shrink,
               * and "nothing matches" is exactly when they most need telling.
+              *
+              * Known limitation: this mounts with its first content rather than
+              * ahead of it, and a live region inserted together with its text
+              * is often not announced, so the very first count after the reader
+              * starts typing may be silent. Mounting it always would fix that,
+              * and would put a second role="status" beside the editor's own
+              * save status, which is a worse ambiguity than the one it solves.
+              * Giving the two distinct accessible names is the way out.
               */}
             {query !== '' && (
                 <p
@@ -300,7 +326,7 @@ const ZonePicker: React.FC<Props> = ({groups, disabled, onPick}) => {
                     aria-live='polite'
                     style={{fontSize: '12px', opacity: 0.6, margin: '6px 0 0'}}
                 >
-                    {flat.length === 0 ? 'Nothing matches that.' : `${flat.length} matching.`}
+                    {countLabel(flat.length)}
                 </p>
             )}
         </div>

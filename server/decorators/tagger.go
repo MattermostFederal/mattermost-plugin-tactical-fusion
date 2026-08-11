@@ -30,6 +30,12 @@ import (
 // The failure mode past the limit is a rewrite, not a missed one, so this is a
 // bound on how much protection there is rather than a tuning knob. Raise it
 // before narrowing it.
+//
+// The simple forms below soften the limit but do not remove it: they cover a
+// token sitting *inside* the nesting, and not one sitting after it but still
+// within the construct, as in "[a [b [c [d [e]]]] TOKEN](/uri)". Removing the
+// limit outright needs a hand-written scanner counting delimiters, the way the
+// fences below are scanned, which is the honest fix if this ever bites.
 const nestDepth = 4
 
 // balancedExpr builds an expression matching open/close delimited spans nested
@@ -50,15 +56,47 @@ func balancedExpr(open, close, inner string, depth int) string {
 // `[x](/a "(note)")` are links too. Refusing a raw "[" in the label, or ending
 // the destination at the first ")", meant the construct was not recognised as a
 // link at all and the text behind it was left open to rewriting.
+//
+// linkLabelExpr crosses newlines and bracketSpanExpr does not, which is the
+// same split the simple forms had before nesting was added to them.
+//
+// A real label may wrap, so a link whose text runs over two lines still has to
+// be recognised: failing to would leave its destination open to rewriting,
+// which is corruption. A *standalone* bracket has no such claim on the reader's
+// intent, and letting one span the message means a single stray "[" silently
+// suppresses decoration for everything after it, which is why the catch-all
+// below is bounded to its line.
 var (
-	linkLabelExpr = balancedExpr(`\[`, `\]`, `[^\[\]\\]|\\.`, nestDepth)
-	linkDestExpr  = balancedExpr(`\(`, `\)`, `[^()\n\\]|\\.`, nestDepth)
+	linkLabelExpr   = balancedExpr(`\[`, `\]`, `[^\[\]\\]|\\.`, nestDepth)
+	linkDestExpr    = balancedExpr(`\(`, `\)`, `[^()\n\\]|\\[^\n]`, nestDepth)
+	bracketSpanExpr = balancedExpr(`\[`, `\]`, `[^\[\]\n\\]|\\[^\n]`, nestDepth)
+)
+
+// The forms the balanced expressions replaced, kept alongside them.
+//
+// Balanced matching recognises more, and recognises nothing at all when the
+// delimiters do not balance. `[x](/u "a (b")` has an unpaired "(" inside a
+// title, where CommonMark allows it, and so is not a link to the expression
+// above; `[a\]` ends in an escape the simple form never looked for. In both
+// cases the balanced expression matches nothing and leaves the interior open to
+// exactly the rewriting it was added to prevent. These stop at the first
+// closing delimiter, which is less than the whole construct but never nothing.
+//
+// Protection is the union of every expression here, so keeping both means it is
+// never worse than either alone. Order carries no meaning.
+const (
+	simpleDestExpr  = `\([^)\n]*\)`
+	simpleBracketRe = `\[[^\]\n]*\]`
 )
 
 var inlineProtectedRes = []*regexp.Regexp{
 	// Inline and reference links, and images.
 	regexp.MustCompile(`!?` + linkLabelExpr + linkDestExpr),
-	regexp.MustCompile(`!?` + linkLabelExpr + `\[[^\]\n]*\]`),
+	regexp.MustCompile(`!?` + linkLabelExpr + simpleDestExpr),
+	regexp.MustCompile(`!?` + simpleBracketRe + linkDestExpr),
+	regexp.MustCompile(`!?` + simpleBracketRe + simpleDestExpr),
+	regexp.MustCompile(`!?` + linkLabelExpr + simpleBracketRe),
+	regexp.MustCompile(`!?` + simpleBracketRe + simpleBracketRe),
 
 	// Link reference definitions, e.g. "[plan]: https://example.com".
 	regexp.MustCompile(`(?m)^ {0,3}\[[^\]\n]*\]:[^\n]*`),
@@ -67,7 +105,8 @@ var inlineProtectedRes = []*regexp.Regexp{
 	// and there is no way to know from the text alone whether a definition for
 	// it exists elsewhere. Protecting the span costs only the decoration of a
 	// token that was inside brackets.
-	regexp.MustCompile(linkLabelExpr),
+	regexp.MustCompile(bracketSpanExpr),
+	regexp.MustCompile(simpleBracketRe),
 
 	// Angle autolinks and inline HTML, whose attributes can carry anything.
 	regexp.MustCompile(`<[a-zA-Z][a-zA-Z0-9+.\-]*:[^<>\s]*>`),
@@ -255,7 +294,11 @@ func closesFence(trimmed string, marker byte, width int) bool {
 	if run < width {
 		return false
 	}
-	return strings.TrimLeft(trimmed[run:], " ") == ""
+
+	// Whitespace, not just spaces. A carriage return matters most: a client
+	// sending CRLF leaves one on every line, and reading it as content left the
+	// block open over the whole rest of the message.
+	return strings.TrimLeft(trimmed[run:], " \t\r") == ""
 }
 
 // isIndentedCode reports whether a line is indented far enough to render as a
