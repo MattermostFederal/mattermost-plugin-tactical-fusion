@@ -135,6 +135,22 @@ test('uninitialize releases the click handler and the stylesheet', async ({mount
     await expect(page.getByTestId('dispatch-count')).toHaveText('0');
 });
 
+// Mattermost calls uninitialize() on the old instance and then replaces it, but
+// it does not remove what that instance registered: removePlugin in the host
+// says "The plugin is responsible for removing any of its registered
+// components." So every id has to come back here, or a plugin upgrade in a live
+// tab leaves a second sidebar, tooltip and header button behind.
+test('uninitialize gives back every registry component', async ({mount, page}) => {
+    await mount(<IndexHarness/>);
+    await recorded(page);
+
+    await expect(page.getByTestId('unregistered')).toHaveText('none');
+
+    await page.getByTestId('uninitialize').click();
+
+    await expect(page.getByTestId('unregistered')).toHaveText('rhs-id,tooltip-id,header-id');
+});
+
 // Calling it twice must be a no-op rather than running every disposer again.
 test('uninitialize is safe to call twice', async ({mount, page}) => {
     await mount(<IndexHarness/>);

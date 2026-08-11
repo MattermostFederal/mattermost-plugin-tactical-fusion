@@ -55,6 +55,7 @@ const IndexHarness: React.FC = () => {
     const [json, setJson] = useState('');
     const [dispatchCount, setDispatchCount] = useState(0);
     const [selected, setSelected] = useState('none');
+    const [unregistered, setUnregistered] = useState<string[]>([]);
     const plugin = useRef<CapturedPlugin | undefined>(undefined);
     const registry = useRef<unknown>(undefined);
     const store = useRef<unknown>(undefined);
@@ -105,12 +106,17 @@ const IndexHarness: React.FC = () => {
                 const selectionAtDispatch: unknown[] = [];
                 let headerAction: (() => void) | undefined;
 
+                // Every registration hands back an id, as the real registry
+                // does, so uninitialize has something to give back. The ids are
+                // fixed rather than generated: a test asserts exactly which ones
+                // were released.
                 const handlers: Record<string, (...args: never[]) => unknown> = {
                     registerRightHandSidebarComponent: ((component: unknown, title: unknown) => {
                         order.push('rhs');
                         result.rhsComponentName = componentName(component);
                         result.rhsTitleName = componentName(title);
                         return {
+                            id: 'rhs-id',
                             showRHSPlugin: {type: 'SHOW_RHS'},
                             toggleRHSPlugin: {type: 'TOGGLE_RHS'},
                         };
@@ -118,6 +124,7 @@ const IndexHarness: React.FC = () => {
                     registerLinkTooltipComponent: ((component: unknown) => {
                         order.push('tooltip');
                         result.tooltipComponentName = componentName(component);
+                        return 'tooltip-id';
                     }) as never,
                     registerChannelHeaderButtonAction: ((
                         icon: unknown,
@@ -130,6 +137,16 @@ const IndexHarness: React.FC = () => {
                         result.headerIconName = componentName(icon);
                         result.headerDropdownText = dropdownText;
                         result.headerTooltip = tooltipText;
+                        return 'header-id';
+                    }) as never,
+
+                    // Mattermost does not remove a plugin's components when it
+                    // re-registers, so what lands here is the whole of the
+                    // cleanup. Recorded in React state rather than in `result`,
+                    // because that is serialised as soon as initialize returns
+                    // and these arrive when the test presses uninitialize.
+                    unregisterComponent: ((componentId: string) => {
+                        setUnregistered((ids) => [...ids, componentId]);
                     }) as never,
                 };
 
@@ -206,6 +223,7 @@ const IndexHarness: React.FC = () => {
             <p data-testid='index-harness-result'>{json}</p>
             <p data-testid='dispatch-count'>{String(dispatchCount)}</p>
             <p data-testid='selection'>{selected}</p>
+            <p data-testid='unregistered'>{unregistered.join(',') || 'none'}</p>
         </div>
     );
 };
