@@ -65,7 +65,7 @@ Analyze all responses and identify:
 ### Consensus Issues (High Confidence)
 | Issue | Found By | Severity |
 |-------|----------|----------|
-| [description] | o3-pro, gpt-5.2 | HIGH/MED/LOW |
+| [description] | Codex, Gemini | HIGH/MED/LOW |
 
 ### Additional Findings
 - [Issue] (found by [model]) - [verify/consider]
@@ -86,9 +86,9 @@ Analyze all responses and identify:
 
 | Model | Recommendation | Key Reasoning |
 |-------|----------------|---------------|
-| o3-pro | [option] | [rationale] |
-| gpt-5.2-codex | [option] | [rationale] |
+| Codex | [option] | [rationale] |
 | Gemini | [option] | [rationale] |
+| seq-server | [option] | [rationale] |
 
 ### Consensus Points
 - [What all models agree on]
