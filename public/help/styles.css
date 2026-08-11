@@ -10,36 +10,36 @@
  */
 
 :root {
-    /* From assets/icon.svg: the gunmetal plate and the high-visibility pin. */
-    --sidebar-bg: #1f262d;
-    --sidebar-text: #c9d1d9;
-    --sidebar-hover: #2c353e;
-    --sidebar-active: #ff6a13;
-    --sidebar-active-text: #1f262d;
-
     /*
-     * Two oranges. The bright one is the mark's own and is used for borders and
-     * fills, where contrast does not matter. Link and heading text uses the
-     * darker burnt shade, because #ff6a13 on white is about 2.9:1 and would
-     * fail WCAG AA for body text.
+     * The palette is kept identical to mattermost-plugin-chatsurfer, so the two
+     * plugins' documentation reads as one set rather than as two products. Keep
+     * these values in step with that stylesheet rather than tuning them here.
+     *
+     * One accent serves both text and fills: #166de0 is 4.89:1 on white and
+     * 4.64:1 on --bg-secondary, so it clears WCAG AA for body text without
+     * needing a second, darker shade to fall back to.
      */
-    --accent: #c2450a;
-    --accent-bright: #ff6a13;
-    --accent-light: #fff1e8;
+    --sidebar-bg: #1e325c;
+    --sidebar-text: #dde2eb;
+    --sidebar-hover: #2a4070;
+    --sidebar-active: #166de0;
+
+    --accent-blue: #166de0;
+    --accent-blue-light: #e8f1fc;
 
     --bg-primary: #ffffff;
-    --bg-secondary: #f7f8f9;
-    --text-primary: #1f262d;
+    --bg-secondary: #f8f9fb;
+    --text-primary: #1e325c;
     --text-secondary: #4a5568;
     --border-color: #e2e8f0;
-    --code-bg: #1b1d22;
+    --code-bg: #1e1e1e;
     --code-text: #d4d4d4;
-    --inline-code-bg: #eef1f4;
+    --inline-code-bg: #edf2f7;
 
-    --alert-info: #1c58d9;
+    --alert-info: #166de0;
     --alert-tip: #38a169;
     --alert-warning: #d69e2e;
-    --alert-danger: #d24b4e;
+    --alert-danger: #e53e3e;
 }
 
 * {
@@ -115,7 +115,7 @@ body {
 
 .sidebar nav a.active {
     background: var(--sidebar-active);
-    color: var(--sidebar-active-text);
+    color: #ffffff;
     font-weight: 600;
 }
 
@@ -145,7 +145,7 @@ body {
 }
 
 .breadcrumb a {
-    color: var(--accent);
+    color: var(--accent-blue);
     text-decoration: none;
 }
 
@@ -220,7 +220,7 @@ strong {
 }
 
 a {
-    color: var(--accent);
+    color: var(--accent-blue);
     text-decoration: none;
 }
 
@@ -258,7 +258,7 @@ tbody tr:nth-child(even) {
 }
 
 tbody tr:hover {
-    background: var(--accent-light);
+    background: var(--accent-blue-light);
 }
 
 /* Code */
@@ -309,7 +309,7 @@ pre code {
 }
 
 .alert-info {
-    background: #eef3fd;
+    background: #ebf5ff;
     border-color: var(--alert-info);
 }
 
@@ -324,7 +324,7 @@ pre code {
 }
 
 .alert-danger {
-    background: #fdf2f2;
+    background: #fff5f5;
     border-color: var(--alert-danger);
 }
 
@@ -370,15 +370,15 @@ pre code {
 }
 
 .nav-card:hover {
-    border-color: var(--accent-bright);
-    box-shadow: 0 2px 8px rgba(255, 106, 19, 0.15);
+    border-color: var(--accent-blue);
+    box-shadow: 0 2px 8px rgba(22, 109, 224, 0.1);
     text-decoration: none;
 }
 
 .nav-card h3 {
     margin-top: 0;
     margin-bottom: 8px;
-    color: var(--accent);
+    color: var(--accent-blue);
     font-size: 16px;
 }
 
