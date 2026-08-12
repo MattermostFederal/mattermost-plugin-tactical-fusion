@@ -7,7 +7,7 @@ import type {ZoneSelection} from './zones';
 import {availableZoneGroups, orderedZones, zoneKey} from './zones';
 
 import LinkButton from '../../components/LinkButton';
-import {resetPreferences, savePreferences, usePreferences} from '../../preferences/store';
+import {resetPreferencesSection, savePreferencesSection, usePreferences} from '../../preferences/store';
 
 /** Mirrors maxZones in server/preferences.go, which rejects anything above it. */
 const MAX_ZONES = 25;
@@ -198,11 +198,13 @@ const Customize: React.FC<Props> = ({instant, onClose}) => {
         setStatus(null);
         setError(null);
         try {
-            await savePreferences({
-                dtg: {
-                    zones: normalizeZoneSelection(zones),
-                    urgentWithinMinutes: parsed.minutes,
-                },
+            // Section-scoped, so this cannot touch what the reader chose in
+            // another decorator's editor. The store re-reads before writing;
+            // spreading the cached blob here would carry a snapshot as stale as
+            // the tab is old straight back over the top of a newer one.
+            await savePreferencesSection('dtg', {
+                zones: normalizeZoneSelection(zones),
+                urgentWithinMinutes: parsed.minutes,
             });
             setStatus('Saved.');
 
@@ -221,7 +223,7 @@ const Customize: React.FC<Props> = ({instant, onClose}) => {
         setStatus(null);
         setError(null);
         try {
-            await resetPreferences();
+            await resetPreferencesSection('dtg');
             setStatus('Defaults restored.');
             onClose();
         } catch (err) {

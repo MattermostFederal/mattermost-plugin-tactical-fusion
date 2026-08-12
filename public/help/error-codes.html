@@ -16,7 +16,7 @@
         <nav>
             <span class="nav-section">Documentation</span>
             <a href="help.html">Overview</a>
-            <a href="formats.html">Date and Time Formats</a>
+            <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
             <a href="admin.html">Admin Settings</a>
             <a href="commands.html">Slash Commands</a>
@@ -38,17 +38,18 @@
 
         <p>
             The point is that the code a reader sees in the sidebar and the code an
-            operator greps out of the server log are the same one. Wording can be
-            improved; a code cannot change. Quote it in a report and it names the exact
-            branch that fired.
+            operator greps out of the server log are the same one. Wording can be improved
+            without the code moving. Quote it in a report, with the plugin version, and it
+            names the exact branch that fired.
         </p>
 
         <div class="alert alert-info">
             <p>
-                Codes are allocated in thousand-wide ranges, one per source file. A
-                committed code is <strong>never renumbered and never reused</strong>, so
-                numbers drift out of source order as a file grows. If a code is retired,
-                its number is retired with it.
+                Codes are allocated in thousand-wide ranges, one per source file, and drift
+                out of source order as a file grows. They are <strong>not permanent</strong>:
+                a number can be renumbered, and a retired one can come back meaning
+                something else. Read a code against the release it came from, and quote the
+                plugin version alongside it when reporting one.
             </p>
         </div>
 
@@ -133,7 +134,7 @@
             </tbody>
         </table>
 
-        <h2 id="api">Reader settings API <code>13000</code> to <code>13999</code></h2>
+        <h2 id="api">Authenticated API <code>13000</code> to <code>13999</code></h2>
 
         <p>These are returned as JSON to the sidebar, which shows the message when a save fails.</p>
 
@@ -181,6 +182,11 @@
                     <td><code>TF-13007</code></td>
                     <td><code>APIPreferencesClearFailed</code> <span class="level">500</span></td>
                     <td><code>Could not restore the defaults.</code> The stored blob could not be deleted. Logged with the same code.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-13008</code></td>
+                    <td><code>APIConvertInvalid</code> <span class="level">400</span></td>
+                    <td><code>That is not a coordinate this plugin issued.</code> The coordinate conversion endpoint was given a format and token that do not name a coordinate. It runs exactly the checks the public coordinate page runs, so a link that renders there converts here and one that does not fails in both places. Seen in the sidebar as "Not a coordinate", which almost always means a link was edited by hand.</td>
                 </tr>
             </tbody>
         </table>
@@ -233,6 +239,11 @@
                     <td><code>the flash threshold must be between N and N minutes</code>. Zero is not out of range: it means "use the default".</td>
                 </tr>
                 <tr>
+                    <td><code>TF-14008</code></td>
+                    <td><code>PreferencesRowUnknown</code> <span class="level">400</span></td>
+                    <td><code>"x" is not a row of the location panel</code> The saved view named a row this version does not have. Only reachable from a hand-written request; the editor offers one checkbox per row.</td>
+                </tr>
+                <tr>
                     <td><code>TF-14007</code></td>
                     <td><code>PreferencesBlobUnreadable</code> <span class="level">Warn</span></td>
                     <td>A stored settings blob could not be parsed, so the reader was served the defaults. Not an error: view settings must never be able to take the panel down. The reader's next save replaces the blob.</td>
@@ -265,12 +276,37 @@
                 <tr>
                     <td><code>TF-16000</code></td>
                     <td><code>CommandUnknownSubcommand</code></td>
-                    <td><code>Unknown subcommand. Available: examples</code></td>
+                    <td><code>Unknown subcommand. Available: examples, example-details, check</code></td>
                 </tr>
                 <tr>
                     <td><code>TF-16001</code></td>
                     <td><code>CommandExamplesNotReady</code></td>
-                    <td><code>Decorators are not registered yet. Try again once the plugin has finished activating.</code></td>
+                    <td><code>Decorators are not registered yet. Try again once the plugin has finished activating.</code> Reached through <a href="commands.html#examples"><code>examples</code></a>.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-16002</code></td>
+                    <td><code>CommandCheckNotReady</code></td>
+                    <td><code>Decorators are not registered yet. Try again once the plugin has finished activating.</code> The same condition as TF-16001, reached through <a href="commands.html#check"><code>check</code></a> instead.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-16003</code></td>
+                    <td><code>CommandExamplesNothingEnabled</code></td>
+                    <td><code>Nothing would be decorated, so there is nothing to show.</code> Every format is switched off, so no row of <a href="commands.html#examples"><code>examples</code></a> would become a link. It is refused privately rather than posted, since a post of nothing is a permanent record saying the plugin does nothing. See <a href="admin.html">Admin settings</a>.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-16004</code></td>
+                    <td><code>CommandExamplesTooLong</code></td>
+                    <td><code>The examples do not fit in one post on this server.</code> Every link carries the install's subpath, and a long enough one pushes the post past the maximum size. <a href="commands.html#example-details"><code>example-details</code></a> spreads itself over several posts and is unaffected.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-16005</code></td>
+                    <td><code>CommandDetailsNotReady</code></td>
+                    <td><code>Decorators are not registered yet. Try again once the plugin has finished activating.</code> The same condition as TF-16001, reached through <a href="commands.html#example-details"><code>example-details</code></a>.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-16006</code></td>
+                    <td><code>CommandDetailsPostFailed</code></td>
+                    <td><code>Could not post the examples to this channel</code>, or <code>N of M messages could not be posted, so the examples are incomplete.</code> The first means nothing was written; the second means some posts landed and others did not. Both are also logged. A read-only or archived channel is the usual cause.</td>
                 </tr>
             </tbody>
         </table>
@@ -286,6 +322,11 @@
                     <td><code>TF-17000</code></td>
                     <td><code>DTGPageParamsInvalid</code> <span class="level">400</span></td>
                     <td><code>That link is missing or has an invalid date-time group.</code> The query string carries no usable instant. See <a href="troubleshooting.html#invalid-link">the troubleshooting entry</a>.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-17001</code></td>
+                    <td><code>LocationPageParamsInvalid</code> <span class="level">400</span></td>
+                    <td><code>That link is missing or has an invalid coordinate.</code> The query string carries no usable coordinate, or the coordinate does not reproduce itself, or the copy of the author's own text does not match the coordinate it is attached to. Any one of those means the link was not written by this plugin. See <a href="troubleshooting.html#invalid-link">the troubleshooting entry</a>.</td>
                 </tr>
             </tbody>
         </table>

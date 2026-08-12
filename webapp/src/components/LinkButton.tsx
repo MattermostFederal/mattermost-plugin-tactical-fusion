@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
 
 /**
- * The resting look: Mattermost's link colour, no underline until pointed at.
+ * The resting look: Mattermost's link color, no underline until pointed at.
  *
  * Everything in this plugin styles itself inline, which has nowhere to declare
  * a `:hover` rule, so the underline is driven from React state instead. Focus
@@ -28,10 +28,10 @@ interface Props {
      */
     href?: string;
 
-    /** Greyed out and inert while something is in flight. Buttons only. */
+    /** Grayed out and inert while something is in flight. Buttons only. */
     disabled?: boolean;
 
-    /** Placement and type size. The link colouring is not overridable. */
+    /** Placement and type size. The link coloring is not overridable. */
     style?: React.CSSProperties;
 
     children: React.ReactNode;

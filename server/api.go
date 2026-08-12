@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
@@ -17,8 +18,26 @@ import (
 // other's rules by accident.
 const apiPath = "/api/v1"
 
-// preferencesPath is the one resource this API has.
-const preferencesPath = apiPath + "/preferences"
+// The resources this API has.
+const (
+	preferencesPath = apiPath + "/preferences"
+
+	// convertPath turns a coordinate into every other notation.
+	//
+	// It exists because MGRS and UTM need a projection, the projection lives in
+	// Go, and the sidebar panel is TypeScript. Everything the panel can work
+	// out from the token by itself it still does, so this fills in the grid
+	// rows and nothing else for most links; only a grid link depends on it for
+	// its position.
+	//
+	// Authenticated, like everything under here, even though it reads no
+	// workspace data and could in principle sit beside the public page. That is
+	// deliberate: the public route exists because clients without a session
+	// have no other way to see a decorator, and nothing else should be added to
+	// it. A caller with no session and a coordinate to convert is not a reader
+	// of this workspace.
+	convertPath = apiPath + "/convert"
+)
 
 // maxPreferencesBody caps a submitted blob. The largest legitimate one is a few
 // hundred bytes, so this is only here to keep a hostile client from making the
@@ -35,6 +54,11 @@ func (p *Plugin) serveAPI(w http.ResponseWriter, r *http.Request) {
 	if userID == "" {
 		writeAPIError(w, http.StatusUnauthorized,
 			errcode.WithCode(errcode.APINotAuthorized, "Not authorized."))
+		return
+	}
+
+	if r.URL.Path == convertPath {
+		p.serveConvert(w, r)
 		return
 	}
 
@@ -67,6 +91,40 @@ func (p *Plugin) serveAPI(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, http.StatusMethodNotAllowed,
 			errcode.WithCode(errcode.APIMethodNotAllowed, "Method not allowed."))
 	}
+}
+
+// serveConvert answers with every derived reading of one coordinate.
+//
+// A pure function of its two parameters, with no store behind it and no reader
+// to consult, which is why it has no cache: the work is a projection costing
+// microseconds. The preferences cache exists because there is a KV round trip
+// to avoid, and that precedent does not transfer.
+func (p *Plugin) serveConvert(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeAPIError(w, http.StatusMethodNotAllowed,
+			errcode.WithCode(errcode.APIMethodNotAllowed, "Method not allowed."))
+		return
+	}
+
+	query := r.URL.Query()
+
+	// All three parameters, so this applies exactly the checks the public page
+	// applies. A conversion that accepted a link the page rejects would let the
+	// sidebar render a coordinate the page refuses to.
+	conversion, ok := location.Convert(
+		location.Format(query.Get("f")), query.Get("v"), query.Get("r"))
+	if !ok {
+		writeAPIError(w, http.StatusBadRequest,
+			errcode.WithCode(errcode.APIConvertInvalid, "That is not a coordinate this plugin issued."))
+		return
+	}
+
+	// The same answer forever for the same pair, so it is worth caching, and
+	// private because the URL and the body both carry a position. A shared
+	// cache holding one is a leak rather than an optimisation.
+	w.Header().Set("Cache-Control", "private, max-age=300")
+
+	writeAPIJSON(w, http.StatusOK, conversion)
 }
 
 func (p *Plugin) handleGetPreferences(w http.ResponseWriter, userID string) {

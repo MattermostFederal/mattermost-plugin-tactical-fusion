@@ -16,7 +16,7 @@
         <nav>
             <span class="nav-section">Documentation</span>
             <a href="help.html">Overview</a>
-            <a href="formats.html">Date and Time Formats</a>
+            <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
             <a href="admin.html">Admin Settings</a>
             <a href="commands.html">Slash Commands</a>
@@ -46,7 +46,7 @@
             </thead>
             <tbody>
                 <tr>
-                    <td>The format is not one that is recognised</td>
+                    <td>The format is not one that is recognized</td>
                     <td>Compare against the <a href="formats.html#declined">declined list</a>. Epoch seconds, 12 hour clocks, bare dates and <code>CST</code> style abbreviations are all deliberately absent.</td>
                     <td>Write it as a <a href="formats.html#military">date-time group</a> or an <a href="formats.html#timestamp">RFC 3339 timestamp</a>.</td>
                 </tr>
@@ -57,7 +57,7 @@
                 </tr>
                 <tr>
                     <td>The format is switched off</td>
-                    <td>Run <a href="commands.html#examples"><code>/tactical-fusion examples</code></a>. It ends with a note when decoration is off, and shows each format's real result.</td>
+                    <td>Run <a href="commands.html#example-details"><code>/tactical-fusion example-details</code></a>. It ends with a note when decoration is off, and shows each format's real result.</td>
                     <td>Turn the format on in <a href="admin.html">System Console, Plugins, Tactical Fusion</a>.</td>
                 </tr>
                 <tr>
@@ -82,6 +82,100 @@
                 </tr>
             </tbody>
         </table>
+
+        <h2 id="coordinate-not-linked">A coordinate was not turned into a link</h2>
+
+        <p>
+            Run
+            <a href="commands.html#check"><code>/tactical-fusion check &lt;your text&gt;</code></a>.
+            It runs the real matcher against exactly that text and reports what it did,
+            without posting anything. That answers this question directly and is faster
+            than working through the list below.
+        </p>
+
+        <p>The usual causes, in the order they come up:</p>
+
+        <table>
+            <thead>
+                <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>34.05, -118.25</code> did nothing, but <code>34.0561, -118.2500</code> works</td>
+                    <td>Signed decimal degrees needs at least four decimals on both values.</td>
+                    <td>Write the full precision, or add hemisphere letters: <code>34.05 N, 118.25 W</code> is accepted.</td>
+                </tr>
+                <tr>
+                    <td>A coordinate at the end of a sentence did nothing</td>
+                    <td>A full stop or comma directly against the last digit is indistinguishable from a range or a list at the point the check runs.</td>
+                    <td>Put a space before the punctuation, or accept it. This is a deliberate trade against rewriting the middle of <code>-118.2500..-118.2600</code>.</td>
+                </tr>
+                <tr>
+                    <td><code>35N079W</code> did nothing</td>
+                    <td>The shortest USMTF shape is only matched behind a field label.</td>
+                    <td>Write <code>LATD:35N079W</code>.</td>
+                </tr>
+                <tr>
+                    <td><code>18suj2347806483</code> did nothing, but <code>18SUJ2347806483</code> works</td>
+                    <td>A run-together grid reference has to be upper case. Lower-case hexadecimal of that shape is what a short git commit hash looks like, and about one in 3,900 of them is a valid grid reference.</td>
+                    <td>Write it in upper case, space it out, or write <code>MGRS:</code> in front.</td>
+                </tr>
+                <tr>
+                    <td><code>18SUJ2306</code> did nothing, but <code>18SUJ234064</code> works</td>
+                    <td>A run-together reference needs at least three digits per axis, a 100 m square. Shorter runs are what part numbers look like: <code>26HMA1997</code> is a valid grid reference, and about one uppercase run in 75,000 collides at two digits.</td>
+                    <td>Space it as <code>18S UJ 23 06</code>, or write <code>MGRS:18SUJ2306</code>.</td>
+                </tr>
+                <tr>
+                    <td><code>33U2910005628000</code> did nothing, but <code>33U 291000 5628000</code> works</td>
+                    <td>UTM run together has no letters to check: after the zone and band it is thirteen bare digits.</td>
+                    <td>Space it out, or write <code>UTMO:</code> in front.</td>
+                </tr>
+                <tr>
+                    <td>A UTM position did nothing, but MGRS and lat/lon work</td>
+                    <td><strong>UTM is off by default</strong>, and is the only format that is. Its band letter is ambiguous, so a wrong reading is a confidently misplaced position rather than a missed decoration.</td>
+                    <td>An admin turns on <a href="admin.html#enable-location-utm"><code>EnableLocationUTM</code></a> in the System Console. Read that section first: it explains when the default is the right one for your workspace.</td>
+                </tr>
+                <tr>
+                    <td>A UTM position opened on a latitude nowhere near the one intended</td>
+                    <td>The letter after the zone is read as a <strong>latitude band</strong>, never as a hemisphere, so <code>11S</code> is band S (34 north) and not "zone 11, southern hemisphere" (56 south). A southern-hemisphere position written that way is usually declined, because its northing does not land in the band, but not always.</td>
+                    <td>Write southern positions as a grid reference, or as latitude and longitude. Delete the link while editing the post to opt that one message out.</td>
+                </tr>
+                <tr>
+                    <td>A grid reference with plausible-looking letters did nothing</td>
+                    <td>Only eight of the twenty-four 100 km column letters are legal in any given zone, and the row letters are staggered in even-numbered zones. <code>32WDL123123</code> names no real square.</td>
+                    <td>Check the letters against the zone. <code>check</code> will confirm.</td>
+                </tr>
+                <tr>
+                    <td>A polar coordinate has no grid rows</td>
+                    <td>Above 84&deg; north and below 80&deg; south there is no UTM grid. That is Universal Polar Stereographic, a different system this plugin does not implement.</td>
+                    <td>Nothing to do. The coordinate is still decorated and still shows latitude and longitude.</td>
+                </tr>
+                <tr>
+                    <td>One coordinate in a list linked and the others did not</td>
+                    <td>A coordinate directly adjacent to another number is read as part of a numeric list.</td>
+                    <td>Separate them with something other than a comma and a space, or put each on its own line.</td>
+                </tr>
+                <tr>
+                    <td>Nothing in the message linked, including a coordinate you are sure of</td>
+                    <td>The format, or coordinate decoration as a whole, is switched off.</td>
+                    <td>Check <a href="admin.html#location-switches">the admin settings</a>. <code>check</code> reflects them, so it will say nothing matched.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="coordinate-precision">The panel shows fewer decimals than I typed</h2>
+
+        <p>
+            It shows what the original text carried, and no more. A coordinate written to
+            two decimals is only good to about a kilometer, so rendering it back at six
+            would invent precision that was never there.
+        </p>
+
+        <p>
+            If the panel is coarser than you expected, the coordinate in the message is
+            coarser than you expected. The <em>As written</em> row shows exactly what was
+            parsed.
+        </p>
 
         <h2 id="only-me">Nobody else sees the link, or only some clients do</h2>
 
@@ -126,7 +220,7 @@
             </tbody>
         </table>
 
-        <h2 id="invalid-link">"That link is missing or has an invalid date-time group"</h2>
+        <h2 id="invalid-link">"That link is missing or has an invalid date-time group" or "invalid coordinate"</h2>
 
         <p>
             Code <a href="error-codes.html#decorators"><code>TF-17000</code></a>. The
@@ -134,6 +228,28 @@
             truncated URL, or a link copied out of a message and reassembled by something
             that mangled the query string. Click the original link in the channel rather
             than a copy.
+        </p>
+
+        <h2 id="not-a-coordinate">The sidebar says "Not a coordinate"</h2>
+
+        <p>
+            Code <a href="error-codes.html#api"><code>TF-13008</code></a>. The server was
+            asked to convert the coordinate in that link and answered that it is not one
+            this plugin issued. The panel refuses to render anything rather than showing a
+            position that may name somewhere else entirely, which is the same thing
+            <a href="panel.html#page">the standalone page</a> does for the same link.
+        </p>
+
+        <p>
+            Almost always a hand-edited or reassembled URL. If you see it on a link you
+            clicked directly in a channel and did not edit, that is worth reporting with
+            the code and the link.
+        </p>
+
+        <p>
+            This is distinct from the grid rows reading <code>unavailable</code>, which
+            means the request did not arrive at all. That leaves the rest of the panel
+            intact and usually clears on reopening.
         </p>
 
         <h2 id="wrong-timezones">The panel and the standalone page show different timezones</h2>
@@ -234,7 +350,7 @@
                 <tr>
                     <td><code>unknown timezone "..."</code></td>
                     <td><a href="error-codes.html#preferences"><code>TF-14004</code></a></td>
-                    <td>Your browser offered a zone the server's timezone database does not have. Pick a neighbouring zone and report the identifier.</td>
+                    <td>Your browser offered a zone the server's timezone database does not have. Pick a neighboring zone and report the identifier.</td>
                 </tr>
                 <tr>
                     <td><code>"..." is not a timezone identifier</code></td>
@@ -271,7 +387,7 @@
         <ul>
             <li>The <code>TF-NNNN</code> code, from the message or the server log</li>
             <li>The exact text you typed, and what was stored</li>
-            <li>The output of <a href="commands.html#examples"><code>/tactical-fusion examples</code></a>, which shows the live behaviour of your server</li>
+            <li>The output of <a href="commands.html#example-details"><code>/tactical-fusion example-details</code></a>, which shows the live behavior of your server</li>
             <li>Which of the four <a href="admin.html">settings</a> are on</li>
         </ul>
     </main>

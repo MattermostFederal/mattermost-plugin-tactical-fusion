@@ -1,9 +1,9 @@
 export type Theme = 'light' | 'dark';
 
 /**
- * Classifies a CSS colour as a light or dark background.
+ * Classifies a CSS color as a light or dark background.
  *
- * Returns null when the colour cannot be read, so callers can leave the theme
+ * Returns null when the color cannot be read, so callers can leave the theme
  * unstated rather than guess. Accepts the forms Mattermost actually sets its
  * theme variables to: `#rgb`, `#rrggbb`, and `rgb()`/`rgba()`.
  */
@@ -14,7 +14,7 @@ export function themeForBackground(color: string): Theme | null {
     }
 
     // Rec. 601 luma. Precision beyond "which side of the middle" is not needed,
-    // and this is cheap and stable across the colours a theme actually uses.
+    // and this is cheap and stable across the colors a theme actually uses.
     const [r, g, b] = rgb;
     const luma = ((0.299 * r) + (0.587 * g) + (0.114 * b)) / 255;
 

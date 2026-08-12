@@ -74,7 +74,7 @@ test('leaves a distant countdown alone', async ({mount, page}) => {
 
 // Pointing at a link and opening it must not disagree about whether the same
 // DTG is imminent, so the hover reads the reader's threshold too.
-test('honours the reader own flash threshold', async ({mount, page}) => {
+test('honors the reader own flash threshold', async ({mount, page}) => {
     await stubPreferencesRoute(page, {stored: {zones: [], urgentWithinMinutes: 5}});
 
     // Ten minutes out is urgent by default, but not within five.

@@ -51,7 +51,7 @@ test.describe('pluginBaseUrl', () => {
         expect(pluginBaseUrl()).toBe(`/plugins/${manifest.id}`);
     });
 
-    // Not normalised. Mattermost does not set a bare slash here, and trimming
+    // Not normalized. Mattermost does not set a bare slash here, and trimming
     // it would be guessing at a case that does not arise; pinned so a change
     // to that is a decision.
     test('a bare slash basename is passed through as written', () => {

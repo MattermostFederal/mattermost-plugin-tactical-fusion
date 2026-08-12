@@ -1,9 +1,12 @@
 package decorators
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"html"
 	"net/http"
+	"strings"
 )
 
 // Page is the content a decorator supplies to the shared HTML shell.
@@ -18,6 +21,83 @@ type Page struct {
 	// Theme is "light", "dark", or "" to follow the operating system. Use
 	// ThemeFromParams to derive it; any other value is treated as "".
 	Theme string
+
+	// StyleCSS is appended to the shared stylesheet, for rules only this
+	// decorator needs.
+	//
+	// It is emitted inside <style> without escaping, so it must be a constant
+	// in the decorator's own source and must never carry anything derived from
+	// a request. WritePage refuses a value containing "<" for that reason,
+	// which stops the one mistake that would turn a stylesheet into markup.
+	StyleCSS string
+
+	// ScriptJS is the page's inline JavaScript, without the <script> tags.
+	//
+	// Empty, the zero value, emits script-src 'none', so a page with no script
+	// cannot be made to run one by an escaping mistake.
+	//
+	// A page that supplies one is served under script-src 'sha256-...', pinned
+	// to the digest of exactly this text, rather than under 'unsafe-inline'.
+	// That distinction is the point rather than fastidiousness: these pages echo
+	// author text from a message, on a public route whose query string anybody
+	// can write, so the property worth keeping is that an escaping mistake
+	// stays inert. Under 'unsafe-inline' an injected <script> runs; under a
+	// hash it does not match the digest and is blocked.
+	//
+	// It is emitted without escaping, so like StyleCSS it must be a constant in
+	// the decorator's own source and must never carry anything from a request.
+	ScriptJS string
+}
+
+// styleCSS returns the decorator's extra rules, or nothing when they are
+// unusable.
+//
+// A "<" in a stylesheet can close the <style> element and start markup, so a
+// value containing one is dropped entirely rather than escaped: this field is
+// documented as a source constant, and a constant does not contain "<".
+func (p Page) styleCSS() string {
+	if strings.Contains(p.StyleCSS, "<") {
+		return ""
+	}
+	return p.StyleCSS
+}
+
+// scriptPolicy is the script-src directive for this page.
+//
+// A page with script is pinned to that script's digest, so the directive names
+// the one program allowed to run and nothing else can be added to the page by
+// any means.
+func (p Page) scriptPolicy() string {
+	js := p.scriptJS()
+	if js == "" {
+		return "script-src 'none'"
+	}
+
+	sum := sha256.Sum256([]byte(js))
+	return "script-src 'sha256-" + base64.StdEncoding.EncodeToString(sum[:]) + "'"
+}
+
+// scriptJS returns the page's script, or nothing when it is unusable.
+//
+// A "</script" in the body would close the element early and let whatever
+// follows be parsed as markup, which is the one mistake that turns a script
+// block into an injection point. Dropped entirely rather than escaped, for the
+// same reason styleCSS drops a "<": this field is documented as a source
+// constant, and a constant does not contain one.
+func (p Page) scriptJS() string {
+	if strings.Contains(strings.ToLower(p.ScriptJS), "</script") {
+		return ""
+	}
+	return p.ScriptJS
+}
+
+// scriptTag is the script element, or nothing at all.
+func (p Page) scriptTag() string {
+	js := p.scriptJS()
+	if js == "" {
+		return ""
+	}
+	return "<script>" + js + "</script>"
 }
 
 // themeAttribute renders the theme as a root attribute, or nothing at all.
@@ -50,7 +130,7 @@ func (p Page) themeAttribute() string {
 //   - the rate is roughly 0.8Hz, against the 3Hz that can trigger
 //     photosensitivity, so shortening the duration materially needs the same
 //     conversation again;
-//   - the left bar and the colour carry the signal on their own, so a reader
+//   - the left bar and the color carry the signal on their own, so a reader
 //     who does not perceive the movement still sees an urgent countdown.
 const pageShell = `<!DOCTYPE html>
 <html lang="en"%s>
@@ -95,6 +175,7 @@ td.time { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; text-alig
 .badge { font-size: 10px; font-weight: 600; padding: 1px 5px; border-radius: 3px; margin-left: 6px;
   border: 1px solid var(--line); color: var(--muted); }
 footer { margin-top: 32px; color: var(--muted); font-size: 12px; }
+%s
 </style>
 </head>
 <body>
@@ -102,6 +183,7 @@ footer { margin-top: 32px; color: var(--muted); font-size: 12px; }
 <h1>%s</h1>
 %s
 </main>
+%s
 </body>
 </html>`
 
@@ -112,32 +194,43 @@ footer { margin-top: 32px; color: var(--muted); font-size: 12px; }
 // framework-wide default of "public" would be wrong the moment a decorator
 // carries anything that is not.
 func WritePage(w http.ResponseWriter, p Page) {
-	setPageHeaders(w)
+	setPageHeaders(w, p)
 	writePageBody(w, p)
 }
 
 // WriteError renders a minimal error page. Nothing from the request is echoed,
 // because the request is what we just rejected.
+//
+// The error page carries no script, so it is served under script-src 'none'
+// whatever the page that failed would have asked for.
 func WriteError(w http.ResponseWriter, status int, message string) {
-	setPageHeaders(w)
-	w.WriteHeader(status)
-	writePageBody(w, Page{
+	p := Page{
 		Title:    "Tactical Fusion",
 		BodyHTML: `<p class="sub">` + html.EscapeString(message) + `</p>`,
-	})
+	}
+
+	setPageHeaders(w, p)
+	w.WriteHeader(status)
+	writePageBody(w, p)
 }
 
-func setPageHeaders(w http.ResponseWriter) {
+func setPageHeaders(w http.ResponseWriter, p Page) {
 	h := w.Header()
 	h.Set("Content-Type", "text/html; charset=utf-8")
 
 	// This route is public and echoes values from an untrusted query string.
-	// Escaping is the real defence, but a restrictive policy means a mistake in
+	// Escaping is the real defense, but a restrictive policy means a mistake in
 	// it cannot become script execution or an exfiltration channel. Inline
-	// styles and the clock script are allowed because the page carries both and
-	// loads nothing from anywhere else.
+	// styles are allowed because the shell carries its own and loads nothing
+	// from anywhere else.
+	//
+	// Script is per page rather than blanket. A decorator whose page carries no
+	// JavaScript gets script-src 'none', so an escaping mistake there is inert
+	// markup instead of execution. Only a page that says it needs script gets
+	// 'unsafe-inline'.
 	h.Set("Content-Security-Policy",
-		"default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+		"default-src 'none'; style-src 'unsafe-inline'; "+p.scriptPolicy()+
+			"; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
 	h.Set("Referrer-Policy", "no-referrer")
 
 	if h.Get("Cache-Control") == "" {
@@ -147,5 +240,5 @@ func setPageHeaders(w http.ResponseWriter) {
 
 func writePageBody(w http.ResponseWriter, p Page) {
 	title := html.EscapeString(p.Title)
-	_, _ = fmt.Fprintf(w, pageShell, p.themeAttribute(), title, title, p.BodyHTML)
+	_, _ = fmt.Fprintf(w, pageShell, p.themeAttribute(), title, p.styleCSS(), title, p.BodyHTML, p.scriptTag())
 }

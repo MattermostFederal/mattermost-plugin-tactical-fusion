@@ -12,8 +12,8 @@ test('renders the plugin mark', async ({mount, page}) => {
 });
 
 // A header button sits in whatever theme the reader is using. The compass has
-// to take the header's colour, or it disappears against a light one; the pin
-// keeps the mark's own, or the button stops being recognisable as this plugin.
+// to take the header's color, or it disappears against a light one; the pin
+// keeps the mark's own, or the button stops being recognizable as this plugin.
 test('adapts the compass to the theme and keeps the pin', async ({mount, page}) => {
     await mount(<HeaderIcon/>);
 

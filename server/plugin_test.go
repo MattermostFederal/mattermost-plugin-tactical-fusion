@@ -170,7 +170,7 @@ func TestOnPluginClusterEventDropsTheCachedReader(t *testing.T) {
 }
 
 // Events are broadcast to every plugin hook on the node, so one this plugin
-// does not recognise must be ignored rather than acted on.
+// does not recognize must be ignored rather than acted on.
 func TestOnPluginClusterEventIgnoresOtherEvents(t *testing.T) {
 	p, api := newActivationPlugin(t)
 	if err := p.OnActivate(); err != nil {

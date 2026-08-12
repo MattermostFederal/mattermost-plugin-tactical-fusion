@@ -2,10 +2,10 @@ import React, {useLayoutEffect} from 'react';
 
 import Countdown from './Countdown';
 import Customize from './Customize';
-import {describeInstant} from './describe';
+import {describeInstant, hasSeconds} from './describe';
+import {EDITOR_TITLE} from './DtgTitle';
 import {setEditing, useEditing} from './editing';
 import {resolvedUrgentWithinMs, resolvedZones} from './preferences';
-import {EDITOR_TITLE} from './titles';
 
 import LinkButton from '../../components/LinkButton';
 import {docsUrl} from '../../plugin_url';
@@ -86,7 +86,7 @@ const styles: Record<string, React.CSSProperties> = {
  *
  * Null when the browser cannot format the zone, which a saved blob can outlive
  * its browser to produce: the server validates against Go's embedded tzdata and
- * the two catalogues disagree, so `posixrules` is storable here and throws in
+ * the two catalogs disagree, so `posixrules` is storable here and throws in
  * Chromium's `Intl`. Which identifiers those are is engine and version
  * specific, so the guard is on the call rather than on a list of names.
  */
@@ -148,6 +148,7 @@ function assumedNote(payload: Dtg): string {
 const DtgPanel: React.FC<{payload: Dtg}> = ({payload}) => {
     const reference = referenceDateKey(payload);
     const note = assumedNote(payload);
+    const seconds = hasSeconds(payload.instant);
 
     const {preferences} = usePreferences();
     const zones = resolvedZones(preferences.dtg, payload.instant);
@@ -203,9 +204,13 @@ const DtgPanel: React.FC<{payload: Dtg}> = ({payload}) => {
                 </thead>
                 <tbody>
                     {zones.map((zone) => {
+                        // Seconds only when the token carried them, which a
+                        // date-time group never does and an RFC 3339 timestamp
+                        // may. See hasSeconds in describe.ts.
                         const time = formatInZone(payload.instant, zone.iana, {
                             hour: '2-digit',
                             minute: '2-digit',
+                            ...(seconds ? {second: '2-digit'} : {}),
                             hour12: false,
                         });
 

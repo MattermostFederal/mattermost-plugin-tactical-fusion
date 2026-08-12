@@ -2,9 +2,14 @@ package main
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"reflect"
+	"regexp"
+	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/mattermost/mattermost/server/public/model"
 )
@@ -511,5 +516,37 @@ func TestAFailedDeleteDoesNotInvalidate(t *testing.T) {
 	}
 	if len(api.published) != 0 {
 		t.Fatalf("published %d cluster events, want 0", len(api.published))
+	}
+}
+
+// The two caches in front of the KV store agree about how long a reader may be
+// shown something out of date.
+//
+// They are not the same kind of number, and the comment on preferencesCacheTTL
+// says so: the webapp has no invalidation to hear, so its timer is the only
+// thing that refreshes it, while this one is corrected by every write. Aligning
+// them is a choice about what a stale blob is worth, and a choice that lives in
+// two files in two languages is one that drifts. Changing either alone should
+// be a decision rather than an accident, so this makes it one.
+func TestWebappCacheLifetimeMatches(t *testing.T) {
+	path := filepath.Join("..", "webapp", "src", "preferences", "store.ts")
+	raw, err := os.ReadFile(path) // #nosec G304 -- fixed, repo-relative source path
+	if err != nil {
+		t.Fatalf("could not read %s: %v", path, err)
+	}
+
+	m := regexp.MustCompile(`const CACHE_TTL_MS = (\d+) \* 60 \* 1000;`).FindStringSubmatch(string(raw))
+	if m == nil {
+		t.Fatal("could not find CACHE_TTL_MS in the webapp store; if it was renamed or " +
+			"written differently, point this test at the new form rather than deleting it")
+	}
+
+	minutes, err := strconv.Atoi(m[1])
+	if err != nil {
+		t.Fatalf("unparsable webapp cache lifetime %q: %v", m[1], err)
+	}
+
+	if got := time.Duration(minutes) * time.Minute; got != preferencesCacheTTL {
+		t.Errorf("the webapp caches for %s and this server for %s", got, preferencesCacheTTL)
 	}
 }

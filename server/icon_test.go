@@ -10,7 +10,7 @@ import (
 
 // The mark is drawn twice: once as an SVG asset for the plugin list, once as a
 // React component for the channel header button. A reader sees both, and a
-// colour changed in one and not the other is the kind of drift nothing else
+// color changed in one and not the other is the kind of drift nothing else
 // would report.
 //
 // Checked from here because reading a sibling file is natural in a Go test and
@@ -21,7 +21,7 @@ func TestHeaderIconMatchesThePluginIcon(t *testing.T) {
 
 	declared := regexp.MustCompile(`const PIN_COLOR = '(#[0-9A-Fa-f]{6})'`).FindStringSubmatch(header)
 	if declared == nil {
-		t.Fatal("HeaderIcon.tsx no longer declares PIN_COLOR; has the header icon stopped carrying the pin colour?")
+		t.Fatal("HeaderIcon.tsx no longer declares PIN_COLOR; has the header icon stopped carrying the pin color?")
 	}
 
 	if !strings.Contains(strings.ToUpper(icon), strings.ToUpper(declared[1])) {

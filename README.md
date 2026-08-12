@@ -1,136 +1,193 @@
 # Tactical Fusion
 
-Tactical Fusion enriches conversations with mission-relevant context, including geospatial data, CoT, time zones, IP intelligence, CVEs, and other operational information.
+Tactical Fusion turns the coordinates and times people already type in
+Mattermost into something everyone can read.
 
-> **Status:** early. The decorator framework and the first decorator, date-time
-> groups, are implemented. The remaining enrichment features described above are
-> not.
+Post `091630ZAUG26` or `18S UJ 23478 06483` and the plugin turns it into a link.
+Hover it for a countdown; click it and the right-hand sidebar shows the same time
+in your team's timezones, or the same position in every other coordinate
+notation, with a copy button on each row.
+
+Nobody has to change how they write. The formats are the ones already used in
+mission traffic.
+
+> **Status:** early. Date-time groups and coordinates work today. CoT, IP
+> intelligence and CVE lookups are planned and not yet built.
 
 Requires Mattermost **11.8.0** or later.
 
-## What's included
+## What it does
 
-- **Decorators**: military date-time groups (`091630ZAUG26`) and RFC 3339
-  timestamps (`2026-08-09T16:30:00Z`) in posted messages become links. Hovering
-  one shows a countdown, clicking one opens a timezone conversion panel in the
-  right-hand sidebar, and clients that do not run the webapp get a
-  plugin-rendered page instead. Run `/tactical-fusion examples` to see what is
-  recognised and what is deliberately left alone.
-- **Reader preferences**: "Customize your view", below the panel's timezone
-  table, lets each reader choose their own timezone rows and how close a
-  date-time group has to be before the countdown flashes. Stored per user and
-  served from an authenticated `/api/v1/preferences` route.
-- **Server**: Go plugin that decorates new messages, serves the decorator pages
-  and the preferences API, and registers the `/tactical-fusion` slash command.
-- **Webapp**: React plugin registering the right-hand sidebar, the link hover
-  card, and the channel header button.
-- **Admin settings**: four switches in the System Console, all defaulting to on:
-  `EnableDTG` for the decorator, and `EnableDTGMilitary`, `EnableDTGMoniker` and
-  `EnableDTGTimestamp` for the formats under it.
-- **Built-in documentation**: static help pages bundled in `public/help/` and served
-  by Mattermost at `/plugins/com.mattermost.plugin-tactical-fusion/public/help/help.html`.
-  Linked from the System Console settings page and from the sidebar panel. Covers the
-  supported formats, the panel, the admin switches, troubleshooting, and the `TF-NNNN`
-  error code registry.
-- **Build tooling**: Makefile, mattermost-plugin-starter-template build scripts, CI workflows.
-- **CI/CD automation**: PR validation, security scanning (SBOM + Grype + CodeQL), automated releases via [release-please](https://github.com/googleapis/release-please), and Dependabot updates. See [Automation](#automation) below.
-- **Editor integration**: `.claude/` (Claude Code agents, commands, skills) and `.vscode/` settings.
+### Times
 
-## How decoration works, and what it costs
+Military date-time groups (`091630ZAUG26`, `091630Z`) and RFC 3339 timestamps
+(`2026-08-09T16:30:00Z`) become links.
 
-Decoration happens on the server, in `MessageWillBePosted`, which is the only way
-the link reaches clients that never run the webapp bundle. That has consequences
-worth knowing before installing:
+- **Hover** shows a countdown, which flashes when the time is close.
+- **Click** opens a panel with the time in each timezone you care about, and the
+  countdown running live.
+- On mobile, and anywhere else the webapp does not run, the link opens a plain
+  page from the server showing the same thing.
 
-- **Stored post text is permanently rewritten.** Editing a post shows the author
-  raw markdown, exports contain the links, and uninstalling the plugin leaves
-  links that 404.
-- **Only new posts are decorated.** History from before install is untouched.
-- **Edits are stored verbatim.** Deleting the link syntax while editing is the
-  supported way to opt one post out.
-- Tokens inside code spans, code blocks, links and URLs are left exactly as
-  written. Switching a format off stops new decoration and leaves every link
-  already in the history working.
+### Coordinates
 
-## Getting started
+A coordinate in any recognized notation becomes a link showing the same position
+in all the others: decimal degrees, degrees/minutes/seconds, degrees and decimal
+minutes, the fixed-width USMTF shapes used in ATO traffic, military grid
+references (MGRS) and UTM.
 
-The repository ships a Docker Compose stack, which is what `make deploy` targets.
+```
+34.0561, -118.2500          34°03'22"N 118°15'00"W
+3510N07901W                 400948N1221400W
+18S UJ 23478 06483          33U 291000 5628000
+```
+
+USMTF field labels (`LATM:`, `GEOK:`, and so on) work in front of a coordinate,
+so a line pasted straight out of a message format is still read correctly.
+
+Two things worth knowing:
+
+- **Positions are WGS 84**, and every reading is shown at the resolution the
+  original text carried and no finer. A coordinate written to whole degrees gets
+  a 100 km grid square, not a ten-figure reference that would imply a precision
+  nobody wrote.
+- **Grid conversion is computed in the plugin**, with no external service and no
+  network call, so it works on an air-gapped host.
+
+### Deliberately recognizing less
+
+Decorating a message rewrites what was posted, so a false positive edits somebody
+else's words. The plugin declines anything ambiguous rather than guessing:
+`34.05, -118.25` (too few digits to be certain it is a coordinate), bare dates
+and zoneless times, epoch seconds, `CST`-style zone abbreviations. Text inside
+code blocks, code spans, links and URLs is never touched.
+
+Three slash commands make this visible:
+
+- `/tactical-fusion examples` posts a short demonstration **to the channel**, one
+  row per format in a single message, with two live date-time groups either side
+  of now so the countdown is actually moving. This is the one for introducing the
+  plugin to a team.
+- `/tactical-fusion example-details` posts every format, every edge case and every
+  near miss that is deliberately declined, with the reason on each row. It goes to
+  the channel as one post per decorator: one for times, one for coordinates.
+- `/tactical-fusion check <text>` tells you what would be decorated in some text,
+  and what would not, without posting anything.
+
+The first two write to the channel; only `check` is visible to you alone.
+
+### Customizing your view
+
+Below each panel, "Customize your view" lets each person set it up their own
+way: for times, which timezone rows to show (from a catalog of military bases,
+or any timezone) and how close a date-time group has to be before the countdown
+flashes; for coordinates, which rows to show, so you can drop the notations you
+never read. It is stored per user, so it changes nothing for anyone else.
+
+## Before you install
+
+Decoration happens on the server as a message is posted, which is what makes the
+links work on mobile. It comes with trade-offs an admin should know about:
+
+- **The stored message is rewritten.** Editing a post shows the author the raw
+  markdown link. Exports contain the links. Uninstalling the plugin leaves links
+  behind that no longer resolve.
+- **Only new posts are decorated.** Message history from before installation is
+  untouched.
+- **Edits are kept exactly as typed.** Deleting the link syntax while editing is
+  the supported way to opt one post out.
+- **Turning a format off** stops new decoration and leaves every link already
+  posted working.
+
+## Installing
+
+Download the bundle from the
+[releases page](../../releases) and upload it in **System Console → Plugins →
+Plugin Management**, then enable it.
+
+## Admin settings
+
+Eleven switches in **System Console → Plugins → Tactical Fusion**. All on by
+default except `EnableLocationUTM`.
+
+| Setting | Controls | Default |
+|---|---|---|
+| `EnableDTG` | The date-time group feature, and the three below it | On |
+| `EnableDTGMilitary` | `091630ZAUG26` and friends | On |
+| `EnableDTGTimestamp` | `2026-08-09T16:30:00Z` | On |
+| `EnableDTGMoniker` | A `DTG:` label in front of a time | On |
+| `EnableLocation` | The coordinate feature, and the six below it | On |
+| `EnableLocationDDSigned` | `34.0561, -118.2500` | On |
+| `EnableLocationLatLon` | Hemisphere and degrees/minutes/seconds forms | On |
+| `EnableLocationUSMTF` | The fixed-width USMTF shapes | On |
+| `EnableLocationGrid` | MGRS, `18S UJ 23478 06483` | On |
+| `EnableLocationUTM` | UTM, `33U 291000 5628000` | **Off** |
+| `EnableLocationMoniker` | USMTF field labels in front of a coordinate | On |
+
+**`EnableLocationUTM` is the only switch that ships off**, and the reason is a
+difference in kind. Every other switch trades a false positive against a missed
+decoration. UTM can decorate a real coordinate and point at the **wrong place**:
+`11S` is band S here (34° N) and "zone 11, southern hemisphere" to a civilian
+(56° S), and nothing in the token says which was meant. The northing has to
+land inside the band its letter names, which declines about nine in ten
+positions written the civilian way, but not all of them. Turn it on if your
+workspace writes UTM the military way. Leaving it off costs no UTM **row**: every
+decorated coordinate still shows one.
+
+Two other combinations are worth calling out:
+
+- Leaving only `EnableLocationUSMTF` and `EnableLocationMoniker` on decorates a
+  coordinate **only** where an author explicitly labeled it, which removes bare
+  detection entirely.
+- `EnableLocationGrid` and `EnableLocationUTM` together are the switches that
+  remove every value the plugin calculates rather than reads, for a workspace
+  that wants only what a message literally says.
+
+Changes take effect immediately, with no restart.
+
+## Help
+
+Full documentation ships with the plugin and is served from your own server, so
+it works offline:
+
+`/plugins/com.mattermost.plugin-tactical-fusion/public/help/help.html`
+
+It is linked from the System Console settings page and from the sidebar panel,
+and covers every recognized format, the panel, each admin switch, the slash
+commands, troubleshooting, and the `TF-NNNN` error codes you may see quoted in a
+message.
+
+---
+
+## For developers
+
+Go server plugin plus a React webapp. `make help` lists every target.
 
 ```sh
-make docker-setup   # first run: start Mattermost and PostgreSQL, create admin and team
-make deploy         # build the bundle, install it, and enable it
+make docker-setup   # first run: start Mattermost + PostgreSQL, create admin and team
+make deploy         # build the bundle, install it, enable it
 ```
 
 That serves Mattermost on `http://localhost:8065` with an `admin` / `password`
-system admin account. Override the port with `MM_PORT`.
+system admin (override the port with `MM_PORT`). `make deploy-local` targets your
+own running server instead, via the bundled `pluginctl`.
 
-Useful alongside it: `make docker-logs`, `make docker-reset` (disable and
-re-enable the plugin), `make docker-stop` (preserves data), `make docker-clean`
-(removes data too).
+| Command | Does |
+|---|---|
+| `make dist` | Build the plugin bundle |
+| `make check-style` | Lint Go and webapp code |
+| `make test` | Run tests |
+| `make coverage` | Backend and frontend coverage summary |
+| `make sbom-audit` | SBOM + CVE scan, fails on HIGH/CRITICAL |
+| `make release` | The full security-gated pipeline CI runs on a tag |
 
-### Deploying to your own server instead
-
-```sh
-make deploy-local
-```
-
-`deploy-local` targets `MM_LOCAL_SITEURL` (default `http://localhost:8065`) through
-the bundled `pluginctl`, which authenticates via local mode (auto-detected socket,
-or `MM_LOCALSOCKETPATH`), `MM_ADMIN_TOKEN`, or `MM_ADMIN_USERNAME` plus
-`MM_ADMIN_PASSWORD`.
-
-## Common commands
-
-- `make dist` - build the plugin bundle
-- `make check-style` - lint Go and webapp code
-- `make test` - run tests
-- `make coverage` - coverage summary for backend and frontend (`coverage-backend` and `coverage-frontend` individually)
-- `make deploy` - build and deploy to the Docker Compose stack
-- `make deploy-local` - build and deploy to the server at `MM_LOCAL_SITEURL`
-- `make help` - every target with its description
-
-## Automation
-
-CI/CD is wired up for releases, security scanning, and dependency updates.
-
-### CI workflows (`.github/workflows/`)
-
-| Workflow | Trigger | What it does |
-|----------|---------|--------------|
-| `pr.yml` | PRs to `main` | Style checks, tests, and a bundle build |
-| `security.yml` | PRs, push to `main`, weekly | SBOM + Grype CVE scan and CodeQL (Go + JS/TS), uploaded to Code Scanning |
-| `release-please.yml` | push to `main` | Maintains the Release PR (version bump + changelog) |
-| `release.yml` | `v*` tag | Full security-gated `make release` + publishes the GitHub Release |
-
-### Releasing
-
-Releases are automated with **release-please** driven by
+CI runs the same targets: `pr.yml` (style, tests, build), `security.yml` (SBOM +
+Grype + CodeQL to Code Scanning), `release-please.yml` and `release.yml`.
+Releases are automated with
+[release-please](https://github.com/googleapis/release-please) driven by
 [Conventional Commits](https://www.conventionalcommits.org/), so versions and the
-changelog are not hand-edited. Commit `feat:`/`fix:` messages, merge the Release
-PR release-please keeps open, and the tag + GitHub Release are created for you.
+changelog are never hand-edited. Dependabot opens weekly dependency PRs.
 
-See **[docs/RELEASING.md](docs/RELEASING.md)** for the commit format, the bump
-rules, and the manual fallback.
-
-### Security tooling
-
-An SBOM + CVE + static-analysis pipeline (CycloneDX, Grype, CodeQL, ClamAV,
-optional GPG signing) is reproducible locally via `make`:
-
-- `make sbom-audit` - generate SBOMs and fail on HIGH/CRITICAL CVEs
-- `make codeql-analyze && make security-gate` - static analysis + finding gate
-- `make release` - the full security-gated pipeline CI runs on a tag
-
-Suppress false positives in `.grype.yaml` with a documented reason. Enabling
-GitHub Code Scanning is required for the SARIF upload steps (free on public
-repos; needs Advanced Security on private).
-
-See **[docs/SECURITY.md](docs/SECURITY.md)** for the full checklist, the Code
-Scanning requirement, suppression guidance, and signing setup.
-
-### Dependency updates
-
-Dependabot (`.github/dependabot.yml`) opens weekly PRs for Go modules, npm
-packages, and GitHub Actions, with security updates firing immediately.
-
-See the [Mattermost plugin developer docs](https://developers.mattermost.com/extend/plugins/) for more information.
+Further reading: [CLAUDE.md](CLAUDE.md) for the architecture and the reasoning
+behind it, [docs/RELEASING.md](docs/RELEASING.md), [docs/SECURITY.md](docs/SECURITY.md),
+and the [Mattermost plugin developer docs](https://developers.mattermost.com/extend/plugins/).

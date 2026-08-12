@@ -101,7 +101,7 @@ const ClickHarness: React.FC<{installTwice?: boolean; centerChannelBg?: string}>
                 href={`${prefix}fix?v=hello&_page=1`}
 
                 // What Mattermost puts on a rendered link, and what has to come
-                // off for the shared target to be honoured.
+                // off for the shared target to be honored.
                 rel='noopener noreferrer'
             >{'force page'}</a>
             <a

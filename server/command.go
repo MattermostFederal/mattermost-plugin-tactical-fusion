@@ -11,11 +11,13 @@ import (
 
 const commandTrigger = "tactical-fusion"
 
-const subcommandList = "examples"
+const subcommandList = "examples, example-details, check"
 
 func getCommand() *model.Command {
 	autocomplete := model.NewAutocompleteData(commandTrigger, "[command]", "Tactical Fusion commands")
-	autocomplete.AddCommand(model.NewAutocompleteData("examples", "", "Show what the decorators do, with live examples"))
+	autocomplete.AddCommand(model.NewAutocompleteData("examples", "", "Post a short demonstration to this channel, for everybody to see"))
+	autocomplete.AddCommand(model.NewAutocompleteData("example-details", "", "Post every format, edge case and near miss to this channel, as a thread"))
+	autocomplete.AddCommand(model.NewAutocompleteData("check", "[text]", "Show what would be decorated in some text, and what would not"))
 
 	return &model.Command{
 		Trigger:          commandTrigger,
@@ -36,10 +38,28 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 	switch fields[1] {
 	case "examples":
 		return p.examplesResponse(), nil
+	case "example-details":
+		return p.exampleDetailsResponse(args), nil
+	case "check":
+		return p.checkResponse(argumentText(args.Command, fields[1])), nil
 	default:
 		return ephemeralResponse(errcode.WithCode(errcode.CommandUnknownSubcommand,
 			"Unknown subcommand. Available: "+subcommandList)), nil
 	}
+}
+
+// argumentText is everything after the subcommand, with its spacing intact.
+//
+// Recovered by finding the subcommand rather than by trimming a fixed prefix,
+// because dispatch splits on Fields and so tolerates repeated spaces that a
+// prefix trim would not. Getting that wrong made "/tactical-fusion  check X"
+// echo the whole command line back as the text under test.
+func argumentText(command, subcommand string) string {
+	_, rest, found := strings.Cut(command, subcommand)
+	if !found {
+		return ""
+	}
+	return strings.TrimSpace(rest)
 }
 
 func ephemeralResponse(text string) *model.CommandResponse {

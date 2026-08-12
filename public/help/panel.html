@@ -16,7 +16,7 @@
         <nav>
             <span class="nav-section">Documentation</span>
             <a href="help.html">Overview</a>
-            <a href="formats.html">Date and Time Formats</a>
+            <a href="formats.html">Recognized Formats</a>
             <a href="panel.html" class="active">The Sidebar Panel</a>
             <a href="admin.html">Admin Settings</a>
             <a href="commands.html">Slash Commands</a>
@@ -60,7 +60,7 @@
                 </tr>
                 <tr>
                     <td>Reading</td>
-                    <td>The instant written out in full, in the offset it was originally written in.</td>
+                    <td>The instant written out in full, in the offset it was originally written in: <code>09 Aug 2026 16:30 Z</code>. Seconds appear only when the text carried them, so <code>2026-08-09T16:30:45Z</code> reads <code>09 Aug 2026 16:30:45 Z</code>. A date-time group has no seconds field, so it never shows one.</td>
                 </tr>
                 <tr>
                     <td>Canonical form</td>
@@ -68,7 +68,7 @@
                 </tr>
                 <tr>
                     <td>Timezone table</td>
-                    <td>The same instant in each of your timezones, ordered west to east.</td>
+                    <td>The same instant in each of your timezones, ordered west to east. Times follow the reading: to the minute, and to the second when the original text was written that finely.</td>
                 </tr>
             </tbody>
         </table>
@@ -109,6 +109,206 @@
             </p>
         </div>
 
+        <h2 id="location-panel">The location panel</h2>
+
+        <p>
+            Clicking a coordinate opens the same sidebar with a Location panel.
+        </p>
+
+        <p>
+            Most of it is worked out from the link alone and is on screen the instant the
+            panel opens. The two grid rows are the exception: a grid reference is a
+            projection onto an ellipsoid, that projection runs on the server, so those rows
+            are fetched. See <a href="#location-degrades">what happens when the request does
+            not arrive</a>, which is never a blank panel.
+        </p>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>MGRS</td><td>The military grid reference, at the resolution the original text carried. First in the table, because for most readers of this plugin it is the reading that gets used. Nothing sits above the table: an earlier version repeated this reference on a line of its own, three lines above the row that already carried it.</td></tr>
+                <tr><td>Lat / lon</td><td>Decimal degrees with hemisphere letters.</td></tr>
+                <tr><td>DMS</td><td>Degrees, minutes and seconds.</td></tr>
+                <tr><td>DDM</td><td>Degrees and decimal minutes.</td></tr>
+                <tr><td>USMTF</td><td>The fixed-width compact form, for pasting into an ATO or a USMTF field. The shape follows the resolution: <code>35N079W</code> for a degrees-only coordinate, <code>3510N07901W</code> at whole minutes, <code>400948N1221400W</code> at whole seconds, and <code>331000.0N1183000.0W</code> finer than that. Sized from the <a href="#location-resolution">pair</a> rather than per axis, because it is one shape covering both halves. It never carries <a href="formats.html#location-usmtf">confidence digits</a>: those say how well a position is known, which a derived reading cannot claim.</td></tr>
+                <tr><td>UTM</td><td>Zone, band, easting and northing, rounded to the same resolution.</td></tr>
+                <tr><td>Resolution</td><td>How finely the original text was written, in meters. For a grid reference, how big the square is.</td></tr>
+                <tr><td>Confidence</td><td>Only for a <a href="formats.html#location-usmtf">verified USMTF coordinate</a>, which states one.</td></tr>
+                <tr><td>Datum</td><td>Always WGS 84.</td></tr>
+                <tr><td>Original text</td><td>The author's own text, exactly as they typed it.</td></tr>
+                <tr><td>Normalized</td><td>The canonical form, shown only when it differs from what the author typed.</td></tr>
+            </tbody>
+        </table>
+
+        <h3 id="location-resolution">Resolution is not accuracy</h3>
+
+        <p>
+            The row says <em>about 11 m</em>, not <em>accurate to 11 m</em>.
+            It describes how finely the text was written and nothing else. A phone with
+            5 m of real accuracy still emits six decimals, and a row headed "precision"
+            would invite reading that as a claim about the fix.
+        </p>
+
+        <p>
+            Every other row is rendered at that same resolution. A coordinate written to
+            two decimals shows <code>34.06&deg; N</code>, and one written to whole degrees
+            shows <code>35&deg;N</code> rather than <code>35&deg;00'00"N</code>. Padding a
+            field the author never wrote would be a claim they did not make.
+        </p>
+
+        <p>
+            When the two halves were written to <strong>different</strong> precision, each
+            half keeps its own. <code>34.0561N,118.2W</code> shows
+            <code>34.0561&deg; N, 118.2&deg; W</code>, and the resolution row reads
+            <em>about 11.1 km</em>, which is what the coarser half is worth. The two are
+            not in conflict: the resolution describes how well the <em>pair</em> is known,
+            while each value shows every digit its author actually typed. Rendering the
+            latitude at the longitude's single decimal would move it 4.9 km north, which
+            is a loss of real information rather than a refusal to overstate.
+        </p>
+
+        <h3 id="location-grid-rows">Grid references name squares</h3>
+
+        <p>
+            <code>32U MV 12 34</code> is a 1 km square, and the latitude and longitude shown
+            for it are that square's <strong>center</strong>. The resolution row says so.
+            Read as a corner instead, a 10 km reference would put a reader 7 km from where
+            the grid points.
+        </p>
+
+        <p>
+            The grid rows follow the same resolution rule as everything else, which most
+            conversion tools do not: a coordinate written to whole degrees gets a 100 km
+            square, not a ten-figure reference implying it is known to the meter. The UTM
+            row is the same numbers as the grid reference whenever the link is a grid one,
+            because the digits of a grid reference are literally its south-west corner on
+            the UTM grid.
+        </p>
+
+        <p>
+            Above 84&deg; north and below 80&deg; south there is no UTM grid, so both rows
+            are simply absent. Everything else on the panel is unaffected.
+        </p>
+
+        <h3 id="location-degrades">When the conversion does not arrive</h3>
+
+        <p>
+            The grid rows are the only ones fetched, and losing them costs only them. The
+            rest of the panel is computed from the link and is already on screen.
+        </p>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>While waiting</td><td>The fetched rows read <code>converting&hellip;</code></td></tr>
+                <tr><td>Request failed</td><td>They read <code>unavailable</code>. Nothing is blank and nothing shows a zero, because a row reading <code>0.0000&deg; N, 0.0000&deg; E</code> because a conversion failed would be a position, and a wrong one.</td></tr>
+                <tr><td>Server refused the link</td><td>The panel says <strong>Not a coordinate</strong> and shows nothing else.</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            That last case is a verdict rather than an outage, and the two are kept apart
+            deliberately. A hand-edited link can pass the checks the browser is able to make
+            and still not be one this plugin issued; only the server can tell, because the
+            check needs the coordinate grammar. Rather than render a position that might name
+            somewhere else entirely, the panel declines, exactly as
+            <a href="#page">the standalone page</a> does for the same link. If you see this
+            on a link you did not edit, it is worth reporting with
+            <a href="error-codes.html">code TF-13008</a>.
+        </p>
+
+        <h3 id="location-as-written">Original text, and normalized</h3>
+
+        <p>
+            The <em>Original text</em> row carries the author's own characters, including the
+            symbols and spacing they used. <em>Normalized</em> shows the canonical form the
+            link was validated against, and appears only when the two differ, which is why
+            it is usually absent for USMTF coordinates: those are already canonical as
+            typed.
+        </p>
+
+        <p>
+            Both rows matter on the <a href="#page">standalone page</a>, which is what
+            mobile clients open. That page shows only the link, not the message it came
+            from, so without the author's own text their spelling would be unreachable.
+        </p>
+
+        <h3 id="location-customize">Customize your view</h3>
+
+        <p>
+            The link below the table lets you choose which rows the panel shows. Every row
+            is on by default; untick the ones you never read and they are gone from every
+            coordinate you open. Stored per person, so it changes nothing for anybody else.
+        </p>
+
+        <p>
+            Two things follow from how it is stored, and both are deliberate. What is saved
+            is the list of rows you <strong>hid</strong>, not the ones you kept, so a row
+            added in a later version appears for you as well rather than being invisible to
+            exactly the people who bothered to choose. And <strong>Restore defaults</strong>
+            deletes your choice rather than writing today's rows into it, so you go back to
+            tracking whatever the panel shows next.
+        </p>
+
+        <p>
+            Hiding every row is allowed. The panel keeps the note and the links at the
+            bottom, and the same <em>Customize your view</em> link is how you get back.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">The standalone page always shows every row.</p>
+            <p>
+                The <a href="#page">page a link opens</a> outside Mattermost is served
+                without a session, so it has no reader to ask. It and the sidebar can
+                therefore show the same coordinate differently, which is inherent to a
+                public route rather than an oversight. The same is true of the
+                <a href="#customize">DTG timezone table</a>.
+            </p>
+        </div>
+
+        <h3 id="location-copy">Copy icons</h3>
+
+        <p>
+            Every row carrying a <strong>value</strong> has a copy icon at its right edge:
+            the grid reference, latitude and longitude, DMS, DDM, UTM, the original text and
+            the normalized form. The rows that carry prose rather than a value do not, since
+            copying <em>about 11 m</em> or <em>WGS 84</em> gets you a sentence rather than a
+            position.
+        </p>
+
+        <p>
+            The same icons appear on the <a href="#page">standalone page</a>, which is what
+            mobile clients open. On both surfaces they are hidden when the browser cannot
+            reach the clipboard, which is the case on any server reached over plain HTTP
+            rather than HTTPS, and in the sidebar an icon is also absent while its own value
+            has not arrived: offering one over <code>converting&hellip;</code> would put
+            that on the clipboard. Every value stays selectable either way.
+        </p>
+
+        <p>
+            The icon changes to a tick for a moment once the value is on the clipboard, and
+            the same acknowledgement is announced to screen readers. The button keeps its
+            name across that change rather than renaming itself to "Copied", which would
+            move it out from under a reader mid-sentence.
+        </p>
+
+        <p>
+            There is no map button. A map link would send a grid reference to a third party,
+            which is an operational decision rather than a default, and this release does
+            not make it.
+        </p>
+
+        <h3 id="location-hover">No hover card</h3>
+
+        <p>
+            Pointing at a coordinate shows nothing, unlike
+            <a href="#hover">a date-time group</a>. The one thing a hover could usefully add
+            is the grid reference, and this version can now compute one, but only on the
+            server. A hover fires as the pointer crosses a link rather than on a click, so
+            wiring one up would put a request behind every coordinate a reader's cursor
+            passes over in a busy channel. A card that merely repeated the text already
+            under the cursor would earn nothing, so there is none until it can show the
+            grid without that cost.
+        </p>
+
         <h2 id="customize">Customize your view</h2>
 
         <p>
@@ -125,7 +325,7 @@
             <tbody>
                 <tr>
                     <td>Timezones</td>
-                    <td>Which rows the table shows, up to 25. Chosen from a catalogue of named military installations, or from every timezone your browser knows.</td>
+                    <td>Which rows the table shows, up to 25. Chosen from a catalog of named military installations, or from every timezone your browser knows.</td>
                 </tr>
                 <tr>
                     <td>Flash threshold</td>
@@ -176,7 +376,7 @@
         <p>The list has two groups:</p>
 
         <ul>
-            <li><strong>Military installations</strong>, a curated catalogue with names.</li>
+            <li><strong>Military installations</strong>, a curated catalog with names.</li>
             <li><strong>All timezones</strong>, every zone the browser knows, unnamed.</li>
         </ul>
 
@@ -208,7 +408,7 @@
             never looked up from a table. Roughly half of these zones observe daylight
             saving, so a stored offset would be an hour wrong for part of the year, and
             two rows can swap places between summer and winter. That is correct
-            behaviour, not a bug.
+            behavior, not a bug.
         </p>
 
         <p>

@@ -11,7 +11,7 @@ test('classifies Mattermost default backgrounds', () => {
     expect(themeForBackground('#151e2e')).toBe('dark');
 });
 
-test('accepts the colour forms a theme variable can hold', () => {
+test('accepts the color forms a theme variable can hold', () => {
     expect(themeForBackground('#fff')).toBe('light');
     expect(themeForBackground('#000')).toBe('dark');
     expect(themeForBackground('rgb(255, 255, 255)')).toBe('light');

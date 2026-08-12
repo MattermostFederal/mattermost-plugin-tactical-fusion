@@ -26,6 +26,41 @@ type configuration struct {
 	EnableDTGMilitary  bool
 	EnableDTGMoniker   bool
 	EnableDTGTimestamp bool
+
+	// EnableLocation is the switch for the coordinate decorator, and the six
+	// below select which of its grammars are matched. They behave exactly as
+	// the date-time group switches above do, including being false at zero.
+	//
+	// EnableLocationDDSigned is separate from the rest because signed decimal
+	// degrees is the weakest grammar here: it is two decimal numbers and a
+	// comma, held apart from ordinary text by a four-decimal rule. A workspace
+	// bitten by it must be able to kill exactly that and keep the others.
+	//
+	// EnableLocationUSMTF plus EnableLocationMoniker on their own reproduce the
+	// posture of mattermost-plugin-aocanywhere, which decorates a coordinate
+	// only when the author labeled it. That is a supported configuration.
+	//
+	// EnableLocationGrid and EnableLocationUTM are separate for a different
+	// reason again: MGRS and UTM are the only grammars whose position is
+	// computed rather than read off the token, so turning both off removes
+	// every row this plugin derives from a hand-written projection rather than
+	// from arithmetic on what the author typed. A workspace that wants only
+	// what the message literally says can have exactly that.
+	//
+	// EnableLocationUTM is the one switch in this plugin that ships OFF, and it
+	// is the only one whose default is about correctness rather than noise. A
+	// UTM token is genuinely ambiguous: "11S" is band S here and "zone 11,
+	// southern hemisphere" to a civilian, 90 degrees of latitude apart. Every
+	// other switch trades a false positive against a missed decoration; this
+	// one trades it against a decoration that is confidently wrong. See the
+	// Formats.UTM documentation for the whole argument.
+	EnableLocation         bool
+	EnableLocationDDSigned bool
+	EnableLocationLatLon   bool
+	EnableLocationUSMTF    bool
+	EnableLocationGrid     bool
+	EnableLocationUTM      bool
+	EnableLocationMoniker  bool
 }
 
 func (c *configuration) Clone() *configuration {

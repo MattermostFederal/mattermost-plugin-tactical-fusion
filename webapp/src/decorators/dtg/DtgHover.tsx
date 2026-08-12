@@ -14,7 +14,7 @@ import type {Dtg} from './index';
  * reading, the token and the timezone table are all a click away in the panel,
  * and repeating them here only makes the glance slower.
  *
- * It honours the reader's flash threshold so that pointing at a link and
+ * It honors the reader's flash threshold so that pointing at a link and
  * opening it cannot disagree about whether the same DTG is imminent. The
  * preferences are cached, so hovering does not mean a request.
  */

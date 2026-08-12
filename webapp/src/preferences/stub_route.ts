@@ -10,13 +10,27 @@ interface WireZone {
 
 export interface Recorded {
     method: string;
-    body: {dtg?: {zones?: WireZone[]; urgent_within_minutes?: number}} | null;
+    body: {
+        dtg?: {zones?: WireZone[]; urgent_within_minutes?: number};
+        location?: {hidden_rows?: string[]};
+    } | null;
 }
 
 export interface StubOptions {
 
-    /** What the server already has stored. */
+    /** What the server already has stored, for the DTG editor. */
     stored?: {zones: WireZone[]; urgentWithinMinutes: number};
+
+    /** What the server already has stored, for the location editor. */
+    storedHiddenRows?: string[];
+
+    /**
+     * Holds every GET open until the returned release function is called.
+     *
+     * The only way to test what an editor does while its settings are still in
+     * the air, which is where the draft-clobbering bug lived.
+     */
+    deferLoad?: boolean;
 
     /** Status for the first GET, so a failed load can be exercised. */
     loadStatus?: number;
@@ -28,7 +42,7 @@ export interface StubOptions {
     saveMessage?: string;
 }
 
-const NOTHING_SAVED = {dtg: {zones: [], urgent_within_minutes: 0}}; // eslint-disable-line @typescript-eslint/naming-convention
+const NOTHING_SAVED = {dtg: {zones: [], urgent_within_minutes: 0}, location: {hidden_rows: []}};
 
 /**
  * Stands in for the plugin's preferences route in a component test.
@@ -45,8 +59,9 @@ export async function stubPreferencesRoute(page: Page, options: StubOptions = {}
     let stored = {
         dtg: {
             zones: options.stored?.zones ?? [],
-            urgent_within_minutes: options.stored?.urgentWithinMinutes ?? 0, // eslint-disable-line @typescript-eslint/naming-convention
+            urgent_within_minutes: options.stored?.urgentWithinMinutes ?? 0,
         },
+        location: {hidden_rows: options.storedHiddenRows ?? []},
     };
 
     await page.route('**/api/v1/preferences', async (route) => {
@@ -103,4 +118,9 @@ export function savedEntries(calls: Recorded[]): WireZone[] | undefined {
 /** The threshold the component asked to save, in minutes. */
 export function savedMinutes(calls: Recorded[]): number | undefined {
     return calls.find((call) => call.method === 'PUT')?.body?.dtg?.urgent_within_minutes;
+}
+
+/** The hidden rows the component asked to save, in order. */
+export function savedHiddenRows(calls: Recorded[]): string[] | undefined {
+    return calls.filter((call) => call.method === 'PUT').at(-1)?.body?.location?.hidden_rows;
 }

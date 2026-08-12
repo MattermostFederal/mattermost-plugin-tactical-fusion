@@ -48,7 +48,7 @@ test.describe('the urgency threshold', () => {
     // Zero is a real argument rather than an omission, so the default threshold
     // must not step in for it: a reader who set the threshold to nothing gets
     // nothing, not thirty minutes.
-    test('a zero threshold is honoured rather than defaulted', async ({mount, page}) => {
+    test('a zero threshold is honored rather than defaulted', async ({mount, page}) => {
         await mount(<Countdown
             target={inFuture(MINUTE)}
             urgentWithinMs={0}
@@ -67,9 +67,9 @@ test.describe('the urgency threshold', () => {
 });
 
 test.describe('how urgency reads', () => {
-    // The bar and the colour carry the signal on their own, for a reader who
+    // The bar and the color carry the signal on their own, for a reader who
     // does not perceive the pulse.
-    test('urgent draws a bar and colours the text', async ({mount, page}) => {
+    test('urgent draws a bar and colors the text', async ({mount, page}) => {
         await mount(<Countdown
             target={inFuture(MINUTE)}
             urgentWithinMs={30 * MINUTE}
@@ -80,7 +80,7 @@ test.describe('how urgency reads', () => {
         await expect(countdown).toHaveCSS('padding-left', '10px');
     });
 
-    // Not merely a different colour: the bar and its padding have to be absent,
+    // Not merely a different color: the bar and its padding have to be absent,
     // or every countdown would sit indented waiting for one.
     test('a calm countdown has no bar and no indent', async ({mount, page}) => {
         await mount(<Countdown

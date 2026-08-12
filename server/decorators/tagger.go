@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // Ranges that must never be scanned. Ported from the reference implementation
@@ -54,14 +55,14 @@ func balancedExpr(open, close, inner string, depth int) string {
 // Both allow balanced delimiters, because CommonMark does: "[link [foo [bar]]]
 // (/uri)" is a link verbatim from the spec, and "[x](/a(b)c)" and
 // `[x](/a "(note)")` are links too. Refusing a raw "[" in the label, or ending
-// the destination at the first ")", meant the construct was not recognised as a
+// the destination at the first ")", meant the construct was not recognized as a
 // link at all and the text behind it was left open to rewriting.
 //
 // linkLabelExpr crosses newlines and bracketSpanExpr does not, which is the
 // same split the simple forms had before nesting was added to them.
 //
 // A real label may wrap, so a link whose text runs over two lines still has to
-// be recognised: failing to would leave its destination open to rewriting,
+// be recognized: failing to would leave its destination open to rewriting,
 // which is corruption. A *standalone* bracket has no such claim on the reader's
 // intent, and letting one span the message means a single stray "[" silently
 // suppresses decoration for everything after it, which is why the catch-all
@@ -74,7 +75,7 @@ var (
 
 // The forms the balanced expressions replaced, kept alongside them.
 //
-// Balanced matching recognises more, and recognises nothing at all when the
+// Balanced matching recognizes more, and recognizes nothing at all when the
 // delimiters do not balance. `[x](/u "a (b")` has an unpaired "(" inside a
 // title, where CommonMark allows it, and so is not a link to the expression
 // above; `[a\]` ends in an escape the simple form never looked for. In both
@@ -148,7 +149,16 @@ func (r byteRange) overlaps(other byteRange) bool {
 }
 
 type candidate struct {
-	byteRange
+	// match is the whole regexp match. It is what protected ranges are tested
+	// against, so a moniker sitting inside a code span protects the token
+	// behind it, and it is what "longest match wins" measures.
+	match byteRange
+
+	// replace is the span actually rewritten into a link. It equals match
+	// unless the pattern set ReplaceGroup, and it is what overlap resolution
+	// claims, so two tokens sharing a separator do not knock each other out.
+	replace byteRange
+
 	decoratorIdx int
 	patternIdx   int
 	typ          string
@@ -160,7 +170,7 @@ type candidate struct {
 	label string
 }
 
-// Decorate returns the message with every recognised token replaced by a
+// Decorate returns the message with every recognized token replaced by a
 // markdown link. It returns the input unchanged when nothing matches, so
 // callers can compare identity to decide whether anything happened.
 //
@@ -176,7 +186,7 @@ type candidate struct {
 // token inside one of those is left exactly as written.
 //
 // findProtectedRanges is the whole safety story, so anything it fails to
-// recognise is a corruption bug. Widen it with a test per construct.
+// recognize is a corruption bug. Widen it with a test per construct.
 func (t *Tagger) Decorate(message string, ref time.Time) string {
 	if message == "" || t.Registry == nil {
 		return message
@@ -394,10 +404,13 @@ func overlapsAny(r byteRange, ranges []byteRange) bool {
 }
 
 // findCandidates runs every registered pattern and keeps the matches that are
-// outside protected ranges and that their decorator accepts.
+// outside protected ranges, whose boundaries their pattern accepts, and that
+// their decorator accepts.
 //
-// A match rejected by Parse does not claim its range, so a shorter valid match
-// at the same span can still win.
+// A match rejected by Boundary or by Parse does not claim its range, so a
+// shorter valid match at the same span can still win. Note that the regexp scan
+// has already moved past a rejected match, so the *same* pattern will not find a
+// shorter one inside it; a different pattern still can.
 func (t *Tagger) findCandidates(message string, ref time.Time, protected []byteRange) []candidate {
 	var candidates []candidate
 
@@ -407,8 +420,19 @@ func (t *Tagger) findCandidates(message string, ref time.Time, protected []byteR
 				continue
 			}
 			for _, loc := range p.Regexp.FindAllStringSubmatchIndex(message, -1) {
-				r := byteRange{loc[0], loc[1]}
-				if overlapsAny(r, protected) {
+				match := byteRange{loc[0], loc[1]}
+				if overlapsAny(match, protected) {
+					continue
+				}
+
+				// Before Parse: this is cheaper, and a match with the wrong
+				// characters around it is not a token at all.
+				if !p.boundaryOK(message, match) {
+					continue
+				}
+
+				replace, ok := p.replaceRange(loc, match)
+				if !ok {
 					continue
 				}
 
@@ -420,7 +444,8 @@ func (t *Tagger) findCandidates(message string, ref time.Time, protected []byteR
 				}
 
 				candidates = append(candidates, candidate{
-					byteRange:    r,
+					match:        match,
+					replace:      replace,
 					decoratorIdx: di,
 					patternIdx:   pi,
 					typ:          d.Type(),
@@ -432,6 +457,48 @@ func (t *Tagger) findCandidates(message string, ref time.Time, protected []byteR
 	}
 
 	return candidates
+}
+
+// boundaryOK asks the pattern whether the runes flanking a match are acceptable.
+//
+// The flanking runes are decoded rather than indexed by byte, so a multi-byte
+// character next to a token is reported as itself and not as a stray
+// continuation byte. Both are 0 at the edges of the message.
+func (p Pattern) boundaryOK(message string, match byteRange) bool {
+	if p.Boundary == nil {
+		return true
+	}
+
+	before, _ := utf8.DecodeLastRuneInString(message[:match.start])
+	if match.start == 0 {
+		before = 0
+	}
+
+	after, _ := utf8.DecodeRuneInString(message[match.end:])
+	if match.end >= len(message) {
+		after = 0
+	}
+
+	return p.Boundary(before, after)
+}
+
+// replaceRange returns the span this pattern rewrites, which is the whole match
+// unless ReplaceGroup names a submatch.
+//
+// ok=false for a ReplaceGroup naming a group that did not participate in the
+// match, which is a coding error in the pattern rather than something a message
+// can cause.
+func (p Pattern) replaceRange(loc []int, match byteRange) (byteRange, bool) {
+	if p.ReplaceGroup <= 0 {
+		return match, true
+	}
+
+	i := 2 * p.ReplaceGroup
+	if i+1 >= len(loc) || loc[i] < 0 {
+		return byteRange{}, false
+	}
+
+	return byteRange{loc[i], loc[i+1]}, true
 }
 
 func submatches(message string, loc []int) []string {
@@ -447,11 +514,18 @@ func submatches(message string, loc []int) []string {
 // resolveOverlaps picks a non-overlapping set: longest match wins, and
 // registration order only breaks ties. Ordering by registration alone would be
 // a hidden global coupling, where adding a decorator silently changes an
-// existing one's behaviour.
+// existing one's behavior.
+//
+// Ranking is by the *match* length, so a pattern that deliberately matches more
+// than it links still outranks a bare pattern for the same token. Claiming is by
+// the *replace* range, so two tokens separated by a single character do not
+// exclude each other.
 func resolveOverlaps(candidates []candidate) []candidate {
 	sort.SliceStable(candidates, func(i, j int) bool {
 		a, b := candidates[i], candidates[j]
-		if la, lb := a.end-a.start, b.end-b.start; la != lb {
+		la := a.match.end - a.match.start
+		lb := b.match.end - b.match.start
+		if la != lb {
 			return la > lb
 		}
 		if a.decoratorIdx != b.decoratorIdx {
@@ -460,17 +534,17 @@ func resolveOverlaps(candidates []candidate) []candidate {
 		if a.patternIdx != b.patternIdx {
 			return a.patternIdx < b.patternIdx
 		}
-		return a.start < b.start
+		return a.match.start < b.match.start
 	})
 
 	var accepted []candidate
 	var claimed []byteRange
 	for _, c := range candidates {
-		if overlapsAny(c.byteRange, claimed) {
+		if overlapsAny(c.replace, claimed) {
 			continue
 		}
 		accepted = append(accepted, c)
-		claimed = append(claimed, c.byteRange)
+		claimed = append(claimed, c.replace)
 	}
 
 	return accepted
@@ -478,12 +552,12 @@ func resolveOverlaps(candidates []candidate) []candidate {
 
 // applyReplacements rewrites right to left so earlier indices stay valid.
 func (t *Tagger) applyReplacements(message string, accepted []candidate) string {
-	sort.Slice(accepted, func(i, j int) bool { return accepted[i].start > accepted[j].start })
+	sort.Slice(accepted, func(i, j int) bool { return accepted[i].replace.start > accepted[j].replace.start })
 
 	result := message
 	for _, c := range accepted {
 		link := "[" + labelEscaper.Replace(c.label) + "](" + t.buildURL(c.typ, c.params) + ")"
-		result = result[:c.start] + link + result[c.end:]
+		result = result[:c.replace.start] + link + result[c.replace.end:]
 	}
 	return result
 }

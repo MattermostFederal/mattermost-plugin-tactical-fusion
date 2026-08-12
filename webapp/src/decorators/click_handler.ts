@@ -63,7 +63,7 @@ export function withTheme(href: string): string {
 /**
  * The `rel` a standalone page link should carry, or null to drop it entirely.
  *
- * A named target is only honoured if the link does not also demand a fresh
+ * A named target is only honored if the link does not also demand a fresh
  * browsing context, and `noopener` and `noreferrer` both demand exactly that:
  * with either present the browser ignores the name and opens another tab every
  * time. Mattermost puts them on rendered links as a matter of course, so they

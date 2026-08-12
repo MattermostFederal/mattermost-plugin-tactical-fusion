@@ -28,6 +28,7 @@ test('reads a well-formed blob', () => {
 
     expect(fromWire(raw)).toEqual({
         dtg: {zones: [{iana: 'UTC'}, {iana: 'Asia/Tokyo', name: 'Yokota'}], urgentWithinMinutes: 15},
+        location: {hiddenRows: []},
     });
 });
 
@@ -64,8 +65,12 @@ for (const value of badThresholds) {
 // The wire names are a compatibility surface: renaming one silently discards
 // everybody's saved settings.
 test('writes the names the server reads', () => {
-    expect(toWire({dtg: {zones: [{iana: 'UTC'}], urgentWithinMinutes: 15}})).toEqual({
+    expect(toWire({
+        dtg: {zones: [{iana: 'UTC'}], urgentWithinMinutes: 15},
+        location: {hiddenRows: ['ddm']},
+    })).toEqual({
         dtg: {zones: [{iana: 'UTC'}], urgent_within_minutes: 15},
+        location: {hidden_rows: ['ddm']},
     });
 });
 
@@ -75,7 +80,20 @@ test('round-trips', () => {
             zones: [{iana: 'UTC'}, {iana: 'Europe/Berlin', name: 'USAG Stuttgart'}],
             urgentWithinMinutes: 45,
         },
+        location: {hiddenRows: ['ddm' as const, 'datum' as const]},
     };
 
     expect(fromWire(toWire(original))).toEqual(original);
+});
+
+// A blob from a build that had a row this one does not must not take the
+// reader's other settings down with it: reading is forgiving where writing is
+// strict, so an id nothing renders simply hides nothing.
+test('drops a hidden row this build does not have', () => {
+    const read = fromWire({location: {hidden_rows: ['ddm', 'sextant', 'ddm']}});
+    expect(read.location.hiddenRows).toEqual(['ddm']);
+});
+
+test('an absent location key reads as nothing hidden', () => {
+    expect(fromWire({dtg: {}}).location.hiddenRows).toEqual([]);
 });

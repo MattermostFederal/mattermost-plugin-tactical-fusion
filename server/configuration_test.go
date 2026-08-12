@@ -86,7 +86,7 @@ func TestGetConfigurationBeforeAnythingIsLoaded(t *testing.T) {
 }
 
 // setConfiguration guards against a caller handing back the live configuration
-// and then mutating it, which would change behaviour for every in-flight
+// and then mutating it, which would change behavior for every in-flight
 // message without taking the lock.
 func TestSetConfigurationRejectsTheLiveConfiguration(t *testing.T) {
 	p := &Plugin{}

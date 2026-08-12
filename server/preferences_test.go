@@ -8,6 +8,7 @@ import (
 
 	"github.com/mattermost/mattermost/server/public/model"
 
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
@@ -32,7 +33,7 @@ func TestValidateAcceptsAnEmptyBlob(t *testing.T) {
 	}
 }
 
-func TestValidateNormalisesZones(t *testing.T) {
+func TestValidateNormalizesZones(t *testing.T) {
 	prefs := UserPreferences{DTG: DTGPreferences{
 		Zones: []ZoneSelection{{IANA: "UTC"}, {IANA: "  Asia/Tokyo  "}, {IANA: ""}, {IANA: "UTC"}, {IANA: "   "}},
 	}}
@@ -63,7 +64,7 @@ func TestValidateRejectsBadZones(t *testing.T) {
 		{"path traversal", "../../etc/passwd", errcode.PreferencesZoneIDMalformed},
 		// Clears the shape check, because the regexp permits a leading slash.
 		// time.LoadLocation is what stops it: Go refuses any name beginning
-		// with a separator or containing "..", so the traversal defence holds
+		// with a separator or containing "..", so the traversal defense holds
 		// either way, just one step further along.
 		{"absolute path", "/etc/passwd", errcode.PreferencesZoneIDUnknown},
 		{"stray characters", "Asia/Tokyo; DROP", errcode.PreferencesZoneIDMalformed},
@@ -335,10 +336,14 @@ func TestStoredBlobKeepsItsWireNames(t *testing.T) {
 	api := newPreferenceAPI()
 	store := &kvPreferenceStore{api: api}
 
-	err := store.Set(testUserID, UserPreferences{Version: 1, DTG: DTGPreferences{
-		Zones:               []ZoneSelection{{IANA: "UTC"}},
-		UrgentWithinMinutes: 5,
-	}})
+	err := store.Set(testUserID, UserPreferences{
+		Version: 1,
+		DTG: DTGPreferences{
+			Zones:               []ZoneSelection{{IANA: "UTC"}},
+			UrgentWithinMinutes: 5,
+		},
+		Location: LocationPreferences{HiddenRows: []string{"ddm"}},
+	})
 	if err != nil {
 		t.Fatalf("Set() = %v", err)
 	}
@@ -348,15 +353,24 @@ func TestStoredBlobKeepsItsWireNames(t *testing.T) {
 		t.Fatalf("stored blob is not JSON: %v", err)
 	}
 
-	dtg, ok := raw["dtg"].(map[string]any)
-	if !ok {
-		t.Fatalf("stored blob has no dtg object: %v", raw)
-	}
-	if _, ok := dtg["zones"]; !ok {
-		t.Fatalf("stored blob has no zones field: %v", dtg)
-	}
-	if _, ok := dtg["urgent_within_minutes"]; !ok {
-		t.Fatalf("stored blob has no urgent_within_minutes field: %v", dtg)
+	// Every name the webapp reads or writes, checked by name. Renaming one
+	// silently discards everybody's saved settings on upgrade, and nothing else
+	// in either language would notice: webapp/src/preferences/types.ts is the
+	// other half of this contract.
+	for _, tc := range []struct{ section, field string }{
+		{"dtg", "zones"},
+		{"dtg", "urgent_within_minutes"},
+		{"location", "hidden_rows"},
+	} {
+		t.Run(tc.section+"."+tc.field, func(t *testing.T) {
+			section, ok := raw[tc.section].(map[string]any)
+			if !ok {
+				t.Fatalf("stored blob has no %q object: %v", tc.section, raw)
+			}
+			if _, ok := section[tc.field]; !ok {
+				t.Fatalf("stored blob has no %s.%s field: %v", tc.section, tc.field, section)
+			}
+		})
 	}
 }
 
@@ -373,5 +387,86 @@ func TestKVStoreSurfacesDeleteFailures(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "failed to clear preferences") {
 		t.Fatalf("Delete() = %v, want the failure wrapped with what was being attempted", err)
+	}
+}
+
+// The hidden-row selection: what a reader may store, and what is refused.
+func TestValidateHiddenRows(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		rows  []string
+		want  []string
+		fails bool
+	}{
+		{name: "nothing hidden is the default", rows: nil, want: []string{}},
+		{name: "a row this build renders", rows: []string{"ddm"}, want: []string{"ddm"}},
+		{
+			name: "duplicates collapse, because they were never two rows",
+			rows: []string{"ddm", "ddm", "datum"}, want: []string{"ddm", "datum"},
+		},
+		{name: "blanks are dropped rather than stored", rows: []string{"", "  ", "dms"}, want: []string{"dms"}},
+		{name: "surrounding space is trimmed", rows: []string{" dms "}, want: []string{"dms"}},
+
+		// Refused rather than dropped, for the same reason a bad timezone is:
+		// it can only come from a hand-written request or a bug, and storing
+		// something that will never do anything reports success for a setting
+		// that silently does not exist.
+		{name: "a row this build does not have", rows: []string{"sextant"}, fails: true},
+		{name: "a row named by its label rather than its id", rows: []string{"Lat / lon"}, fails: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			prefs := UserPreferences{Location: LocationPreferences{HiddenRows: tc.rows}}
+
+			err := prefs.validate()
+			if tc.fails {
+				if err == nil {
+					t.Fatalf("validate() accepted %v", tc.rows)
+				}
+				// The code, not merely an error: it is what the reader quotes
+				// and what public/help/error-codes.html is organized around.
+				assertCode(t, err.Error(), errcode.PreferencesRowUnknown)
+				return
+			}
+			if err != nil {
+				t.Fatalf("validate() rejected %v: %v", tc.rows, err)
+			}
+
+			if len(prefs.Location.HiddenRows) != len(tc.want) {
+				t.Fatalf("HiddenRows = %v, want %v", prefs.Location.HiddenRows, tc.want)
+			}
+			for i, id := range tc.want {
+				if prefs.Location.HiddenRows[i] != id {
+					t.Fatalf("HiddenRows = %v, want %v", prefs.Location.HiddenRows, tc.want)
+				}
+			}
+		})
+	}
+}
+
+// Every row the panel renders can be hidden, and nothing else can.
+//
+// Written against the catalog rather than a hand-typed list, so a row added
+// later is covered without anybody remembering to come back here.
+func TestEveryRowCanBeHidden(t *testing.T) {
+	prefs := UserPreferences{Location: LocationPreferences{HiddenRows: location.AllRowIDs}}
+
+	if err := prefs.validate(); err != nil {
+		t.Fatalf("validate() refused to hide every row: %v", err)
+	}
+	if len(prefs.Location.HiddenRows) != len(location.AllRowIDs) {
+		t.Fatalf("kept %d of %d rows", len(prefs.Location.HiddenRows), len(location.AllRowIDs))
+	}
+}
+
+// The cache hands the same value to every caller, so a caller that appended to
+// the hidden rows would be editing what the next reader gets.
+func TestCloneCopiesTheHiddenRows(t *testing.T) {
+	original := UserPreferences{Location: LocationPreferences{HiddenRows: []string{"ddm"}}}
+
+	clone := original.clone()
+	clone.Location.HiddenRows[0] = "datum"
+
+	if original.Location.HiddenRows[0] != "ddm" {
+		t.Fatalf("the original was modified through its clone: %v", original.Location.HiddenRows)
 	}
 }

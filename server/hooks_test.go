@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -9,12 +10,14 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 )
 
 var hookRef = time.Date(2026, time.August, 9, 12, 0, 0, 0, time.UTC)
@@ -44,6 +47,31 @@ type fakeAPI struct {
 	// published records every cluster event, so a test can prove that saving
 	// tells the other nodes to drop their copy.
 	published []model.PluginClusterEvent
+
+	// ephemeral records every ephemeral post, in the order it was sent, so a
+	// test can read a multi-message command's output as the reader sees it.
+	ephemeral []*model.Post
+
+	// created records every real post, in order, so a test can read a threaded
+	// command's output and check what hangs off what.
+	created []*model.Post
+
+	// refused records the rune count of every post turned away for length, so a
+	// test can tell a command that got it right first time from one that had to
+	// find out.
+	refused []int
+
+	// createPostErr forces CreatePost to fail. createPostFailFrom is the
+	// zero-based index of the first call that fails, so a test can let the root
+	// land and refuse a reply, which is the case where the command has already
+	// written to the channel and still has to report.
+	createPostErr      *model.AppError
+	createPostFailFrom int
+
+	// postSizeLimit makes CreatePost refuse an over-long message the way a real
+	// server does, which is the only way to test code that has to discover the
+	// limit rather than being told it. Zero means no limit.
+	postSizeLimit int
 
 	// publishErr forces publication to fail, which must not fail the save.
 	publishErr error
@@ -96,6 +124,32 @@ func (a *fakeAPI) PublishPluginClusterEvent(ev model.PluginClusterEvent, _ model
 	return a.publishErr
 }
 
+func (a *fakeAPI) SendEphemeralPost(_ string, post *model.Post) *model.Post {
+	a.ephemeral = append(a.ephemeral, post)
+	return post
+}
+
+// CreatePost stamps an id, because the caller threads replies off the root's.
+func (a *fakeAPI) CreatePost(post *model.Post) (*model.Post, *model.AppError) {
+	if a.createPostErr != nil && len(a.created) >= a.createPostFailFrom {
+		return nil, a.createPostErr
+	}
+
+	// The same refusal model.Post.IsValid produces, message and all, so a test
+	// sees what the server would actually say.
+	if a.postSizeLimit > 0 && utf8.RuneCountInString(post.Message) > a.postSizeLimit {
+		a.refused = append(a.refused, utf8.RuneCountInString(post.Message))
+		return nil, model.NewAppError("CreatePost", "model.post.is_valid.message_length.app_error",
+			nil, "Post Message property is longer than the maximum permitted length.", 400)
+	}
+
+	stored := post.Clone()
+	stored.Id = fmt.Sprintf("post%d", len(a.created))
+	a.created = append(a.created, stored)
+
+	return stored, nil
+}
+
 func (a *fakeAPI) RegisterCommand(command *model.Command) error {
 	if a.registerErr != nil {
 		return a.registerErr
@@ -139,18 +193,29 @@ func newTestPlugin(t *testing.T, siteURL string, enabled bool) *Plugin {
 		EnableDTGMilitary:  true,
 		EnableDTGMoniker:   true,
 		EnableDTGTimestamp: true,
+
+		EnableLocation:         enabled,
+		EnableLocationDDSigned: true,
+		EnableLocationLatLon:   true,
+		EnableLocationUSMTF:    true,
+		EnableLocationGrid:     true,
+		EnableLocationUTM:      true,
+		EnableLocationMoniker:  true,
 	})
 
-	registerDTGForTest(t, p)
+	registerDecoratorsForTest(t, p)
 
 	return p
 }
 
-// registerDTGForTest builds the plugin's decorator registry, mirroring what
-// OnActivate does. Each plugin owns its own, so tests never share state.
-func registerDTGForTest(t *testing.T, p *Plugin) {
+// registerDecoratorsForTest builds the plugin's decorator registry, mirroring
+// what OnActivate does. Each plugin owns its own, so tests never share state.
+func registerDecoratorsForTest(t *testing.T, p *Plugin) {
 	t.Helper()
-	registry, err := decorators.NewDefaultRegistry(&dtg.Decorator{Enabled: p.dtgFormats})
+	registry, err := decorators.NewDefaultRegistry(
+		&dtg.Decorator{Enabled: p.dtgFormats},
+		&location.Decorator{Enabled: p.locationFormats},
+	)
 	if err != nil {
 		t.Fatalf("failed to build the decorator registry: %v", err)
 	}
@@ -281,13 +346,30 @@ func TestDecoratePostSkippedWhenItWouldExceedMaxPostSize(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 
 	// Well under the limit as typed, far over it once decorated.
-	message := strings.TrimSpace(strings.Repeat("091630ZAUG26 ", 60))
-	if len([]rune(message)) >= maxPostRunes {
+	//
+	// The multiplier is what makes this reachable at all: a 12-character
+	// date-time group becomes roughly 120 once linked, so it takes about a
+	// tenth of the limit in tokens to cross it. At a 1 MiB limit that is a
+	// message no person would type, which is the point: since the limit was
+	// raised this guard is a backstop rather than something a channel meets.
+	// It is still worth having, because maxPostBytes is an assumption tracked
+	// by hand and the day it is wrong is the day this fires.
+	const dtg = "091630ZAUG26 "
+	message := strings.TrimSpace(strings.Repeat(dtg, safePostRunes/len(dtg)))
+
+	if len([]rune(message)) >= safePostRunes {
 		t.Fatalf("test message is already %d runes, which does not exercise the guard", len([]rune(message)))
 	}
 
 	if got := p.decoratePost(&model.Post{Message: message}, hookRef); got != nil {
 		t.Fatal("decoratePost returned a post that would exceed the maximum size")
+	}
+
+	// And it says so, because an author whose message silently stopped being
+	// decorated has no other way to find out why.
+	api := p.API.(*fakeAPI)
+	if len(api.warnings) == 0 {
+		t.Error("nothing was logged, so an operator has no record of the skip")
 	}
 }
 
@@ -386,7 +468,7 @@ func TestDecoratePostWorksWhenSiteURLIsAbsent(t *testing.T) {
 		EnableDTGMoniker:   true,
 		EnableDTGTimestamp: true,
 	})
-	registerDTGForTest(t, p)
+	registerDecoratorsForTest(t, p)
 
 	got := p.decoratePost(&model.Post{Message: "091630ZAUG26"}, hookRef)
 	if got == nil {
@@ -457,7 +539,7 @@ func decorated(p *Plugin, message string) string {
 func TestFormatSwitchesActIndependently(t *testing.T) {
 	const (
 		military  = "091630ZAUG26"
-		labelled  = "DTG: 091630ZAUG26"
+		labeled   = "DTG: 091630ZAUG26"
 		timestamp = "2026-08-09T16:30:00Z"
 	)
 
@@ -470,7 +552,7 @@ func TestFormatSwitchesActIndependently(t *testing.T) {
 		{
 			"all on",
 			configuration{EnableDTG: true, EnableDTGMilitary: true, EnableDTGMoniker: true, EnableDTGTimestamp: true},
-			[]string{military, labelled, timestamp},
+			[]string{military, labeled, timestamp},
 			nil,
 		},
 		{
@@ -479,13 +561,13 @@ func TestFormatSwitchesActIndependently(t *testing.T) {
 			[]string{timestamp},
 
 			// The moniker is on, but it has nothing to label here: turning a
-			// format off has to stop the labelled form of it too.
-			[]string{military, labelled},
+			// format off has to stop the labeled form of it too.
+			[]string{military, labeled},
 		},
 		{
 			"timestamps off",
 			configuration{EnableDTG: true, EnableDTGMilitary: true, EnableDTGMoniker: true},
-			[]string{military, labelled},
+			[]string{military, labeled},
 			[]string{timestamp},
 		},
 		{
@@ -498,7 +580,7 @@ func TestFormatSwitchesActIndependently(t *testing.T) {
 			"everything below the parent off",
 			configuration{EnableDTG: true},
 			nil,
-			[]string{military, labelled, timestamp},
+			[]string{military, labeled, timestamp},
 		},
 	}
 
@@ -572,7 +654,7 @@ func TestPagesStillRenderForADisabledFormat(t *testing.T) {
 func TestReferenceTime(t *testing.T) {
 	created := time.Date(2026, time.March, 4, 9, 15, 0, 0, time.UTC)
 
-	t.Run("an existing CreateAt is honoured", func(t *testing.T) {
+	t.Run("an existing CreateAt is honored", func(t *testing.T) {
 		// An imported or scheduled post carries its real timestamp, and
 		// resolving against "now" would date it wrong by however long ago it
 		// was written.

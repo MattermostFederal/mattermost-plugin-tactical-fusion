@@ -9,6 +9,7 @@ import (
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
@@ -62,11 +63,49 @@ func (p *Plugin) dtgFormats() dtg.Formats {
 	}
 }
 
+// locationFormats reports which coordinate grammars the admin has left on.
+//
+// Read fresh for every message, and the parent is enforced here rather than in
+// the manifest, because Mattermost's settings schema has no nesting.
+func (p *Plugin) locationFormats() location.Formats {
+	config := p.getConfiguration()
+	if !config.EnableLocation {
+		return location.Formats{}
+	}
+
+	return location.Formats{
+		DDSigned: config.EnableLocationDDSigned,
+		LatLon:   config.EnableLocationLatLon,
+		USMTF:    config.EnableLocationUSMTF,
+		MGRS:     config.EnableLocationGrid,
+		UTM:      config.EnableLocationUTM,
+		Moniker:  config.EnableLocationMoniker,
+	}
+}
+
+// decorationEnabled reports whether any decorator would contribute a pattern.
+//
+// Asked of the registry rather than of one decorator's switches, so the
+// examples command cannot claim decoration is off while another decorator is
+// still running.
+func (p *Plugin) decorationEnabled() bool {
+	if p.decorators == nil {
+		return false
+	}
+
+	for _, d := range p.decorators.All() {
+		if len(d.Patterns()) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 func (p *Plugin) OnActivate() error {
-	// Adding a decorator is one line here plus one directory. Nothing in
-	// server/decorators needs to change.
+	// Adding a decorator is one line here plus one directory.
 	registry, err := decorators.NewDefaultRegistry(
 		&dtg.Decorator{Enabled: p.dtgFormats},
+		&location.Decorator{Enabled: p.locationFormats},
 	)
 	// Expected to stay uncovered: Register only rejects a duplicate or empty
 	// type, and there is one decorator here with a constant one. It is what

@@ -104,7 +104,7 @@ async function search(page: Page, query: string): Promise<void> {
 }
 
 /**
- * The labels in the first group, which is the named catalogue.
+ * The labels in the first group, which is the named catalog.
  *
  * The listbox is flat, with headers as siblings of the options, so the group is
  * whatever lies between one header and the next.
@@ -153,10 +153,10 @@ async function rowFor(page: Page, name: string): Promise<string> {
 }
 
 /** `(UTC+05:30) Asia/Kolkata` back to 330. */
-function labelledOffset(label: string): number {
+function labeledOffset(label: string): number {
     const match = (/^\(UTC([+-])(\d{2}):(\d{2})\)/).exec(label);
     if (!match) {
-        throw new Error(`option is not labelled with an offset: ${label}`);
+        throw new Error(`option is not labeled with an offset: ${label}`);
     }
 
     const minutes = (Number(match[2]) * 60) + Number(match[3]);
@@ -284,7 +284,7 @@ test('the picker runs west to east', async ({mount, page}) => {
     const rest = labels.slice(bases.length);
 
     for (const group of [bases, rest]) {
-        const offsets = group.map(labelledOffset);
+        const offsets = group.map(labeledOffset);
         expect(offsets.length).toBeGreaterThan(1);
         for (let i = 1; i < offsets.length; i++) {
             expect(offsets[i]).toBeGreaterThanOrEqual(offsets[i - 1]);

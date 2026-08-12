@@ -139,6 +139,67 @@ func TestRenderPageRendersTable(t *testing.T) {
 	}
 }
 
+// A timestamp written to the second is rendered to the second, in the reading
+// and in every row of the table.
+//
+// Rendering "16:30" for 16:30:45 would drop 45 seconds the author wrote, which
+// is the same defect the location package's rendering rule forbids. The
+// canonical token below the reading carries them either way, so the failure is
+// quiet: the page contradicts itself rather than losing the value outright.
+func TestRenderPageKeepsSecondsATimestampCarried(t *testing.T) {
+	d := &Decorator{}
+	params, ok := d.Parse("2026-08-09T16:30:45Z", ref)
+	if !ok {
+		t.Fatal("Parse rejected a valid timestamp")
+	}
+
+	rec := httptest.NewRecorder()
+	d.RenderPage(rec, params)
+
+	body := rec.Body.String()
+	for _, want := range []string{"09 Aug 2026 16:30:45 Z", `<td class="time">16:30:45</td>`} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("body is missing %q", want)
+		}
+	}
+}
+
+// The narrow form stands when there is nothing to lose. A date-time group has
+// no seconds field at all, so this is every military token.
+func TestRenderPageOmitsSecondsAWholeMinuteNeverCarried(t *testing.T) {
+	d := &Decorator{}
+	params, _ := d.Parse("091630ZAUG26", ref)
+
+	rec := httptest.NewRecorder()
+	d.RenderPage(rec, params)
+
+	if strings.Contains(rec.Body.String(), "16:30:00") {
+		t.Fatal("a date-time group has no seconds field and must not be padded with one")
+	}
+}
+
+// The countdown is a real script, so this page has to declare it or the policy
+// blocks it and the offset freezes at whatever the server rendered.
+//
+// Nothing client-side is exercised by the Go tests, so without this assertion
+// the countdown could be switched off by a default elsewhere and every test
+// would still pass.
+func TestRenderPageAllowsItsCountdownScript(t *testing.T) {
+	d := &Decorator{}
+	params, ok := d.Parse("091630ZAUG26", ref)
+	if !ok {
+		t.Fatal("Parse rejected a valid DTG")
+	}
+
+	rec := httptest.NewRecorder()
+	d.RenderPage(rec, params)
+
+	policy := rec.Header().Get("Content-Security-Policy")
+	if !strings.Contains(policy, "script-src 'sha256-") {
+		t.Fatalf("Content-Security-Policy = %q, want it to allow the countdown script", policy)
+	}
+}
+
 // The page must be complete without JavaScript: the only script is the live
 // clock, which is pure enhancement.
 func TestRenderPageWorksWithoutJavaScript(t *testing.T) {
@@ -244,7 +305,7 @@ func TestRenderPageEscapesHostileParams(t *testing.T) {
 	(&Decorator{}).RenderPage(rec, params)
 
 	// The canonical grammar rejects it outright, which is the first line of
-	// defence, and the error page echoes nothing from the request.
+	// defense, and the error page echoes nothing from the request.
 	if rec.Code != 400 {
 		t.Fatalf("status = %d, want 400", rec.Code)
 	}
@@ -354,6 +415,20 @@ func TestDescribeInstant(t *testing.T) {
 			time.Date(2026, time.January, 1, 5, 7, 0, 0, time.UTC), 'Z',
 			"01 Jan 2026 05:07 Z",
 		},
+		{
+			// An RFC 3339 timestamp can carry seconds, and dropping them would
+			// lose 45 seconds the author wrote. A date-time group never reaches
+			// this branch: its grammar has no seconds field.
+			"seconds are shown when the token carried them",
+			time.Date(2026, time.August, 9, 16, 30, 45, 0, time.UTC), 'Z',
+			"09 Aug 2026 16:30:45 Z",
+		},
+		{
+			// Zero seconds is nothing to lose, so the narrow form stands.
+			"a whole minute keeps the narrow form",
+			time.Date(2026, time.August, 9, 16, 30, 0, 0, time.UTC), 'Z',
+			"09 Aug 2026 16:30 Z",
+		},
 	}
 
 	for _, tc := range cases {
@@ -399,7 +474,7 @@ func TestPageOrdersCountdownFirst(t *testing.T) {
 // The page cannot read the webapp's CSS variables, so the webapp tells it which
 // theme to paint itself with. Without the hint it falls back to the operating
 // system preference.
-func TestPageHonoursTheThemeParam(t *testing.T) {
+func TestPageHonorsTheThemeParam(t *testing.T) {
 	base := "t=1786293000000&dtg=091630ZAUG26&z=Z&a="
 
 	cases := []struct {
@@ -411,7 +486,7 @@ func TestPageHonoursTheThemeParam(t *testing.T) {
 		{"dark", base + "&_theme=dark", ` data-theme="dark"`},
 		{"light", base + "&_theme=light", ` data-theme="light"`},
 
-		// The value reaches a stylesheet, so anything unrecognised is dropped
+		// The value reaches a stylesheet, so anything unrecognized is dropped
 		// rather than echoed.
 		{"unknown keyword", base + "&_theme=neon", ""},
 		{"injection attempt", base + `&_theme="><script>alert(1)</script>`, ""},
@@ -533,7 +608,7 @@ func TestPageMarksAnImminentCountdownUrgent(t *testing.T) {
 
 // The pulse runs for every reader by decision, so the two mitigations that
 // remain have to hold: a rate well below what can trigger photosensitivity, and
-// a signal that does not rest on movement or colour alone.
+// a signal that does not rest on movement or color alone.
 func TestUrgentPulseIsAccessible(t *testing.T) {
 	d := &Decorator{}
 	params, _ := d.Parse("091630ZAUG26", ref)
@@ -737,7 +812,7 @@ func TestRenderPageRejectsInconsistentTimestamps(t *testing.T) {
 		// One minute off. 1786293000000 would have been the right instant for
 		// this very timestamp, which is not much of a disagreement.
 		"an instant that disagrees":               func(v url.Values) { v.Set("t", "1786293060000") },
-		"a canonical that is not normalised":      func(v url.Values) { v.Set("dtg", "2026-08-09T20:30+04:00") },
+		"a canonical that is not normalized":      func(v url.Values) { v.Set("dtg", "2026-08-09T20:30+04:00") },
 		"an assumed flag a timestamp cannot have": func(v url.Values) { v.Set("a", "my") },
 		"a zone letter as well as an offset":      func(v url.Values) { v.Set("z", "Z") },
 		"neither a zone letter nor an offset":     func(v url.Values) { v.Del("o") },
@@ -914,7 +989,7 @@ func TestMonikerDoesNotWidenWhatIsAccepted(t *testing.T) {
 	tagger := &decorators.Tagger{Registry: registry, URLPrefix: "/p"}
 
 	for _, message := range []string{
-		// Short form in a zone other than Zulu: too loose to claim, labelled
+		// Short form in a zone other than Zulu: too loose to claim, labeled
 		// or not.
 		"DTG: 091630R",
 
@@ -1002,7 +1077,7 @@ func TestMonikerAloneContributesNoPatterns(t *testing.T) {
 	}
 }
 
-// A labelled token inside a protected span is left exactly as written, moniker
+// A labeled token inside a protected span is left exactly as written, moniker
 // and all.
 func TestMonikerIsLeftAloneWhenProtected(t *testing.T) {
 	registry, err := decorators.NewDefaultRegistry(&Decorator{})

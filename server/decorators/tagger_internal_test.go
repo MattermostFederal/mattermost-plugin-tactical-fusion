@@ -152,8 +152,8 @@ func TestFindCandidatesSkipsAPatternWithNoRegexp(t *testing.T) {
 // index, which is what makes "patterns are tried in registration order" true
 // for a tie rather than merely for the search.
 func TestResolveOverlapsBreaksTiesOnPatternIndex(t *testing.T) {
-	later := candidate{byteRange: byteRange{0, 5}, decoratorIdx: 0, patternIdx: 3, typ: "a", label: "later"}
-	earlier := candidate{byteRange: byteRange{0, 5}, decoratorIdx: 0, patternIdx: 1, typ: "a", label: "earlier"}
+	later := candidate{match: byteRange{0, 5}, replace: byteRange{0, 5}, decoratorIdx: 0, patternIdx: 3, typ: "a", label: "later"}
+	earlier := candidate{match: byteRange{0, 5}, replace: byteRange{0, 5}, decoratorIdx: 0, patternIdx: 1, typ: "a", label: "earlier"}
 
 	got := resolveOverlaps([]candidate{later, earlier})
 

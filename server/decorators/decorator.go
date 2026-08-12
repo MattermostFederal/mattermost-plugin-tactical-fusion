@@ -71,13 +71,46 @@ type Pattern struct {
 	// Extract pulls the canonical value out of a submatch set. Nil means
 	// "use submatch 1", which is what almost every pattern wants.
 	Extract func(m []string) string
+
+	// ReplaceGroup is the submatch whose span is rewritten into a link. Zero,
+	// the default, rewrites the whole match.
+	//
+	// The two differ only for a pattern that deliberately matches more than it
+	// links. A DTG moniker wants the default, so "DTG: 091630ZAUG26" becomes a
+	// link reading "091630ZAUG26" with the label consumed. A location moniker
+	// wants ReplaceGroup, because "LATM:" is part of a structured line the
+	// author may be quoting verbatim and deleting it would change the record.
+	//
+	// The whole match is still what protected ranges are tested against, so a
+	// moniker inside a code span protects the token behind it. Only the
+	// substitution and the overlap claim use this narrower span.
+	ReplaceGroup int
+
+	// Boundary reports whether a match is acceptable given the runes on either
+	// side of it. Nil, the default, imposes no constraint.
+	//
+	// before and after are the runes immediately outside the match, or 0 at the
+	// start or end of the message.
+	//
+	// This exists because \b is the wrong guard for a token that does not start
+	// and end with a word character. A coordinate begins with "-" or a digit and
+	// ends with a digit or a quote, so \b before "-118" asserts the opposite of
+	// what is wanted and \b after "2500" is satisfied by a following "." -
+	// which would let a link be written into the middle of "-118.2500..-118.2600".
+	//
+	// The guard deliberately lives here rather than in the expression. A pattern
+	// that consumed its own guard characters would break the *next* match:
+	// FindAllStringSubmatchIndex returns non-overlapping matches, so the first
+	// token would eat the space that the second one needs as its leading guard,
+	// and the second token would silently go undecorated.
+	Boundary func(before, after rune) bool
 }
 
 // Value returns the canonical value for a submatch set.
 //
-// This is both what Parse is given and what the link is labelled with, which is
+// This is both what Parse is given and what the link is labeled with, which is
 // what lets a pattern match more than it claims: a pattern that matches a
-// labelled token such as "DTG: 091630ZAUG26" and captures only the time is
+// labeled token such as "DTG: 091630ZAUG26" and captures only the time is
 // replaced by a link reading "091630ZAUG26", with the label consumed.
 //
 // A pattern with no capture group gets the whole match, so this is the identity

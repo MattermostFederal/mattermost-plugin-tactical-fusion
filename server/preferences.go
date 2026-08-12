@@ -10,6 +10,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/plugin"
 	"github.com/pkg/errors"
 
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
@@ -25,7 +26,7 @@ const preferencesVersion = 1
 // Name carries the base they picked it by, because several installations share
 // a zone and somebody at Stuttgart wants to see "Stuttgart" rather than the
 // Ramstein row that keeps the same clock. It is a label and nothing more: this
-// server never resolves it, and the catalogue it comes from lives only in the
+// server never resolves it, and the catalog it comes from lives only in the
 // webapp, which is what keeps a base list from having to be maintained twice.
 type ZoneSelection struct {
 	IANA string `json:"iana"`
@@ -74,13 +75,33 @@ type DTGPreferences struct {
 	UrgentWithinMinutes int `json:"urgent_within_minutes"`
 }
 
+// LocationPreferences is one reader's view of a coordinate.
+//
+// Every field is optional and a zero value means "use the default", the same
+// way DTGPreferences works.
+type LocationPreferences struct {
+	// HiddenRows are the rows to leave out of the panel, by id. Empty means
+	// every row, which is the default.
+	//
+	// The HIDDEN rows rather than the shown ones, and that direction is the
+	// whole design. Empty then means "all of them", so a reader who has never
+	// chosen is stored as nothing at all, which is what lets "Restore defaults"
+	// be a delete. It also decides what happens when a row is ADDED in a later
+	// version: stored this way a new row appears for everybody, including
+	// readers who customised, which is the same promise the DTG defaults make.
+	// Stored the other way round it would be invisible to exactly the readers
+	// who cared enough to choose.
+	HiddenRows []string `json:"hidden_rows"`
+}
+
 // UserPreferences is the whole per-user blob.
 //
 // Decorators get a key of their own rather than a flat namespace, so a second
 // decorator can add settings without migrating anybody's stored blob.
 type UserPreferences struct {
-	Version int            `json:"version"`
-	DTG     DTGPreferences `json:"dtg"`
+	Version  int                 `json:"version"`
+	DTG      DTGPreferences      `json:"dtg"`
+	Location LocationPreferences `json:"location"`
 }
 
 // clone returns a copy that shares no slice with the original.
@@ -90,6 +111,9 @@ type UserPreferences struct {
 func (p UserPreferences) clone() UserPreferences {
 	if p.DTG.Zones != nil {
 		p.DTG.Zones = append([]ZoneSelection(nil), p.DTG.Zones...)
+	}
+	if p.Location.HiddenRows != nil {
+		p.Location.HiddenRows = append([]string(nil), p.Location.HiddenRows...)
 	}
 	return p
 }
@@ -114,11 +138,11 @@ const (
 // zoneIDRe is the character set of an IANA identifier.
 //
 // LoadLocation already refuses absolute paths and anything containing "..", so
-// this is defence in depth rather than the guard itself. It also keeps a
+// this is defense in depth rather than the guard itself. It also keeps a
 // nonsense value out of the logs and the KV store.
 var zoneIDRe = regexp.MustCompile(`^[A-Za-z0-9_+/-]+$`)
 
-// validate normalises a submitted blob and rejects one that cannot be honoured.
+// validate normalizes a submitted blob and rejects one that cannot be honored.
 //
 // Rejecting rather than silently dropping: these values come from the reader's
 // own browser, so a value this server will not store is a bug worth surfacing,
@@ -180,7 +204,50 @@ func (p *UserPreferences) validate() error {
 			minUrgentWithinMinutes, maxUrgentWithinMinutes)
 	}
 
+	rows, err := validHiddenRows(p.Location.HiddenRows)
+	if err != nil {
+		return err
+	}
+	p.Location.HiddenRows = rows
+
 	return nil
+}
+
+// validHiddenRows normalizes a hidden-row selection.
+//
+// Deduplicated, then checked against the rows this build actually renders. An
+// unknown id is REFUSED rather than dropped, for the same reason a bad timezone
+// is: it can only come from a hand-written request or a bug, and quietly
+// storing something that will never do anything reports success for a setting
+// that silently does not exist.
+//
+// Reading is deliberately more forgiving than writing. A stored id this build
+// no longer renders simply matches no row and is ignored, so retiring a row
+// cannot lock a reader out of their own settings.
+func validHiddenRows(ids []string) ([]string, error) {
+	rows := make([]string, 0, len(ids))
+	seen := make(map[string]bool, len(ids))
+
+	for _, id := range ids {
+		id = strings.TrimSpace(id)
+		if id == "" || seen[id] {
+			continue
+		}
+		if !location.KnownRow(id) {
+			return nil, errcode.Errorf(errcode.PreferencesRowUnknown,
+				"%q is not a row of the location panel", id)
+		}
+		seen[id] = true
+		rows = append(rows, id)
+	}
+
+	// No count check, deliberately. There was one, and it could never fire: the
+	// dedup above and the KnownRow refusal below it already bound the result to
+	// the number of rows there are. A check that reads as a bound and is not one
+	// is worse than no check, because the next person to relax KnownRow into a
+	// drop-silently policy would believe the cap still held. The real bound is
+	// maxPreferencesBody, applied to the request body before any of this runs.
+	return rows, nil
 }
 
 // validZoneName bounds a row label.

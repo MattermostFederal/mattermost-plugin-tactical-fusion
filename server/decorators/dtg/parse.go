@@ -112,7 +112,7 @@ func parseDTG(value string, ref time.Time) (DTG, bool) {
 // valid rejects out-of-range components and impossible calendar dates.
 //
 // The day check is per-month and leap-year aware on purpose. A plain 01-31
-// range test would let 31 FEB through, and time.Date normalises that silently
+// range test would let 31 FEB through, and time.Date normalizes that silently
 // to 3 March, so every row of the timezone table would then confidently show
 // the wrong date.
 func (d DTG) valid(offset int) bool {
@@ -121,7 +121,7 @@ func (d DTG) valid(offset int) bool {
 	}
 
 	// Years outside 2000-2099 are rejected because the canonical form carries
-	// only two year digits. Accepting 2150 would canonicalise it to "50", which
+	// only two year digits. Accepting 2150 would canonicalize it to "50", which
 	// reads back as 2050: the link would silently describe a different century
 	// from the text the author typed. Two-digit years already mean 20NN, and a
 	// DTG is operational and near-term, so this costs nothing real.
@@ -164,8 +164,8 @@ func (d DTG) resolveInstant() time.Time {
 // canonical renders the DTG back to its standard string form.
 //
 // parseDTG followed by canonical round trips for every accepted token, which is
-// what proves no component was silently normalised into a different date. The
-// four-digit-year form normalises to the two-digit one, losslessly, because
+// what proves no component was silently normalized into a different date. The
+// four-digit-year form normalizes to the two-digit one, losslessly, because
 // only 2000-2099 is accepted.
 func (d DTG) canonical() string {
 	base := fmt.Sprintf("%02d%02d%02d%c", d.Day, d.Hour, d.Minute, d.Zone)
@@ -248,10 +248,10 @@ var isoLayouts = []string{
 func parseISO(value string) (ISO, bool) {
 	// Uppercased first: RFC 3339 permits a lowercase t and z, and accepting
 	// them here rather than in three layouts each keeps the shapes readable.
-	normalised := strings.ToUpper(value)
+	normalized := strings.ToUpper(value)
 
 	for _, layout := range isoLayouts {
-		parsed, err := time.Parse(layout, normalised)
+		parsed, err := time.Parse(layout, normalized)
 		if err != nil {
 			continue
 		}
@@ -282,7 +282,7 @@ func parseISO(value string) (ISO, bool) {
 	return ISO{}, false
 }
 
-// canonical renders the timestamp back to one normalised shape.
+// canonical renders the timestamp back to one normalized shape.
 //
 // Always seconds, always an uppercase T, no fraction, and a zero offset written
 // as Z. parseISO followed by canonical round trips, which is what lets the page

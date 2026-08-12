@@ -147,7 +147,7 @@ test('accepts a half-hour offset', () => {
 
 // These params come off a URL somebody could have hand-edited.
 const badIso: Array<[string, Record<string, string>]> = [
-    ['a canonical that is not normalised', {dtg: '2026-08-09T20:30+04:00'}],
+    ['a canonical that is not normalized', {dtg: '2026-08-09T20:30+04:00'}],
     ['a canonical with a fraction', {dtg: '2026-08-09T20:30:00.5+04:00'}],
     ['a date-time group in the canonical', {dtg: '091630ZAUG26'}],
     ['an offset that is not a number', {o: 'banana'}],

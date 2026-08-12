@@ -35,7 +35,7 @@ function pressRepeatedly(
 test.describe('disabled', () => {
     // This is how the editor enforces its row limit and how it goes inert while
     // a save is in flight, so it has to be genuinely unusable rather than just
-    // greyed out.
+    // grayed out.
     test('cannot be focused, so the list never opens', async ({mount, page}) => {
         await mount(<ZonePickerHarness disabled={true}/>);
 

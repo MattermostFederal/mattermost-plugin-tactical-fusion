@@ -5,8 +5,26 @@ function pad(value: number): string {
 }
 
 /**
+ * A wall clock: to the minute, and to the second when the token carried one.
+ *
+ * A date-time group has no seconds field, so this is always `HH:MM` for one. An
+ * RFC 3339 timestamp does, and rendering `2026-08-09T16:30:45Z` as `16:30`
+ * would drop 45 seconds the author wrote. A timestamp written without seconds,
+ * or with `:00`, carries none to lose and stays narrow.
+ *
+ * Every zone offset is a whole number of minutes, so the seconds field is the
+ * same in every zone and the decision can be made once from the instant.
+ *
+ * Must match clockLayout in server/decorators/dtg/page.go.
+ */
+export function hasSeconds(instant: Date): boolean {
+    return instant.getUTCSeconds() !== 0;
+}
+
+/**
  * Renders an instant in the token's own zone, e.g. `09 Aug 2026 16:30 Z` or
- * `09 Aug 2026 20:30 +04:00`.
+ * `09 Aug 2026 20:30 +04:00`, and `09 Aug 2026 16:30:45 Z` for a timestamp
+ * written to the second.
  *
  * Built by hand rather than through Intl so the output cannot shift with the
  * reader's locale. This string is the plain-language reading of a DTG, and two
@@ -22,7 +40,10 @@ export function describeInstant(instant: Date, offsetMinutes: number, zoneLabel:
     const day = pad(local.getUTCDate());
     const month = MONTHS[local.getUTCMonth()];
     const year = local.getUTCFullYear();
-    const time = `${pad(local.getUTCHours())}:${pad(local.getUTCMinutes())}`;
+    let time = `${pad(local.getUTCHours())}:${pad(local.getUTCMinutes())}`;
+    if (hasSeconds(local)) {
+        time += `:${pad(local.getUTCSeconds())}`;
+    }
 
     return `${day} ${month} ${year} ${time} ${zoneLabel}`;
 }

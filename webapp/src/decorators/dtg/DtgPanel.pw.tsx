@@ -87,6 +87,38 @@ test('Pacific follows daylight saving', async ({mount, page}) => {
     await expect(pacificRow.locator('td').nth(1)).toHaveText('08:30');
 });
 
+// An RFC 3339 timestamp can be written to the second, and rendering 16:30:45 as
+// "16:30" would drop 45 seconds the author wrote. Mirrors
+// TestRenderPageKeepsSecondsATimestampCarried on the standalone page.
+test('keeps seconds a timestamp carried', async ({mount, page}) => {
+    await mount(
+        <DtgPanel
+            payload={{
+                instant: new Date(Date.UTC(2026, 7, 9, 16, 30, 45)),
+                canonical: '2026-08-09T16:30:45Z',
+                offsetMinutes: 0,
+                zoneLabel: 'Z',
+                assumedMonth: false,
+                assumedYear: false,
+            }}
+        />,
+    );
+
+    await expect(page.getByText('09 Aug 2026 16:30:45 Z')).toBeVisible();
+
+    const pacificRow = page.locator('tbody tr', {hasText: 'San Diego'});
+    await expect(pacificRow.locator('td').nth(1)).toHaveText('09:30:45');
+});
+
+// A date-time group has no seconds field, so padding one on would be a claim
+// about a value nobody wrote.
+test('a whole minute keeps the narrow form', async ({mount, page}) => {
+    await mount(<DtgPanel payload={zulu}/>);
+
+    const pacificRow = page.locator('tbody tr', {hasText: 'San Diego'});
+    await expect(pacificRow.locator('td').nth(1)).toHaveText('09:30');
+});
+
 test('badges a row that falls on a different day', async ({mount, page}) => {
     await mount(<DtgPanel payload={zulu}/>);
 
@@ -139,7 +171,7 @@ test('leaves a distant countdown alone', async ({mount, page}) => {
 });
 
 // A reader with reduced motion enabled sees no pulse at all, so urgency has to
-// survive without it, and without resting on colour alone.
+// survive without it, and without resting on color alone.
 test('marks urgency without relying on motion', async ({mount, page}) => {
     const target = new Date(Date.now() + (10 * 60 * 1000));
     await mount(<DtgPanel payload={{...zulu, instant: target}}/>);
@@ -263,7 +295,7 @@ test('falls back to the built-in table when nothing is saved', async ({mount, pa
 
 // A shorter threshold has to actually narrow the window, or the setting is
 // decorative.
-test('honours a shorter flash threshold', async ({mount, page}) => {
+test('honors a shorter flash threshold', async ({mount, page}) => {
     await stubPreferencesRoute(page, {stored: {zones: [], urgentWithinMinutes: 5}});
 
     // Ten minutes out is urgent by default, but not within five.
@@ -273,7 +305,7 @@ test('honours a shorter flash threshold', async ({mount, page}) => {
     await expect(page.locator('[data-urgent="false"]')).toBeVisible();
 });
 
-test('honours a longer flash threshold', async ({mount, page}) => {
+test('honors a longer flash threshold', async ({mount, page}) => {
     await stubPreferencesRoute(page, {stored: {zones: [], urgentWithinMinutes: 180}});
 
     // Two hours out is well outside the default half hour.
@@ -501,7 +533,7 @@ test('the footer does not follow the reader into the editor', async ({mount, pag
  * Nothing may fail the panel.
  *
  * The server validates a zone against Go's embedded tzdata and the browser
- * formats it with Intl, and the two catalogues do not agree. A zone that is
+ * formats it with Intl, and the two catalogs do not agree. A zone that is
  * storable and unformattable therefore reaches this table, and an unguarded
  * Intl call took the whole sidebar down with it, including the Customize link
  * that is the only way for the reader to remove the offending row.
