@@ -223,8 +223,10 @@
         <h2 id="invalid-link">"That link is missing or has an invalid date-time group" or "invalid coordinate"</h2>
 
         <p>
-            Code <a href="error-codes.html#decorators"><code>TF-17000</code></a>. The
-            query string carries no usable instant. Almost always a hand-edited or
+            Code <a href="error-codes.html#decorators"><code>TF-17000</code></a> for a
+            date-time group, <a href="error-codes.html#decorators"><code>TF-17001</code></a>
+            for a coordinate. The query string carries no usable instant or no usable
+            position. Almost always a hand-edited or
             truncated URL, or a link copied out of a message and reassembled by something
             that mangled the query string. Click the original link in the channel rather
             than a copy.
@@ -286,6 +288,56 @@
                     <td>The table shows the defaults and never changed</td>
                     <td>The stored settings could not be parsed. Server log carries <a href="error-codes.html#preferences"><code>TF-14007</code></a>.</td>
                     <td>Open the editor and save again. The next save replaces the unreadable blob.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="command-failures">A slash command refused to run</h2>
+
+        <p>
+            Every refusal below is ephemeral, so only you see it and nothing is written to
+            the channel. All of them carry a code.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Message</th><th>Code</th><th>Cause and fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>Unknown subcommand. Available: examples, example-details, check</code></td>
+                    <td><a href="error-codes.html#command"><code>TF-16000</code></a></td>
+                    <td>A typo, or a subcommand from a newer version. The list in the message is what this build has; see <a href="commands.html">Commands</a>.</td>
+                </tr>
+                <tr>
+                    <td><code>Decorators are not registered yet. Try again once the plugin has finished activating.</code></td>
+                    <td><a href="error-codes.html#command"><code>TF-16001</code></a>, <a href="error-codes.html#command"><code>TF-16002</code></a>, <a href="error-codes.html#command"><code>TF-16005</code></a></td>
+                    <td>The command ran between the plugin being enabled and <code>OnActivate</code> finishing. Wait a moment and run it again. Three codes because the same condition is reached through <a href="commands.html#examples"><code>examples</code></a>, <a href="commands.html#check"><code>check</code></a> and <a href="commands.html#example-details"><code>example-details</code></a> respectively, and knowing which one asked is worth a code. If it persists, the plugin did not activate: see <a href="#plugin-wont-start">below</a>.</td>
+                </tr>
+                <tr>
+                    <td><code>Nothing would be decorated, so there is nothing to show. Every format is switched off in the System Console, under Plugins &gt; Tactical Fusion.</code></td>
+                    <td><a href="error-codes.html#command"><code>TF-16003</code></a></td>
+                    <td>Exactly what it says, and it is a refusal rather than an empty post on purpose: a message advertising the plugin while demonstrating nothing would be permanent. Turn a format on in <a href="admin.html">Admin settings</a>.</td>
+                </tr>
+                <tr>
+                    <td><code>The examples do not fit in one post on this server. Run /tactical-fusion example-details instead, which spreads itself over several posts.</code></td>
+                    <td><a href="error-codes.html#command"><code>TF-16004</code></a></td>
+                    <td><a href="commands.html#examples"><code>examples</code></a> is one post by definition, so it measures itself against the smallest limit any store reports and refuses rather than letting the server reject it. A long install subpath reaches this, because every link in the post carries it.</td>
+                </tr>
+                <tr>
+                    <td><code>There are no examples to post.</code></td>
+                    <td><a href="error-codes.html#command"><code>TF-16006</code></a></td>
+                    <td>Not reachable in a normal build: every set has rows. Report it with the version.</td>
+                </tr>
+                <tr>
+                    <td><code>Could not post the examples to this channel: ...</code></td>
+                    <td><a href="error-codes.html#command"><code>TF-16006</code></a></td>
+                    <td>The server refused the first post, and the text after the colon is its own reason. The command has already retried at a smaller size by the time you see this, so a length complaint here means something other than the post limit. Nothing was written to the channel, so nothing needs cleaning up.</td>
+                </tr>
+                <tr>
+                    <td><code>N of M messages could not be posted, so the examples are incomplete.</code></td>
+                    <td><a href="error-codes.html#command"><code>TF-16006</code></a></td>
+                    <td>The first post landed and a later one did not, so the channel has part of the set. The rest were still attempted rather than abandoned. Delete what arrived and run it again.</td>
                 </tr>
             </tbody>
         </table>
@@ -367,6 +419,11 @@
                     <td><a href="error-codes.html#preferences"><code>TF-14001</code></a></td>
                     <td>As above.</td>
                 </tr>
+                <tr>
+                    <td><code>"..." is not a row of the location panel</code></td>
+                    <td><a href="error-codes.html#preferences"><code>TF-14008</code></a></td>
+                    <td>The saved view named a row this version does not have. Not reachable from the editor, which offers one checkbox per row that exists. Note the asymmetry: writing an unknown row is refused, but reading one is not, so retiring a row can never lock you out of your own settings.</td>
+                </tr>
             </tbody>
         </table>
 
@@ -374,9 +431,13 @@
 
         <p>
             Check the server log for
-            <a href="error-codes.html#plugin"><code>TF-10000</code></a>. It means two
-            decorators claimed the same type, or one declared an empty type. That is a
-            build problem rather than a configuration one, so report it with the version
+            <a href="error-codes.html#plugin"><code>TF-10000</code></a> or
+            <a href="error-codes.html#plugin"><code>TF-10001</code></a>.
+            <code>TF-10000</code> means two
+            decorators claimed the same type, or one declared an empty type;
+            <code>TF-10001</code> means the slash command could not be registered, which
+            usually means another plugin already claims the same trigger. Both are
+            build or install problems rather than configuration ones, so report either with the version
             number.
         </p>
 
@@ -388,7 +449,7 @@
             <li>The <code>TF-NNNN</code> code, from the message or the server log</li>
             <li>The exact text you typed, and what was stored</li>
             <li>The output of <a href="commands.html#example-details"><code>/tactical-fusion example-details</code></a>, which shows the live behavior of your server</li>
-            <li>Which of the four <a href="admin.html">settings</a> are on</li>
+            <li>Which <a href="admin.html">settings</a> are on. There are eleven, and one of them, <code>EnableLocationUTM</code>, is off until an admin turns it on</li>
         </ul>
     </main>
 </div>
