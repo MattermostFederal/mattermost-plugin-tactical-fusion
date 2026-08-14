@@ -452,6 +452,7 @@ func TestALabelIsGuardedTheSameWayABareTokenIs(t *testing.T) {
 		decorated bool
 	}{
 		{"inside a path", "logs/MGRS:18SUJ2347806483 failed", false},
+		{"inside an identifier", "job_MGRS:18SUJ2347806483_raw", false},
 		{"after a hyphen", "a-MGRS:18SUJ2347806483", false},
 		{"after a colon", "x:LATM:3510N07901W", false},
 		{"after a plus", "+LATM:3510N07901W", false},
@@ -478,6 +479,51 @@ func TestALabelIsGuardedTheSameWayABareTokenIs(t *testing.T) {
 	}
 }
 
+// An underscore binds an identifier, so a coordinate inside one is not a
+// coordinate.
+//
+// This is the one character on which the hand-written guard was weaker than the
+// `\b` it replaced: Go counts `_` as a word character, so the DTG decorator,
+// which still uses word boundaries, never had this hole while the location
+// grammars did. The two therefore disagreed about the same shape of text in the
+// same message, which is how it went unnoticed.
+//
+// The cost is a decoration, and it is the right way round: a coordinate written
+// deliberately still decorates with a space, a bracket or a line start in front
+// of it, while rewriting the middle of a filename is permanent.
+func TestCoordinatesInsideIdentifiersAreLeftAlone(t *testing.T) {
+	tg := tagger(t, &location.Decorator{})
+
+	for _, tc := range []struct {
+		name      string
+		text      string
+		decorated bool
+	}{
+		{"leading underscore", "_3510N07901W", false},
+		{"trailing underscore", "3510N07901W_", false},
+		{"both sides", "FOO_3510N07901W_BAR", false},
+		{"a snake_case filename", "snapshot_3510N07901W_v2.zip", false},
+		{"a run-together grid reference", "FOO_18SUJ2347806483_BAR", false},
+		{"a spaced grid reference", "job_18S UJ 23478 06483", false},
+
+		// Still decorated, so this bought the corruption fix and nothing else.
+		// Brackets are absent on purpose: a bracketed span is protected by the
+		// tagger, so it would pass here for a reason that has nothing to do
+		// with this guard.
+		{"in prose", "the target is 3510N07901W now", true},
+		{"in parentheses", "(3510N07901W)", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tg.Decorate(tc.text, ref)
+
+			if decorated := got != tc.text; decorated != tc.decorated {
+				t.Fatalf("Decorate(%q) decorated = %v, want %v:\n%s",
+					tc.text, decorated, tc.decorated, got)
+			}
+		})
+	}
+}
+
 // The two guards are the same function, so they cannot drift apart again.
 //
 // Asserted over every rune the leading side has to refuse rather than by
@@ -485,7 +531,7 @@ func TestALabelIsGuardedTheSameWayABareTokenIs(t *testing.T) {
 func TestBareAndLabeledGuardsAgree(t *testing.T) {
 	tg := tagger(t, &location.Decorator{})
 
-	for _, before := range []string{"/", ":", "-", "+", ".", ",", "a", "7"} {
+	for _, before := range []string{"/", ":", "-", "+", ".", ",", "_", "a", "7"} {
 		t.Run("before "+before, func(t *testing.T) {
 			bare := tg.Decorate(before+"18S UJ 23478 06483", ref)
 			labeled := tg.Decorate(before+"MGRS:18SUJ2347806483", ref)

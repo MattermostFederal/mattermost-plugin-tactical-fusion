@@ -423,6 +423,48 @@ test.describe('the cache expires', () => {
         expect(calls).toHaveLength(afterSave);
     });
 
+    // A REFRESH that fails keeps what was already read.
+    //
+    // The failure handler used to write the defaults whatever had gone before,
+    // which was right for a first load and wrong for every one after it. Once
+    // the cache grew a lifetime, the first mount past it starts a refresh, so a
+    // single blip reverted the reader's hidden rows and timezone table on
+    // screen with nothing saying why. And because a failed read deliberately
+    // does not stamp the clock, every later mount retried, so the rows flipped
+    // back and forth for as long as the server was unwell.
+    test('a failed refresh keeps the settings already loaded', async () => {
+        let clock = 1_000_000;
+        _setClockForTesting(() => clock);
+
+        let fail = false;
+        stubFetch(() => (fail ? {status: 503, body: {message: 'Not ready.'}} : {status: 200, body: savedBlob}));
+
+        await loadPreferences();
+        expect(getState().preferences.dtg.urgentWithinMinutes).toBe(15);
+
+        fail = true;
+        clock += CACHE_TTL_MS_FOR_TESTING;
+        await loadPreferences();
+
+        // The reason is reported, and the settings are still theirs.
+        expect(getState().error).not.toBeNull();
+        expect(getState().preferences.dtg.urgentWithinMinutes).toBe(15);
+        expect(getState().preferences.dtg.zones).toHaveLength(2);
+    });
+
+    // But a first load that fails has nothing to keep, so it still degrades to
+    // the defaults rather than leaving the panel with no shape to render.
+    test('a first read that fails still falls back to the defaults', async () => {
+        _setClockForTesting(() => 1_000_000);
+        stubFetch(() => ({status: 503, body: {message: 'Not ready.'}}));
+
+        await loadPreferences();
+
+        expect(getState().error).not.toBeNull();
+        expect(getState().preferences.dtg.zones).toHaveLength(0);
+        expect(getState().preferences.dtg.urgentWithinMinutes).toBe(0);
+    });
+
     // A read that failed must not stamp the clock, or a reader whose settings
     // were briefly unreachable would be stuck on the defaults for half an hour.
     test('a failed read does not start the lifetime', async () => {

@@ -325,6 +325,18 @@ func badNeighbor(r rune) bool {
 	switch r {
 	case '.', ',', '-', '+', '/', ':':
 		return true
+
+	case '_':
+		// Underscore binds an identifier exactly as a letter or a digit does,
+		// and those are rejected below for that reason.
+		//
+		// This was missing, and its absence made the guard strictly weaker than
+		// the `\b` it exists to replace: Go's `\b` counts `_` as a word
+		// character, which is why the DTG decorator, still using word
+		// boundaries, never had the problem. So `snapshot_3510N07901W_v2` was
+		// rewritten in place while `FOO_091630ZAUG26_BAR` was correctly left
+		// alone, in the same message.
+		return true
 	}
 
 	return unicode.IsDigit(r) || unicode.IsLetter(r)

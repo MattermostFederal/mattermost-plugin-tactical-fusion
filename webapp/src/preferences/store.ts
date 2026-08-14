@@ -45,11 +45,13 @@ let inflight: Promise<void> | null = null;
  * the top of the newer one; savePreferencesSection re-reads for exactly that
  * reason, and this bounds how wrong the cached copy can get in the meantime.
  *
- * Longer than the server's own ten minutes on purpose. That one is a backstop
- * for a lost cluster event and is invalidated by every write, so it corrects
- * itself; this one has no invalidation to hear and is only a staleness bound.
- * Shortening it would buy freshness a reader cannot perceive at the cost of a
- * request per panel open.
+ * Equal to the server's own, and that is a decision rather than a coincidence:
+ * TestWebappCacheLifetimeMatches reads this constant and fails if either moves
+ * alone. The two mean different things, though. The server's is a backstop for
+ * a lost cluster event and is invalidated by every write, so it corrects
+ * itself; this one has no invalidation to hear, so the timer is the only thing
+ * that ever refreshes it. Shortening it would buy freshness a reader cannot
+ * perceive at the cost of a request per panel open.
  */
 const CACHE_TTL_MS = 30 * 60 * 1000;
 
@@ -178,7 +180,22 @@ export function loadPreferences(): Promise<void> {
 
             // loadedAt stays where it was, so a failed read does not refresh
             // the clock and the next panel to open tries again.
-            setState({preferences: EMPTY_PREFERENCES, loading: false, error: messageOf(error)});
+            //
+            // The last good blob is KEPT rather than replaced with the
+            // defaults. This used to write EMPTY_PREFERENCES unconditionally,
+            // which was right for a first load and wrong for every one after
+            // it: the cache has a lifetime now, so the first mount past it
+            // starts a refresh, and one blip reverted the reader's hidden rows
+            // and timezone table on screen with nothing saying why. Because a
+            // failed read deliberately does not stamp the clock, every
+            // subsequent mount retried, so the rows flipped back and forth for
+            // as long as the server was unwell. Degrading to the defaults is
+            // still correct when nothing has ever loaded.
+            setState({
+                preferences: loadedAt === null ? EMPTY_PREFERENCES : state.preferences,
+                loading: false,
+                error: messageOf(error),
+            });
         }).
         finally(() => {
             inflight = null;

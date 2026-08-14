@@ -224,10 +224,15 @@ func setPageHeaders(w http.ResponseWriter, p Page) {
 	// styles are allowed because the shell carries its own and loads nothing
 	// from anywhere else.
 	//
-	// Script is per page rather than blanket. A decorator whose page carries no
-	// JavaScript gets script-src 'none', so an escaping mistake there is inert
-	// markup instead of execution. Only a page that says it needs script gets
-	// 'unsafe-inline'.
+	// Script is per page rather than blanket, and it is pinned by DIGEST. A
+	// decorator whose page carries no JavaScript gets script-src 'none', so an
+	// escaping mistake there is inert markup instead of execution; one that
+	// carries a script gets 'sha256-...' over exactly the bytes served. Never
+	// 'unsafe-inline', which is what this said before the digest existed: these
+	// pages echo author text from a message on a route whose query string
+	// anybody can write, so what has to survive an escaping mistake is that
+	// injected markup cannot execute. A hash keeps that; 'unsafe-inline' would
+	// hand it back.
 	h.Set("Content-Security-Policy",
 		"default-src 'none'; style-src 'unsafe-inline'; "+p.scriptPolicy()+
 			"; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")

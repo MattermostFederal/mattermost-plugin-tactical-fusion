@@ -3,7 +3,9 @@ package location
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -198,5 +200,51 @@ func TestWebappRenderFixturesMatch(t *testing.T) {
 					i+1, want.canonical, col.name, col.got, col.want)
 			}
 		}
+	}
+}
+
+// The conversion payload is a wire contract between two languages, and it was
+// the one seam here with nothing holding it together.
+//
+// The panel renders these six strings verbatim; it cannot check them and does
+// not try, because `response.json() as Promise<Conversion>` is an unchecked
+// cast. So a field renamed on either side compiles, type-checks and ships: the
+// Go tag moves and the TypeScript property reads `undefined`, or the interface
+// moves and does the same, and the row goes blank on every location link. The
+// component test cannot catch it either, since its route stub supplies a
+// payload built from the TypeScript type and is therefore self-consistent.
+//
+// That is the same silent-failure family as the band class above, which is why
+// this reads the interface out of the webapp rather than trusting review.
+func TestWebappConversionShapeMatches(t *testing.T) {
+	source := readWebappSource(t, "convert.ts")
+
+	block := regexp.MustCompile(`(?s)export interface Conversion \{(.*?)\n\}`).FindStringSubmatch(source)
+	if block == nil {
+		t.Fatal("no `export interface Conversion` in the webapp's convert.ts; if it was " +
+			"renamed, point this test at the new name rather than deleting it")
+	}
+
+	var webapp []string
+	for _, m := range regexp.MustCompile(`(?m)^\s+(\w+):\s*string;`).FindAllStringSubmatch(block[1], -1) {
+		webapp = append(webapp, m[1])
+	}
+
+	// The Go side, read from the struct tags rather than repeated by hand, so
+	// this cannot be satisfied by editing the test.
+	var server []string
+	for field := range reflect.TypeFor[Conversion]().Fields() {
+		tag, ok := field.Tag.Lookup("json")
+		if !ok {
+			t.Fatalf("Conversion.%s has no json tag, so the webapp cannot read it", field.Name)
+		}
+		server = append(server, strings.Split(tag, ",")[0])
+	}
+
+	if !slices.Equal(server, webapp) {
+		t.Errorf("the conversion payload is %v here and %v in the webapp.\n"+
+			"They must agree field for field and in order: a rename on either side is "+
+			"silent, and shows up as a permanently blank row in the sidebar.",
+			server, webapp)
 	}
 }
