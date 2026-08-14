@@ -60,7 +60,7 @@
                 </tr>
                 <tr>
                     <td>Reading</td>
-                    <td>The instant written out in full, in the offset it was originally written in: <code>09 Aug 2026 16:30 Z</code>. Seconds appear only when the text carried them, so <code>2026-08-09T16:30:45Z</code> reads <code>09 Aug 2026 16:30:45 Z</code>. A date-time group has no seconds field, so it never shows one.</td>
+                    <td>The instant written out in full, in the offset it was originally written in: <code>09 Aug 2026 16:30 Z</code>. Seconds appear only when there are seconds to show, so <code>2026-08-09T16:30:45Z</code> reads <code>09 Aug 2026 16:30:45 Z</code> while <code>2026-08-09T16:30:00Z</code> stays <code>16:30</code>: a written <code>:00</code> has nothing to lose, and padding it on would claim a field the row does not need. A date-time group has no seconds field, so it never shows one.</td>
                 </tr>
                 <tr>
                     <td>Canonical form</td>

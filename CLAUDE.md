@@ -861,7 +861,7 @@ to discover a limit it is not told.
 
 ## Admin settings
 
-`plugin.json` declares ten switches: `EnableDTG` (the date-time group
+`plugin.json` declares eleven switches: `EnableDTG` (the date-time group
 decorator) with `EnableDTGMilitary`, `EnableDTGMoniker` and `EnableDTGTimestamp`
 below it, and `EnableLocation` with `EnableLocationDDSigned`,
 `EnableLocationLatLon`, `EnableLocationUSMTF`, `EnableLocationGrid`,
@@ -869,7 +869,7 @@ below it, and `EnableLocation` with `EnableLocationDDSigned`,
 no nesting, so the grouping is by ordering and naming; the parent is enforced in
 code, in `Plugin.dtgFormats` and `Plugin.locationFormats`.
 
-**Nine default on. `EnableLocationUTM` defaults off, and is the only one.** The
+**Ten default on. `EnableLocationUTM` defaults off, and is the only one.** The
 reason is a difference in kind rather than in degree: every other switch trades
 a false positive against a missed decoration, so its worst case is that
 something which was not a coordinate gets linked, or something which was does

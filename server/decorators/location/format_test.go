@@ -434,7 +434,7 @@ func TestRoundingCarriesIntoTheNextField(t *testing.T) {
 //
 // Grid is exported with exported fields and no constructor, so a caller really
 // can hold one that names nowhere; the same reasoning as
-// TestOversizedFractionDoesNotHangFormatting above. Zone 0 is outside the 1-60
+// TestOversizedFractionDoesNotHangFormatting below. Zone 0 is outside the 1-60
 // UTM zones, so gridPoint refuses it.
 func TestRowsAreBlankWhenThePositionCannotBeDerived(t *testing.T) {
 	for _, tc := range []struct {
@@ -655,7 +655,7 @@ func TestNoRenderedFieldCarriesASign(t *testing.T) {
 	}
 }
 
-// The confidence digits never reach the derived row.// The confidence digits never reach the derived row.
+// The confidence digits never reach the derived row.
 //
 // A verified token states how well its position is KNOWN. That is a property of
 // the measurement rather than of the arithmetic, so a reading derived from it

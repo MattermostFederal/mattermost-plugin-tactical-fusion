@@ -96,9 +96,11 @@ func (p *Plugin) serveAPI(w http.ResponseWriter, r *http.Request) {
 // serveConvert answers with every derived reading of one coordinate.
 //
 // A pure function of its two parameters, with no store behind it and no reader
-// to consult, which is why it has no cache: the work is a projection costing
-// microseconds. The preferences cache exists because there is a KV round trip
-// to avoid, and that precedent does not transfer.
+// to consult, which is why it needs no cache of its own: the work is a
+// projection costing microseconds. The preferences cache exists because there
+// is a KV round trip to avoid, and that precedent does not transfer. What it
+// does set is an HTTP caching header, below, which is a different thing: the
+// answer for a given token never changes, so the browser may keep it.
 func (p *Plugin) serveConvert(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeAPIError(w, http.StatusMethodNotAllowed,

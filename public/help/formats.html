@@ -537,9 +537,9 @@
                     <td>Resolves to a different place. Declined rather than silently treated as WGS 84.</td>
                 </tr>
                 <tr>
-                    <td>Run-together grid references</td>
-                    <td><code>18SUJ2347806483</code></td>
-                    <td>An unbroken run of digits and letters, exactly the shape of a part number or a serial. <a href="#location-grid">The spaced form is matched</a>, and a label reaches this one.</td>
+                    <td>Run-together grid references in lower case, or coarser than 100 m</td>
+                    <td><code>18suj2347806483</code>, <code>18SUJ2306</code></td>
+                    <td>A lower-case run of that shape is what a short git commit hash looks like, and a shorter one is what a part number looks like. <a href="#location-grid">Upper case with three digits per axis is matched</a>, so <code>18SUJ2347806483</code> is a link; space these out or put <code>MGRS:</code> in front to reach the rest.</td>
                 </tr>
                 <tr>
                     <td>A UTM northing outside its band</td>
