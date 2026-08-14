@@ -146,9 +146,18 @@ interface Props {
  * This exists because the bug it guards lasts a single frame, and Playwright's
  * assertions retry until they succeed, so by the time one looks the frame is
  * gone. A test written the obvious way passes whether or not the bug is there,
- * which is worse than no test. A `MutationObserver` sees each commit as it
- * happens, so the question becomes "did any committed state ever mix the two
- * coordinates" rather than "does the settled state look right".
+ * which is worse than no test. So the question this asks is "did any committed
+ * state ever mix the two coordinates" rather than "does the settled state look
+ * right".
+ *
+ * It reads the DOM from a layout effect with no dependency array, which React
+ * runs synchronously after every commit and before paint. That is the part that
+ * has to be exact, and the obvious implementation is wrong: a `MutationObserver`
+ * delivers COALESCED records at a microtask checkpoint, not one callback per
+ * commit, so two commits landing in the same microtask produce a single
+ * callback that reads only the final DOM. The intermediate frame, which is the
+ * whole subject, is never seen. A layout effect cannot coalesce, because React
+ * runs it as part of the commit itself.
  */
 /**
  * What each coordinate looks like on screen, in every row that can carry it.
@@ -163,36 +172,39 @@ function useMixedFrameCounter(): [React.RefObject<HTMLDivElement | null>, number
     const ref = React.useRef<HTMLDivElement>(null);
     const [mixed, setMixed] = useState(0);
 
-    React.useEffect(() => {
+    // The last text this counted, so a commit caused by its own setMixed does
+    // not count the same frame twice and spin.
+    const seen = React.useRef<string | null>(null);
+
+    // No dependency array on purpose: this has to run after EVERY commit.
+    React.useLayoutEffect(() => {
         const node = ref.current;
         if (!node) {
-            return undefined;
+            return;
         }
 
-        const check = () => {
-            const text = node.textContent ?? '';
+        const text = node.textContent ?? '';
+        if (text === seen.current) {
+            return;
+        }
+        seen.current = text;
 
-            // Every marker each coordinate can put on screen, and the two
-            // sides must be symmetric.
-            //
-            // They were not. `hasSecond` looked for the unspaced canonical
-            // token while `hasFirst` looked for the SPACED grid reference, so a
-            // frame carrying the stale MGRS row beside the new one set only
-            // `hasFirst` and the counter stayed at zero. That frame is exactly
-            // the stale-row mix this counter is here to catch. It still caught
-            // the effect-versus-render regression, because that frame also
-            // carries the new token, which is why the asymmetry survived.
-            const hasFirst = MARKERS_FIRST.some((m) => text.includes(m));
-            const hasSecond = MARKERS_SECOND.some((m) => text.includes(m));
-            if (hasFirst && hasSecond) {
-                setMixed((n) => n + 1);
-            }
-        };
-
-        const observer = new MutationObserver(check);
-        observer.observe(node, {subtree: true, childList: true, characterData: true});
-        return () => observer.disconnect();
-    }, []);
+        // Every marker each coordinate can put on screen, and the two sides
+        // must be symmetric.
+        //
+        // They were not. `hasSecond` looked for the unspaced canonical token
+        // while `hasFirst` looked for the SPACED grid reference, so a frame
+        // carrying the stale MGRS row beside the new one set only `hasFirst`
+        // and the counter stayed at zero. That frame is exactly the stale-row
+        // mix this counter is here to catch. It still caught the
+        // effect-versus-render regression, because that frame also carries the
+        // new token, which is why the asymmetry survived.
+        const hasFirst = MARKERS_FIRST.some((m) => text.includes(m));
+        const hasSecond = MARKERS_SECOND.some((m) => text.includes(m));
+        if (hasFirst && hasSecond) {
+            setMixed((n) => n + 1);
+        }
+    });
 
     return [ref, mixed];
 }
