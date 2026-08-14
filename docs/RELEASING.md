@@ -116,10 +116,18 @@ first.
 ## First release
 
 The repo is seeded at `0.0.0` (`.release-please-manifest.json` and
-`plugin.json`), meaning nothing has been released yet. With
-`bump-minor-pre-major` set, the expected first Release PR is `0.1.0`. Confirm
-that from the Release PR it actually opens rather than assuming it: the seed
-and `bootstrap-sha` bound which commits are considered, they do not by
-themselves dictate the number. `.release-please-config.json` sets `bootstrap-sha` to the initial
+`plugin.json`), meaning nothing has been released yet, and
+`.release-please-config.json` sets `initial-version` to `0.1.0`.
+
+**Two different settings govern two different situations, and confusing them
+costs a wrong first release.** With nothing released, release-please takes the
+`initial-version` path and does not compute a bump at all, so
+`bump-minor-pre-major` has no say; its own default first version is `1.0.0`,
+which is what it proposed here until `initial-version` was set.
+`bump-minor-pre-major` governs every release after the first, where there is a
+previous version to bump from.
+
+`bootstrap-sha` is a third thing again: it bounds which commits are collected,
+not what number comes out. `.release-please-config.json` sets `bootstrap-sha` to the initial
 scaffold commit so the first Release PR only considers commits made after the
 scaffold. The first `feat:`/`fix:` commits drive the first real Release PR.
