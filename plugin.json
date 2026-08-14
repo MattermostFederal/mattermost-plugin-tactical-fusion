@@ -1,7 +1,7 @@
 {
     "id": "com.mattermost.plugin-tactical-fusion",
     "name": "Tactical Fusion",
-    "version": "0.1.0",
+    "version": "0.0.0",
     "description": "Enriches conversations with mission-relevant context, including geospatial data, CoT, time zones, IP intelligence, CVEs, and other operational information.",
     "homepage_url": "https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion",
     "support_url": "https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues",

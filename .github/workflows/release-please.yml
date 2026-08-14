@@ -9,7 +9,8 @@
 # Conventional commit prefixes driving the bump:
 #   feat: ...            -> minor  (0.1.x -> 0.2.0)
 #   fix:  ...            -> patch  (0.1.0 -> 0.1.1)
-#   feat!: / BREAKING    -> major  (0.x.y -> 1.0.0)
+#   feat!: / BREAKING    -> minor while pre-1.0 (0.1.0 -> 0.2.0), because
+#                          bump-minor-pre-major is set in the config
 #   chore:/docs:/test:   -> no version bump, no changelog entry
 #
 # Subject lines that don't match a conventional prefix are left out of
