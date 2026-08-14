@@ -273,13 +273,12 @@ func TestWebappGridZoneIsBounded(t *testing.T) {
 	zone := regexp.MustCompile(`^(?:` + m[1] + `)$`)
 
 	for n := range 100 {
+		// Both spellings, with nothing skipped. "0" and "00" are different
+		// strings and both must be refused; an earlier version skipped the
+		// padded one as redundant and so never tested "00" at all, which is
+		// the zero-padded invalid zone this is most concerned with.
 		for _, spelled := range []string{strconv.Itoa(n), fmt.Sprintf("%02d", n)} {
 			want := n >= 1 && n <= 60
-
-			// A single digit has no zero-padded spelling to test twice.
-			if len(spelled) == 2 && spelled[0] == '0' && n == 0 {
-				continue
-			}
 
 			if got := zone.MatchString(spelled); got != want {
 				t.Errorf("the webapp ZONE class matches %q = %v, want %v; "+
