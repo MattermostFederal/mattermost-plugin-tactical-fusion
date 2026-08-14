@@ -38,7 +38,7 @@ The prefix on the commit **subject** drives the version bump:
 | `fix:` | `fix: handle empty webhook payload` | patch (`0.1.0 → 0.1.1`) | Bug Fixes |
 | `perf:` | `perf: cache config lookups` | patch | Performance |
 | `deps:` | `deps(go): bump gorilla/mux` | patch | Dependencies |
-| `feat!:` / `BREAKING CHANGE:` | `feat!: drop MM 10 support` | major (`0.x → 1.0.0`) | Features + ⚠ Breaking |
+| `feat!:` / `BREAKING CHANGE:` | `feat!: drop MM 10 support` | minor while pre-1.0 (`0.1.0 → 0.2.0`) | Features + ⚠ Breaking |
 | `docs:` `chore:` `test:` `refactor:` `style:` `build:` `ci:` | `chore: tidy imports` | none | hidden |
 
 Rules of thumb:
@@ -47,8 +47,26 @@ Rules of thumb:
   use `feat:`/`fix:` deliberately.
 - Squash-merging PRs? The **PR title** becomes the commit subject, so title PRs
   with a conventional prefix.
-- Pre-1.0 (`0.x`), breaking changes bump the **minor**, not the major, per
-  semver's initial-development clause.
+### The major version is bumped by a person, never by a commit
+
+Pre-1.0 (`0.x`), breaking changes bump the **minor**, per semver's
+initial-development clause. That is configured rather than assumed:
+`bump-minor-pre-major` in `.release-please-config.json` is what makes it true.
+Without it, release-please promotes `0.x` to `1.0.0` on the first `feat:`, which
+is exactly what it proposed before this was set.
+
+So while the version is `0.x`, **no commit message can produce a major bump**.
+Not `feat!:`, not a `BREAKING CHANGE:` footer. Reaching `1.0.0` means editing
+this config or setting the version by hand, which is a decision somebody makes
+on purpose and can be seen in a diff.
+
+Know the limit of that guarantee: `bump-minor-pre-major` only governs `0.x`.
+The day the version is `1.0.0`, a `feat!:` would take it to `2.0.0` on its own
+again. Keeping major bumps manual past that point needs a further decision, and
+the options are worse than this one: `"versioning": "always-bump-minor"` blocks
+it but also turns every `fix:` into a minor bump, and the alternative is
+process rather than configuration. Revisit it when 1.0.0 is actually in sight,
+not before.
 
 ## Cutting a release (normal path)
 
@@ -89,7 +107,8 @@ first.
 
 ## First release
 
-The repo is seeded at `0.1.0` (`.release-please-manifest.json` and
-`plugin.json`). `.release-please-config.json` sets `bootstrap-sha` to the initial
+The repo is seeded at `0.0.0` (`.release-please-manifest.json` and
+`plugin.json`), meaning nothing has been released yet, so the first Release PR
+is the one that publishes `0.1.0`. `.release-please-config.json` sets `bootstrap-sha` to the initial
 scaffold commit so the first Release PR only considers commits made after the
 scaffold. The first `feat:`/`fix:` commits drive the first real Release PR.
