@@ -422,7 +422,7 @@ moniker is not consumed (section 4), so `LATM:2130N15730W` yields
 
 Typical URLs:
 
-```
+```text
 /plugins/<id>/decorate/location?f=latm&v=2130N15730W
 /plugins/<id>/decorate/location?f=dms&r=34%C2%B003%2722%22N+118%C2%B015%2700%22W&v=340322N1181500W
 ```
@@ -591,7 +591,7 @@ The panel labels this row **RESOLUTION**, not "precision", and phrases it as
 
 **Decimal degrees, signed** (`f=dd`), switch `EnableLocationDDSigned`:
 
-```
+```text
 34.0561, -118.2500        -33.8688,151.2093
 ```
 
@@ -613,7 +613,7 @@ declined.
 
 **Decimal degrees, directional** (`f=ddh`), switch `EnableLocationLatLon`:
 
-```
+```text
 34.0561 N, 118.2500 W     34.0561°N 118.2500°W     N34.0561 W118.2500
 ```
 
@@ -626,7 +626,7 @@ sign plus a letter is contradictory and is declined rather than reconciled.
 
 **Degrees minutes seconds** (`f=dms`), same switch:
 
-```
+```text
 34°03'22"N 118°15'00"W    34° 03' 22" N, 118° 15' 00" W    34 03 22 N 118 15 00 W
 ```
 
@@ -637,7 +637,7 @@ fraction; minutes may not, since that is DDM.
 
 **Degrees decimal minutes** (`f=ddm`), same switch:
 
-```
+```text
 34°03.366'N 118°15.000'W      3403.366N 11815.000W
 ```
 
@@ -650,7 +650,7 @@ an accident of the examples, not a rule.
 **USMTF compact family** (`f=latd|latm|vlatm`, with `dms` and `ddm` covering the
 rest), switch `EnableLocationUSMTF`:
 
-```
+```text
 35N079W          3510N07901W          400948N1221400W
 331000.0N1183000.0W                   3510N9-07901W7
 ```
@@ -678,7 +678,7 @@ Phase 1 token that carries a stated accuracy.
 `location.go:72-94` rather than invented, in front of a token whose own grammar
 is enabled:
 
-```
+```text
 LATD:   LATM:   LATS:   LATDS:   GEOK:   DMPID:   DEPLATM:   ARRLATM:
 VLATD:  VLATM:  VLATS:  VGEOT:
 (Phase 2)  UTMO:   UTMT:   DEPUTMO:   ARRUTMO:   MGRS:
@@ -759,7 +759,7 @@ does not work, and the reason is worth writing down because it is not obvious:
 `findCandidates` iterates with `FindAllStringSubmatchIndex`, which returns
 successive **non-overlapping** matches. Given
 
-```
+```text
 34.0561,-118.2500 34.0562,-118.2501
 ```
 
@@ -867,7 +867,7 @@ of its own and no boundary guards.** Location needs both.
 
 Phase 1 renders **entirely from `v`**, with no network call at all:
 
-```
+```text
 LOCATION
 
 LAT / LON            34.0561° N, 118.2500° W
@@ -972,6 +972,14 @@ Five switches in Phase 1, six from Phase 2, **all defaulting to true**:
 | `EnableLocationMoniker` | the USMTF prefixes | true |
 | `EnableLocationGrid` (Phase 2) | MGRS, UTM, `UTMO`, `UTMT` | true |
 
+**Shipped as two switches, not one.** `EnableLocationGrid` is MGRS alone,
+keeping the name so an install that had it on keeps MGRS on across the split,
+and `EnableLocationUTM` is separate and defaults **off**. They were one switch
+until the band letter was read as a band rather than refused, at which point UTM
+became the only grammar here that can decorate a real coordinate and point at
+the wrong place. An install that wants grid references without that has to be
+able to have exactly that.
+
 Signed DD gets its own switch because the plan's own risk table calls it the
 weakest grammar, so a workspace bitten by it must be able to kill exactly that.
 The other three lat/lon grammars share one because they all require hemisphere
@@ -988,8 +996,13 @@ bare. That is a supported configuration, and a test pins it.
 This is DTG's structure (parent, one flag per grammar family, moniker), not one
 flag per shape: `EnableDTGMilitary` already covers three distinct grammars.
 
-Nothing defaults to off, which keeps `TestEverySwitchDefaultsOn`
-(`configuration_settings_test.go:88`) intact. An earlier draft proposed a
+Planned with nothing defaulting to off. **Shipped otherwise:** `EnableLocationUTM`
+defaults off and is the only switch that does, because it is the one grammar
+that can decorate a real coordinate and point at the wrong place. `MGRS` and
+`UTM` are also separate switches rather than the single `EnableLocationGrid`
+below. The test named here was replaced by `defaultsOff` in
+`configuration_settings_test.go`, a named list with a reason per entry, which
+checks both directions. An earlier draft proposed a
 default-off switch for bare unspaced MGRS and cited a test that does not exist;
 that grammar is cut instead, and the moniker (`MGRS: 11SLT1234567890`, Phase 2)
 covers the workflow it existed for.
@@ -1012,7 +1025,7 @@ switched off.
 |---|---|---|
 | One decorator or four? | One, `location` | Downstream of parsing they are the same thing, the same argument that put RFC 3339 inside DTG |
 | What does the URL carry? | `f`, `v`, and an optional display-only `r` | Nothing **derived** is carried, so nothing can disagree with the token, no resolution uplift is written into stored text, and aliasing on position is impossible |
-| Carry the author's raw text? | **Yes, as `r`, whitelisted four ways** | The panel and especially the standalone page need it: mobile clients get the page without the message, so the author's spelling is otherwise unreachable. Review flagged a naive `raw` parameter as reopening the crafted-link hole, and that is correct, which is why `r` is length-capped, alphabet-restricted, required to anchored-match the scanning grammar for `f`, and required to normalize to `v`. A bad `r` rejects the whole link, not just the row |
+| Carry the author's raw text? | **Yes, as `r`, whitelisted four ways** | The panel and especially the standalone page need it: mobile clients get the page without the message, so the author's spelling is otherwise unreachable. Review flagged a naive `raw` parameter as reopening the crafted-link hole, and that is correct, which is why `r` is length-capped, alphabet-restricted, required to anchored-match the token sub-expression for `f` (the scanning grammar can include a moniker, and `r` never does), and required to normalize to `v`. A bad `r` rejects the whole link, not just the row |
 | Show `v` when it equals `r`? | No, and `r` is omitted from the URL in that case | The whole USMTF compact family types its own canonical form, so the row and the bytes both disappear for the most common input |
 | Resolution as meters or digits? | Digit count | 0.1 m has no integer meter form, and a digit count is a pure function of the token text so it round-trips exactly |
 | Does resolution govern the canonical form? | **No.** Resolution is the coarser half; the canonical form keeps each half's own digits | Conflating them moves the stored coordinate. Found in review after being specified and built the wrong way round |
@@ -1034,7 +1047,7 @@ switched off.
 | New geodesy dependency (Phase 2)? | **Decided in Phase 2: hand-written, no dependency** | The target is air-gapped installs behind an SBOM and a CVE gate, where a dependency is a permanent cost to the operator, against a published series that has not changed since 1987. The condition attached to that choice is that it is proven against figures with an authority outside this repo rather than against round trips of itself: the WGS 84 meridian quadrant, one degree of latitude at the equator, an exact easting on a central meridian, an exact northing on the equator, and the Norway and Svalbard zone exceptions. Measured error is under a millimeter inside a standard zone and 4 cm in the two hand-widened ones, against a finest square of 1 m |
 | Bare unspaced MGRS? | **Yes, upper case and at least three digits per axis.** UTM unspaced stays label-only | Arrived at by being wrong twice, both times plausibly. The part-number argument that gated it behind a label was never tested and was wrong: part numbers did not collide, **short git SHAs did**, at one in 3,900 for an any-case pattern. Upper case fixed that, and the claim that it left nothing behind was also wrong: at two digits per axis, one uppercase run in 75,000 collided, and those ones really did look like part numbers (`26HMA1997`). Three digits per axis finds none in 1.2 million. UTM has no letters to validate after its band, so there is nothing there to narrow |
 | Bare spaced UTM? | **Kept, with a zone and easting check, knowing it does not solve the problem** | Measured at 9.07% of "number+letter, 6 digits, 7 digits" text before the check and 6.74% after; `part 14J 622606 6968159 ordered` is still rewritten. The check is worth having on its own merits (it also stopped `31P 000000 1100000`, which named no square and reported an empty MGRS row), but the residual rate is a live risk and the one-line retreat is to move `utmSpacedExpr` out of `bareExprs` |
-| UTM band `N` and `S`? | **Declined outright** | `11S` is band S to a military reader and "zone 11, southern hemisphere" to a civilian one, thousands of kilometers apart, with nothing in the token to choose between them. MGRS is unaffected: its band letter is followed by two more letters |
+| UTM band `N` and `S`? | **Reversed during implementation: read as latitude bands** | Planned as declined outright, on the grounds that `11S` is band S to a military reader and "zone 11, southern hemisphere" to a civilian one with nothing in the token to choose between them. That declined the ordinary military spelling of a position in order to protect a civilian reading this audience does not write, and `11S 384640E 3769080N` is as plain a paste as this feature gets. Shipped reading the letter as a band, which is the MGRS convention, with `gridPoint`'s band containment and zone proximity checks as the guard: `N` cannot misplace a position at all, and `TestSouthernHemisphereTokensMostlyDecline` measures the residual on `S` at 10.1%. MGRS is unaffected either way: its band letter is followed by two more letters |
 | How is a grid token validated? | **Geometrically.** `parseMGRS` asks `mgrsCenter` for a position, and that one call subsumes the letter sets, the row stagger, the band and the zone | A second implementation of the letter-set rule is a second chance to disagree with the one that writes references back out |
 | Does the panel now depend on the network? | **Only for what it cannot compute** | Grid rows on a lat/lon link, the position on a grid link. Everything else is sliced out of the canonical token and is on screen before the request lands, so a failure costs rows rather than the panel |
 | Does the conversion endpoint see `r`? | **Yes, and that was not optional** | Two of the four gates on the author's text need the token grammar, which is Go-only, and the alphabet gate had to widen to the whole Latin alphabet for grid letters. Without sending `r`, a hand-edited link could put prose in the panel's "Original text" row beside a position from an unrelated token while the page refused the same link. Sending it makes the panel ask the question the page asks |

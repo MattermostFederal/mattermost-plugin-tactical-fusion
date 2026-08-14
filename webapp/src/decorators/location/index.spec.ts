@@ -59,6 +59,14 @@ test.describe('fromParams', () => {
 
         const cases: Array<[string, string]> = [
             ['too long', '3'.repeat(65)],
+
+            // The cap is BYTES, matching maxRawBytes in Go, and the alphabet
+            // deliberately admits typographic symbols that cost two or three
+            // bytes each. Counted as UTF-16 code units this is 33 characters
+            // and passes; counted the way the server counts it, it is 65 bytes
+            // and does not. The webapp used to wave it through, so the panel
+            // committed to a link the page would refuse.
+            ['64 characters but over 64 bytes', "34\u00b003'22\u2033N " + '\u2033'.repeat(20)],
             ['markup', '3510N07901W<script>'],
             ['ampersand', '3510N07901W&x'],
             ['a newline, which no grammar admits inside a token', '3510N\n07901W'],

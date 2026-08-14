@@ -1,11 +1,13 @@
 package location
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -58,7 +60,7 @@ func TestWebappGridPatternUsesTheRightClasses(t *testing.T) {
 	source := readWebappSource(t, "format.ts")
 
 	m := regexp.MustCompile(
-		`mgrs: new RegExp\(` + "`" + `\^\(\\\\d\{1,2\}\)\(\$\{BAND\}\)\(\[([^\]]+)\]\)\(\[([^\]]+)\]\)`,
+		`mgrs: new RegExp\(` + "`" + `\^\(\$\{ZONE\}\)\(\$\{BAND\}\)\(\[([^\]]+)\]\)\(\[([^\]]+)\]\)`,
 	).FindStringSubmatch(source)
 	if m == nil {
 		t.Fatal("could not parse the webapp's mgrs pattern; if its shape changed, " +
@@ -79,7 +81,7 @@ func TestWebappGridPatternsUseTheSharedBandClass(t *testing.T) {
 	source := readWebappSource(t, "format.ts")
 
 	for _, name := range []string{"mgrs", "utm"} {
-		if !regexp.MustCompile(name + `: new RegExp\(` + "`" + `\^\(\\\\d\{1,2\}\)\(\$\{BAND\}\)`).MatchString(source) {
+		if !regexp.MustCompile(name + `: new RegExp\(` + "`" + `\^\(\$\{ZONE\}\)\(\$\{BAND\}\)`).MatchString(source) {
 			t.Errorf("the webapp's %s pattern does not use ${BAND}", name)
 		}
 	}
@@ -246,5 +248,43 @@ func TestWebappConversionShapeMatches(t *testing.T) {
 			"They must agree field for field and in order: a rename on either side is "+
 			"silent, and shows up as a permanently blank row in the sidebar.",
 			server, webapp)
+	}
+}
+
+// And the shared zone class has to mean 1 to 60, which is what gridPoint
+// enforces on the way to a position.
+//
+// Both webapp grid patterns used a bare \d{1,2}, which admits 00 and 61 to 99.
+// Go's scanning grammar is equally loose, so the two matched, but the server
+// never ISSUES such a link: gridPoint refuses the zone, so the page answers 400
+// and the decorator declines the token. The webapp accepting it was a split in
+// the opposite direction from the band class, and just as silent.
+func TestWebappGridZoneIsBounded(t *testing.T) {
+	source := readWebappSource(t, "format.ts")
+
+	m := regexp.MustCompile(`const ZONE = '([^']+)'`).FindStringSubmatch(source)
+	if m == nil {
+		t.Fatal("no `const ZONE = '...'` in the webapp's format.ts; if it was renamed, " +
+			"point this test at the new name rather than deleting it")
+	}
+
+	// Asserted behaviourally rather than by comparing the expression text, so a
+	// different but equivalent spelling is free to differ.
+	zone := regexp.MustCompile(`^(?:` + m[1] + `)$`)
+
+	for n := range 100 {
+		for _, spelled := range []string{strconv.Itoa(n), fmt.Sprintf("%02d", n)} {
+			want := n >= 1 && n <= 60
+
+			// A single digit has no zero-padded spelling to test twice.
+			if len(spelled) == 2 && spelled[0] == '0' && n == 0 {
+				continue
+			}
+
+			if got := zone.MatchString(spelled); got != want {
+				t.Errorf("the webapp ZONE class matches %q = %v, want %v; "+
+					"gridPoint accepts zones 1 to 60 and nothing else", spelled, got, want)
+			}
+		}
 	}
 }

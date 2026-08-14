@@ -40,8 +40,23 @@ export interface LocationPayload {
     raw: string;
 }
 
-/** Mirrors maxRawBytes in the Go package. */
-const MAX_RAW_LENGTH = 64;
+/** Mirrors maxRawBytes in the Go package, and is counted the same way. */
+const MAX_RAW_BYTES = 64;
+
+/**
+ * The size of `r` in UTF-8 bytes, which is the unit the server caps.
+ *
+ * `raw.length` is UTF-16 code units and was what this used to compare. That is
+ * the same number only for ASCII, and RAW_ALLOWED deliberately admits the four
+ * typographic symbols the server accepts: `°` and `º` cost two bytes each and
+ * `′ ’ ´ ″ ”` cost three. A degree-symbol token of 64 characters is therefore
+ * well over 64 bytes, so the webapp waved through a link the Go gate refuses,
+ * and the reader met "Not a coordinate" in a panel that had already decided the
+ * link was fine.
+ */
+function rawBytes(raw: string): number {
+    return new TextEncoder().encode(raw).length;
+}
 
 /**
  * The characters `r` may contain.
@@ -102,7 +117,7 @@ export function fromParams(params: URLSearchParams): LocationPayload | null {
     // Gates 1 and 2 of the server's four. Gates 3 and 4 need the grammar and
     // are the server's alone; a length-capped, alphabet-restricted string
     // rendered as a text node is safe to display without them.
-    if (raw.length > MAX_RAW_LENGTH || !RAW_ALLOWED.test(raw)) {
+    if (rawBytes(raw) > MAX_RAW_BYTES || !RAW_ALLOWED.test(raw)) {
         return null;
     }
 

@@ -349,11 +349,12 @@ func TestDecoratePostSkippedWhenItWouldExceedMaxPostSize(t *testing.T) {
 	//
 	// The multiplier is what makes this reachable at all: a 12-character
 	// date-time group becomes roughly 120 once linked, so it takes about a
-	// tenth of the limit in tokens to cross it. At a 1 MiB limit that is a
-	// message no person would type, which is the point: since the limit was
-	// raised this guard is a backstop rather than something a channel meets.
-	// It is still worth having, because maxPostBytes is an assumption tracked
-	// by hand and the day it is wrong is the day this fires.
+	// tenth of the limit in tokens to cross it. Against safePostRunes, the
+	// 4,000-rune floor this hook measures itself with, that is a long message
+	// but not an impossible one, so the guard is reachable rather than
+	// theoretical. It is worth having either way, because the real limit
+	// cannot be read from the plugin API and safePostRunes is an assumption
+	// tracked by hand: the day it is wrong is the day this fires.
 	const dtg = "091630ZAUG26 "
 	message := strings.TrimSpace(strings.Repeat(dtg, safePostRunes/len(dtg)))
 

@@ -150,6 +150,15 @@ interface Props {
  * happens, so the question becomes "did any committed state ever mix the two
  * coordinates" rather than "does the settled state look right".
  */
+/**
+ * What each coordinate looks like on screen, in every row that can carry it.
+ *
+ * Listed per coordinate and used symmetrically, so no mix can show one
+ * coordinate through a marker the other side does not also test for.
+ */
+const MARKERS_FIRST = [FIRST.mgrs, FIRST.decimal, FIRST.utm, '34.0561,-118.2500'];
+const MARKERS_SECOND = [SECOND.mgrs, SECOND.decimal, SECOND.utm, '18SUJ2347806483'];
+
 function useMixedFrameCounter(): [React.RefObject<HTMLDivElement | null>, number] {
     const ref = React.useRef<HTMLDivElement>(null);
     const [mixed, setMixed] = useState(0);
@@ -162,8 +171,19 @@ function useMixedFrameCounter(): [React.RefObject<HTMLDivElement | null>, number
 
         const check = () => {
             const text = node.textContent ?? '';
-            const hasFirst = text.includes(FIRST.mgrs) || text.includes(FIRST.decimal);
-            const hasSecond = text.includes('18SUJ2347806483') || text.includes(SECOND.decimal);
+
+            // Every marker each coordinate can put on screen, and the two
+            // sides must be symmetric.
+            //
+            // They were not. `hasSecond` looked for the unspaced canonical
+            // token while `hasFirst` looked for the SPACED grid reference, so a
+            // frame carrying the stale MGRS row beside the new one set only
+            // `hasFirst` and the counter stayed at zero. That frame is exactly
+            // the stale-row mix this counter is here to catch. It still caught
+            // the effect-versus-render regression, because that frame also
+            // carries the new token, which is why the asymmetry survived.
+            const hasFirst = MARKERS_FIRST.some((m) => text.includes(m));
+            const hasSecond = MARKERS_SECOND.some((m) => text.includes(m));
             if (hasFirst && hasSecond) {
                 setMixed((n) => n + 1);
             }

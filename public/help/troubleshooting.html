@@ -292,6 +292,37 @@
             </tbody>
         </table>
 
+        <h2 id="hand-written-requests">Messages only a hand-written request can produce</h2>
+
+        <p>
+            None of these is reachable from Mattermost. They exist because the plugin
+            answers a URL, and a URL can be typed. They are listed so that a code seen
+            in a log can be identified rather than investigated.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Message</th><th>Code</th><th>Cause</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>Method not allowed.</code></td>
+                    <td><a href="error-codes.html#http"><code>TF-12000</code></a></td>
+                    <td>Something other than a GET reached <code>/decorate</code>. That route renders a page and has nothing else to offer.</td>
+                </tr>
+                <tr>
+                    <td><code>Not found.</code></td>
+                    <td><a href="error-codes.html#api"><code>TF-13001</code></a></td>
+                    <td>A path under <code>/api/v1</code> that names no resource. The API has exactly two.</td>
+                </tr>
+                <tr>
+                    <td><code>Method not allowed.</code></td>
+                    <td><a href="error-codes.html#api"><code>TF-13003</code></a></td>
+                    <td>A method the resource does not have: anything but GET on the conversion endpoint, or anything but GET, PUT and DELETE on your settings.</td>
+                </tr>
+            </tbody>
+        </table>
+
         <h2 id="command-failures">A slash command refused to run</h2>
 
         <p>

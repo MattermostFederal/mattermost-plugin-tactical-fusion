@@ -141,10 +141,11 @@ func TestExamplesFitsInOnePost(t *testing.T) {
 // server refuse the post with an error nobody can act on.
 //
 // The subpath here is absurd, and that is the finding rather than a flaw in the
-// test: at a 1 MiB limit this post would need about 24,000 characters of
-// install subpath to overflow, so the guard is now unreachable from any real
-// configuration. It is kept because maxPostBytes is an assumption tracked by
-// hand, and the day it is wrong is the day an ordinary post starts crossing it.
+// test: examples measures itself against safePostRunes, the 4,000-rune floor,
+// so the subpath needed to overflow it is long but not absurd, which is why
+// this drives it with one. It is kept because the real limit cannot be read
+// from the plugin API and safePostRunes is an assumption tracked by hand, and
+// the day it is wrong is the day an ordinary post starts crossing it.
 func TestExamplesRefusesRatherThanOverflowing(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com/"+strings.Repeat("longsubpath/", 2200), true)
 

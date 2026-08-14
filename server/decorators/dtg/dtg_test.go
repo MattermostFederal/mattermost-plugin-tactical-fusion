@@ -168,11 +168,22 @@ func TestRenderPageKeepsSecondsATimestampCarried(t *testing.T) {
 // no seconds field at all, so this is every military token.
 func TestRenderPageOmitsSecondsAWholeMinuteNeverCarried(t *testing.T) {
 	d := &Decorator{}
-	params, _ := d.Parse("091630ZAUG26", ref)
+
+	// Checked, because everything below is a NEGATIVE assertion. A Parse that
+	// failed would leave params nil, RenderPage would write a 400 error page,
+	// and that page contains no "16:30:00" either, so the test would pass
+	// having rendered nothing at all.
+	params, ok := d.Parse("091630ZAUG26", ref)
+	if !ok {
+		t.Fatal("Parse rejected a valid date-time group")
+	}
 
 	rec := httptest.NewRecorder()
 	d.RenderPage(rec, params)
 
+	if rec.Code != http.StatusOK {
+		t.Fatalf("RenderPage answered %d, so the assertion below proves nothing", rec.Code)
+	}
 	if strings.Contains(rec.Body.String(), "16:30:00") {
 		t.Fatal("a date-time group has no seconds field and must not be padded with one")
 	}

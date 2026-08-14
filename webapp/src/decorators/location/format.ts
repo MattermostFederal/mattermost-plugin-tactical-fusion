@@ -100,6 +100,19 @@ const MAX_FRAC = 8;
 const BAND = '[C-HJ-NP-X]';
 
 /**
+ * The UTM zone number, 1 to 60, with or without a leading zero.
+ *
+ * Written once and shared, for the same reason BAND is. Both grid patterns used
+ * a bare `\\d{1,2}`, which accepts `00` and `61` through `99`. Go's scanning
+ * grammar is equally loose there, but `gridPoint` refuses those zones on the
+ * way to a position, so the server never issues such a link and its page
+ * refuses one. Accepting it here was therefore the silent split this file
+ * exists to prevent, running the other way: the panel would render a link the
+ * page will not.
+ */
+const ZONE = '(?:0?[1-9]|[1-5][0-9]|60)';
+
+/**
  * The canonical patterns the server emits, one per format.
  *
  * These are anchored and fixed-width. They are not the grammar: the server
@@ -118,10 +131,10 @@ const CANONICAL: Record<LocationFormat, RegExp> = ((f: string) => ({
     // Zone, band, the two 100 km square letters, then an even number of digits
     // split equally between easting and northing. I and O are absent from every
     // class because they read as 1 and 0, and the row letters stop at V.
-    mgrs: new RegExp(`^(\\d{1,2})(${BAND})([A-HJ-NP-Z])([A-HJ-NP-V])((?:\\d{2}){1,5})$`),
+    mgrs: new RegExp(`^(${ZONE})(${BAND})([A-HJ-NP-Z])([A-HJ-NP-V])((?:\\d{2}){1,5})$`),
 
     // Zone, band, a six-digit easting and a seven-digit northing.
-    utm: new RegExp(`^(\\d{1,2})(${BAND})(\\d{6})(\\d{7})$`),
+    utm: new RegExp(`^(${ZONE})(${BAND})(\\d{6})(\\d{7})$`),
 }))(`\\d{1,${MAX_FRAC}}`);
 
 /** Latitude and longitude bounds, checked the way the server checks them. */
