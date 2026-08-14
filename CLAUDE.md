@@ -1323,8 +1323,9 @@ in [`docs/RELEASING.md`](docs/RELEASING.md); the essentials:
 - **Write conventional commit subjects** (and PR titles, since PRs squash-merge).
   The prefix drives the version bump: `feat:` → minor, `fix:`/`perf:`/`deps:` →
   patch, `feat!:` or a `BREAKING CHANGE:` footer → minor while the version is
-  pre-1.0, because `bump-minor-pre-major` is set. Nothing in a commit message
-  can reach `1.0.0` on its own; that is a deliberate config change. `chore:`/`docs:`/
+  pre-1.0, because `bump-minor-pre-major` is set. No ordinary prefix reaches
+  `1.0.0` on its own. The one exception is a `Release-As:` footer, which sets
+  the version directly and bypasses the calculation entirely. `chore:`/`docs:`/
   `test:`/`refactor:`/`style:`/`build:`/`ci:` don't bump or appear in the
   changelog.
 - **Do not** hand-edit `plugin.json`'s `version` or `CHANGELOG.md` for a normal

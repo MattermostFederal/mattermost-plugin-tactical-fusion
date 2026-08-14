@@ -38,7 +38,7 @@ The prefix on the commit **subject** drives the version bump:
 | `fix:` | `fix: handle empty webhook payload` | patch (`0.1.0 → 0.1.1`) | Bug Fixes |
 | `perf:` | `perf: cache config lookups` | patch | Performance |
 | `deps:` | `deps(go): bump gorilla/mux` | patch | Dependencies |
-| `feat!:` / `BREAKING CHANGE:` | `feat!: drop MM 10 support` | minor while pre-1.0 (`0.1.0 → 0.2.0`) | Features + ⚠ Breaking |
+| `feat!:` / `BREAKING CHANGE:` | `feat!: drop MM 10 support` | minor while pre-1.0 (`0.1.0 → 0.2.0`), major once 1.x | Features + ⚠ Breaking |
 | `docs:` `chore:` `test:` `refactor:` `style:` `build:` `ci:` | `chore: tidy imports` | none | hidden |
 
 Rules of thumb:
@@ -49,16 +49,24 @@ Rules of thumb:
   with a conventional prefix.
 ### The major version is bumped by a person, never by a commit
 
-Pre-1.0 (`0.x`), breaking changes bump the **minor**, per semver's
-initial-development clause. That is configured rather than assumed:
-`bump-minor-pre-major` in `.release-please-config.json` is what makes it true.
-Without it, release-please promotes `0.x` to `1.0.0` on the first `feat:`, which
-is exactly what it proposed before this was set.
+Semver reserves `0.y.z` for initial development but does not say breaking
+changes must use the minor there. That behaviour is a release-please setting:
+`bump-minor-pre-major` in `.release-please-config.json`. Without it, a `feat!:`
+or a `BREAKING CHANGE:` footer takes an existing `0.x` straight to `1.0.0`,
+which is exactly what happened here. `8f66053` carries a `BREAKING CHANGE:`
+footer for the plugin id rename, and release-please duly proposed `1.0.0`.
+A plain `feat:` was never the cause.
 
-So while the version is `0.x`, **no commit message can produce a major bump**.
-Not `feat!:`, not a `BREAKING CHANGE:` footer. Reaching `1.0.0` means editing
-this config or setting the version by hand, which is a decision somebody makes
-on purpose and can be seen in a diff.
+So while the version is `0.x`, **no ordinary Conventional Commit prefix
+produces a major bump**. Not `feat:`, not `feat!:`, not a `BREAKING CHANGE:`
+footer.
+
+One footer is outside that guarantee. `Release-As: 1.0.0` sets the version
+directly and is applied before `bump-minor-pre-major` is consulted, so it
+overrides all of this. That is the intended escape hatch for a deliberate
+release, and it is still a person choosing a version in a commit somebody
+reviews, rather than a bump falling out of a prefix. It is named here so nobody
+believes the guarantee is stronger than it is.
 
 Know the limit of that guarantee: `bump-minor-pre-major` only governs `0.x`.
 The day the version is `1.0.0`, a `feat!:` would take it to `2.0.0` on its own
@@ -108,7 +116,10 @@ first.
 ## First release
 
 The repo is seeded at `0.0.0` (`.release-please-manifest.json` and
-`plugin.json`), meaning nothing has been released yet, so the first Release PR
-is the one that publishes `0.1.0`. `.release-please-config.json` sets `bootstrap-sha` to the initial
+`plugin.json`), meaning nothing has been released yet. With
+`bump-minor-pre-major` set, the expected first Release PR is `0.1.0`. Confirm
+that from the Release PR it actually opens rather than assuming it: the seed
+and `bootstrap-sha` bound which commits are considered, they do not by
+themselves dictate the number. `.release-please-config.json` sets `bootstrap-sha` to the initial
 scaffold commit so the first Release PR only considers commits made after the
 scaffold. The first `feat:`/`fix:` commits drive the first real Release PR.
