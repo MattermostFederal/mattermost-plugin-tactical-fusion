@@ -43,7 +43,7 @@ type Formats struct {
 // AllFormats is what a decorator with no selector matches.
 var AllFormats = Formats{Military: true, Moniker: true, Timestamp: true}
 
-// Decorator recognises DTGs and renders the timezone conversion page.
+// Decorator recognizes DTGs and renders the timezone conversion page.
 type Decorator struct {
 	// Enabled reports which formats to match, read fresh for every message so
 	// an admin toggle takes effect without a restart. Nil means all of them,
@@ -57,7 +57,7 @@ func (d *Decorator) Type() string { return Type }
 
 // The token shapes, as sub-expressions.
 //
-// The bare patterns and the labelled one are both built from these, so a change
+// The bare patterns and the labeled one are both built from these, so a change
 // to what a token looks like cannot reach one and miss the other.
 const (
 	// DDHHMM<Z>MMMYYYY and DDHHMM<Z>MMMYY.
@@ -147,7 +147,7 @@ func (d *Decorator) Patterns() []decorators.Pattern {
 	return patterns
 }
 
-// monikerFor picks the labelled pattern matching exactly the grammars that are
+// monikerFor picks the labeled pattern matching exactly the grammars that are
 // switched on. ok=false when the moniker is off, or on but with nothing left to
 // label.
 func monikerFor(formats Formats) (decorators.Pattern, bool) {
@@ -235,6 +235,12 @@ func (d *Decorator) RenderPage(w http.ResponseWriter, params url.Values) {
 		Title:    pageTitle,
 		BodyHTML: renderBody(page),
 		Theme:    decorators.ThemeFromParams(params),
+
+		// This page carries the live countdown script, so it needs the policy
+		// that allows one. Leaving this at its zero value would block the
+		// script and freeze the countdown at whatever the server rendered,
+		// which no server-side test would notice.
+		ScriptJS: countdownScript,
 	})
 }
 

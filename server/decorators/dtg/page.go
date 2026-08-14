@@ -43,8 +43,6 @@ func renderBody(page pageData) string {
 	}
 	b.WriteString(`</tbody></table>`)
 
-	b.WriteString(countdownScript)
-
 	return b.String()
 }
 
@@ -73,10 +71,34 @@ func renderRow(instant time.Time, z DisplayZone, reference time.Time) string {
 		`<tr><td>%s<span class="abbr">%s</span></td><td class="time">%s</td><td>%s%s</td></tr>`,
 		html.EscapeString(z.Name),
 		html.EscapeString(z.Abbr),
-		local.Format("15:04"),
+		local.Format(clockLayout(instant)),
 		html.EscapeString(local.Format("Mon 2 Jan")),
 		badge,
 	)
+}
+
+// clockLayout is how a wall clock is written for an instant: to the minute, and
+// to the second when the token carried one.
+//
+// A date-time group has no seconds field, so this is always "15:04" for one. An
+// RFC 3339 timestamp does, and "2026-08-09T16:30:45Z" rendered as "16:30" would
+// drop 45 seconds the author wrote, which is the same defect the location
+// package forbids under "render at the resolution the token carried and no
+// finer". A timestamp written without seconds, or with ":00", carries none to
+// lose and stays narrow.
+//
+// Every zone offset is a whole number of minutes, so the seconds field is the
+// same in every row and this can be decided once from the instant rather than
+// per zone.
+//
+// Must match clockText in webapp/src/decorators/dtg/describe.ts and the seconds
+// decision in DtgPanel, or the sidebar and this page would render the same
+// instant to different precisions.
+func clockLayout(instant time.Time) string {
+	if instant.Second() != 0 {
+		return "15:04:05"
+	}
+	return "15:04"
 }
 
 // zoneReferenceDate is the instant expressed in the token's own zone, which is
@@ -97,9 +119,12 @@ func dayDelta(reference, other time.Time) int {
 
 // describeInstant renders the plain-language reading, in the zone the token was
 // written in: "09 Aug 2026 16:30 Z", or "09 Aug 2026 20:30 +04:00".
+//
+// Seconds appear when the token carried them: "09 Aug 2026 16:30:45 Z". See
+// clockLayout.
 func describeInstant(instant time.Time, offsetMinutes int, zoneLabel string) string {
 	local := zoneReferenceDate(instant, offsetMinutes)
-	return fmt.Sprintf("%s %s", local.Format("02 Jan 2006 15:04"), zoneLabel)
+	return fmt.Sprintf("%s %s", local.Format("02 Jan 2006 "+clockLayout(instant)), zoneLabel)
 }
 
 func assumedNote(assumed string) string {
@@ -176,7 +201,7 @@ func relativeTo(now, target time.Time) string {
 // It must produce the same strings as relativeTo, which renders the first frame
 // server-side so the value is correct with scripting disabled. No external
 // assets.
-const countdownScript = `<script>
+const countdownScript = `
 (function () {
   var rel = document.getElementById('rel');
   if (!rel) { return; }
@@ -215,4 +240,4 @@ const countdownScript = `<script>
   tick();
   setInterval(tick, 1000);
 })();
-</script>`
+`

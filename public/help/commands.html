@@ -16,7 +16,7 @@
         <nav>
             <span class="nav-section">Documentation</span>
             <a href="help.html">Overview</a>
-            <a href="formats.html">Date and Time Formats</a>
+            <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
             <a href="admin.html">Admin Settings</a>
             <a href="commands.html" class="active">Slash Commands</a>
@@ -34,43 +34,150 @@
         </div>
 
         <h1>Slash Commands</h1>
-        <p class="tagline">One trigger, <code>/tactical-fusion</code>, with one subcommand.</p>
+        <p class="tagline">One trigger, <code>/tactical-fusion</code>, with three subcommands.</p>
 
         <table>
             <thead>
-                <tr><th>Command</th><th>Does</th><th>Who can run it</th></tr>
+                <tr><th>Command</th><th>Does</th><th>Who sees it</th></tr>
             </thead>
             <tbody>
                 <tr>
                     <td><a href="#examples"><code>/tactical-fusion examples</code></a></td>
-                    <td>Posts a live demonstration of what the decorators recognise and what they leave alone</td>
-                    <td>Any user</td>
+                    <td>Posts a short demonstration, one row per format, as a single message</td>
+                    <td><strong>Everyone in the channel</strong></td>
+                </tr>
+                <tr>
+                    <td><a href="#example-details"><code>/tactical-fusion example-details</code></a></td>
+                    <td>Posts every format, every edge case and every near miss that is deliberately declined, one message per decorator</td>
+                    <td><strong>Everyone in the channel</strong></td>
+                </tr>
+                <tr>
+                    <td><a href="#check"><code>/tactical-fusion check &lt;text&gt;</code></a></td>
+                    <td>Shows what would happen to a specific message, and why nothing happened when nothing did</td>
+                    <td>You only</td>
                 </tr>
             </tbody>
         </table>
 
-        <p>
-            Every response is <strong>ephemeral</strong>: only you see it, and it is not
-            stored in the channel.
-        </p>
+        <div class="alert alert-warning">
+            <p class="alert-title">Two of these write to the channel.</p>
+            <p>
+                <code>examples</code> and <code>example-details</code> create real posts that
+                everybody can see and that stay in the channel. Only <code>check</code> is
+                <strong>ephemeral</strong>. Run the first two where you mean to: the short
+                one is a handful of rows, the detailed one is a post per decorator.
+            </p>
+        </div>
 
         <h2 id="examples">/tactical-fusion examples</h2>
 
         <h3>Arguments</h3>
+
         <p>None.</p>
+
+        <h3>What it is for</h3>
+
+        <p>
+            Introducing the plugin to a channel. It posts <strong>one message</strong> with a
+            row per format, each showing what you would type and the link it becomes, so a
+            team can click through them without every person having to run a command of
+            their own.
+        </p>
+
+        <p>
+            The rows read like this, one per format:
+        </p>
+
+        <pre><code>Date/Time: `121411ZAUG26` &rarr; 121411ZAUG26 - 5 minutes out, so the countdown opens flagged as imminent
+MGRS: `18S UJ 23478 06483` &rarr; 18S UJ 23478 06483</code></pre>
+
+        <p>
+            The two date-time rows are generated from the moment you run it, one
+            <strong>five minutes ahead</strong> and one <strong>four hours behind</strong>.
+            That pair is deliberate: five minutes is inside the
+            <a href="panel.html#customize">flash threshold</a>, so the countdown opens already
+            warning, and four hours behind counts <em>up</em> rather than down, which is the
+            half of the behavior nobody expects until they meet it. A fixed date can show
+            neither.
+        </p>
+
+        <h3>What it does not show</h3>
+
+        <p>
+            Nothing exotic, and no near misses. Every boundary case, declined shape and
+            protected span is in <a href="#example-details"><code>example-details</code></a>.
+            This one is a single post that everybody reads, so it answers one question: what
+            does this plugin do to a message?
+        </p>
+
+        <h3>When a format is switched off</h3>
+
+        <p>
+            Its row is <strong>left out</strong> rather than posted undecorated. A row
+            showing a bare token with no link would be a permanent post advertising that
+            the plugin does nothing. <a href="admin.html#enable-location-utm">UTM is off by
+            default</a>, so its row is normally absent until an admin turns it on.
+        </p>
+
+        <p>
+            With every format off there is nothing left to show, and the command declines
+            rather than posting an empty message. That reply is ephemeral, so a misfire never
+            reaches the channel:
+        </p>
+
+        <pre><code>Nothing would be decorated, so there is nothing to show. Every format is switched off in the System Console, under Plugins &gt; Tactical Fusion. (TF-16003)</code></pre>
+
+        <h2 id="example-details">/tactical-fusion example-details</h2>
+
+        <h3>Arguments</h3>
+
+        <p>None. It shows every decorator.</p>
+
+        <p>
+            This is the exhaustive one. Where <a href="#examples"><code>examples</code></a>
+            shows the ordinary shape of each format in a single post, this shows every
+            format, every boundary, and every near miss that is deliberately declined, with
+            the reason on each row. It is long, and being long is the point: the rows that
+            decline are worth as much as the rows that do not.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">It posts one message per decorator.</p>
+            <p>
+                Two separate posts: one for <strong>date-time groups</strong> and one for
+                <strong>coordinates</strong>. Not a thread, because each is a reference you
+                come back to rather than a remark about the one before it. Together they run
+                to around 17,500 characters, which is more than a single post can hold.
+            </p>
+            <p>
+                On a server with a smaller post size limit a decorator's own examples split
+                further, and the heading is numbered <em>(1 of 3)</em> when that happens. An
+                unnumbered heading means the whole of that decorator is in the post you are
+                reading. Nothing is ever truncated.
+            </p>
+        </div>
+
+        <p>
+            A <strong>subpath</strong> install puts the subpath into every link, and there
+            are a great many links here, which is the one thing that meaningfully changes
+            how many messages it takes.
+        </p>
 
         <h3>What it shows</h3>
 
         <p>
-            Each example appears twice, first raw in a code fence and then as it would be
-            stored after decoration. The output has four sections:
+            Each row is the text you would type, then the arrow, then what would be stored.
+            No arrow means nothing changed. Rows are grouped under a heading that states the
+            rule they share, which for a declined row is the whole content of the row:
         </p>
 
         <table class="field-table">
             <tbody>
-                <tr><td>Recognised</td><td>What each supported format becomes, including a live example resolved against the current time.</td></tr>
-                <tr><td>Declined</td><td>The <a href="formats.html#declined">near misses</a>, shown unchanged so you can see they really are declined.</td></tr>
-                <tr><td>Left as written</td><td>Tokens inside <a href="formats.html#protected">protected spans</a> such as code fences and links.</td></tr>
+                <tr><td>Live, from the moment you ran this</td><td>Date-time groups generated against the current clock, either side of the flash threshold and one in the past, so the countdown is actually moving.</td></tr>
+                <tr><td>One group per grammar</td><td>Military date-time groups, zone letters, RFC 3339 timestamps, the <code>DTG:</code> moniker, decimal degrees, degrees and minutes and seconds, the USMTF compact family, grid references, and UTM.</td></tr>
+                <tr><td>In a sentence</td><td>Tokens surrounded by ordinary prose, two on one line, and two different decorators on one line.</td></tr>
+                <tr><td>Declined</td><td>The <a href="formats.html#declined">near misses</a>, in groups by what is wrong with them: impossible dates, no single instant, out of range, needs a label or spacing, and shapes where a false positive would rewrite the message.</td></tr>
+                <tr><td>Left exactly as written</td><td>Tokens inside <a href="formats.html#protected">protected spans</a>: code, links, images, autolinks, HTML tags, reference definitions and bare URLs.</td></tr>
                 <tr><td>Standalone page</td><td>A ready-made link that opens the <a href="panel.html#page">server-rendered page</a> rather than the sidebar, so you can check it from a desktop browser.</td></tr>
             </tbody>
         </table>
@@ -81,7 +188,63 @@
                 The command runs the matcher itself rather than relying on the message
                 hook, because its own output is full of code fences and links and so would
                 be skipped. That is also what keeps the "Declined" rows honest: they are
-                the real result, so they cannot drift away from the code.
+                the real result, so they cannot drift away from the code. A format that is
+                switched off, such as <a href="admin.html#enable-location-utm">UTM</a>,
+                therefore shows its rows with no link, under a heading that says so.
+            </p>
+        </div>
+
+        <h3>When it cannot post</h3>
+
+        <p>
+            A channel that refuses the root post leaves nothing written and the reason is
+            reported to you alone. A reply that is refused costs its own examples only: the
+            rest are still attempted, and you are told how many are missing. Both carry
+            <code>TF-16006</code>.
+        </p>
+
+        <h2 id="check">/tactical-fusion check</h2>
+
+        <h3>Arguments</h3>
+
+        <p>
+            The text to test, which may contain spaces and may be a whole message. It is
+            not posted anywhere: the command tests it and replies to you alone.
+        </p>
+
+        <h3>What it is for</h3>
+
+        <p>
+            Decoration cannot explain itself. A coordinate that is recognized turns into a
+            link and is obviously working; one that is declined does nothing at all, and
+            nothing about the non-event says which rule decided it.
+            <code>34.0561, -118.2500</code> is linked and <code>34.0561, -118.25</code> is
+            not, and the difference is two characters that nobody would think to count.
+        </p>
+
+        <p>
+            This is the command for that. Paste the message that did not work and it will
+            show what would be stored, or say that nothing would be, and list the rules
+            that most often decide it.
+        </p>
+
+        <h3>What it shows</h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>You typed</td><td>The text exactly as supplied.</td></tr>
+                <tr><td>Would be stored as</td><td>The decorated result, when anything matched. Anything still plain in that line was left alone.</td></tr>
+                <tr><td>Nothing would be decorated</td><td>Shown instead, when nothing matched at all.</td></tr>
+                <tr><td>Reasons</td><td>The rules that most often decline a coordinate, with the <a href="formats.html#location-declined">full list</a> linked.</td></tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-tip">
+            <p class="alert-title">This runs the real matcher.</p>
+            <p>
+                Same code path as a posted message, so the answer is what would actually
+                happen and not an approximation of it. That includes the current admin
+                settings, so a format switched off shows up here as nothing matching.
             </p>
         </div>
 
@@ -90,7 +253,7 @@
         <p>
             If <a href="admin.html#enable-dtg"><code>EnableDTG</code></a> or every format
             beneath it is switched off, the output ends with a note saying so. Everything
-            in the Recognised section will appear undecorated, which is the correct
+            in the Recognized section will appear undecorated, which is the correct
             result rather than a failure.
         </p>
 
@@ -101,7 +264,7 @@
             registered, the command replies:
         </p>
 
-        <pre><code>Decorators are not registered yet. Try again once the plugin has finished activating. (TF-16001)</code></pre>
+        <pre><code>Decorators are not registered yet. Try again once the plugin has finished activating. (TF-16002)</code></pre>
 
         <h2>Other input</h2>
 
@@ -112,11 +275,11 @@
             <tbody>
                 <tr>
                     <td><code>/tactical-fusion</code></td>
-                    <td><code>Available subcommands: examples</code></td>
+                    <td><code>Available subcommands: examples, example-details, check</code></td>
                 </tr>
                 <tr>
                     <td><code>/tactical-fusion nope</code></td>
-                    <td><code>Unknown subcommand. Available: examples (TF-16000)</code></td>
+                    <td><code>Unknown subcommand. Available: examples, example-details, check (TF-16000)</code></td>
                 </tr>
             </tbody>
         </table>

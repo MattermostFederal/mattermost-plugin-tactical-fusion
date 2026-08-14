@@ -41,7 +41,7 @@ const Countdown: React.FC<Props> = ({target, compact, urgentWithinMs}) => {
     // operational information, and it was decided that it should draw the eye
     // for every reader. Do not "fix" this back without asking. It is kept to
     // roughly one pulse per second, well under the three per second that can
-    // trigger photosensitivity, and the bar and colour below still carry the
+    // trigger photosensitivity, and the bar and color below still carry the
     // signal on their own for a reader who does not perceive the movement.
     useEffect(() => {
         if (!urgent) {

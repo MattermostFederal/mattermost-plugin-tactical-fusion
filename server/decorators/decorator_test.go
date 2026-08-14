@@ -59,7 +59,7 @@ func TestPatternValue(t *testing.T) {
 
 // A pattern using Extract has to survive the whole tagger path, not just the
 // Value call: the extracted string is both what Parse is handed and what the
-// link is labelled with.
+// link is labeled with.
 func TestExtractReachesParseAndTheLabel(t *testing.T) {
 	d := newFixture("extract", `\bAT (\d{4})(Z)\b`)
 	d.patterns[0].Extract = func(m []string) string { return m[1] + m[2] }

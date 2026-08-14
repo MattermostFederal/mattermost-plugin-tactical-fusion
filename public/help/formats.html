@@ -16,7 +16,7 @@
         <nav>
             <span class="nav-section">Documentation</span>
             <a href="help.html">Overview</a>
-            <a href="formats.html" class="active">Date and Time Formats</a>
+            <a href="formats.html" class="active">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
             <a href="admin.html">Admin Settings</a>
             <a href="commands.html">Slash Commands</a>
@@ -30,18 +30,18 @@
         <div class="breadcrumb">
             <a href="help.html">Docs</a>
             <span class="separator">/</span>
-            Date and Time Formats
+            Recognized Formats
         </div>
 
-        <h1>Date and Time Formats</h1>
+        <h1>Recognized Formats</h1>
         <p class="tagline">What gets linked, what does not, and why the "does not" list is as long as it is.</p>
 
         <div class="alert alert-info">
             <p>
                 Every format below can be switched off individually in the System Console.
-                See <a href="admin.html">Admin Settings</a>. To see the current behaviour of
+                See <a href="admin.html">Admin Settings</a>. To see the current behavior of
                 your own server rather than this page, run
-                <a href="commands.html#examples"><code>/tactical-fusion examples</code></a>,
+                <a href="commands.html#example-details"><code>/tactical-fusion example-details</code></a>,
                 which runs the real matcher and posts what it did.
             </p>
         </div>
@@ -96,7 +96,7 @@
             </p>
         </div>
 
-        <h2 id="moniker">Labelled date-time group</h2>
+        <h2 id="moniker">Labeled date-time group</h2>
 
         <p>Setting: <a href="admin.html#enable-dtg-moniker"><code>EnableDTGMoniker</code></a></p>
 
@@ -214,6 +214,373 @@
                 </tr>
             </tbody>
         </table>
+
+        <h2 id="location">Coordinates</h2>
+
+        <p>
+            Every coordinate grammar below normalizes to one latitude and longitude, so
+            the panel reads the same whichever notation the author typed. Positions are
+            <strong>WGS 84</strong>, always. A coordinate carrying another datum is
+            declined rather than reinterpreted: NAD 27 and WGS 84 disagree by up to about
+            200 m in the continental United States, which is several grid cells.
+        </p>
+
+        <p>
+            Values are shown at the resolution the original text carried and no finer. A
+            coordinate written to two decimals renders as
+            <code>34.06&deg; N</code>, and a degrees-only coordinate renders degrees only.
+            Padding a field the author never wrote would be a claim about precision they
+            did not make.
+        </p>
+
+        <h3 id="location-decimal">Decimal degrees</h3>
+
+        <table>
+            <thead>
+                <tr><th>Written</th><th>Accepted</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>34.0561, -118.2500</code></td><td>Signed. Needs a comma and at least four decimals on both values.</td></tr>
+                <tr><td><code>34.0561 N, 118.2500 W</code></td><td>Hemisphere letters. A decimal point is still required on both.</td></tr>
+                <tr><td><code>34.0561&deg;N 118.2500&deg;W</code></td><td>Degree symbols optional.</td></tr>
+                <tr><td><code>N34.0561 W118.2500</code></td><td>Letters may lead instead of trail.</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            The four-decimal rule on the signed form is what separates a coordinate from
+            an ordinary pair of numbers, and it is the reason
+            <code>34.05, -118.25</code> is left alone. Four decimals is about 11 m, which
+            is what every real coordinate source emits; version pairs, ratios and
+            tolerances essentially never carry it.
+        </p>
+
+        <h3 id="location-dms">Degrees, minutes and seconds</h3>
+
+        <table>
+            <thead>
+                <tr><th>Written</th><th>Accepted</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>34&deg;03'22"N 118&deg;15'00"W</code></td><td>Symbols, with or without spaces.</td></tr>
+                <tr><td><code>34&deg; 03' 22" N, 118&deg; 15' 00" W</code></td><td>Spacing and the comma are both optional.</td></tr>
+                <tr><td><code>34 03 22 N 118 15 00 W</code></td><td>Spaces instead of symbols.</td></tr>
+                <tr><td><code>34&deg;03.366'N 118&deg;15.000'W</code></td><td>Degrees and decimal minutes, with no seconds.</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Hemisphere letters are required in every variant. Without them the
+            symbol-less form is six bare integers. Typographic variants are accepted, so a
+            phone that turns an apostrophe into <code>&#8217;</code> or a quote into
+            <code>&#8221;</code> still produces a recognized coordinate.
+        </p>
+
+        <h3 id="location-usmtf">USMTF compact shapes</h3>
+
+        <p>
+            The fixed-width forms used in ATO and USMTF 2004 traffic. An operator working
+            from those messages pastes them unchanged, so they are recognized as written.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>USMTF name</th><th>Example</th><th>Resolution</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>LATD</td><td><code>35N079W</code></td><td>About 111 km. <strong>Label required</strong>.</td></tr>
+                <tr><td>LATM</td><td><code>3510N07901W</code></td><td>About 1.9 km</td></tr>
+                <tr><td>LATS</td><td><code>400948N1221400W</code></td><td>About 31 m</td></tr>
+                <tr><td>LATDS, DMPID</td><td><code>331000.0N1183000.0W</code></td><td>Sub-meter</td></tr>
+                <tr><td>GEOK</td><td><code>3510.234N07901.123W</code></td><td>Degrees and thousandths of a minute</td></tr>
+                <tr><td>Verified</td><td><code>3510N9-07901W7</code></td><td>As LATM, plus a stated confidence digit per axis</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            The verified forms carry a confidence digit after each hemisphere letter. Those
+            digits say how well the position is known, not where it is, so they are kept
+            out of the coordinate and shown beside the resolution instead of being
+            discarded.
+        </p>
+
+        <h3 id="location-grid">Military grid references and UTM</h3>
+
+        <p>
+            These two are unlike everything above them: their position is
+            <strong>calculated</strong> rather than read out of the text. Every other
+            grammar here is arithmetic on digits the author typed, while a grid reference
+            is a projection onto the WGS 84 ellipsoid, so it is worth knowing that the
+            latitude and longitude shown for one is derived rather than quoted.
+        </p>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">UTM is off by default. MGRS is on.</p>
+            <p>
+                UTM is the only format in this plugin that ships disabled, because its band
+                letter is ambiguous in a way MGRS's is not: the rows below marked UTM are
+                matched only once an admin has turned
+                <a href="admin.html#enable-location-utm"><code>EnableLocationUTM</code></a>
+                on. This does not affect the <strong>UTM row in the panel</strong>, which is
+                shown for every decorated coordinate either way.
+            </p>
+        </div>
+
+        <table>
+            <thead>
+                <tr><th>Written</th><th>Accepted</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>18S UJ 23478 06483</code></td><td>Yes. A 1 m square</td></tr>
+                <tr><td><code>32U MV 12 34</code></td><td>Yes. A 1 km square</td></tr>
+                <tr><td><code>18SUJ 23478 06483</code></td><td>Yes. The digraph may run into the zone</td></tr>
+                <tr><td><code>33U 291000 5628000</code></td><td>Yes. UTM zone, band, easting, northing</td></tr>
+                <tr><td><code>18SUJ2347806483</code></td><td>Yes. Run together, in upper case</td></tr>
+                <tr><td><code>18suj2347806483</code></td><td>No. Lower case is hash-shaped. <strong>Space it or label it</strong></td></tr>
+                <tr><td><code>18SUJ234064</code></td><td>Yes. Three digits per axis is the floor</td></tr>
+                <tr><td><code>18SUJ2306</code></td><td>No. Coarser than 100 m. <strong>Space it or label it</strong></td></tr>
+                <tr><td><code>MGRS:18suj23</code></td><td>Yes. A label reaches both</td></tr>
+                <tr><td><code>11S 385000 3769000</code></td><td>Yes. S is a latitude band, not a hemisphere</td></tr>
+                <tr><td><code>11S 384640E 3769080N</code></td><td>Yes. The axis letters are optional</td></tr>
+                <tr><td><code>11N 385000 3769000</code></td><td>No. That northing is not in band N</td></tr>
+                <tr><td><code>32WDL123123</code></td><td>No. D is not a 100 km letter in zone 32</td></tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-tip">
+            <p class="alert-title">A grid reference names a square, not a point.</p>
+            <p>
+                <code>32U MV 12 34</code> is a 1 km square, and the position shown for it
+                is that square's <strong>center</strong>. Read as a corner instead, a 10 km
+                reference would put a reader 7 km from where the grid points.
+            </p>
+        </div>
+
+        <p>
+            A run-together grid reference is matched on its own, with two restrictions that
+            were chosen by measurement rather than by argument. <strong>It has to be upper
+            case</strong>, because a short git commit hash is seven to twelve lower-case
+            hexadecimal characters and that is exactly this shape: about one in 3,900 of
+            them is a well-formed grid reference. And <strong>it needs at least three
+            digits per axis</strong>, a 100 m square, because a shorter run is what a part
+            number looks like: at two digits per axis <code>26HMA1997</code> and
+            <code>3UTA7623</code> are valid grid references, about one in 75,000 uppercase
+            runs. At three, a sweep of 1.2 million finds none. This is the same rule that
+            keeps <code>35N079W</code> behind a label. Neither restriction puts anything
+            out of reach: space it, or write <code>MGRS:</code>, <code>UTMO:</code> or
+            <code>UTMT:</code> in front, and both work.
+        </p>
+
+        <p>
+            <strong>UTM run together is matched only behind a label</strong>, and that is not
+            an oversight. After the zone and band it is thirteen bare digits with no letters
+            to check, so the only validation available is that the northing lands in the
+            band, which a great many thirteen-digit runs do. There is nothing there to make
+            narrower.
+        </p>
+
+        <p>
+            <strong>The letter after a UTM zone is a latitude band.</strong>
+            <code>11S 385000 3769000</code> is band S, so it resolves to 34 north. It is not
+            read as "zone 11, southern hemisphere", which would put it at 56 south.
+            Nothing in the token says which was meant, so this is a convention: MGRS is the
+            military implementation of UTM, and the third character of a grid zone designator
+            is a latitude band.
+        </p>
+
+        <p>
+            The two letters do not carry the same risk. For <code>N</code>, both readings put
+            the point in the same place, and reading it as a band only adds the requirement
+            that the position be in the first 8 degrees north; it can decline a coordinate but
+            never move one. <code>S</code> is where the difference is real, and what limits it
+            is that <strong>the northing has to land inside the band its letter names</strong>.
+            About 90% of positions written in the hemisphere convention fail that check and
+            are declined rather than relocated.
+        </p>
+
+        <p>
+            <strong>The axis letters are optional.</strong>
+            <code>11S 384640E 3769080N</code> and <code>11S 384640mE 3769080mN</code> are both
+            matched, and mean exactly what the same pair without them means. They must be
+            attached to their digits: a space before one would let the token swallow the first
+            letter of the following word.
+        </p>
+
+        <p>
+            The 100 km letters are checked against the zone. Only eight of the twenty-four
+            possible column letters are legal in any given zone, and the row letters are
+            staggered in even-numbered zones, so a reference whose letters name no real
+            square is declined rather than resolved to whatever the arithmetic produces.
+        </p>
+
+        <p>
+            Above 84&deg; north and below 80&deg; south there is no UTM grid: that is the
+            Universal Polar Stereographic system, which this plugin does not implement. A
+            polar coordinate is still decorated and still shows latitude and longitude, it
+            simply has no grid rows.
+        </p>
+
+        <h3 id="location-moniker">Labeled coordinates</h3>
+
+        <p>
+            A field label in front of any enabled grammar is recognized:
+            <code>LATD:</code>, <code>LATM:</code>, <code>LATS:</code>,
+            <code>LATDS:</code>, <code>GEOK:</code>, <code>DMPID:</code>,
+            <code>DEPLATM:</code>, <code>ARRLATM:</code>, the verified variants
+            <code>VLATD:</code>, <code>VLATM:</code>, <code>VLATS:</code> and
+            <code>VGEOT:</code>, and the grid labels <code>MGRS:</code>,
+            <code>UTMO:</code>, <code>UTMT:</code>, <code>DEPUTMO:</code> and
+            <code>ARRUTMO:</code>.
+        </p>
+
+        <p>
+            Unlike the <a href="#moniker"><code>DTG:</code> label</a>, a coordinate label
+            is <strong>kept in the message</strong> rather than consumed. It is part of a
+            structured line the author may be quoting verbatim, so a decorated USMTF line
+            still reads as USMTF:
+        </p>
+
+        <p>
+            A label is guarded on both sides exactly as a bare coordinate is, so
+            <code>MGRS:18SUJ2347806483</code> inside a path such as
+            <code>logs/MGRS:18SUJ2347806483</code> is left alone. That means a USMTF line
+            quoted with slash delimiters does not decorate; a genuine one ends
+            <code>//</code> and was already left alone for the same reason.
+        </p>
+
+        <pre><code>LATM:2130N15730W</code></pre>
+
+        <p>becomes a link on the coordinate alone, with <code>LATM:</code> still in front of it.</p>
+
+        <p>
+            A label vouches for nothing. <code>LATM:9999N99999W</code> stays declined,
+            exactly as <code>9999N99999W</code> does.
+        </p>
+
+        <div class="alert alert-tip">
+            <p class="alert-title">Labels are the only way to reach the shortest shape.</p>
+            <p>
+                <code>35N079W</code> is seven characters, two of them letters, and it
+                resolves to a 111 km square. It is available behind a label and nowhere
+                else. Turning every grammar off except the USMTF one and the label leaves
+                a configuration that decorates only what an author explicitly marked, which
+                is <a href="admin.html#tagged-only">a supported way to run this</a>.
+            </p>
+        </div>
+
+        <h2 id="location-declined">Coordinates deliberately declined</h2>
+
+        <p>
+            The same principle as the times above: a false positive here rewrites
+            somebody's message permanently, so anything that could plausibly be ordinary
+            text is left alone.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Not matched</th><th>Example</th><th>Why</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Coarse decimal pairs</td>
+                    <td><code>34.05, -118.25</code></td>
+                    <td>Fewer than four decimals. Two short decimals and a comma appear constantly in ordinary text.</td>
+                </tr>
+                <tr>
+                    <td>Integer pairs</td>
+                    <td><code>12, 34</code></td>
+                    <td>Scores, counts, ranges, anything.</td>
+                </tr>
+                <tr>
+                    <td>No delimiter</td>
+                    <td><code>34.0561 -118.2500</code></td>
+                    <td>A space between two numbers is not evidence that they are a pair.</td>
+                </tr>
+                <tr>
+                    <td>Units that look like hemispheres</td>
+                    <td><code>Load 12 N, 5 W</code></td>
+                    <td>N, S, E and W are also newton, siemens, east and watt. The decimal-point requirement is what keeps this out.</td>
+                </tr>
+                <tr>
+                    <td>Part of a numeric list</td>
+                    <td><code>0.1234, 0.5678, 0.9012</code></td>
+                    <td>A coordinate next to another number is a list, not a position.</td>
+                </tr>
+                <tr>
+                    <td>Inside a longer run</td>
+                    <td><code>-118.2500..-118.2600</code></td>
+                    <td>A range. Linking the middle of one would break it.</td>
+                </tr>
+                <tr>
+                    <td>Comma as a decimal separator</td>
+                    <td><code>34,0561, -118,2500</code></td>
+                    <td>Ambiguous with the separator between the pair. Declined rather than guessed at.</td>
+                </tr>
+                <tr>
+                    <td>Out of range</td>
+                    <td><code>9999N99999W</code></td>
+                    <td>Latitude past 90 or longitude past 180 is not a place.</td>
+                </tr>
+                <tr>
+                    <td>Bare LATD</td>
+                    <td><code>35N079W</code></td>
+                    <td>Too short to detect on its own. <code>LATD:35N079W</code> is recognized.</td>
+                </tr>
+                <tr>
+                    <td>Null Island</td>
+                    <td><code>0.0000, 0.0000</code></td>
+                    <td>Overwhelmingly an unset field rather than a position in the Gulf of Guinea. A single zero component beside a real value is accepted.</td>
+                </tr>
+                <tr>
+                    <td>Another datum</td>
+                    <td><code>34.0561, -118.2500 NAD27</code></td>
+                    <td>Resolves to a different place. Declined rather than silently treated as WGS 84.</td>
+                </tr>
+                <tr>
+                    <td>Run-together grid references in lower case, or coarser than 100 m</td>
+                    <td><code>18suj2347806483</code>, <code>18SUJ2306</code></td>
+                    <td>A lower-case run of that shape is what a short git commit hash looks like, and a shorter one is what a part number looks like. <a href="#location-grid">Upper case with three digits per axis is matched</a>, so <code>18SUJ2347806483</code> is a link; space these out or put <code>MGRS:</code> in front to reach the rest.</td>
+                </tr>
+                <tr>
+                    <td>A UTM northing outside its band</td>
+                    <td><code>11N 385000 3769000</code></td>
+                    <td>The letter after the zone is a latitude band, and that northing is 34 north, which is band S. Note this also means <code>11S</code> is <em>not</em> read as "zone 11, southern hemisphere".</td>
+                </tr>
+                <tr>
+                    <td>Grid squares that do not exist</td>
+                    <td><code>32WDL123123</code></td>
+                    <td>Only eight of the twenty-four column letters are legal in any zone, and D is not one of zone 32's.</td>
+                </tr>
+                <tr>
+                    <td>Polar grid references</td>
+                    <td><code>ZAH 12345 67890</code></td>
+                    <td>Universal Polar Stereographic, above 84&deg; north or below 80&deg; south. A different system, not implemented.</td>
+                </tr>
+                <tr>
+                    <td>GARS, GEOREF, Plus Codes</td>
+                    <td><code>006AG39</code>, <code>849VCWC8+R9</code></td>
+                    <td>Not implemented in this version.</td>
+                </tr>
+                <tr>
+                    <td>Airfield codes</td>
+                    <td><code>ICAO:KJFK</code></td>
+                    <td>Names a facility whose position has to be looked up rather than computed, so it is not a coordinate. Out of scope for this decorator.</td>
+                </tr>
+                <tr>
+                    <td>Bearing and range</td>
+                    <td><code>BAR:330-PT ALFA-50</code></td>
+                    <td>Relative to a reference point that is not in the message, so there is nothing to resolve it against.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-tip">
+            <p class="alert-title">Not sure why yours was not linked?</p>
+            <p>
+                <a href="commands.html#check"><code>/tactical-fusion check &lt;your text&gt;</code></a>
+                runs the real matcher against it and tells you, without posting anything.
+            </p>
+        </div>
 
         <h2 id="protected">Spans that are never rewritten</h2>
 

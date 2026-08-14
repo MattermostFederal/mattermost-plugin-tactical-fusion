@@ -1,6 +1,6 @@
 import {expect, test} from '@playwright/test';
 
-import {describeInstant, formatOffsetLabel} from './describe';
+import {describeInstant, formatOffsetLabel, hasSeconds} from './describe';
 import {ZONE_OFFSETS as OFFSETS} from './zones';
 
 // This table is duplicated in server/decorators/dtg/page_test.go on purpose.
@@ -84,4 +84,22 @@ test('describes a timestamp in its own offset', () => {
     expect(describeInstant(instant, 240, '+04:00')).toBe('09 Aug 2026 20:30 +04:00');
     expect(describeInstant(instant, 330, '+05:30')).toBe('09 Aug 2026 22:00 +05:30');
     expect(describeInstant(instant, -300, '-05:00')).toBe('09 Aug 2026 11:30 -05:00');
+});
+
+// Mirrors TestDescribeInstant's seconds cases in server/decorators/dtg/dtg_test.go.
+// Rendering 16:30:45 as `16:30` would drop 45 seconds the author wrote; a whole
+// minute has nothing to lose, and a date-time group has no seconds field at all.
+test('keeps seconds a timestamp carried', () => {
+    const instant = new Date(Date.UTC(2026, 7, 9, 16, 30, 45));
+
+    expect(describeInstant(instant, 0, 'Z')).toBe('09 Aug 2026 16:30:45 Z');
+    expect(describeInstant(instant, 330, '+05:30')).toBe('09 Aug 2026 22:00:45 +05:30');
+    expect(hasSeconds(instant)).toBe(true);
+});
+
+test('a whole minute keeps the narrow form', () => {
+    const instant = new Date(Date.UTC(2026, 7, 9, 16, 30));
+
+    expect(describeInstant(instant, 0, 'Z')).toBe('09 Aug 2026 16:30 Z');
+    expect(hasSeconds(instant)).toBe(false);
 });

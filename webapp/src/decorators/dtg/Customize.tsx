@@ -7,7 +7,7 @@ import type {ZoneSelection} from './zones';
 import {availableZoneGroups, orderedZones, zoneKey} from './zones';
 
 import LinkButton from '../../components/LinkButton';
-import {resetPreferences, savePreferences, usePreferences} from '../../preferences/store';
+import {resetPreferencesSection, savePreferencesSection, usePreferences} from '../../preferences/store';
 
 /** Mirrors maxZones in server/preferences.go, which rejects anything above it. */
 const MAX_ZONES = 25;
@@ -155,17 +155,37 @@ const Customize: React.FC<Props> = ({instant, onClose}) => {
     const [status, setStatus] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    // The store only changes on a load, a save or a reset, and all three are
-    // reasons to show what is now stored rather than a stale draft.
+    // Whether the reader has touched the form, which is the only thing that can
+    // tell their draft from what the store happens to hold.
+    const [touched, setTouched] = useState(false);
+
+    // The stored settings arrive after the first render, so the form has to
+    // pick them up when they land, but never over the top of an edit.
     //
-    // The one case this loses an edit is the reader typing inside the first
-    // round trip, which will usually have finished long before this even
-    // mounts, since the panel behind it starts the same load. Worth naming,
-    // not worth a flag.
+    // This carried a comment arguing the only window was "the reader typing
+    // inside the first round trip", and therefore not worth a flag. That was
+    // true when the store loaded once per page and never again. It is not true
+    // now: the cache has a lifetime, and usePreferences starts a fresh read on
+    // the first mount after it lapses. Every hover card is such a mount, so
+    // moving the pointer across a decorated timestamp while this editor is open
+    // was enough to reset the picker and the threshold, with nothing on screen
+    // saying why. The location editor has carried this flag from the start; the
+    // two are now the same.
+    //
+    // The controls are disabled for the whole of a read, which is the half a
+    // test can reach and does. This flag is the other half, for the path where
+    // `loading` is false and the form is usable anyway: a failed load leaves
+    // the store unloaded on purpose, so a later mount starts a fresh read with
+    // the reader already typing. Removing it breaks no test today, which is
+    // recorded here rather than taken as permission to remove it.
     useEffect(() => {
+        if (touched) {
+            return;
+        }
+
         setZones(editableZoneIds(preferences.dtg));
         setMinutes(preferences.dtg.urgentWithinMinutes === 0 ? '' : String(preferences.dtg.urgentWithinMinutes));
-    }, [preferences]);
+    }, [preferences, touched]);
 
     // Ordered west to east, the same way the table is, so the editor and the
     // panel do not read as two different lists.
@@ -181,6 +201,7 @@ const Customize: React.FC<Props> = ({instant, onClose}) => {
     }, [instant, zones]);
 
     const edited = (next: ZoneSelection[]) => {
+        setTouched(true);
         setZones(next);
         setStatus(null);
         setError(null);
@@ -198,11 +219,13 @@ const Customize: React.FC<Props> = ({instant, onClose}) => {
         setStatus(null);
         setError(null);
         try {
-            await savePreferences({
-                dtg: {
-                    zones: normalizeZoneSelection(zones),
-                    urgentWithinMinutes: parsed.minutes,
-                },
+            // Section-scoped, so this cannot touch what the reader chose in
+            // another decorator's editor. The store re-reads before writing;
+            // spreading the cached blob here would carry a snapshot as stale as
+            // the tab is old straight back over the top of a newer one.
+            await savePreferencesSection('dtg', {
+                zones: normalizeZoneSelection(zones),
+                urgentWithinMinutes: parsed.minutes,
             });
             setStatus('Saved.');
 
@@ -221,7 +244,7 @@ const Customize: React.FC<Props> = ({instant, onClose}) => {
         setStatus(null);
         setError(null);
         try {
-            await resetPreferences();
+            await resetPreferencesSection('dtg');
             setStatus('Defaults restored.');
             onClose();
         } catch (err) {
@@ -235,7 +258,7 @@ const Customize: React.FC<Props> = ({instant, onClose}) => {
         <div style={styles.root}>
             <LinkButton
                 style={styles.back}
-                disabled={busy}
+                disabled={busy || loading}
                 onClick={onClose}
             >{'← Back'}</LinkButton>
 
@@ -256,7 +279,7 @@ const Customize: React.FC<Props> = ({instant, onClose}) => {
                             type='button'
                             style={styles.remove}
                             aria-label={`Remove ${zone.name}`}
-                            disabled={busy}
+                            disabled={busy || loading}
 
                             // By identity, not by position: the rows are
                             // ordered by offset, which is not the order the
@@ -271,7 +294,7 @@ const Customize: React.FC<Props> = ({instant, onClose}) => {
 
                 <ZonePicker
                     groups={selectable}
-                    disabled={busy || zones.length >= MAX_ZONES}
+                    disabled={busy || loading || zones.length >= MAX_ZONES}
                     onPick={(zone) => edited([...zones, {iana: zone.iana, name: zone.name}])}
                 />
 
@@ -287,10 +310,11 @@ const Customize: React.FC<Props> = ({instant, onClose}) => {
                         max={MAX_MINUTES}
                         step={1}
                         value={minutes}
-                        disabled={busy}
+                        disabled={busy || loading}
                         placeholder={String(DEFAULT_MINUTES)}
                         style={{...styles.control, ...styles.minutes}}
                         onChange={(event) => {
+                            setTouched(true);
                             setMinutes(event.target.value);
                             setStatus(null);
                             setError(null);

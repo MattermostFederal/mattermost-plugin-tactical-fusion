@@ -101,7 +101,7 @@ Today the plugin is a bare scaffold: `/tactical-fusion hello` and a channel-head
 - [ ] A decorator is one Go type plus one TS object, each registered in one place.
 - [ ] Registered decorators automatically get pattern scanning, link generation, a server-rendered page, link styling, click routing, RHS title, and RHS panel.
 - [ ] Adding a decorator requires no edits to framework files except one line in each registry.
-- [ ] DTG is recognised in posted messages and linked, with the parsed fields in the query string.
+- [ ] DTG is recognized in posted messages and linked, with the parsed fields in the query string.
 - [ ] Clicking a DTG link in the webapp opens the timezone panel in the RHS.
 - [ ] Opening the same URL in the mobile app or a browser renders an equivalent page from the plugin.
 - [ ] Matches inside code blocks, inline code, and existing markdown links are left alone.
@@ -242,7 +242,7 @@ This is the single most important simplification in the design. It deletes the e
 
 What it means in practice:
 
-- **An author who edits a decorator link owns the result.** Change the label and leave the URL alone, and the link text will disagree with the panel. That is now an explicit user action rather than a silent framework behaviour, and it is self-revealing: the panel renders the canonical DTG from the `dtg` param, so a mismatch is visible the moment it is opened rather than lurking.
+- **An author who edits a decorator link owns the result.** Change the label and leave the URL alone, and the link text will disagree with the panel. That is now an explicit user action rather than a silent framework behavior, and it is self-revealing: the panel renders the canonical DTG from the `dtg` param, so a mismatch is visible the moment it is opened rather than lurking.
 - **Removing a link is how you undo decoration.** Delete the markdown syntax while editing and the text stays plain forever. That is a feature: it gives users an escape hatch that the admin-level setting cannot offer per-post.
 - **A DTG typed during an edit is not decorated.** Decoration is a property of posting, not of the text. Consistent and easy to explain.
 - **Breaking the markdown while editing yields broken markdown.** Their edit, their result. We do not police it.
@@ -297,7 +297,7 @@ export interface Decorator<T> {
     /** RHS header text. */
     summary: (payload: T) => string;
 
-    /** Link colours; the framework generates the CSS rule. */
+    /** Link colors; the framework generates the CSS rule. */
     style: {color: string; background: string};
 
     /** RHS body. */
@@ -379,7 +379,7 @@ const RhsView = () => {
 
 ### The DTG decorator
 
-**Recognised forms (Phase 1).**
+**Recognized forms (Phase 1).**
 
 | Form | Example | Zone letters | Notes |
 |------|---------|--------------|-------|
@@ -393,7 +393,7 @@ The zone letter widens past `Z` only on the forms where the 3-letter month abbre
 
 **Zone letters.** `Z` = UTC, `A`-`H` = UTC+1..+8, `K`-`M` = UTC+10..+12, `N`-`Y` = UTC-1..-12. There is **no `I`**. `J` (observer's local time) is **rejected in Phase 1**: it would make the resolved instant reader-dependent, which is incompatible with baking a single `t` into the URL.
 
-**Validation** (`Parse` returns `ok=false` otherwise): hour 00-23, minute 00-59, month one of the twelve abbreviations, zone letter valid, and **day valid for that month including leap years**. A plain 01-31 check is not enough: `time.Date(2026, 2, 31, ...)` normalises silently to 3 March, and the page would then confidently show a wrong date in every row. `parse.spec` must assert a parse then re-format round trip.
+**Validation** (`Parse` returns `ok=false` otherwise): hour 00-23, minute 00-59, month one of the twelve abbreviations, zone letter valid, and **day valid for that month including leap years**. A plain 01-31 check is not enough: `time.Date(2026, 2, 31, ...)` normalizes silently to 3 March, and the page would then confidently show a wrong date in every row. `parse.spec` must assert a parse then re-format round trip.
 
 Two-digit year `NN` maps to `20NN`.
 
@@ -640,7 +640,7 @@ Decoration now happens exactly once, at post time. `MessageWillBeUpdated` is gon
 
 This deletes the largest remaining source of risk in the plan. Revision 2b's unwrap-and-re-decorate machinery existed only to stop a hand-edited label drifting from its `t` param, and it was the one operation capable of destroying user-authored markdown. Removed with it: the three-condition unwrap rule and its worked-cases table, the all-or-nothing coupling with the size check, the `oldPost.CreateAt` second reference time, and the hazard of running our own transform over our own prior output.
 
-What replaces it is a stance rather than a mechanism: if an author edits a decorator link, that is a deliberate act and we honour it. Changing the label produces a link whose text disagrees with the panel, which is self-revealing because the panel renders the canonical DTG from the URL. Deleting the link syntax leaves the text plain forever, which gives users a per-post escape hatch the admin setting cannot offer. A DTG typed during an edit is simply not decorated.
+What replaces it is a stance rather than a mechanism: if an author edits a decorator link, that is a deliberate act and we honor it. Changing the label produces a link whose text disagrees with the panel, which is self-revealing because the panel renders the canonical DTG from the URL. Deleting the link syntax leaves the text plain forever, which gives users a per-post escape hatch the admin setting cannot offer. A DTG typed during an edit is simply not decorated.
 
 `hooks_test.go` now asserts that no `MessageWillBeUpdated` method exists on `Plugin`, so this cannot be silently reintroduced.
 

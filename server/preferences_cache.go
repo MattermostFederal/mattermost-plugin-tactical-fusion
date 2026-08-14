@@ -18,9 +18,23 @@ const (
 	preferencesCacheSize = 1024
 
 	// preferencesCacheTTL bounds how long a node can serve a stale blob if a
-	// cluster invalidation is ever lost. Invalidation is the mechanism;
-	// expiry is the backstop.
-	preferencesCacheTTL = 10 * time.Minute
+	// cluster invalidation is ever lost. Invalidation is the mechanism; expiry
+	// is the backstop.
+	//
+	// Matched to the webapp's own cache lifetime in preferences/store.ts, so
+	// the two layers in front of the KV store agree about how long a reader may
+	// be shown something out of date. They are not the same kind of number: the
+	// webapp has no invalidation to hear, so its timer is the only thing that
+	// ever refreshes it, while this one is corrected by every write and only
+	// matters for a write it never heard about. Aligning them is a deliberate
+	// choice that this window is what a stale blob is worth, not an assumption
+	// that they do the same job.
+	//
+	// The cost of the longer TTL is exactly one case: a cluster event dropped
+	// between nodes leaves the other nodes serving the old blob for up to half
+	// an hour rather than ten minutes. A reader on the node that saved sees
+	// their change immediately either way.
+	preferencesCacheTTL = 30 * time.Minute
 
 	// clusterEventInvalidatePreferences carries a user ID to the other nodes.
 	// Without it a reader who saves on one node keeps seeing the old table on
@@ -32,7 +46,7 @@ const (
 // across the cluster on every write.
 //
 // The panel asks for these on every open and every hover, none of which is
-// worth a KV read. Modelled on the caching store in mattermost-plugin-
+// worth a KV read. Modeled on the caching store in mattermost-plugin-
 // aocanywhere: read-through LRU with a TTL, and writes invalidate rather than
 // repopulate so two nodes racing on the same key cannot leave one of them
 // holding a value the other overwrote.

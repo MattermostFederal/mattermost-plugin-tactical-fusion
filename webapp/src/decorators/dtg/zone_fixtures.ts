@@ -10,7 +10,7 @@ import type {ZoneChoice, ZoneGroup} from './zones';
  *
  * Built by hand rather than taken from `availableZoneGroups` so the assertions
  * do not move with the host's tzdata or with the season. These tests are about
- * the picker's behaviour, not about which zones exist.
+ * the picker's behavior, not about which zones exist.
  */
 function choice(name: string, iana: string, offsetMinutes: number, abbr = ''): ZoneChoice {
     const sign = offsetMinutes < 0 ? '-' : '+';

@@ -39,7 +39,7 @@ export interface Decorator<T> {
      */
     summary: (payload: T) => string;
 
-    /** Link colours. The framework generates the CSS rule from these. */
+    /** Link colors. The framework generates the CSS rule from these. */
     style: {color: string; background: string};
 
     /** The RHS body. */

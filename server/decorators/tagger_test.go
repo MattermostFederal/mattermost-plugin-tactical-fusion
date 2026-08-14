@@ -85,7 +85,7 @@ func TestProtectedSpansAreNeverRewritten(t *testing.T) {
 		{"html tag attribute", `<span title="AAA">x</span>`},
 
 		// Balanced brackets are legal in link text. The label expression used to
-		// refuse a raw "[", so a link with one was not recognised as a link at
+		// refuse a raw "[", so a link with one was not recognized as a link at
 		// all and a token in its destination was rewritten, nesting a new link
 		// inside the reader's.
 		{"link label containing brackets", "[a [b] AAA](https://example.com)"},
@@ -105,7 +105,7 @@ func TestProtectedSpansAreNeverRewritten(t *testing.T) {
 		{"four-backtick fence closed by three", "````\ncode\n```\nAAA"},
 		{"four-tilde fence closed by three", "~~~~\ncode\n~~~\nAAA"},
 
-		// Balanced matching recognises nothing at all when the delimiters do
+		// Balanced matching recognizes nothing at all when the delimiters do
 		// not balance, so an unpaired "(" inside a title lost the link its
 		// protection entirely. The simple destination form is kept as a
 		// fallback for exactly this.
@@ -298,7 +298,7 @@ func TestRejectedMatchDoesNotClaimRange(t *testing.T) {
 }
 
 // Longest match wins regardless of which decorator registered first, so adding
-// a decorator cannot silently change an existing one's behaviour.
+// a decorator cannot silently change an existing one's behavior.
 func TestLongestMatchWinsOverRegistrationOrder(t *testing.T) {
 	short := newFixture("short", `AAA`)
 	long := newFixture("long", `AAABBB`)

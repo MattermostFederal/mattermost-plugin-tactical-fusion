@@ -16,7 +16,7 @@
         <nav>
             <span class="nav-section">Documentation</span>
             <a href="help.html" class="active">Overview</a>
-            <a href="formats.html">Date and Time Formats</a>
+            <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
             <a href="admin.html">Admin Settings</a>
             <a href="commands.html">Slash Commands</a>
@@ -37,11 +37,18 @@
         <p class="tagline">Enriches conversations with mission-relevant context, in place, as people write.</p>
 
         <p>
-            Today the plugin recognises one kind of thing: times. Write a date-time group
-            in a message and it becomes a link that opens a panel showing that instant in
-            every timezone you care about, with a countdown to it. Geospatial data, CoT,
-            IP intelligence and CVEs are described in the plugin's roadmap but are
-            <strong>not implemented</strong>.
+            Today the plugin recognizes two kinds of thing: <strong>times</strong> and
+            <strong>coordinates</strong>. Write a date-time group and it becomes a link
+            that opens a panel showing that instant in every timezone you care about, with
+            a countdown to it. Write a coordinate in any of the recognized notations and it
+            becomes a link showing the same position in the others, including its
+            <a href="formats.html#location-grid">military grid reference</a>.
+        </p>
+
+        <p>
+            CoT, IP intelligence and CVEs are described in the plugin's roadmap but are
+            <strong>not implemented</strong>. Neither are the remaining area-reference
+            systems: GARS, USNG, GEOREF and Plus Codes.
         </p>
 
         <h2>What a decorator does</h2>
@@ -51,18 +58,18 @@
             link, and renders the detail behind that link. Post this:
         </p>
 
-        <pre><code>Rendezvous at 091630ZAUG26, confirm by 2026-08-09T12:00:00Z</code></pre>
+        <pre><code>Rendezvous at 091630ZAUG26, DZ is 3510N07901W</code></pre>
 
         <p>and what is stored is this:</p>
 
         <pre><code>Rendezvous at [091630ZAUG26](/plugins/com.mattermost.plugin-tactical-fusion/decorate/dtg?...),
-confirm by [2026-08-09T12:00:00Z](/plugins/com.mattermost.plugin-tactical-fusion/decorate/dtg?...)</code></pre>
+DZ is [3510N07901W](/plugins/com.mattermost.plugin-tactical-fusion/decorate/location?...)</code></pre>
 
         <p>
-            Readers see the original text, unchanged, as a link. Hovering shows a
-            countdown; clicking opens the
-            <a href="panel.html">right-hand sidebar</a> with the full timezone table.
-            The browser never navigates away from the channel.
+            Readers see the original text, unchanged, as a link. Clicking opens the
+            <a href="panel.html">right-hand sidebar</a> with the detail: a timezone table
+            for a time, the other notations for a coordinate. The browser never navigates
+            away from the channel.
         </p>
 
         <h2>The one thing worth understanding</h2>
@@ -107,31 +114,41 @@ confirm by [2026-08-09T12:00:00Z](/plugins/com.mattermost.plugin-tactical-fusion
         <h2>What is never touched</h2>
 
         <p>
-            A time <em>inside</em> a code block, a link, or inline HTML is left exactly as
-            written. The protection is per span, not per message, so a message containing
-            both a pasted URL and a date-time group gets the date-time group linked and
-            the URL left alone. The full list is on the
+            A token <em>inside</em> a code block, a link, or inline HTML is left exactly
+            as written. The protection is per span, not per message, so a message
+            containing both a pasted URL and a date-time group gets the date-time group
+            linked and the URL left alone. The full list is on the
             <a href="formats.html#protected">formats page</a>.
+        </p>
+
+        <p>
+            The same caution runs through what is recognized at all. A coordinate has to be
+            unmistakably one before it is rewritten, which is why
+            <code>34.05, -118.25</code> is
+            <a href="formats.html#location-declined">deliberately left alone</a>: a false
+            positive here edits a message somebody wrote. If something you expected to link
+            did not, <a href="commands.html#check"><code>/tactical-fusion check</code></a>
+            will tell you which rule decided it.
         </p>
 
         <h2>Where to go next</h2>
 
         <div class="nav-cards">
             <a href="formats.html" class="nav-card">
-                <h3>Date and Time Formats</h3>
-                <p>Every format that is recognised, and, just as importantly, the ones that are deliberately declined and why.</p>
+                <h3>Recognized Formats</h3>
+                <p>Every time and coordinate format that is recognized, and, just as importantly, the ones that are deliberately declined and why.</p>
             </a>
             <a href="panel.html" class="nav-card">
                 <h3>The Sidebar Panel</h3>
-                <p>Reading the countdown and the timezone table, and choosing your own timezones and flash threshold.</p>
+                <p>Reading the countdown, the timezone table and the coordinate conversions, and choosing your own timezones and flash threshold.</p>
             </a>
             <a href="admin.html" class="nav-card">
                 <h3>Admin Settings</h3>
-                <p>The four switches in the System Console, what each governs, and what turning one off does and does not do.</p>
+                <p>The ten switches in the System Console, what each governs, and what turning one off does and does not do. One of them, UTM, ships off.</p>
             </a>
             <a href="commands.html" class="nav-card">
                 <h3>Slash Commands</h3>
-                <p><code>/tactical-fusion examples</code>, which posts a live demonstration of what is and is not recognised.</p>
+                <p><code>examples</code> posts a short live demonstration to a channel, <code>example-details</code> posts every format, edge case and near miss, and <code>check</code> privately explains what would happen to your own text.</p>
             </a>
             <a href="troubleshooting.html" class="nav-card">
                 <h3>Troubleshooting</h3>

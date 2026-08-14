@@ -16,7 +16,7 @@
         <nav>
             <span class="nav-section">Documentation</span>
             <a href="help.html">Overview</a>
-            <a href="formats.html">Date and Time Formats</a>
+            <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
             <a href="admin.html" class="active">Admin Settings</a>
             <a href="commands.html">Slash Commands</a>
@@ -34,9 +34,9 @@
         </div>
 
         <h1>Admin Settings</h1>
-        <p class="tagline">System Console, Plugins, Tactical Fusion. Four switches, all on by default.</p>
+        <p class="tagline">System Console, Plugins, Tactical Fusion. Eleven switches. Ten are on by default; <code>EnableLocationUTM</code> is the one that is not.</p>
 
-        <h2>How the four relate</h2>
+        <h2>How the date-time group switches relate</h2>
 
         <p>
             <a href="#enable-dtg"><code>EnableDTG</code></a> is the parent. The three
@@ -104,7 +104,7 @@
         </table>
 
         <p>
-            Recognise times in messages and rewrite them as links that open a Date/Time
+            Recognize times in messages and rewrite them as links that open a Date/Time
             panel. The formats below are matched individually and all apply while this
             is on.
         </p>
@@ -125,14 +125,14 @@
             <a href="formats.html#military">formats page</a>.
         </p>
 
-        <h3 id="enable-dtg-moniker" data-setting="EnableDTGMoniker">Format: labelled date-time group <code>EnableDTGMoniker</code></h3>
+        <h3 id="enable-dtg-moniker" data-setting="EnableDTGMoniker">Format: labeled date-time group <code>EnableDTGMoniker</code></h3>
 
         <table class="field-table">
             <tbody>
                 <tr><td>Type</td><td>Boolean</td></tr>
                 <tr><td>Default</td><td>On</td></tr>
                 <tr><td>Matches</td><td>A time introduced by the <code>DTG:</code> label, dropping the label from the link</td></tr>
-                <tr><td>Requires</td><td><a href="#enable-dtg"><code>EnableDTG</code></a>, plus the format being labelled</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-dtg"><code>EnableDTG</code></a>, plus the format being labeled</td></tr>
             </tbody>
         </table>
 
@@ -162,13 +162,277 @@
             <a href="formats.html#protected">fenced code is never rewritten</a>.
         </p>
 
-        <h2>Checking the current behaviour</h2>
+        <h2 id="location-switches">How the coordinate switches relate</h2>
 
         <p>
-            <a href="commands.html#examples"><code>/tactical-fusion examples</code></a>
-            runs the real matcher against a set of samples and posts what it did,
-            including a note when decoration is switched off entirely. It is the quickest
-            way to confirm a settings change took effect.
+            <a href="#enable-location"><code>EnableLocation</code></a> is the parent, and
+            the six below it select individual grammars and the moniker. The structure is the same as
+            the date-time group block above, and for the same reason: the settings schema
+            has no nesting, so the grouping is expressed through ordering and naming and
+            enforced in code.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Setting</th><th>Governs</th><th>Default</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><a href="#enable-location"><code>EnableLocation</code></a></td><td>Coordinate decoration as a whole</td><td>On</td></tr>
+                <tr><td><a href="#enable-location-dd-signed"><code>EnableLocationDDSigned</code></a></td><td><code>34.0561, -118.2500</code></td><td>On</td></tr>
+                <tr><td><a href="#enable-location-lat-lon"><code>EnableLocationLatLon</code></a></td><td>Hemisphere-bearing latitude and longitude</td><td>On</td></tr>
+                <tr><td><a href="#enable-location-usmtf"><code>EnableLocationUSMTF</code></a></td><td>The fixed-width USMTF shapes</td><td>On</td></tr>
+                <tr><td><a href="#enable-location-grid"><code>EnableLocationGrid</code></a></td><td>Military grid references (MGRS)</td><td>On</td></tr>
+                <tr><td><a href="#enable-location-utm"><code>EnableLocationUTM</code></a></td><td>UTM, whose band letter is <a href="#enable-location-utm">ambiguous</a></td><td><strong>Off</strong></td></tr>
+                <tr><td><a href="#enable-location-moniker"><code>EnableLocationMoniker</code></a></td><td>Field labels</td><td>On</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Every position is WGS 84. A coordinate carrying another datum is left alone
+            rather than reinterpreted, because NAD 27 and WGS 84 disagree by up to about
+            200 m in the continental United States and quietly treating one as the other
+            would move a grid reference by several cells.
+        </p>
+
+        <h3 id="enable-location" data-setting="EnableLocation">Decorate coordinates <code>EnableLocation</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>No new message has a coordinate decorated, whatever the six switches below it say. Links already in existing messages keep working.</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Recognize geographic coordinates in messages and rewrite them as links that
+            open a Location panel.
+        </p>
+
+        <h3 id="enable-location-dd-signed" data-setting="EnableLocationDDSigned">Format: decimal degrees, signed <code>EnableLocationDDSigned</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Matches</td><td><code>34.0561, -118.2500</code></td></tr>
+                <tr><td>Requires</td><td><a href="#enable-location"><code>EnableLocation</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            <strong>Turn this one off first</strong> if ordinary numbers in your channels
+            are being linked. It is the widest-reaching grammar here, because a signed
+            decimal pair is two numbers and a comma with nothing else to identify it.
+        </p>
+
+        <p>
+            What holds it apart from ordinary text is a requirement of at least four
+            decimal places on both values, which is about 11 m and is what real
+            coordinate sources emit. The cost is that <code>34.05, -118.25</code> is
+            deliberately left alone. See
+            <a href="formats.html#location-declined">the declined list</a>.
+        </p>
+
+        <h3 id="enable-location-lat-lon" data-setting="EnableLocationLatLon">Format: latitude and longitude with hemisphere letters <code>EnableLocationLatLon</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Matches</td><td><code>34.0561 N, 118.2500 W</code>, <code>34&deg;03'22"N 118&deg;15'00"W</code>, <code>34&deg;03.366'N 118&deg;15.000'W</code></td></tr>
+                <tr><td>Requires</td><td><a href="#enable-location"><code>EnableLocation</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Hemisphere letters are required in every variant, and a decimal point is
+            required on the plain decimal form. Without that rule
+            <code>Load 12 N, 5 W</code> would be read as a position rather than as
+            newtons and watts.
+        </p>
+
+        <h3 id="enable-location-usmtf" data-setting="EnableLocationUSMTF">Format: USMTF compact coordinates <code>EnableLocationUSMTF</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Matches</td><td><code>3510N07901W</code>, <code>400948N1221400W</code>, <code>331000.0N1183000.0W</code>, <code>3510N9-07901W7</code></td></tr>
+                <tr><td>Requires</td><td><a href="#enable-location"><code>EnableLocation</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            The fixed-width shapes used in ATO and USMTF traffic. The shortest of them,
+            <code>35N079W</code>, is matched only behind a field label: seven characters
+            resolving to a 111 km square is not something to detect on its own.
+        </p>
+
+        <h3 id="enable-location-grid" data-setting="EnableLocationGrid">Format: military grid reference (MGRS) <code>EnableLocationGrid</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Matches</td><td><code>18S UJ 23478 06483</code>, <code>18SUJ2347806483</code>, <code>32U MV 12 34</code></td></tr>
+                <tr><td>Requires</td><td><a href="#enable-location"><code>EnableLocation</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Grid references, which along with <a href="#enable-location-utm">UTM</a> are the
+            only formats whose position is <strong>calculated</strong> rather than read out
+            of the text the author typed. Everything else in this plugin is arithmetic on
+            digits that are in the message; these two are a projection onto the WGS 84
+            ellipsoid. Turning both off leaves the plugin showing only what a message
+            literally says.
+        </p>
+
+        <p>
+            A run-together grid reference is matched on its own when it is upper case and
+            carries at least three digits per axis, which is a 100 m square. Lower case is
+            not, because a short git commit hash is lower-case hexadecimal of exactly that
+            shape; nor is a coarser one, because a shorter run is what part numbers look
+            like (<code>26HMA1997</code> is a valid grid reference). Both are still reached
+            by spacing the reference out or by an <code>MGRS:</code> label.
+        </p>
+
+        <p>
+            A grid reference is validated against the letter scheme of the zone it names, so
+            a square that does not exist is left alone: only eight of the twenty-four column
+            letters are legal in any given zone. That check is also why MGRS has none of
+            <a href="#enable-location-utm">UTM's ambiguity</a>: its band letter is followed
+            by two more letters and could never be read as a hemisphere.
+        </p>
+
+        <p>
+            Above 84&deg; north and below 80&deg; south there is no grid: that is the
+            Universal Polar Stereographic system, which this plugin does not implement. A polar
+            coordinate is still decorated and still shows latitude and longitude; it simply has
+            no grid rows.
+        </p>
+
+        <h3 id="enable-location-utm" data-setting="EnableLocationUTM">Format: UTM <code>EnableLocationUTM</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td><strong>Off</strong>, and the only format that ships disabled</td></tr>
+                <tr><td>Matches</td><td><code>33U 291000 5628000</code>, <code>11S 384640E 3769080N</code>, and run together only behind a <code>UTMO:</code> or <code>UTMT:</code> label</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-location"><code>EnableLocation</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-danger">
+            <p class="alert-title">This is the only format whose failure mode is a wrong position.</p>
+            <p>
+                Every other switch on this page trades a false positive against a missed
+                decoration: the worst case is that something which was not a coordinate gets
+                linked, or something which was does not. <strong>UTM can decorate a real
+                coordinate and point at the wrong place.</strong> That is why it ships off,
+                and why turning it on is a decision worth making deliberately.
+            </p>
+        </div>
+
+        <p>
+            <strong>The letter after the zone number is read as a latitude band.</strong>
+            <code>11S 384640E 3769080N</code> is band S, so it resolves to 34&deg; north.
+            Somebody using the civilian convention writes the same characters to mean "zone
+            11, southern hemisphere", which is 56&deg; south. The same text, two readings,
+            90&deg; of latitude apart, and nothing in the token says which was meant.
+        </p>
+
+        <p>
+            The band reading is the one this plugin takes, because MGRS is the military
+            implementation of UTM and the third character of a grid zone designator is a
+            latitude band. What limits the damage is that <strong>the northing has to land
+            inside the band its letter names</strong>: <code>11N 385000 3769000</code> is
+            declined, because that northing is 34&deg; north, which is band S. Measured over
+            20,000 generated positions written the civilian way, about nine in ten are
+            declined by that check. Not all of them.
+        </p>
+
+        <p>
+            The two letters do not carry the same risk. For <code>N</code>, both readings put
+            the point in the same place and the band reading merely also requires it to be in
+            the first 8&deg; north, so it can decline a coordinate but never move one.
+            <code>S</code> is where the difference is real.
+        </p>
+
+        <h4>When to turn it on</h4>
+
+        <p>
+            Turn it on if your workspace writes UTM the military way, which is the common
+            case anywhere MGRS is in use: the reading will be the one your people meant.
+            Leave it off if UTM reaches your channels from civilian tooling, GPS exports or
+            mapping software, where <code>11S</code> is likely to mean the southern
+            hemisphere.
+        </p>
+
+        <p>
+            Leaving it off costs nothing else. A UTM position is still shown as a
+            <strong>row</strong> in the panel for every other coordinate that is decorated;
+            this switch governs only whether a UTM token in a message becomes a link.
+            Authors who want one linked can write it as a
+            <a href="#enable-location-grid">grid reference</a> instead, where the band letter
+            cannot be misread.
+        </p>
+
+        <p>
+            Run-together UTM is label-only whatever this is set to: after the zone and band
+            it is thirteen bare digits with no letters to validate, so the only check
+            available is the band containment above, which a great many thirteen-digit runs
+            satisfy.
+        </p>
+
+        <h3 id="enable-location-moniker" data-setting="EnableLocationMoniker">Format: labeled coordinate <code>EnableLocationMoniker</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Matches</td><td>A coordinate introduced by a field label such as <code>LATM:</code>, <code>LATS:</code>, <code>DMPID:</code>, <code>GEOK:</code>, <code>MGRS:</code>, <code>UTMO:</code> or <code>UTMT:</code></td></tr>
+                <tr><td>Requires</td><td><a href="#enable-location"><code>EnableLocation</code></a>, plus the format being labeled</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Unlike the <code>DTG:</code> label, a coordinate label is <strong>kept</strong>
+            rather than consumed, so a decorated USMTF line still reads as USMTF. This one
+            composes the same way the date-time group label does: it only labels formats
+            that are themselves on, and a label vouches for nothing, so
+            <code>LATM:9999N99999W</code> stays declined.
+        </p>
+
+        <h2 id="tagged-only">Decorating only what an author labeled</h2>
+
+        <p>
+            Leaving <a href="#enable-location-usmtf"><code>EnableLocationUSMTF</code></a>
+            and <a href="#enable-location-moniker"><code>EnableLocationMoniker</code></a>
+            on while turning the other two off is a supported configuration, and a
+            deliberate one. It decorates a coordinate only where the author wrote a field
+            label in front of it, which removes bare detection entirely.
+        </p>
+
+        <p>
+            Consider it for a workspace where messages carry a lot of numeric data and a
+            false positive would be worse than a missed link.
+        </p>
+
+        <h2>Checking the current behavior</h2>
+
+        <p>
+            <a href="commands.html#example-details"><code>/tactical-fusion example-details</code></a>
+            runs the real matcher against a set of samples and posts what it did, including
+            a note when decoration is switched off entirely. That is the quickest way to
+            confirm a settings change took effect.
+        </p>
+
+        <p>
+            <a href="commands.html#check"><code>/tactical-fusion check</code></a> answers
+            the same question about one specific message, which is what to reach for when
+            somebody reports that a coordinate was not linked.
         </p>
 
         <h2>Reader settings are not admin settings</h2>

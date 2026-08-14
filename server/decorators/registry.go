@@ -6,7 +6,7 @@ import "fmt"
 //
 // Order matters only as a tiebreak: when two matches overlap, the longest wins
 // and registration order decides equal-length ties. That keeps adding a
-// decorator from silently changing an existing one's behaviour.
+// decorator from silently changing an existing one's behavior.
 type Registry struct {
 	ordered []Decorator
 	byType  map[string]Decorator

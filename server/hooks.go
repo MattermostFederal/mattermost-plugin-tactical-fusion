@@ -13,15 +13,39 @@ import (
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
-// maxPostRunes is the ceiling a decorated message must stay under.
+// The post size limits, and why there are two of them.
 //
-// The plugin config exposed through p.API.GetConfig() carries no max-post-size
-// field in this SDK version, so the limit comes from the model constant the
-// server itself validates against. PostMessageMaxRunesV1 is the conservative
-// choice: an admin can lower the effective limit below V2, and being cautious
-// here only means occasionally skipping decoration, whereas being wrong the
-// other way means the post is rejected.
-const maxPostRunes = model.PostMessageMaxRunesV1
+// There is no way to ask for the real one. `Post.IsValid` takes it as an
+// argument, the server computes it, and neither `plugin.API` nor the
+// `model.Config` it hands back exposes it. So this plugin works from the two
+// constants the SDK does offer, and uses each where its failure mode is
+// survivable.
+//
+// The two directions are not symmetric, which is the whole reason for the
+// split. A limit set too high in `decoratePost` means a decorated message the
+// server then refuses, so the AUTHOR CANNOT POST AT ALL. Too low there only
+// means occasionally skipping decoration. In the slash commands it is the
+// difference between a post that lands and one that is refused, which is
+// reported and recoverable.
+const (
+	// safePostRunes is the floor every server accepts. PostMessageMaxRunesV1
+	// is what the model validated against before the column widened, and no
+	// store returns less, so a message under this is never refused for length.
+	//
+	// This is what `decoratePost` uses, because that is the call site where
+	// being wrong stops somebody posting.
+	safePostRunes = model.PostMessageMaxRunesV1
+
+	// defaultPostRunes is what a server normally accepts: PostMessageMaxRunesV2
+	// is PostMessageMaxBytesV2/4, the worst-case rune count for the TEXT column
+	// the message is stored in, and is what the Postgres and MySQL stores
+	// report by default.
+	//
+	// Used by the slash commands, which write their own posts and can be told
+	// they were refused. It is a good guess and not a guarantee: an admin or a
+	// store can report less, so anything using this has to survive being wrong.
+	defaultPostRunes = model.PostMessageMaxRunesV2
+)
 
 // MessageWillBePosted decorates a message once, as it is created.
 //
@@ -35,7 +59,7 @@ func (p *Plugin) MessageWillBePosted(_ *plugin.Context, post *model.Post) (*mode
 // referenceTime is what an undated short-form token is resolved against.
 //
 // CreateAt is normally unset at this point and the server fills it in later, so
-// "now" is the right answer. It is honoured when present because an imported or
+// "now" is the right answer. It is honored when present because an imported or
 // scheduled post carries its real timestamp, and the page tells the reader the
 // inferred month and year came from the post date.
 func referenceTime(post *model.Post) time.Time {
@@ -83,7 +107,7 @@ func (p *Plugin) decoratePost(post *model.Post, ref time.Time) (result *model.Po
 		return nil
 	}
 
-	if utf8.RuneCountInString(decorated) > maxPostRunes {
+	if utf8.RuneCountInString(decorated) > safePostRunes {
 		// A 12-character DTG becomes roughly 120 once linked, so a message that
 		// is visibly well under the limit can cross it here. Rejecting the post
 		// would show the author an opaque "too long" error for text they can

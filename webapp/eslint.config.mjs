@@ -380,6 +380,32 @@ export default [
         },
     },
 
+    // Component tests must go through the coverage fixture.
+    //
+    // playwright/ct-coverage.ts wraps the `page` fixture with CDP
+    // startJSCoverage, so a .pw.tsx importing `test` straight from the
+    // Playwright package still runs and still passes while contributing NO
+    // coverage. That failure is silent in both directions: the suite is green
+    // and the component it exercises reads as untested, which points anybody
+    // reading the coverage report at files that already have tests and away
+    // from the ones that do not. Two files sat like that, hiding 20 tests.
+    {
+        files: ['**/*.pw.tsx'],
+        rules: {
+            'no-restricted-imports': [
+                'error',
+                {
+                    paths: [
+                        {
+                            name: '@playwright/experimental-ct-react',
+                            message: "Import {test, expect} from 'playwright/ct-coverage' instead, or the file contributes no coverage.",
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+
     // Relaxed rules for config files (webpack, playwright, eslint, babel)
     {
         files: ['*.js', '*.mjs', '*.config.*'],

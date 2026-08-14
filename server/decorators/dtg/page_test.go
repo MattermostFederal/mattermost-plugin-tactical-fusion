@@ -79,7 +79,7 @@ func TestAssumedNote(t *testing.T) {
 			want:    "The year was not in the original text; it was taken from the date the message was posted.",
 		},
 		{"nothing inferred", "", ""},
-		{"unrecognised code says nothing", "d", ""},
+		{"unrecognized code says nothing", "d", ""},
 	}
 
 	for _, tc := range cases {

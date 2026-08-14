@@ -1,12 +1,14 @@
 import {expect, test} from '@playwright/test';
 
 import {
+    CACHE_TTL_MS_FOR_TESTING,
     getState,
     loadPreferences,
-    resetPreferences,
-    savePreferences,
+    resetPreferencesSection,
+    savePreferencesSection,
     subscribe,
     _resetForTesting,
+    _setClockForTesting,
 } from './store';
 
 interface Call {
@@ -51,7 +53,10 @@ function stubFetch(reply: (call: Call) => Reply): Call[] {
     return calls;
 }
 
-const savedBlob = {dtg: {zones: [{iana: 'UTC'}, {iana: 'Asia/Tokyo', name: 'Yokota'}], urgent_within_minutes: 15}};
+const savedBlob = {
+    dtg: {zones: [{iana: 'UTC'}, {iana: 'Asia/Tokyo', name: 'Yokota'}], urgent_within_minutes: 15},
+    location: {hidden_rows: []},
+};
 
 test.beforeEach(() => {
     _resetForTesting();
@@ -118,15 +123,41 @@ test('a failed load is retried by the next caller', async () => {
     expect(getState().error).toBeNull();
 });
 
-test('saving sends the wire shape and adopts what came back', async () => {
+test('saving re-reads first, then sends the wire shape and adopts what came back', async () => {
     const calls = stubFetch(() => ({status: 200, body: savedBlob}));
 
-    await savePreferences({dtg: {zones: [{iana: 'UTC'}, {iana: 'Asia/Tokyo', name: 'Yokota'}], urgentWithinMinutes: 15}});
+    await savePreferencesSection('dtg', {zones: [{iana: 'UTC'}, {iana: 'Asia/Tokyo', name: 'Yokota'}], urgentWithinMinutes: 15});
 
-    expect(calls).toHaveLength(1);
-    expect(calls[0].method).toBe('PUT');
-    expect(calls[0].body).toEqual(savedBlob);
+    expect(calls.map((call) => call.method)).toEqual(['GET', 'PUT']);
+    expect(calls[1].body).toEqual(savedBlob);
     expect(getState().preferences.dtg.zones).toEqual([{iana: 'UTC'}, {iana: 'Asia/Tokyo', name: 'Yokota'}]);
+});
+
+// The whole reason the save re-reads.
+//
+// loadPreferences fetches once per page load and never again, so the cached
+// blob is as stale as the tab is old. A save built from it carried a snapshot
+// from minutes ago back over the top of whatever had been written since — most
+// visibly from the other decorator's editor, in another tab.
+test('saving one section keeps what the server holds for the other', async () => {
+    const calls = stubFetch((call) => ({
+        status: 200,
+        body: call.method === 'GET' ? {dtg: {zones: [{iana: 'Asia/Tokyo'}], urgent_within_minutes: 42},
+                location: {hidden_rows: ['ddm']}} : savedBlob,
+    }));
+
+    // A stale cache: loaded before anything else changed it.
+    await loadPreferences();
+    expect(getState().preferences.location.hiddenRows).toEqual(['ddm']);
+
+    await savePreferencesSection('dtg', {zones: [{iana: 'UTC'}], urgentWithinMinutes: 5});
+
+    const put = calls[calls.length - 1];
+    expect(put.method).toBe('PUT');
+    expect(put.body).toEqual({
+        dtg: {zones: [{iana: 'UTC'}], urgent_within_minutes: 5},
+        location: {hidden_rows: ['ddm']},
+    });
 });
 
 // A save that quietly did nothing would leave the reader believing their
@@ -134,41 +165,73 @@ test('saving sends the wire shape and adopts what came back', async () => {
 test('a failed save rejects with the reason the server gave', async () => {
     stubFetch(() => ({status: 400, body: {message: 'unknown timezone "Mars/Olympus_Mons"'}}));
 
-    await expect(savePreferences({dtg: {zones: [{iana: 'Mars/Olympus_Mons'}], urgentWithinMinutes: 0}})).
+    await expect(savePreferencesSection('dtg', {zones: [{iana: 'Mars/Olympus_Mons'}], urgentWithinMinutes: 0})).
         rejects.toThrow('unknown timezone "Mars/Olympus_Mons"');
 });
 
 test('a failed save without a reason still rejects', async () => {
     stubFetch(() => ({status: 500, body: null}));
 
-    await expect(savePreferences({dtg: {zones: [], urgentWithinMinutes: 0}})).
+    await expect(savePreferencesSection('dtg', {zones: [], urgentWithinMinutes: 0})).
         rejects.toThrow('500');
 });
 
 test('saving means a later load does not go back to the server', async () => {
     const calls = stubFetch(() => ({status: 200, body: savedBlob}));
 
-    await savePreferences({dtg: {zones: [{iana: 'UTC'}], urgentWithinMinutes: 0}});
+    await savePreferencesSection('dtg', {zones: [{iana: 'UTC'}], urgentWithinMinutes: 0});
     await loadPreferences();
 
-    expect(calls).toHaveLength(1);
+    // The save's own read, then its write. Nothing after it.
+    expect(calls.map((call) => call.method)).toEqual(['GET', 'PUT']);
 });
 
 // "Restore defaults" deletes the blob rather than writing today's defaults into
 // it, so the reader goes back to tracking whatever the defaults become.
-test('restoring defaults deletes', async () => {
+test('restoring defaults deletes when nothing is left', async () => {
     const calls = stubFetch((call) => ({
         status: 200,
-        body: call.method === 'DELETE' ? {dtg: {zones: [], urgent_within_minutes: 0}} : savedBlob,
+        body: call.method === 'DELETE' ? {} : savedBlob,
     }));
 
     await loadPreferences();
-    await resetPreferences();
+    await resetPreferencesSection('dtg');
 
-    expect(calls[1].method).toBe('DELETE');
-    expect(calls[1].body).toBeUndefined();
+    expect(calls.map((call) => call.method)).toEqual(['GET', 'GET', 'DELETE']);
+    expect(calls[2].body).toBeUndefined();
     expect(getState().preferences.dtg.zones).toEqual([]);
     expect(getState().preferences.dtg.urgentWithinMinutes).toBe(0);
+});
+
+// The bug this scoping exists for: "Restore defaults" under a legend reading
+// "Rows to show" used to DELETE the whole blob and take the reader's timezone
+// table with it. Now it writes the blob back with only its own section zeroed.
+test('restoring one section leaves the other alone', async () => {
+    const stored = {
+        dtg: {zones: [{iana: 'Asia/Tokyo'}], urgent_within_minutes: 42},
+        location: {hidden_rows: ['ddm']},
+    };
+    const calls = stubFetch(() => ({status: 200, body: stored}));
+
+    await resetPreferencesSection('location');
+
+    const write = calls[calls.length - 1];
+    expect(write.method).toBe('PUT');
+    expect(write.body).toEqual({
+        dtg: {zones: [{iana: 'Asia/Tokyo'}], urgent_within_minutes: 42},
+        location: {hidden_rows: []},
+    });
+});
+
+test('restoring the last section left deletes rather than writing an empty blob', async () => {
+    const calls = stubFetch((call) => ({
+        status: 200,
+        body: call.method === 'DELETE' ? {} : {location: {hidden_rows: ['ddm']}},
+    }));
+
+    await resetPreferencesSection('location');
+
+    expect(calls.map((call) => call.method)).toEqual(['GET', 'DELETE']);
 });
 
 test('subscribers hear about a change, and stop when they unsubscribe', async () => {
@@ -184,7 +247,7 @@ test('subscribers hear about a change, and stop when they unsubscribe', async ()
 
     const seen = notifications;
     unsubscribe();
-    await savePreferences({dtg: {zones: [], urgentWithinMinutes: 0}});
+    await savePreferencesSection('dtg', {zones: [], urgentWithinMinutes: 0});
 
     expect(notifications).toBe(seen);
 });
@@ -215,13 +278,26 @@ test('a load still in flight does not overwrite a save that landed', async () =>
         releaseGet = resolve;
     });
 
+    // Only the FIRST read is held open: that is the load being raced. The save
+    // does a read of its own, and holding that one too would simply deadlock
+    // the test rather than exercise anything.
+    let reads = 0;
+
     globalThis.fetch = ((url: string, init: {method: string; body?: string}) => {
         if (init.method === 'GET') {
-            return getReached.then(() => ({
+            reads++;
+            if (reads === 1) {
+                return getReached.then(() => ({
+                    ok: true,
+                    status: 200,
+                    json: () => Promise.resolve(savedBlob),
+                }));
+            }
+            return Promise.resolve({
                 ok: true,
                 status: 200,
                 json: () => Promise.resolve(savedBlob),
-            }));
+            });
         }
         return Promise.resolve({
             ok: true,
@@ -233,7 +309,7 @@ test('a load still in flight does not overwrite a save that landed', async () =>
     // The load starts first and is still waiting.
     const loading = loadPreferences();
 
-    await savePreferences({dtg: {zones: [{iana: 'Europe/Berlin'}], urgentWithinMinutes: 99}});
+    await savePreferencesSection('dtg', {zones: [{iana: 'Europe/Berlin'}], urgentWithinMinutes: 99});
     expect(getState().preferences.dtg.urgentWithinMinutes).toBe(99);
 
     // Now let the older read land.
@@ -254,13 +330,24 @@ test('a load that fails after a save does not revert to the defaults', async () 
         failGet = resolve;
     });
 
+    // As above, only the first read is the one being raced.
+    let reads = 0;
+
     globalThis.fetch = ((url: string, init: {method: string; body?: string}) => {
         if (init.method === 'GET') {
-            return getReached.then(() => ({
-                ok: false,
-                status: 503,
-                json: () => Promise.resolve({message: 'Not ready.'}),
-            }));
+            reads++;
+            if (reads === 1) {
+                return getReached.then(() => ({
+                    ok: false,
+                    status: 503,
+                    json: () => Promise.resolve({message: 'Not ready.'}),
+                }));
+            }
+            return Promise.resolve({
+                ok: true,
+                status: 200,
+                json: () => Promise.resolve({}),
+            });
         }
         return Promise.resolve({
             ok: true,
@@ -271,11 +358,123 @@ test('a load that fails after a save does not revert to the defaults', async () 
 
     const loading = loadPreferences();
 
-    await savePreferences({dtg: {zones: [{iana: 'Europe/Berlin'}], urgentWithinMinutes: 99}});
+    await savePreferencesSection('dtg', {zones: [{iana: 'Europe/Berlin'}], urgentWithinMinutes: 99});
 
     failGet();
     await loading;
 
     expect(getState().preferences.dtg.urgentWithinMinutes).toBe(99);
     expect(getState().error).toBeNull();
+});
+
+/*
+ * The cache has a lifetime, which it did not.
+ *
+ * A blob read on the first hover used to be kept for the life of the tab, so a
+ * reader who changed their settings elsewhere saw the old ones here until they
+ * reloaded the page, and a save built on that copy carried it back over the
+ * newer one.
+ */
+test.describe('the cache expires', () => {
+    test('serves from memory inside the lifetime', async () => {
+        let clock = 1_000_000;
+        _setClockForTesting(() => clock);
+        const calls = stubFetch(() => ({status: 200, body: savedBlob}));
+
+        await loadPreferences();
+        clock += CACHE_TTL_MS_FOR_TESTING - 1;
+        await loadPreferences();
+
+        expect(calls).toHaveLength(1);
+    });
+
+    test('reads again once the lifetime has passed', async () => {
+        let clock = 1_000_000;
+        _setClockForTesting(() => clock);
+        const calls = stubFetch(() => ({status: 200, body: savedBlob}));
+
+        await loadPreferences();
+        clock += CACHE_TTL_MS_FOR_TESTING;
+        await loadPreferences();
+
+        expect(calls.map((call) => call.method)).toEqual(['GET', 'GET']);
+    });
+
+    test('is thirty minutes', () => {
+        expect(CACHE_TTL_MS_FOR_TESTING).toBe(30 * 60 * 1000);
+    });
+
+    // A save is a read of the server's own answer, so it restarts the clock
+    // rather than leaving a blob that expires on the old one's schedule.
+    test('a save restarts the lifetime', async () => {
+        let clock = 1_000_000;
+        _setClockForTesting(() => clock);
+        const calls = stubFetch(() => ({status: 200, body: savedBlob}));
+
+        await loadPreferences();
+        clock += CACHE_TTL_MS_FOR_TESTING - 1;
+
+        await savePreferencesSection('dtg', {zones: [{iana: 'UTC'}], urgentWithinMinutes: 0});
+        const afterSave = calls.length;
+
+        clock += 1;
+        await loadPreferences();
+
+        expect(calls).toHaveLength(afterSave);
+    });
+
+    // A REFRESH that fails keeps what was already read.
+    //
+    // The failure handler used to write the defaults whatever had gone before,
+    // which was right for a first load and wrong for every one after it. Once
+    // the cache grew a lifetime, the first mount past it starts a refresh, so a
+    // single blip reverted the reader's hidden rows and timezone table on
+    // screen with nothing saying why. And because a failed read deliberately
+    // does not stamp the clock, every later mount retried, so the rows flipped
+    // back and forth for as long as the server was unwell.
+    test('a failed refresh keeps the settings already loaded', async () => {
+        let clock = 1_000_000;
+        _setClockForTesting(() => clock);
+
+        let fail = false;
+        stubFetch(() => (fail ? {status: 503, body: {message: 'Not ready.'}} : {status: 200, body: savedBlob}));
+
+        await loadPreferences();
+        expect(getState().preferences.dtg.urgentWithinMinutes).toBe(15);
+
+        fail = true;
+        clock += CACHE_TTL_MS_FOR_TESTING;
+        await loadPreferences();
+
+        // The reason is reported, and the settings are still theirs.
+        expect(getState().error).not.toBeNull();
+        expect(getState().preferences.dtg.urgentWithinMinutes).toBe(15);
+        expect(getState().preferences.dtg.zones).toHaveLength(2);
+    });
+
+    // But a first load that fails has nothing to keep, so it still degrades to
+    // the defaults rather than leaving the panel with no shape to render.
+    test('a first read that fails still falls back to the defaults', async () => {
+        _setClockForTesting(() => 1_000_000);
+        stubFetch(() => ({status: 503, body: {message: 'Not ready.'}}));
+
+        await loadPreferences();
+
+        expect(getState().error).not.toBeNull();
+        expect(getState().preferences.dtg.zones).toHaveLength(0);
+        expect(getState().preferences.dtg.urgentWithinMinutes).toBe(0);
+    });
+
+    // A read that failed must not stamp the clock, or a reader whose settings
+    // were briefly unreachable would be stuck on the defaults for half an hour.
+    test('a failed read does not start the lifetime', async () => {
+        const clock = 1_000_000;
+        _setClockForTesting(() => clock);
+        const calls = stubFetch(() => ({status: 503, body: {message: 'Not ready.'}}));
+
+        await loadPreferences();
+        await loadPreferences();
+
+        expect(calls.map((call) => call.method)).toEqual(['GET', 'GET']);
+    });
 });

@@ -24,7 +24,7 @@ export const EmptyState: React.FC = () => (
     <div style={styles.empty}>
         <p style={styles.emptyLead}>{'Tactical Fusion'}</p>
         <p style={styles.emptyHint}>
-            {'Highlighted values in a message, such as date-time groups, open their details here.'}
+            {'Highlighted values in a message, such as date-time groups and coordinates, open their details here.'}
         </p>
         <p style={styles.version}>{`Version ${manifest.version}`}</p>
     </div>

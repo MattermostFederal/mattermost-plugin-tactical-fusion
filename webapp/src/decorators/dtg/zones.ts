@@ -95,7 +95,7 @@ export const DEFAULT_ZONE_IDS: string[] = DISPLAY_ZONES.map((zone) => zone.iana)
  *
  * **Several bases may share a zone.** Two such rows read identically to the
  * minute, which is the accepted cost of letting each be named. The nine
- * defaults are in here too, so this is the whole named catalogue rather than a
+ * defaults are in here too, so this is the whole named catalog rather than a
  * supplement to one.
  *
  * Names, not a claim about posture: several of these are rotational. Adding or
@@ -385,7 +385,7 @@ export function availableZones(instant: Date): ZoneChoice[] {
         return orderedZones(MILITARY_BASES.map((base) => ({iana: base.iana})), instant);
     }
 
-    // Union with the bases' zones: engines canonicalise, so several are
+    // Union with the bases' zones: engines canonicalize, so several are
     // backward links their supported list leaves out (Asia/Bahrain links to
     // Asia/Qatar, Asia/Kuwait to Asia/Riyadh). Both still format correctly, and
     // a zone the picker could not offer would be a zone nobody could choose.
@@ -394,7 +394,7 @@ export function availableZones(instant: Date): ZoneChoice[] {
     return orderedZones([...all].map((iana) => ({iana})), instant);
 }
 
-/** One labelled block of options in the picker. */
+/** One labeled block of options in the picker. */
 export interface ZoneGroup {
     label: string;
     zones: ZoneChoice[];

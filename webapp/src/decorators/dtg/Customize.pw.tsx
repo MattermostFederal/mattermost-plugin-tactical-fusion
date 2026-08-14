@@ -104,7 +104,7 @@ async function search(page: Page, query: string): Promise<void> {
 }
 
 /**
- * The labels in the first group, which is the named catalogue.
+ * The labels in the first group, which is the named catalog.
  *
  * The listbox is flat, with headers as siblings of the options, so the group is
  * whatever lies between one header and the next.
@@ -153,10 +153,10 @@ async function rowFor(page: Page, name: string): Promise<string> {
 }
 
 /** `(UTC+05:30) Asia/Kolkata` back to 330. */
-function labelledOffset(label: string): number {
+function labeledOffset(label: string): number {
     const match = (/^\(UTC([+-])(\d{2}):(\d{2})\)/).exec(label);
     if (!match) {
-        throw new Error(`option is not labelled with an offset: ${label}`);
+        throw new Error(`option is not labeled with an offset: ${label}`);
     }
 
     const minutes = (Number(match[2]) * 60) + Number(match[3]);
@@ -284,7 +284,7 @@ test('the picker runs west to east', async ({mount, page}) => {
     const rest = labels.slice(bases.length);
 
     for (const group of [bases, rest]) {
-        const offsets = group.map(labelledOffset);
+        const offsets = group.map(labeledOffset);
         expect(offsets.length).toBeGreaterThan(1);
         for (let i = 1; i < offsets.length; i++) {
             expect(offsets[i]).toBeGreaterThanOrEqual(offsets[i - 1]);
@@ -851,4 +851,48 @@ test('does not repeat the header inside the panel', async ({mount, page}) => {
 
     // ...and the way out is still there.
     await expect(page.getByRole('button', {name: 'Back'})).toBeVisible();
+});
+
+// A read landing while the editor is open must not throw the reader's work away.
+//
+// The effect that syncs this form from the store used to run unguarded, on the
+// argument that the only window was the first round trip and that it would be
+// over before this component mounted. That stopped being true when the
+// preferences cache grew a lifetime: usePreferences starts a fresh read on the
+// first mount after it lapses, and every hover card is such a mount. Moving the
+// pointer across a decorated timestamp while editing was therefore enough to
+// reset both the picker and the threshold, silently and with no receipt.
+//
+// The fix has two halves and this pins the one a test can reach: while a read
+// is in the air the controls are disabled, so there is no draft to lose. The
+// `touched` flag behind them covers the residual path, where a failed load
+// leaves the form usable and a later mount starts a fresh read.
+//
+// Held open with holdLoad, which is the only way to be inside that window on
+// purpose. It was declared and never implemented, which is exactly why no test
+// covered any of this.
+test('the form cannot be edited while a read is in the air', async ({mount, page}) => {
+    let release = () => { /* replaced by holdLoad below */ };
+    await stubPreferencesRoute(page, {
+        holdLoad: (fn) => {
+            release = fn;
+        },
+        stored: {zones: [{iana: 'Asia/Tokyo', name: 'Yokota'}], urgentWithinMinutes: 45},
+    });
+
+    await mount(<Customize
+        instant={instant}
+        onClose={noop}
+                />);
+
+    // Nothing the reader could type into, so nothing the reply can overwrite.
+    await expect(page.getByRole('spinbutton')).toBeDisabled();
+    await expect(page.getByRole('combobox')).toBeDisabled();
+
+    release();
+
+    // And once it lands the form is theirs, carrying what was stored.
+    await expect(page.getByRole('spinbutton')).toBeEnabled();
+    await expect(page.getByRole('spinbutton')).toHaveValue('45');
+    await expect(page.getByRole('button', {name: 'Remove Yokota'})).toBeVisible();
 });

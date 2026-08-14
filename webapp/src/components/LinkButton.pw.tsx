@@ -6,7 +6,7 @@ import {expect, test} from '../../playwright/ct-coverage';
 
 // DtgPanel.pw.tsx already covers the two shapes in place and the underline
 // appearing on hover and on focus. What is left is the other half of each of
-// those handlers, the props that only one of the two branches honours, and the
+// those handlers, the props that only one of the two branches honors, and the
 // style precedence the doc comment describes.
 
 test.describe('which element it renders', () => {
@@ -28,7 +28,7 @@ test.describe('which element it renders', () => {
 
     // The guard is `href !== undefined`, not a truthiness check, so an empty
     // string still picks the anchor. Pinned because the two branches differ in
-    // what they honour.
+    // what they honor.
     test('an empty href still renders an anchor', async ({mount, page}) => {
         await mount(<LinkButtonHarness href=''/>);
 
@@ -132,7 +132,7 @@ test.describe('disabled', () => {
     // alone, so an anchor asked to be disabled is not. Pinned so the asymmetry
     // is a decision rather than a surprise: a caller wanting an inert link has
     // to withhold the href.
-    test('is not honoured on the anchor branch', async ({mount, page}) => {
+    test('is not honored on the anchor branch', async ({mount, page}) => {
         await mount(<LinkButtonHarness
             href='/somewhere'
             disabled={true}
@@ -165,10 +165,10 @@ test.describe('style', () => {
         await expect(button).toHaveCSS('text-decoration-line', 'underline');
     });
 
-    // The doc comment on `style` says "The link colouring is not overridable",
-    // but the caller's style is spread after the base, so a colour in it does
+    // The doc comment on `style` says "The link coloring is not overridable",
+    // but the caller's style is spread after the base, so a color in it does
     // win. Pinned as it behaves; the comment is what is wrong.
-    test('a caller-supplied colour does override the link colour', async ({mount, page}) => {
+    test('a caller-supplied color does override the link color', async ({mount, page}) => {
         await mount(<LinkButtonHarness style={{color: 'rgb(1, 2, 3)'}}/>);
 
         await expect(page.getByRole('button', {name: 'Customize your view'})).

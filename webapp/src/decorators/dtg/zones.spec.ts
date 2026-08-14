@@ -208,10 +208,10 @@ test('bases may share a zone', () => {
     expect(berlin.map((base) => base.name)).toContain('USAG Stuttgart');
 });
 
-test('the catalogue includes every default row', () => {
+test('the catalog includes every default row', () => {
     const keys = new Set(MILITARY_BASES.map(zoneKey));
     for (const entry of DEFAULT_SELECTION) {
-        expect(keys, `${entry.name} is missing from the catalogue`).toContain(zoneKey(entry));
+        expect(keys, `${entry.name} is missing from the catalog`).toContain(zoneKey(entry));
     }
 });
 
@@ -256,7 +256,7 @@ test('the picker offers every built-in zone', () => {
     }
 });
 
-// Engines canonicalise, so several bases are backward links their supported
+// Engines canonicalize, so several bases are backward links their supported
 // list leaves out. A base the picker cannot offer is a base nobody can choose.
 test('the picker offers every base, canonical or not', () => {
     const available = availableZones(summer).map((zone) => zone.iana);

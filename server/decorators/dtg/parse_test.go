@@ -96,7 +96,7 @@ func TestParseRejections(t *testing.T) {
 		value string
 		why   string
 	}{
-		{"31 February", "311200ZFEB26", "normalising it would silently show 3 March"},
+		{"31 February", "311200ZFEB26", "normalizing it would silently show 3 March"},
 		{"31 April", "311200ZAPR26", "April has 30 days"},
 		{"29 February in a common year", "290000ZFEB26", "2026 is not a leap year"},
 		{"day zero", "001200ZAUG26", "there is no day 0"},
@@ -121,7 +121,7 @@ func TestParseRejections(t *testing.T) {
 		{"signed year", "091630ZAUG+6", "the year must be digits"},
 
 		// The canonical form carries two year digits. Accepting these would
-		// canonicalise 2150 to "50", which reads back as 2050, so the link
+		// canonicalize 2150 to "50", which reads back as 2050, so the link
 		// would describe a different century from the author's text.
 		{"year before the accepted century", "091630ZAUG1999", "the canonical form cannot represent it"},
 		{"year after the accepted century", "091630ZAUG2150", "the canonical form cannot represent it"},
@@ -174,7 +174,7 @@ func TestTwoDigitYearMapsToTwentyFirstCentury(t *testing.T) {
 }
 
 // parse then re-format must round trip, which is what proves the components
-// were not silently normalised into a different date.
+// were not silently normalized into a different date.
 func TestCanonicalRoundTrip(t *testing.T) {
 	for _, value := range []string{"091630ZAUG26", "010000ZJAN00", "312359ZDEC99", "290000ZFEB24"} {
 		t.Run(value, func(t *testing.T) {
@@ -189,9 +189,9 @@ func TestCanonicalRoundTrip(t *testing.T) {
 	}
 }
 
-// The four-digit form is deliberately normalised to the canonical two-digit
+// The four-digit form is deliberately normalized to the canonical two-digit
 // one. The link label keeps the author's original text either way.
-func TestFourDigitYearNormalisesToCanonical(t *testing.T) {
+func TestFourDigitYearNormalizesToCanonical(t *testing.T) {
 	parsed, ok := parseDTG("091630ZAUG2026", ref)
 	if !ok {
 		t.Fatal("parseDTG rejected a valid four-digit-year DTG")
@@ -233,7 +233,7 @@ func TestAssumedCode(t *testing.T) {
 	}
 }
 
-// Anything this produces must be something the decorator recognises, so
+// Anything this produces must be something the decorator recognizes, so
 // generated example text cannot drift away from the grammar.
 func TestFormatZuluRoundTrips(t *testing.T) {
 	instants := []time.Time{

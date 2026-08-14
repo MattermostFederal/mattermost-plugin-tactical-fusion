@@ -12,6 +12,7 @@ test('registers the shipped decorators', () => {
     registerBuiltinDecorators();
 
     expect(get('dtg')).toBeDefined();
+    expect(get('location')).toBeDefined();
 });
 
 // The registry lives in module state that survives a plugin re-registration
@@ -20,6 +21,8 @@ test('registers the shipped decorators', () => {
 test('registering twice is a no-op', () => {
     registerBuiltinDecorators();
 
+    const count = all().length;
+
     expect(() => registerBuiltinDecorators()).not.toThrow();
-    expect(all()).toHaveLength(1);
+    expect(all()).toHaveLength(count);
 });

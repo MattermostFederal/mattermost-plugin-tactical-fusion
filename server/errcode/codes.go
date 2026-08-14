@@ -1,10 +1,11 @@
-// Package errcode holds the stable numeric catalogue of error codes this
-// plugin emits, in logs and in user-facing failure messages alike.
+// Package errcode holds the numeric catalog of error codes this plugin emits,
+// in logs and in user-facing failure messages alike.
 //
 // The point is that a reader who sees "(TF-13004)" in the sidebar and an
 // operator grepping the server log are looking at the same identifier, and that
-// public/help/troubleshooting.html can be organised around something that does
-// not change when the wording does.
+// public/help/troubleshooting.html can be organized around something that does
+// not change when the wording does. That holds within a build; see below for
+// what does not hold across them.
 //
 // Allocation, one thousand-wide range per source file:
 //
@@ -14,16 +15,18 @@
 //	13000-13999   server/api.go                 authenticated API
 //	14000-14999   server/preferences.go         validation and storage
 //	15000-15999   server/preferences_cache.go   cache and cluster events
-//	16000-16999   server/command.go and server/command_examples.go
+//	16000-16999   server/command*.go            the slash command
 //	17000-17999   server/decorators/            framework and decorator pages
 //
 // Within a range codes are allocated in source order the first time a file is
 // instrumented; a site added later takes the next free number in its range, so
-// codes drift out of source order as a file grows. That is fine and expected.
+// codes drift out of source order as a file grows.
 //
-// What is not: **never renumber a committed code, and never reuse a retired
-// one.** Both are quoted in support tickets and neither can be taken back.
-// Retire a code by leaving a comment in its place.
+// Numbers may be renumbered and reused. Nothing here treats a code as
+// permanent, and a retired one goes back in the pool rather than leaving a gap.
+// The cost is real and is accepted rather than overlooked: a code quoted in an
+// old log line or support ticket can come to mean something else, so read one
+// against the release it came from.
 //
 // Adding a code means four edits that go together: a constant below, an entry
 // in AllCodes, the call site, and a row in public/help/error-codes.html.
@@ -105,6 +108,12 @@ const (
 	// "Restore defaults" could not delete the stored blob.
 	APIPreferencesClearFailed = 13007
 
+	// APIConvertInvalid is returned when the coordinate conversion endpoint is
+	// given a format and token that do not name a coordinate this plugin would
+	// have issued. It runs the same checks the public page does, so a link that
+	// renders there converts here and one that does not fails in both places.
+	APIConvertInvalid = 13008
+
 	// server/preferences.go (14000-14999)
 
 	// PreferencesZoneNameTooLong rejects a row label longer than the cap.
@@ -134,6 +143,10 @@ const (
 	// outside the supported range.
 	PreferencesThresholdOutOfRange = 14006
 
+	// PreferencesRowUnknown rejects a hidden-row id the location panel does not
+	// have a row for.
+	PreferencesRowUnknown = 14008
+
 	// PreferencesBlobUnreadable is a warn recording that a stored blob could
 	// not be parsed and the reader was served the defaults instead. View
 	// settings must never be able to take the panel down with them.
@@ -147,7 +160,9 @@ const (
 	// out, which does not justify failing their save.
 	PreferencesCachePublishFailed = 15000
 
-	// server/command.go and server/command_examples.go (16000-16999)
+	// server/command.go, server/command_examples.go,
+	// server/command_example_details.go and server/command_check.go
+	// (16000-16999)
 
 	// CommandUnknownSubcommand is returned for a subcommand this plugin does
 	// not have.
@@ -157,11 +172,38 @@ const (
 	// before OnActivate has built the registry.
 	CommandExamplesNotReady = 16001
 
+	// CommandCheckNotReady is returned when /tactical-fusion check runs before
+	// OnActivate has built the registry.
+	CommandCheckNotReady = 16002
+
+	// CommandExamplesNothingEnabled is returned when every format is switched
+	// off, so the examples post has no row that would decorate and declines to
+	// post one.
+	CommandExamplesNothingEnabled = 16003
+
+	// CommandExamplesTooLong is returned when the examples post would not fit
+	// in one post, which needs a long enough install subpath to reach.
+	CommandExamplesTooLong = 16004
+
+	// CommandDetailsNotReady is returned when /tactical-fusion example-details
+	// runs before OnActivate has built the registry.
+	CommandDetailsNotReady = 16005
+
+	// CommandDetailsPostFailed is returned, and logged, when the example
+	// details thread could not be created or a reply in it was refused.
+	CommandDetailsPostFailed = 16006
+
 	// server/decorators/ (17000-17999)
 
 	// DTGPageParamsInvalid is returned by the date-time group page for a link
 	// whose query string carries no usable instant.
 	DTGPageParamsInvalid = 17000
+
+	// LocationPageParamsInvalid is returned by the location page for a link
+	// whose query string carries no usable coordinate, whose token does not
+	// reproduce itself, or whose "r" parameter is not something this plugin
+	// would have written.
+	LocationPageParamsInvalid = 17001
 )
 
 // AllCodes lists every code declared above. TestAllCodesComplete enforces that
@@ -188,6 +230,7 @@ var AllCodes = []int{
 	APIPreferencesInvalidBody,
 	APIPreferencesSaveFailed,
 	APIPreferencesClearFailed,
+	APIConvertInvalid,
 
 	PreferencesZoneNameTooLong,
 	PreferencesZoneNameControlCharacters,
@@ -196,12 +239,19 @@ var AllCodes = []int{
 	PreferencesZoneIDUnknown,
 	PreferencesTooManyZones,
 	PreferencesThresholdOutOfRange,
+	PreferencesRowUnknown,
 	PreferencesBlobUnreadable,
 
 	PreferencesCachePublishFailed,
 
 	CommandUnknownSubcommand,
 	CommandExamplesNotReady,
+	CommandCheckNotReady,
+	CommandExamplesNothingEnabled,
+	CommandExamplesTooLong,
+	CommandDetailsNotReady,
+	CommandDetailsPostFailed,
 
 	DTGPageParamsInvalid,
+	LocationPageParamsInvalid,
 }

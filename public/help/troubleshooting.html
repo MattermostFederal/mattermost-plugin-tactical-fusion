@@ -16,7 +16,7 @@
         <nav>
             <span class="nav-section">Documentation</span>
             <a href="help.html">Overview</a>
-            <a href="formats.html">Date and Time Formats</a>
+            <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
             <a href="admin.html">Admin Settings</a>
             <a href="commands.html">Slash Commands</a>
@@ -46,7 +46,7 @@
             </thead>
             <tbody>
                 <tr>
-                    <td>The format is not one that is recognised</td>
+                    <td>The format is not one that is recognized</td>
                     <td>Compare against the <a href="formats.html#declined">declined list</a>. Epoch seconds, 12 hour clocks, bare dates and <code>CST</code> style abbreviations are all deliberately absent.</td>
                     <td>Write it as a <a href="formats.html#military">date-time group</a> or an <a href="formats.html#timestamp">RFC 3339 timestamp</a>.</td>
                 </tr>
@@ -57,7 +57,7 @@
                 </tr>
                 <tr>
                     <td>The format is switched off</td>
-                    <td>Run <a href="commands.html#examples"><code>/tactical-fusion examples</code></a>. It ends with a note when decoration is off, and shows each format's real result.</td>
+                    <td>Run <a href="commands.html#example-details"><code>/tactical-fusion example-details</code></a>. It ends with a note when decoration is off, and shows each format's real result.</td>
                     <td>Turn the format on in <a href="admin.html">System Console, Plugins, Tactical Fusion</a>.</td>
                 </tr>
                 <tr>
@@ -82,6 +82,100 @@
                 </tr>
             </tbody>
         </table>
+
+        <h2 id="coordinate-not-linked">A coordinate was not turned into a link</h2>
+
+        <p>
+            Run
+            <a href="commands.html#check"><code>/tactical-fusion check &lt;your text&gt;</code></a>.
+            It runs the real matcher against exactly that text and reports what it did,
+            without posting anything. That answers this question directly and is faster
+            than working through the list below.
+        </p>
+
+        <p>The usual causes, in the order they come up:</p>
+
+        <table>
+            <thead>
+                <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>34.05, -118.25</code> did nothing, but <code>34.0561, -118.2500</code> works</td>
+                    <td>Signed decimal degrees needs at least four decimals on both values.</td>
+                    <td>Write the full precision, or add hemisphere letters: <code>34.05 N, 118.25 W</code> is accepted.</td>
+                </tr>
+                <tr>
+                    <td>A coordinate at the end of a sentence did nothing</td>
+                    <td>A full stop or comma directly against the last digit is indistinguishable from a range or a list at the point the check runs.</td>
+                    <td>Put a space before the punctuation, or accept it. This is a deliberate trade against rewriting the middle of <code>-118.2500..-118.2600</code>.</td>
+                </tr>
+                <tr>
+                    <td><code>35N079W</code> did nothing</td>
+                    <td>The shortest USMTF shape is only matched behind a field label.</td>
+                    <td>Write <code>LATD:35N079W</code>.</td>
+                </tr>
+                <tr>
+                    <td><code>18suj2347806483</code> did nothing, but <code>18SUJ2347806483</code> works</td>
+                    <td>A run-together grid reference has to be upper case. Lower-case hexadecimal of that shape is what a short git commit hash looks like, and about one in 3,900 of them is a valid grid reference.</td>
+                    <td>Write it in upper case, space it out, or write <code>MGRS:</code> in front.</td>
+                </tr>
+                <tr>
+                    <td><code>18SUJ2306</code> did nothing, but <code>18SUJ234064</code> works</td>
+                    <td>A run-together reference needs at least three digits per axis, a 100 m square. Shorter runs are what part numbers look like: <code>26HMA1997</code> is a valid grid reference, and about one uppercase run in 75,000 collides at two digits.</td>
+                    <td>Space it as <code>18S UJ 23 06</code>, or write <code>MGRS:18SUJ2306</code>.</td>
+                </tr>
+                <tr>
+                    <td><code>33U2910005628000</code> did nothing, but <code>33U 291000 5628000</code> works</td>
+                    <td>UTM run together has no letters to check: after the zone and band it is thirteen bare digits.</td>
+                    <td>Space it out, or write <code>UTMO:</code> in front.</td>
+                </tr>
+                <tr>
+                    <td>A UTM position did nothing, but MGRS and lat/lon work</td>
+                    <td><strong>UTM is off by default</strong>, and is the only format that is. Its band letter is ambiguous, so a wrong reading is a confidently misplaced position rather than a missed decoration.</td>
+                    <td>An admin turns on <a href="admin.html#enable-location-utm"><code>EnableLocationUTM</code></a> in the System Console. Read that section first: it explains when the default is the right one for your workspace.</td>
+                </tr>
+                <tr>
+                    <td>A UTM position opened on a latitude nowhere near the one intended</td>
+                    <td>The letter after the zone is read as a <strong>latitude band</strong>, never as a hemisphere, so <code>11S</code> is band S (34 north) and not "zone 11, southern hemisphere" (56 south). A southern-hemisphere position written that way is usually declined, because its northing does not land in the band, but not always.</td>
+                    <td>Write southern positions as a grid reference, or as latitude and longitude. Delete the link while editing the post to opt that one message out.</td>
+                </tr>
+                <tr>
+                    <td>A grid reference with plausible-looking letters did nothing</td>
+                    <td>Only eight of the twenty-four 100 km column letters are legal in any given zone, and the row letters are staggered in even-numbered zones. <code>32WDL123123</code> names no real square.</td>
+                    <td>Check the letters against the zone. <code>check</code> will confirm.</td>
+                </tr>
+                <tr>
+                    <td>A polar coordinate has no grid rows</td>
+                    <td>Above 84&deg; north and below 80&deg; south there is no UTM grid. That is Universal Polar Stereographic, a different system this plugin does not implement.</td>
+                    <td>Nothing to do. The coordinate is still decorated and still shows latitude and longitude.</td>
+                </tr>
+                <tr>
+                    <td>One coordinate in a list linked and the others did not</td>
+                    <td>A coordinate directly adjacent to another number is read as part of a numeric list.</td>
+                    <td>Separate them with something other than a comma and a space, or put each on its own line.</td>
+                </tr>
+                <tr>
+                    <td>Nothing in the message linked, including a coordinate you are sure of</td>
+                    <td>The format, or coordinate decoration as a whole, is switched off.</td>
+                    <td>Check <a href="admin.html#location-switches">the admin settings</a>. <code>check</code> reflects them, so it will say nothing matched.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="coordinate-precision">The panel shows fewer decimals than I typed</h2>
+
+        <p>
+            It shows what the original text carried, and no more. A coordinate written to
+            two decimals is only good to about a kilometer, so rendering it back at six
+            would invent precision that was never there.
+        </p>
+
+        <p>
+            If the panel is coarser than you expected, the coordinate in the message is
+            coarser than you expected. The <em>As written</em> row shows exactly what was
+            parsed.
+        </p>
 
         <h2 id="only-me">Nobody else sees the link, or only some clients do</h2>
 
@@ -126,14 +220,38 @@
             </tbody>
         </table>
 
-        <h2 id="invalid-link">"That link is missing or has an invalid date-time group"</h2>
+        <h2 id="invalid-link">"That link is missing or has an invalid date-time group" or "invalid coordinate"</h2>
 
         <p>
-            Code <a href="error-codes.html#decorators"><code>TF-17000</code></a>. The
-            query string carries no usable instant. Almost always a hand-edited or
+            Code <a href="error-codes.html#decorators"><code>TF-17000</code></a> for a
+            date-time group, <a href="error-codes.html#decorators"><code>TF-17001</code></a>
+            for a coordinate. The query string carries no usable instant or no usable
+            position. Almost always a hand-edited or
             truncated URL, or a link copied out of a message and reassembled by something
             that mangled the query string. Click the original link in the channel rather
             than a copy.
+        </p>
+
+        <h2 id="not-a-coordinate">The sidebar says "Not a coordinate"</h2>
+
+        <p>
+            Code <a href="error-codes.html#api"><code>TF-13008</code></a>. The server was
+            asked to convert the coordinate in that link and answered that it is not one
+            this plugin issued. The panel refuses to render anything rather than showing a
+            position that may name somewhere else entirely, which is the same thing
+            <a href="panel.html#page">the standalone page</a> does for the same link.
+        </p>
+
+        <p>
+            Almost always a hand-edited or reassembled URL. If you see it on a link you
+            clicked directly in a channel and did not edit, that is worth reporting with
+            the code and the link.
+        </p>
+
+        <p>
+            This is distinct from the grid rows reading <code>unavailable</code>, which
+            means the request did not arrive at all. That leaves the rest of the panel
+            intact and usually clears on reopening.
         </p>
 
         <h2 id="wrong-timezones">The panel and the standalone page show different timezones</h2>
@@ -164,12 +282,93 @@
                 <tr>
                     <td>The table updated for a while, then reverted</td>
                     <td>You are on a cluster and one node missed the cache invalidation. Server log carries <a href="error-codes.html#cache"><code>TF-15000</code></a>.</td>
-                    <td>It corrects itself within ten minutes when the cache entry expires. Persistent occurrences mean cluster messaging is not working.</td>
+                    <td>It corrects itself within thirty minutes when the cache entry expires. Persistent occurrences mean cluster messaging is not working.</td>
                 </tr>
                 <tr>
                     <td>The table shows the defaults and never changed</td>
                     <td>The stored settings could not be parsed. Server log carries <a href="error-codes.html#preferences"><code>TF-14007</code></a>.</td>
                     <td>Open the editor and save again. The next save replaces the unreadable blob.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="hand-written-requests">Messages only a hand-written request can produce</h2>
+
+        <p>
+            None of these is reachable from Mattermost. They exist because the plugin
+            answers a URL, and a URL can be typed. They are listed so that a code seen
+            in a log can be identified rather than investigated.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Message</th><th>Code</th><th>Cause</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>Method not allowed.</code></td>
+                    <td><a href="error-codes.html#http"><code>TF-12000</code></a></td>
+                    <td>Something other than a GET reached <code>/decorate</code>. That route renders a page and has nothing else to offer.</td>
+                </tr>
+                <tr>
+                    <td><code>Not found.</code></td>
+                    <td><a href="error-codes.html#api"><code>TF-13001</code></a></td>
+                    <td>A path under <code>/api/v1</code> that names no resource. The API has exactly two.</td>
+                </tr>
+                <tr>
+                    <td><code>Method not allowed.</code></td>
+                    <td><a href="error-codes.html#api"><code>TF-13003</code></a></td>
+                    <td>A method the resource does not have: anything but GET on the conversion endpoint, or anything but GET, PUT and DELETE on your settings.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="command-failures">A slash command refused to run</h2>
+
+        <p>
+            Every refusal below is ephemeral, so only you see it and nothing is written to
+            the channel. All of them carry a code.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Message</th><th>Code</th><th>Cause and fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>Unknown subcommand. Available: examples, example-details, check</code></td>
+                    <td><a href="error-codes.html#command"><code>TF-16000</code></a></td>
+                    <td>A typo, or a subcommand from a newer version. The list in the message is what this build has; see <a href="commands.html">Commands</a>.</td>
+                </tr>
+                <tr>
+                    <td><code>Decorators are not registered yet. Try again once the plugin has finished activating.</code></td>
+                    <td><a href="error-codes.html#command"><code>TF-16001</code></a>, <a href="error-codes.html#command"><code>TF-16002</code></a>, <a href="error-codes.html#command"><code>TF-16005</code></a></td>
+                    <td>The command ran between the plugin being enabled and <code>OnActivate</code> finishing. Wait a moment and run it again. Three codes because the same condition is reached through <a href="commands.html#examples"><code>examples</code></a>, <a href="commands.html#check"><code>check</code></a> and <a href="commands.html#example-details"><code>example-details</code></a> respectively, and knowing which one asked is worth a code. If it persists, the plugin did not activate: see <a href="#plugin-wont-start">below</a>.</td>
+                </tr>
+                <tr>
+                    <td><code>Nothing would be decorated, so there is nothing to show. Every format is switched off in the System Console, under Plugins &gt; Tactical Fusion.</code></td>
+                    <td><a href="error-codes.html#command"><code>TF-16003</code></a></td>
+                    <td>Exactly what it says, and it is a refusal rather than an empty post on purpose: a message advertising the plugin while demonstrating nothing would be permanent. Turn a format on in <a href="admin.html">Admin settings</a>.</td>
+                </tr>
+                <tr>
+                    <td><code>The examples do not fit in one post on this server. Run /tactical-fusion example-details instead, which spreads itself over several posts.</code></td>
+                    <td><a href="error-codes.html#command"><code>TF-16004</code></a></td>
+                    <td><a href="commands.html#examples"><code>examples</code></a> is one post by definition, so it measures itself against the smallest limit any store reports and refuses rather than letting the server reject it. A long install subpath reaches this, because every link in the post carries it.</td>
+                </tr>
+                <tr>
+                    <td><code>There are no examples to post.</code></td>
+                    <td><a href="error-codes.html#command"><code>TF-16006</code></a></td>
+                    <td>Not reachable in a normal build: every set has rows. Report it with the version.</td>
+                </tr>
+                <tr>
+                    <td><code>Could not post the examples to this channel: ...</code></td>
+                    <td><a href="error-codes.html#command"><code>TF-16006</code></a></td>
+                    <td>The server refused the first post, and the text after the colon is its own reason. The command has already retried at a smaller size by the time you see this, so a length complaint here means something other than the post limit. Nothing was written to the channel, so nothing needs cleaning up.</td>
+                </tr>
+                <tr>
+                    <td><code>N of M messages could not be posted, so the examples are incomplete.</code></td>
+                    <td><a href="error-codes.html#command"><code>TF-16006</code></a></td>
+                    <td>The first post landed and a later one did not, so the channel has part of the set. The rest were still attempted rather than abandoned. Delete what arrived and run it again.</td>
                 </tr>
             </tbody>
         </table>
@@ -234,7 +433,7 @@
                 <tr>
                     <td><code>unknown timezone "..."</code></td>
                     <td><a href="error-codes.html#preferences"><code>TF-14004</code></a></td>
-                    <td>Your browser offered a zone the server's timezone database does not have. Pick a neighbouring zone and report the identifier.</td>
+                    <td>Your browser offered a zone the server's timezone database does not have. Pick a neighboring zone and report the identifier.</td>
                 </tr>
                 <tr>
                     <td><code>"..." is not a timezone identifier</code></td>
@@ -251,6 +450,11 @@
                     <td><a href="error-codes.html#preferences"><code>TF-14001</code></a></td>
                     <td>As above.</td>
                 </tr>
+                <tr>
+                    <td><code>"..." is not a row of the location panel</code></td>
+                    <td><a href="error-codes.html#preferences"><code>TF-14008</code></a></td>
+                    <td>The saved view named a row this version does not have. Not reachable from the editor, which offers one checkbox per row that exists. Note the asymmetry: writing an unknown row is refused, but reading one is not, so retiring a row can never lock you out of your own settings.</td>
+                </tr>
             </tbody>
         </table>
 
@@ -258,9 +462,13 @@
 
         <p>
             Check the server log for
-            <a href="error-codes.html#plugin"><code>TF-10000</code></a>. It means two
-            decorators claimed the same type, or one declared an empty type. That is a
-            build problem rather than a configuration one, so report it with the version
+            <a href="error-codes.html#plugin"><code>TF-10000</code></a> or
+            <a href="error-codes.html#plugin"><code>TF-10001</code></a>.
+            <code>TF-10000</code> means two
+            decorators claimed the same type, or one declared an empty type;
+            <code>TF-10001</code> means the slash command could not be registered, which
+            usually means another plugin already claims the same trigger. Both are
+            build or install problems rather than configuration ones, so report either with the version
             number.
         </p>
 
@@ -271,8 +479,8 @@
         <ul>
             <li>The <code>TF-NNNN</code> code, from the message or the server log</li>
             <li>The exact text you typed, and what was stored</li>
-            <li>The output of <a href="commands.html#examples"><code>/tactical-fusion examples</code></a>, which shows the live behaviour of your server</li>
-            <li>Which of the four <a href="admin.html">settings</a> are on</li>
+            <li>The output of <a href="commands.html#example-details"><code>/tactical-fusion example-details</code></a>, which shows the live behavior of your server</li>
+            <li>Which <a href="admin.html">settings</a> are on. There are eleven, and one of them, <code>EnableLocationUTM</code>, is off until an admin turns it on</li>
         </ul>
     </main>
 </div>

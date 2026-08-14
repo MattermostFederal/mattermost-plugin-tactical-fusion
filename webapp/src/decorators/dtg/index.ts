@@ -1,8 +1,7 @@
 import {formatOffsetLabel} from './describe';
 import DtgHover from './DtgHover';
 import DtgPanel from './DtgPanel';
-import DtgTitle from './DtgTitle';
-import {PANEL_TITLE} from './titles';
+import DtgTitle, {PANEL_TITLE} from './DtgTitle';
 import {ZONE_OFFSETS} from './zones';
 
 import type {Decorator} from '../types';

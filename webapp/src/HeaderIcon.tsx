@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * The pin colour from the plugin mark. Must match assets/icon.svg, which a spec
+ * The pin color from the plugin mark. Must match assets/icon.svg, which a spec
  * enforces: the two are the same mark and a reader sees both.
  */
 const PIN_COLOR = '#FF6A13';
@@ -11,13 +11,13 @@ const PIN_COLOR = '#FF6A13';
  *
  * The plugin mark from assets/icon.svg without its plate: a dropped pin inside
  * a compass, at the same proportions. The pin's hole is punched with a fill
- * rule rather than drawn in the plate colour, because here there is no plate
+ * rule rather than drawn in the plate color, because here there is no plate
  * and whatever is behind the button has to show through.
  *
- * The pin keeps its colour and the compass takes the theme's, which is the
+ * The pin keeps its color and the compass takes the theme's, which is the
  * only combination that survives every header. A compass in the mark's own
- * bone grey disappears against a light header, and a wholly monochrome mark
- * gives up the one thing that makes it recognisable at this size.
+ * bone gray disappears against a light header, and a wholly monochrome mark
+ * gives up the one thing that makes it recognizable at this size.
  */
 export const HeaderIcon = () => (
     <svg
