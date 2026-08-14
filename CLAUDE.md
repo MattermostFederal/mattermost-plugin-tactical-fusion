@@ -1330,7 +1330,9 @@ in [`docs/RELEASING.md`](docs/RELEASING.md); the essentials:
   changelog.
 - **Do not** hand-edit `plugin.json`'s `version` or `CHANGELOG.md` for a normal
   release. release-please owns them via its Release PR. The version is seeded at
-  `0.0.0`, so the first release is `0.1.0`.
+  `0.0.0` with `initial-version` set to `0.1.0`, which is what makes the first
+  release `0.1.0`. `bump-minor-pre-major` does not govern the first release,
+  only the ones after it.
 - A release ships when the maintainer merges the open "chore(main): release
   X.Y.Z" PR, which tags `vX.Y.Z` and fires `release.yml`.
 
