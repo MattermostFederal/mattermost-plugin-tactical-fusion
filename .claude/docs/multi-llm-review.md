@@ -115,3 +115,17 @@ rather than merely tidy.
 - Codex is invoked with `--skip-git-repo-check` and has not shown this behavior,
   but it also runs with `sandbox: workspace-write`. If it ever writes during a
   review, give it the same isolated-cwd treatment.
+- **Claude subagents are the same hazard and were the next to bite** (2026-08-15):
+  a `/review-code` run dispatched `go-pro` and `react-pro`, which declare
+  `Write, Read, Edit, Bash`, and they wrote scratch `zz_probe*_test.go` files
+  into two packages instead of reporting. Gemini, isolated as above, behaved on
+  the same run. The worse consequence was second-order: a concurrent session was
+  editing the same working tree, its work was mistaken for more agent output and
+  reverted three times, and none of it was recoverable because it had never been
+  staged. A writable reviewer makes `git status` useless as evidence. The fix is
+  in `.claude/skills/review-code/SKILL.md` ("Agents must be read-only") with
+  `check-agents.sh` beside it: a review dispatches only agents whose definition
+  grants no `Write`, `Edit`, `All tools` or `Task`, and `git status --porcelain`
+  is checked afterwards because `Bash` alone is enough to write a file.
+  **`/review-plan` still names `threat-modeler` and `repo-architect`, both
+  write-capable**, and has not been given the same treatment.
