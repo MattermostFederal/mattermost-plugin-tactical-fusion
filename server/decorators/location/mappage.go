@@ -26,9 +26,9 @@ h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0
 // is it" and gives the whole window to one picture, which is what a reader
 // following "Open larger" from a 300px sidebar is asking for.
 //
-// Public, and a pure function of its query string, exactly like /decorate. It
-// validates through validateParams, the same gate the readings page uses, so a
-// link one refuses cannot be rendered by the other.
+// A pure function of its query string, exactly like /decorate, and behind the
+// same session gate. It validates through validateParams, the same gate the
+// readings page uses, so a link one refuses cannot be rendered by the other.
 func RenderMapPage(w http.ResponseWriter, params url.Values) {
 	page, ok := validateParams(params)
 	if !ok {

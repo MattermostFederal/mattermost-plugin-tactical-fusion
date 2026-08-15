@@ -101,13 +101,21 @@
             them.
         </p>
 
+        <p>
+            <strong>It requires a Mattermost login.</strong> Opening one of these links
+            without a session takes you to the sign-in page first and then on to the
+            coordinate you clicked, so a session that expired while you were reading
+            costs you a sign-in rather than the link. The map page behind
+            <em>Open larger</em> works the same way.
+        </p>
+
         <div class="alert alert-warning">
             <p class="alert-title">The standalone page always shows the built-in defaults.</p>
             <p>
-                It is served without a Mattermost session, so it has no reader to ask. If
-                you have <a href="#customize">customised your view</a>, the sidebar and
-                the page will disagree about the same date-time group. This is inherent
-                to serving a page that has to work without a login, not an oversight.
+                The page does not ask who is reading it, even though it now requires
+                a login: it is rendered from the link alone. If you have
+                <a href="#customize">customised your view</a>, the sidebar and the page
+                will disagree about the same date-time group.
             </p>
         </div>
 
@@ -388,11 +396,10 @@
         <div class="alert alert-info">
             <p class="alert-title">The standalone page always shows every row.</p>
             <p>
-                The <a href="#page">page a link opens</a> outside Mattermost is served
-                without a session, so it has no reader to ask. It and the sidebar can
-                therefore show the same coordinate differently, which is inherent to a
-                public route rather than an oversight. The same is true of the
-                <a href="#customize">DTG timezone table</a>.
+                The <a href="#page">page a link opens</a> outside the sidebar is
+                rendered from the link alone and does not ask who is reading it. It and
+                the sidebar can therefore show the same coordinate differently. The same
+                is true of the <a href="#customize">DTG timezone table</a>.
             </p>
         </div>
 

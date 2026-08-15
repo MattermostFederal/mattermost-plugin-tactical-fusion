@@ -19,7 +19,7 @@ type Conversion struct {
 // Convert derives every reading of a coordinate from its format and canonical
 // token.
 //
-// The inputs go through validateParams, the same function the public page uses,
+// The inputs go through validateParams, the same function the page uses,
 // rather than through a check written for this caller. A conversion endpoint
 // that accepted a token the page rejects would be a second door with different
 // locks on it, and the panel and the page would then disagree about the same

@@ -339,8 +339,8 @@ func TestForcePageParamIsIgnoredByThePage(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 
 	withFlag := httptest.NewRecorder()
-	p.ServeHTTP(&plugin.Context{}, withFlag, httptest.NewRequest(http.MethodGet,
-		"/decorate/dtg?t=1786293000000&dtg=091630ZAUG26&z=Z&a=&"+decorators.ForcePageParam+"=1", nil))
+	p.ServeHTTP(&plugin.Context{}, withFlag, withSession(httptest.NewRequest(http.MethodGet,
+		"/decorate/dtg?t=1786293000000&dtg=091630ZAUG26&z=Z&a=&"+decorators.ForcePageParam+"=1", nil)))
 
 	if withFlag.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200 with the force-page flag present", withFlag.Code)

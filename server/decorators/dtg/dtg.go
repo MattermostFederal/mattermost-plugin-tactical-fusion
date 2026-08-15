@@ -214,9 +214,9 @@ const (
 
 // RenderPage renders the timezone table for these params.
 //
-// This route is public and this page is a pure function of its query string: it
-// reads no workspace data and never looks at Mattermost-User-Id. See the
-// Decorator interface documentation before copying this pattern.
+// A pure function of its query string: it reads no workspace data and is handed
+// no reader. See the Decorator interface documentation before copying this
+// pattern.
 func (d *Decorator) RenderPage(w http.ResponseWriter, params url.Values) {
 	page, ok := validateParams(params)
 	if !ok {
@@ -266,8 +266,8 @@ type pageData struct {
 // validateParams re-derives the whole payload from the query string and rejects
 // anything self-inconsistent.
 //
-// Validating each parameter in isolation is not enough on a public route where
-// the URL is user-supplied: a crafted link could pair an arbitrary token with an
+// Validating each parameter in isolation is not enough when the URL is
+// user-supplied, which a session does not change: a crafted link could pair an arbitrary token with an
 // unrelated instant and a third zone, and the page would render all three side
 // by side as though they agreed. Re-parsing the canonical form and requiring it
 // to reproduce the instant, the offset and the assumed flags removes that whole

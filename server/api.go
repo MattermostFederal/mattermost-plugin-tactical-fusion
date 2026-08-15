@@ -11,11 +11,11 @@ import (
 // apiPath is the route prefix for the authenticated JSON API, relative to the
 // plugin's own base path.
 //
-// Deliberately a sibling of decoratePath rather than a branch inside it. The
-// two have opposite security postures: /decorate is public and reads no
-// workspace data, while everything under here is per-reader and refuses a
-// request without a session. Keeping them apart means neither can inherit the
-// other's rules by accident.
+// Deliberately a sibling of decoratePath rather than a branch inside it. Both
+// require a session now, but they answer a missing one differently, and
+// everything under here reads per-reader state while a decorator page reads
+// none. Keeping them apart means neither can inherit the other's rules by
+// accident.
 const apiPath = "/api/v1"
 
 // The resources this API has.
@@ -31,11 +31,8 @@ const (
 	// its position.
 	//
 	// Authenticated, like everything under here, even though it reads no
-	// workspace data and could in principle sit beside the public page. That is
-	// deliberate: the public route exists because clients without a session
-	// have no other way to see a decorator, and nothing else should be added to
-	// it. A caller with no session and a coordinate to convert is not a reader
-	// of this workspace.
+	// workspace data. A caller with no session and a coordinate to convert is
+	// not a reader of this workspace.
 	convertPath = apiPath + "/convert"
 )
 
@@ -44,13 +41,13 @@ const (
 // decoder do unbounded work.
 const maxPreferencesBody = 8 * 1024
 
-// serveAPI handles the authenticated routes.
+// serveAPI handles the JSON API routes.
 //
-// Mattermost sets Mattermost-User-Id itself and strips any copy a client tries
-// to send, so an empty value here means there is no session, and a non-empty
-// one is trustworthy. This is the only place in the plugin that reads it.
+// It refuses a request without a session rather than redirecting it, unlike the
+// page routes: these callers are fetch, and they want a status they can branch
+// on, not a login page to render into a table cell.
 func (p *Plugin) serveAPI(w http.ResponseWriter, r *http.Request) {
-	userID := r.Header.Get("Mattermost-User-Id")
+	userID := sessionUserID(r)
 	if userID == "" {
 		writeAPIError(w, http.StatusUnauthorized,
 			errcode.WithCode(errcode.APINotAuthorized, "Not authorized."))
@@ -110,7 +107,7 @@ func (p *Plugin) serveConvert(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query()
 
-	// All three parameters, so this applies exactly the checks the public page
+	// All three parameters, so this applies exactly the checks the page
 	// applies. A conversion that accepted a link the page rejects would let the
 	// sidebar render a coordinate the page refuses to.
 	conversion, ok := location.Convert(

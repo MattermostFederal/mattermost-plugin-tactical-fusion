@@ -225,10 +225,23 @@ The field is documented as a source constant for the same reason `StyleCSS` is,
 and a script containing `</script` is dropped whole rather than escaped. An
 empty `ScriptJS`, the zero value, still means `script-src 'none'`.
 
-`/decorate/*` is a **public** route. The clients it serves have no Mattermost
-session. That is safe only because a decorator page is a pure function of its
-query string: no workspace lookup, and it never reads `Mattermost-User-Id`. A
-decorator needing workspace data must not use this route.
+`/decorate/*` and `/map` **require a session**, and a request without one is
+redirected to the login carrying its own URL back, so an expired session costs a
+sign-in rather than the link. The gate is one check in `ServeHTTP` and lives
+nowhere else.
+
+They were public until that gate was added, on the argument that the clients
+they exist for are the ones without a session: the mobile app opening a link in
+an in-app browser. **Whether that is true was never verified in either
+direction** (see "Unverified before deployment"), which is what makes redirecting
+rather than refusing load-bearing: if the in-app browser has no session, every
+decorated link on mobile becomes a sign-in and then the page, not a dead end.
+
+A page is still a **pure function of its query string**: no workspace lookup, and
+the renderer is handed no reader. That is no longer a security argument, it is
+what keeps a page renderable from a `url.Values` in a test and what stops a route
+served with a cache lifetime growing a per-reader answer. A decorator needing
+workspace data still needs its own route under `/api/v1`.
 
 Hovering a decorator link shows a card, and clicking it opens the right-hand
 sidebar; the browser never navigates. A decorator gets a hover by declaring an
@@ -913,8 +926,8 @@ map draws through WebGL rather than `<img>`, and the style has no sprite, no
 glyphs and no raster source. Both were wider for a while on the strength of what
 MapLibre might need.
 
-**This is a real reduction in a defence, on a public route that echoes author
-text, and it was taken deliberately.** Under `PageStatic` an escaping mistake in
+**This is a real reduction in a defence, on a route that echoes author text to
+anybody who can write its query string, and it was taken deliberately.** Under `PageStatic` an escaping mistake in
 the author's own text was inert markup: it could not execute, because the only
 script allowed was the one named by digest, and it could not exfiltrate, because
 `img-src` and `connect-src` were **absent** and their absence is what blocks
@@ -1466,11 +1479,14 @@ whenever the payload changes, because React keeps the panel mounted across a
 change of selection, so clicking a second DTG while editing would otherwise land
 on the editor rather than on the DTG that was clicked.
 
-**`/api/v1` is authenticated and `/decorate` is public**, deliberately as
-siblings rather than one nested inside the other. The API is the only place in
-the plugin that reads `Mattermost-User-Id`, and it refuses a request without
-one. Keeping the two apart means neither can inherit the other's rules by
-accident.
+**`/api/v1` and `/decorate` both require a session but answer a missing one
+differently**, and they are deliberately siblings rather than one nested inside
+the other. The API refuses with 401 JSON, because its callers are `fetch` and
+want a status to branch on; the pages redirect to the login, because their caller
+is a person who can sign in and carry on. `sessionUserID` is the one function
+that reads `Mattermost-User-Id`, so the two can differ in what they do about the
+answer without differing in how they get it. Keeping the routes apart means
+neither can inherit the other's rules by accident.
 
 **A zero value means "use the default", everywhere.** An empty zone list, a zero
 threshold, an absent blob and a blob that failed to parse all render the
@@ -1483,10 +1499,14 @@ at today's list forever.
 
 Consequences worth knowing:
 
-- **The standalone page always shows the defaults.** It is served without a
-  session, so it has no reader to ask. The RHS and the page can therefore
-  disagree about the same DTG for a reader who has customised either setting.
-  This is inherent to a public route, not an oversight.
+- **The standalone page always shows the defaults.** It requires a login now,
+  but it does not ask who is reading it: the renderer takes a query string and
+  no user. So the RHS and the page still disagree about the same DTG for a
+  reader who has customised either setting. That was inherent while the route
+  was public and is a **choice** now, and the choice is deliberate: honouring
+  preferences means a KV read on a route served with a cache lifetime, and the
+  renderers stop being pure functions of their query strings. Worth revisiting,
+  but as its own piece of work.
 - **`DEFAULT_URGENT_WITHIN_MS`, `urgentWithin` in `page.go` and the page's
   countdown script must still agree.** Those two have no reader; they are the
   default.
@@ -1703,7 +1723,11 @@ Two prerequisites from the implementation plan need a running server and have
   `[091630ZAUG26](/plugins/...)`. If the indexer splits on brackets, decorated
   posts become unfindable and the server-side approach needs rethinking.
 - Whether the mobile app resolves root-relative markdown links against the
-  server URL.
+  server URL, **and whether its in-app browser carries the session**. This one
+  got more expensive when `/decorate` and `/map` were gated: the whole argument
+  for the route being public was that this client has no session, and nobody has
+  ever checked. If it does not, every decorated link on mobile costs a sign-in
+  before the page. Answer it with a phone and record both halves here.
 
 Also unverified: which post sources actually reach `MessageWillBePosted`
 (`p.API.CreatePost`, incoming webhooks, bot posts, `in_channel` command

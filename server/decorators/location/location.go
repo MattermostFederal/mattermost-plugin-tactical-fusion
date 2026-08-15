@@ -336,8 +336,8 @@ func (d *Decorator) Parse(value string, _ time.Time) (url.Values, bool) {
 
 // RenderPage renders the conversion table for these params.
 //
-// This route is public and this page is a pure function of its query string: it
-// reads no workspace data and never looks at Mattermost-User-Id.
+// A pure function of its query string: it reads no workspace data and is handed
+// no reader. ServeHTTP requires a session to reach it.
 func (d *Decorator) RenderPage(w http.ResponseWriter, params url.Values) {
 	page, ok := validateParams(params)
 	if !ok {

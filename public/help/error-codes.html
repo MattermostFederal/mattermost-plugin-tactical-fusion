@@ -146,7 +146,7 @@
                 <tr>
                     <td><code>TF-13000</code></td>
                     <td><code>APINotAuthorized</code> <span class="level">401</span></td>
-                    <td><code>Not authorized.</code> The request carried no Mattermost session. Unlike the decorator route, this one is never public.</td>
+                    <td><code>Not authorized.</code> The request carried no Mattermost session. The decorator and map pages need one too, but they redirect to the sign-in page instead of answering this, because a person can sign in and carry on where a script cannot.</td>
                 </tr>
                 <tr>
                     <td><code>TF-13001</code></td>

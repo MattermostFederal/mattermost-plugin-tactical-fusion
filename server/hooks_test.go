@@ -636,8 +636,8 @@ func TestPagesStillRenderForADisabledFormat(t *testing.T) {
 	p := withFormats(t, configuration{EnableDTG: false})
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet,
-		"/decorate/dtg?t=1786293000000&dtg=091630ZAUG26&z=Z&a=", nil)
+	req := withSession(httptest.NewRequest(http.MethodGet,
+		"/decorate/dtg?t=1786293000000&dtg=091630ZAUG26&z=Z&a=", nil))
 
 	p.ServeHTTP(&plugin.Context{}, rec, req)
 

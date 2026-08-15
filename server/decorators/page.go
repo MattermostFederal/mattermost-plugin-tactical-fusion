@@ -39,7 +39,7 @@ type Page struct {
 	// A page that supplies one is served under script-src 'sha256-...', pinned
 	// to the digest of exactly this text, rather than under 'unsafe-inline'.
 	// That distinction is the point rather than fastidiousness: these pages echo
-	// author text from a message, on a public route whose query string anybody
+	// author text from a message, on a route whose query string anybody
 	// can write, so the property worth keeping is that an escaping mistake
 	// stays inert. Under 'unsafe-inline' an injected <script> runs; under a
 	// hash it does not match the digest and is blocked.
@@ -278,7 +278,7 @@ func setPageHeaders(w http.ResponseWriter, p Page) {
 	h := w.Header()
 	h.Set("Content-Type", "text/html; charset=utf-8")
 
-	// This route is public and echoes values from an untrusted query string.
+	// This route echoes values from an untrusted query string.
 	// Escaping is the real defense, but a restrictive policy means a mistake in
 	// it cannot become script execution or an exfiltration channel. Inline
 	// styles are allowed because the shell carries its own and loads nothing
