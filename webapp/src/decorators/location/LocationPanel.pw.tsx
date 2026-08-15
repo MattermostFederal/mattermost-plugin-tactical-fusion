@@ -441,8 +441,8 @@ test('a reader who hid the map gets the table and no map', async ({mount}) => {
 
     await expect(component.getByText('11S LT 8463 6908').first()).toBeVisible();
 
-    // "Open larger" is the map's marker here. The basemap citation is NOT: the
-    // Region row carries the same words in its value.
+    // "Open larger" is the map's marker here, and now its only one: the caption
+    // beside it named the basemap until that credit was dropped.
     await expect(component.getByText('Open larger')).toHaveCount(0);
 });
 
@@ -453,7 +453,7 @@ test('the map is shown when the reader has hidden nothing', async ({mount}) => {
 });
 
 // A grid token has no position until the conversion lands, and if it never
-// lands the frame would otherwise sit blank under a caption naming the basemap.
+// lands the frame would otherwise sit blank with nothing saying why.
 test('a position that never arrives says so rather than leaving an empty frame', async ({mount}) => {
     const component = await mount(
         <LocationPanelHarness

@@ -1141,7 +1141,7 @@ have is a projection. So the two grid rows are on the wire because they need
 one, the three coordinate rows because a grid token has no `Coordinate` for
 `format.ts` to render from, and the country because the polygons are Go-only.
 The country is the one field on the wire that is not a row: it reaches the map's
-label and the map page's caption instead.
+accessible label and nothing else.
 
 `Lat` and `Lon` are the one pair of numbers, and they are there because a map
 needs a position rather than a rendering of one: the resolution rule reaches the
@@ -1188,11 +1188,20 @@ worse table rather than a summary. What is left is the one line saying which
 text this map was drawn for, through the same `vouchedText` the table's leading
 row uses, so the two surfaces cannot disagree about which text is the author's.
 
-The credit went with them, and this page therefore carries none: `LocationMap`
-suppresses its own caption under `fill`, so the bar was the only place it
-appeared here. Natural Earth is public domain, so that is a courtesy rather than
-a requirement, and the readings page and the sidebar both still show it in the
-map's caption.
+**No surface prints the basemap credit.** "Natural Earth 110m" sat under the map
+on the panel and the readings page, and in this bar on the map page, and it is
+gone from all three. Natural Earth is public domain, so the credit was a
+courtesy rather than a requirement, and the plugin still names the basemap where
+a reader would go looking for it: `public/help/panel.html` says what it is and
+how coarse it is. The **region's own value keeps its citation**, which is a
+different thing and must not be removed with it: that says where the country
+came from, and it is what stops a border lookup reading as a determination.
+
+`LocationMap`'s caption is therefore the "Open larger" link alone, and it is
+rendered only when there is a link to put in it, so the panel does not carry an
+empty strip under the frame. Its `justifyContent` moved from `space-between` to
+`flex-end` at the same time: with one child, space-between falls back to the
+left edge, which is not where that link has ever been.
 
 ### The panel map
 

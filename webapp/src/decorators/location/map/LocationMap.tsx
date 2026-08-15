@@ -50,7 +50,6 @@ const NO_POSITION = 'The position for this coordinate is unavailable.';
 // same button. It resets the zoom as well as the centre, which is why it is not
 // "Recenter".
 const RESET_LABEL = 'Reset view';
-const BASEMAP_NOTE = 'Natural Earth 110m';
 const TOO_FAR_NORTH = 'This position is too far north for the map.';
 const TOO_FAR_SOUTH = 'This position is too far south for the map.';
 
@@ -104,7 +103,11 @@ const styles: Record<string, React.CSSProperties> = {
     },
     caption: {
         display: 'flex',
-        justifyContent: 'space-between',
+
+        // Was space-between, which held the basemap credit at the left and this
+        // at the right. With the credit gone a single child under space-between
+        // falls back to the left edge, which is not where the link has been.
+        justifyContent: 'flex-end',
         gap: 8,
         marginTop: 4,
         fontSize: 11,
@@ -357,17 +360,14 @@ const LocationMap: React.FC<Props> = ({
                 {note !== null && <p style={styles.placeholder}>{note}</p>}
                 <span style={styles.srOnly}>{label(region, note)}</span>
             </div>
-            {!fill && (
+            {!fill && pageHref !== undefined && (
                 <div style={styles.caption}>
-                    <span>{note === null ? BASEMAP_NOTE : null}</span>
-                    {pageHref !== undefined && (
-                        <a
-                            style={styles.link}
-                            href={pageHref}
-                            target='_blank'
-                            rel='noreferrer'
-                        >{'Open larger'}</a>
-                    )}
+                    <a
+                        style={styles.link}
+                        href={pageHref}
+                        target='_blank'
+                        rel='noreferrer'
+                    >{'Open larger'}</a>
                 </div>
             )}
         </div>

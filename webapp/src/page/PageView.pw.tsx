@@ -194,15 +194,39 @@ test('the map page leaves the readings to the readings page', async ({mount}) =>
 });
 
 /*
- * The page that IS the larger view does not offer to open a larger view, and
- * carries no attribution: LocationMap suppresses its own caption when filling,
- * and the bar that used to repeat it beneath is down to the author's text.
+ * The page that IS the larger view does not offer to open a larger view.
  */
 test('the map page does not link to itself', async ({mount}) => {
     const component = await mount(<MapPageView data={{...GRID, mode: 'map'}}/>);
 
     await expect(component.getByText('Open larger')).toHaveCount(0);
-    await expect(component.getByText('Natural Earth 110m')).toHaveCount(0);
+});
+
+/*
+ * No surface credits the basemap in words any more. The region's own value
+ * still carries its citation, which is a different thing: it says where the
+ * country came from, and it reaches the map's accessible label rather than the
+ * screen.
+ */
+test('the map page does not print the basemap credit', async ({mount}) => {
+    const component = await mount(<MapPageView data={{...GRID, mode: 'map'}}/>);
+
+    await expect(component.getByText('Natural Earth 110m', {exact: true})).toHaveCount(0);
+});
+
+test('the readings do not print the basemap credit either', async ({mount}) => {
+    const component = await mount(
+        <LocationReadings
+            payload={GRID.payload}
+            conversion={GRID.conversion}
+            hidden={[]}
+        />,
+    );
+
+    await expect(component.getByText('Natural Earth 110m', {exact: true})).toHaveCount(0);
+
+    // The map is still there, and still offers its one control.
+    await expect(component.getByRole('link', {name: 'Open larger'})).toBeVisible();
 });
 
 /*
