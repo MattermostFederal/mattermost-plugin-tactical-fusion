@@ -279,6 +279,17 @@ can name their own params freely. There are two:
   operating system fallback. Only the two keywords are accepted, since the value
   reaches a stylesheet.
 
+  **The click handler is not the only thing that appends it.** It covers every
+  `/decorate` link, and `/map` is deliberately outside that prefix, so
+  `parseDecoratorHref` returns null and the handler stands aside: a map page
+  opened from a light sidebar on a dark laptop came up dark, map palette and all,
+  because `mapColors` reads the same variable. So the links pointing at `/map`
+  write the parameter themselves, and so does the map page's own way back, which
+  runs in a document with no click handler around it at all. `withTheme` lives in
+  `decorators/theme.ts` beside `detectTheme` rather than in the click handler for
+  that reason. Those links read the theme at **render** rather than at click,
+  which is one step less live in exchange for surviving a middle-click.
+
 ### The slash command
 
 Three subcommands. `examples` and `example-details` both **post to the channel**;
@@ -1081,10 +1092,11 @@ wire, which is what `/api/v1/convert` is for.
 coastline at 300 px identifies Italy and does not identify Chad from Niger, and
 that a row answers that with the map hidden, with no WebGL, and with the basemap
 unavailable. Retiring it gives up exactly that: the country now reaches a reader
-only through the map, in its accessible label, and on the map page as a caption
-under the picture. No map, no country. The value is still computed and still
-travels in the `Conversion`, so bringing the row back is one entry in `Rows` and
-one in `ROWS`.
+**only through the map's accessible label**, on every surface. It was also
+printed under the picture on the map page until that bar was cut back to the
+author's text. No map, no country, and with the map drawn, no country for anyone
+reading it with their eyes. The value is still computed and still travels in the
+`Conversion`, so bringing the row back is one entry in `Rows` and one in `ROWS`.
 
 **The field is `ADMIN` from `ne_110m_admin_0_countries`**, the de facto
 administering entity, not `SOVEREIGNT` (the claimed sovereign) and not `NAME`.
@@ -1153,6 +1165,21 @@ larger" link that would point at itself. The label is **Reset view**
 everywhere. Zoom is MapLibre's own `NavigationControl` on all three and the
 scale bar sits bottom-right on all three, because bottom-left collides with the
 hint.
+
+**Beneath the picture is the author's own text and the way back, and nothing
+else.** The bar also carried the canonical token, the position in decimal
+degrees, the region and the basemap credit. All four are readings, and
+**All readings** is one link away and is nothing but readings, each rendered
+with its label beside it; four of them crammed unlabeled under a picture is a
+worse table rather than a summary. What is left is the one line saying which
+text this map was drawn for, through the same `vouchedText` the table's leading
+row uses, so the two surfaces cannot disagree about which text is the author's.
+
+The credit went with them, and this page therefore carries none: `LocationMap`
+suppresses its own caption under `fill`, so the bar was the only place it
+appeared here. Natural Earth is public domain, so that is a courtesy rather than
+a requirement, and the readings page and the sidebar both still show it in the
+map's caption.
 
 ### The panel map
 

@@ -97,11 +97,68 @@ test('a failed conversion degrades rather than blanking the page', async ({mount
     await expect(component.getByText('unavailable').first()).toBeVisible();
 });
 
-test('the map page carries the token, the position and the way back', async ({mount}) => {
+/*
+ * "Open larger" is outside /decorate, so the framework's click handler stands
+ * aside and nothing else would tell the map page which way to paint itself. It
+ * opened on the operating system preference instead, which meant a light
+ * Mattermost on a dark laptop gave a dark page and a dark map palette with it.
+ *
+ * The same three cases the click handler is held to, on the one link it does
+ * not cover.
+ */
+test('Open larger tells the map page which theme to paint itself with', async ({mount, page}) => {
+    await page.evaluate(() => document.documentElement.style.setProperty('--center-channel-bg', '#090a0b'));
+
+    const component = await mount(
+        <LocationReadings
+            payload={GRID.payload}
+            conversion={GRID.conversion}
+            hidden={[]}
+        />,
+    );
+
+    const larger = component.getByRole('link', {name: 'Open larger'});
+    await expect(larger).toHaveAttribute('href', /_theme=dark/);
+
+    // Still root-relative: storing a host is what the whole URL design avoids.
+    const href = await larger.getAttribute('href');
+    expect(href!.startsWith('/')).toBe(true);
+
+    await page.evaluate(() => document.documentElement.style.removeProperty('--center-channel-bg'));
+});
+
+test('Open larger passes a light theme when the sidebar is light', async ({mount, page}) => {
+    await page.evaluate(() => document.documentElement.style.setProperty('--center-channel-bg', '#ffffff'));
+
+    const component = await mount(
+        <LocationReadings
+            payload={GRID.payload}
+            conversion={GRID.conversion}
+            hidden={[]}
+        />,
+    );
+
+    await expect(component.getByRole('link', {name: 'Open larger'})).toHaveAttribute('href', /_theme=light/);
+
+    await page.evaluate(() => document.documentElement.style.removeProperty('--center-channel-bg'));
+});
+
+test('Open larger leaves the theme unstated when it cannot be read', async ({mount}) => {
+    const component = await mount(
+        <LocationReadings
+            payload={GRID.payload}
+            conversion={GRID.conversion}
+            hidden={[]}
+        />,
+    );
+
+    await expect(component.getByRole('link', {name: 'Open larger'})).not.toHaveAttribute('href', /_theme/);
+});
+
+test('the map page carries the author\'s text and the way back', async ({mount}) => {
     const component = await mount(<MapPageView data={{...GRID, mode: 'map'}}/>);
 
-    await expect(component.getByText('18SUJ2347806483')).toBeVisible();
-    await expect(component.getByText('38.8895° N, 77.0353° W')).toBeVisible();
+    await expect(component.getByText('18S UJ 23478 06483')).toBeVisible();
 
     const back = component.getByRole('link', {name: 'All readings'});
     await expect(back).toBeVisible();
@@ -109,16 +166,54 @@ test('the map page carries the token, the position and the way back', async ({mo
 });
 
 /*
+ * The return trip. A page has no webapp around it and therefore no click
+ * handler, so this link states the theme itself or the reader lands back on the
+ * readings page painted the other way.
+ */
+test('the way back carries the theme the map page was painted with', async ({mount, page}) => {
+    await page.evaluate(() => document.documentElement.style.setProperty('--center-channel-bg', '#090a0b'));
+
+    const component = await mount(<MapPageView data={{...GRID, mode: 'map'}}/>);
+
+    await expect(component.getByRole('link', {name: 'All readings'})).toHaveAttribute('href', /_theme=dark/);
+
+    await page.evaluate(() => document.documentElement.style.removeProperty('--center-channel-bg'));
+});
+
+/*
+ * Everything else the bar used to carry is a reading, and the page one link
+ * away is nothing but readings with their labels beside them. Four of them
+ * crammed unlabeled under a picture is a worse table rather than a summary.
+ */
+test('the map page leaves the readings to the readings page', async ({mount}) => {
+    const component = await mount(<MapPageView data={{...GRID, mode: 'map'}}/>);
+
+    await expect(component.getByText('18SUJ2347806483', {exact: true})).toHaveCount(0);
+    await expect(component.getByText('38.8895° N, 77.0353° W')).toHaveCount(0);
+    await expect(component.getByText('United States of America (Natural Earth 110m)')).toHaveCount(0);
+});
+
+/*
  * The page that IS the larger view does not offer to open a larger view, and
- * does not repeat the attribution the bar beneath it already carries.
+ * carries no attribution: LocationMap suppresses its own caption when filling,
+ * and the bar that used to repeat it beneath is down to the author's text.
  */
 test('the map page does not link to itself', async ({mount}) => {
     const component = await mount(<MapPageView data={{...GRID, mode: 'map'}}/>);
 
     await expect(component.getByText('Open larger')).toHaveCount(0);
+    await expect(component.getByText('Natural Earth 110m')).toHaveCount(0);
+});
 
-    // Exact, because the Region reading ends in the same citation and the point
-    // here is the standalone attribution, which the map's own caption used to
-    // repeat directly above the bar carrying it.
-    await expect(component.getByText('Natural Earth 110m', {exact: true})).toHaveCount(1);
+/*
+ * The author's text is what the bar names, so a conversion that did not arrive
+ * must fall back to the token rather than showing an `r` nothing vouched for.
+ */
+test('the map page falls back to the token when nothing vouched for the text', async ({mount}) => {
+    const component = await mount(
+        <MapPageView data={{...GRID, conversion: {status: 'failed', data: null}, mode: 'map'}}/>,
+    );
+
+    await expect(component.getByText('18SUJ2347806483', {exact: true})).toBeVisible();
+    await expect(component.getByText('18S UJ 23478 06483')).toHaveCount(0);
 });

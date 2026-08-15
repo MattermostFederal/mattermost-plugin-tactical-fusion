@@ -1,5 +1,6 @@
 import React from 'react';
 
+import {vouchedText} from './convert';
 import type {ConversionState} from './convert';
 import CopyButton from './CopyButton';
 import {
@@ -19,6 +20,7 @@ import type {HideableID, RowID} from './rows';
 
 import LinkButton from '../../components/LinkButton';
 import {docsUrl, pluginBaseUrl} from '../../plugin_url';
+import {withTheme} from '../theme';
 
 import type {LocationPayload} from './index';
 
@@ -221,22 +223,7 @@ const LocationReadings: React.FC<{
     const resolution = coord ? resolutionText(coord) : gridResolutionText(format, canonical);
     const confidence = coord ? confidenceText(coord) : '';
 
-    // The author's own text, but only once the server has vouched for it.
-    //
-    // Two of the four gates on `r` need the token grammar, which lives in Go,
-    // so `fromParams` can check its length and its alphabet and nothing more,
-    // and that alphabet had to widen to the whole Latin alphabet for grid
-    // letters. A hand-written link can therefore put a short run of words in
-    // `r` that this side cannot tell from a coordinate: `r=DISREGARD USE
-    // 18SUJ11111111` passes both local gates.
-    //
-    // Rendering it before the verdict arrives put that string in a row labeled
-    // as the author's words, with a copy button beside it, on every open of
-    // every link during loading, and permanently whenever the request failed.
-    // Falling back to the canonical token means the row is always true: either
-    // the author's text as the server confirmed it, or the token the link is
-    // built from.
-    const vouched = conversion.status === 'ready' ? raw : canonical;
+    const vouched = vouchedText(conversion, raw, canonical);
 
     // Every row's value, by id, so the table can be rendered from the shared
     // ROWS catalog rather than from eleven hand-written entries. That catalog
@@ -267,11 +254,17 @@ const LocationReadings: React.FC<{
     // to one picture. Not the readings page, which opens onto a table, and not a
     // decorator link either: this route is outside /decorate, so the framework's
     // click handler does not recognise it and the browser simply follows it.
+    //
+    // Which is exactly why the theme is written here. The handler is what puts
+    // _theme on every other page link, and it stands aside for this one, so a
+    // map page opened from a light sidebar on a dark laptop came up dark, map
+    // palette and all. Read at render rather than at click, one step less live
+    // than the handler, and in exchange it survives a middle-click.
     const pageParams = new URLSearchParams({f: format, v: canonical});
     if (raw !== '' && raw !== canonical) {
         pageParams.set('r', raw);
     }
-    const pageHref = `${pluginBaseUrl()}/map?${pageParams.toString()}`;
+    const pageHref = withTheme(`${pluginBaseUrl()}/map?${pageParams.toString()}`);
 
     const position = conversion.status === 'ready' ? conversion.data : null;
     const mapLat = coord ? coord.lat.decimal : (position?.lat ?? null);

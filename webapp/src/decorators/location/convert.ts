@@ -47,6 +47,26 @@ export interface ConversionState {
     data: Conversion | null;
 }
 
+/**
+ * The author's own text, but only once the server has vouched for it.
+ *
+ * Two of the four gates on `r` need the token grammar, which lives in Go, so
+ * this side can check its length and its alphabet and nothing more, and that
+ * alphabet had to widen to the whole Latin alphabet for grid letters. A
+ * hand-written link can therefore put a short run of words in `r` that nothing
+ * here can tell from a coordinate: `r=DISREGARD USE 18SUJ11111111` passes both
+ * local gates.
+ *
+ * Rendering it before the verdict arrives put that string on screen labeled as
+ * the author's words, with a copy button beside it, on every open of every link
+ * during loading, and permanently whenever the request failed. Falling back to
+ * the canonical token means what is shown is always true: either the author's
+ * text as the server confirmed it, or the token the link is built from.
+ */
+export function vouchedText(state: ConversionState, raw: string, canonical: string): string {
+    return state.status === 'ready' ? raw : canonical;
+}
+
 /** Thrown for a 400, which is the server's verdict rather than an outage. */
 class RejectedError extends Error {}
 
