@@ -278,8 +278,9 @@ ifneq ($(HAS_SERVER),)
 # pushed those sweeps past go test's ten minute default, so this target failed
 # outright rather than reporting a number. They cost no product coverage: what
 # they exercise is covered many times over by the ordinary cases beside them,
-# and what they measure is a false-positive RATE rather than a code path. They
-# run in full under make test, which is what CI gates on.
+# and what they measure is a false-positive rate, or the shape of a collision
+# class, rather than a code path. They run in full under make test, which is
+# what CI gates on.
 	$(GO) test $(GO_TEST_FLAGS) -short -coverpkg=./server/... -coverprofile=server/coverage.txt ./server/...
 	$(GO) tool cover -func=server/coverage.txt
 endif

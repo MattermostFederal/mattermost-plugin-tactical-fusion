@@ -262,14 +262,21 @@ test('offers a copy control on every value row and none on the prose rows', asyn
     const component = await mount(<LocationPanelHarness/>);
     await component.getByRole('button', {name: 'answer the conversion'}).click();
 
-    const labels = ['Copy MGRS', 'Copy Lat / lon', 'Copy DMS', 'Copy DDM', 'Copy USMTF',
-        'Copy UTM', 'Copy Original text'];
-    await Promise.all(labels.map((label) =>
-        expect(component.getByRole('button', {name: label}), label).toBeVisible()));
+    // Read off the catalog rather than listed by hand, for the reason the
+    // hide-everything test below is: the hand-written list went stale the moment
+    // rows were added, still named seven of them, still passed, and had quietly
+    // stopped meaning "every value row".
+    //
+    // Normalized is the one value row absent here, and correctly: this fixture's
+    // author text already is the canonical form, so that row does not apply.
+    const copyable = ROWS.filter((row) => row.copyable && row.id !== 'canonical');
+
+    await Promise.all(copyable.map((row) =>
+        expect(component.getByRole('button', {name: `Copy ${row.label}`}), row.id).toBeVisible()));
 
     // Prose, not a value: copying "about 11 m" or "WGS 84" gets you a sentence.
-    await expect(component.getByRole('button', {name: 'Copy Resolution'})).toHaveCount(0);
-    await expect(component.getByRole('button', {name: 'Copy Datum'})).toHaveCount(0);
+    await Promise.all(ROWS.filter((row) => !row.copyable).map((row) =>
+        expect(component.getByRole('button', {name: `Copy ${row.label}`}), row.id).toHaveCount(0)));
 });
 
 // The control sits inside the row it copies, which is the whole point of moving

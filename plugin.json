@@ -104,7 +104,7 @@
                 "display_name": "Format: GARS (label only)",
                 "type": "bool",
                 "default": true,
-                "help_text": "Matches a Global Area Reference System code such as GARS:006AG, GARS:006AG3 and GARS:006AG39, which are cells of 30, 15 and 5 minutes. The position shown for one is the center of its cell. This format is matched behind a GARS: label only, never bare: seven alphanumerics whose only structural check is that two thirds of the letter pairs name no band is not enough to tell a coordinate from a part number. It therefore also needs Format: labeled coordinate to be on. Only applies while \"Decorate coordinates\" is on."
+                "help_text": "Matches a Global Area Reference System code such as GARS:006AG, GARS:006AG3 and GARS:006AG39, which are cells of 30, 15 and 5 minutes. The position shown for one is the center of its cell. This format is matched behind a GARS: label only, never bare: seven alphanumerics whose only structural check is that just over a third of the letter pairs name no band is not enough to tell a coordinate from a part number. It therefore also needs Format: labeled coordinate to be on. Only applies while \"Decorate coordinates\" is on."
             },
             {
                 "key": "EnableLocationPlusCode",

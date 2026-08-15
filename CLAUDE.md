@@ -586,8 +586,8 @@ form of the rule `Axis` and `Grid` follow: `canonical()` returns the stored
 string, so it cannot fail to reproduce itself and there is no reassembly step to
 get wrong. Upper-casing is the whole of the normalization, since none of the
 three admits internal spacing. `parseArea` validates by **decoding**, because
-the alphabets admit combinations that name nothing (two thirds of the GARS
-letter pairs are past the 360 bands that exist), and asking for the position is
+the alphabets admit combinations that name nothing (just over a third of the
+GARS letter pairs are past the 360 bands that exist), and asking for the position is
 the same call every rendered row makes.
 
 **GEOREF is written longitude first.** That is the standard's own order and the

@@ -403,7 +403,7 @@
         <p>
             The World Geographic Reference System divides the globe into 15&deg; zones and
             bands, then degrees, then minutes. A code names a <strong>cell</strong> rather
-            than a point, so the position shown for one is its center, and the four digit
+            than a point, so the position shown for one is its center, and the three digit
             widths are whole minutes, tenths and hundredths.
         </p>
 
@@ -452,7 +452,7 @@
         <p>
             <strong>Label only, and this is the stronger case of the two.</strong>
             <code>006AG39</code> is seven alphanumerics whose only structural check is that
-            two thirds of the possible letter pairs name no band at all. There is nothing
+            just over a third of the possible letter pairs name no band at all. There is nothing
             else in it to tell a coordinate from a part number.
         </p>
 
@@ -463,7 +463,7 @@
                 <tr><td>Type</td><td>Boolean</td></tr>
                 <tr><td>Default</td><td>On</td></tr>
                 <tr><td>Matches</td><td><code>849VCWC8+R9</code>, <code>849VCWC8+R9C</code> and the padded <code>849V0000+</code>. Bare in upper case; lower case behind a <code>PLUSCODE:</code> or <code>OLC:</code> label</td></tr>
-                <tr><td>Requires</td><td><a href="#enable-location"><code>EnableLocation</code></a></td></tr>
+                <tr><td>Requires</td><td><a href="#enable-location"><code>EnableLocation</code></a>. The labeled lower-case form also needs <a href="#enable-location-moniker"><code>EnableLocationMoniker</code></a>; the bare upper-case form does not</td></tr>
             </tbody>
         </table>
 
