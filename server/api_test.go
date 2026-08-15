@@ -458,12 +458,15 @@ func TestConvertReturnsEveryDerivedReading(t *testing.T) {
 	}
 
 	want := location.Conversion{
-		MGRS:    "18S UJ 23478 06483",
-		UTM:     "18S 323478E 4306483N",
-		Decimal: "38.889502° N, 77.035295° W",
-		DMS:     `38°53'22.21"N 77°02'07.06"W`,
-		DDM:     "38°53.3701'N 77°02.1177'W",
-		USMTF:   "385322.21N0770207.06W",
+		MGRS:     "18S UJ 23478 06483",
+		UTM:      "18S 323478E 4306483N",
+		Decimal:  "38.889502° N, 77.035295° W",
+		DMS:      `38°53'22.21"N 77°02'07.06"W`,
+		DDM:      "38°53.3701'N 77°02.1177'W",
+		USMTF:    "385322.21N0770207.06W",
+		GEOREF:   "GJNJ57885337",
+		GARS:     "206LT26",
+		PlusCode: "87C4VXQ7+RV44",
 	}
 	if got != want {
 		t.Fatalf("conversion =\n%+v\nwant\n%+v", got, want)
@@ -471,7 +474,9 @@ func TestConvertReturnsEveryDerivedReading(t *testing.T) {
 
 	// Every field named, so a renamed JSON tag fails here rather than silently
 	// leaving a row blank in the panel.
-	for _, field := range []string{"mgrs", "utm", "decimal", "dms", "ddm", "usmtf"} {
+	for _, field := range []string{
+		"mgrs", "utm", "decimal", "dms", "ddm", "usmtf", "georef", "gars", "pluscode",
+	} {
 		if !strings.Contains(rec.Body.String(), `"`+field+`":`) {
 			t.Errorf("body has no %q field: %s", field, rec.Body.String())
 		}

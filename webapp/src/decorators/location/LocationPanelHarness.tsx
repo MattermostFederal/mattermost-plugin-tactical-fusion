@@ -29,6 +29,9 @@ const FIRST: Conversion = {
     dms: '34°03\'22.0"N 118°15\'00.0"W',
     ddm: '34°03.366\'N 118°15.000\'W',
     usmtf: '340322.0N1181500.0W',
+    georef: 'EJBE45000336',
+    gars: '124LJ47',
+    pluscode: '85633Q42+C2R',
 };
 
 /**
@@ -43,6 +46,9 @@ const SECOND: Conversion = {
     dms: '38°53\'22.2"N 77°02\'07.1"W',
     ddm: '38°53.370\'N 77°02.118\'W',
     usmtf: '385322.2N0770207.1W',
+    georef: 'GJNJ57885337',
+    gars: '206LT26',
+    pluscode: '87C4VXQ7+RV44',
 };
 
 let settle: (() => void) | null = null;

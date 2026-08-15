@@ -97,6 +97,8 @@ func (l Location) resolutionAt(digits int) float64 {
 		return squareMeters(l.Grid.Digits) / degreeMeters
 	case FormatUTM:
 		return 1 / degreeMeters
+	case FormatGEOREF, FormatGARS, FormatPlusCode:
+		return areaResolutionDegrees(l.Area)
 	default:
 		return 1
 	}
@@ -170,6 +172,9 @@ func (l Location) ResolutionText() string {
 		// Exact rather than hedged, unlike the forms above: a UTM easting is
 		// written to the meter and means it.
 		return "1 m"
+
+	case FormatGEOREF, FormatGARS, FormatPlusCode:
+		return humanMeters(meters) + " cell, at center"
 	}
 
 	// Below a centimeter the figure rounds to "0 m" at any sane width, which
@@ -564,6 +569,37 @@ func roundTo(v float64, places int) float64 {
 		return 0
 	}
 	return out
+}
+
+func (l Location) GEOREFText() string {
+	return l.areaText(FormatGEOREF, func(lat, lon float64, resolution float64) string {
+		return georefAt(lat, lon, georefDigitsFor(resolution))
+	})
+}
+
+func (l Location) GARSText() string {
+	return l.areaText(FormatGARS, func(lat, lon float64, resolution float64) string {
+		return garsAt(lat, lon, garsMinutesFor(resolution))
+	})
+}
+
+func (l Location) PlusCodeText() string {
+	return l.areaText(FormatPlusCode, func(lat, lon float64, resolution float64) string {
+		return plusCodeAt(lat, lon, plusCodeLengthFor(resolution))
+	})
+}
+
+func (l Location) areaText(f Format, encode func(lat, lon, resolution float64) string) string {
+	if l.Format == f {
+		return l.Area.Code
+	}
+
+	lat, lon, ok := l.Point()
+	if !ok {
+		return ""
+	}
+
+	return encode(lat, lon, l.resolutionDegrees())
 }
 
 // ConfidenceText describes the USMTF verified digits, or "" when the token

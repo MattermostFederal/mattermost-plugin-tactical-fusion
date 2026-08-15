@@ -93,11 +93,32 @@
                 "help_text": "OFF BY DEFAULT, AND THE ONLY FORMAT THAT IS. A UTM token is ambiguous in a way no other coordinate here is. The letter after the zone number is read as a latitude band, following MGRS, so 11S 384640E 3769080N is band S and resolves to 34 north. Somebody using the civilian convention writes the same characters to mean \"zone 11, southern hemisphere\", which is 56 south: the same text, two readings, 90 degrees of latitude apart, and nothing in it says which was meant. The northing must land inside the band its letter names, which declines about nine in ten positions written the civilian way, but not all of them. Every other format here risks decorating something that was not a coordinate; this one risks decorating a real coordinate and pointing at the wrong place. Turn it on if your workspace writes UTM the military way, which is the common case for MGRS-speaking users. Matches 33U 291000 5628000 spaced, with optional axis letters as in 11S 384640E 3769080N; run together it is matched only behind a UTMO: or UTMT: label, since after the zone and band it is thirteen bare digits. Only applies while \"Decorate coordinates\" is on. A form that only ever matches behind its label, such as a lower-case or coarse run-together reference, also needs Format: labeled coordinate to be on."
             },
             {
+                "key": "EnableLocationGEOREF",
+                "display_name": "Format: GEOREF (label only)",
+                "type": "bool",
+                "default": true,
+                "help_text": "Matches a World Geographic Reference System code such as GEOREF:GJPJ3718, and the finer GEOREF:GJPJ371183 and GEOREF:GJPJ37110183. GEOREF is written longitude first, and a code names a cell rather than a point, so the position shown for one is its center. This format is matched behind a GEOREF: label only, never bare: four letters and four digits has nothing in it a part number does not, so a bare pattern would rewrite ordinary text. It therefore also needs Format: labeled coordinate to be on. Only applies while \"Decorate coordinates\" is on."
+            },
+            {
+                "key": "EnableLocationGARS",
+                "display_name": "Format: GARS (label only)",
+                "type": "bool",
+                "default": true,
+                "help_text": "Matches a Global Area Reference System code such as GARS:006AG, GARS:006AG3 and GARS:006AG39, which are cells of 30, 15 and 5 minutes. The position shown for one is the center of its cell. This format is matched behind a GARS: label only, never bare: seven alphanumerics whose only structural check is that just over a third of the letter pairs name no band is not enough to tell a coordinate from a part number. It therefore also needs Format: labeled coordinate to be on. Only applies while \"Decorate coordinates\" is on."
+            },
+            {
+                "key": "EnableLocationPlusCode",
+                "display_name": "Format: Plus Code",
+                "type": "bool",
+                "default": true,
+                "help_text": "Matches a full Open Location Code such as 849VCWC8+R9, including the longer 849VCWC8+R9C and the padded, coarser 849V0000+. Unlike GEOREF and GARS this one is matched without a label, because its twenty-character alphabet contains no vowels and the separator sits at a fixed position, so an eight-character run of it is not a word. Unlabeled it is matched in upper case only, because a lower-case run of that shape is what a version string with build metadata looks like, and roughly one in 50,000 of those is a well-formed code; lower case is still matched behind a PLUSCODE: or OLC: label. Short codes such as CWC8+R9 are left alone: resolving one needs a nearby reference location this plugin does not have. A code names a cell, and the position shown for one is its center. Turn this off if your channels carry identifiers shaped like ABCDEFGH+IJ. Only applies while \"Decorate coordinates\" is on."
+            },
+            {
                 "key": "EnableLocationMoniker",
                 "display_name": "Format: labeled coordinate",
                 "type": "bool",
                 "default": true,
-                "help_text": "Matches a coordinate introduced by a field label such as LATM:, LATS:, DMPID:, GEOK:, MGRS:, UTMO: or UTMT:. The label is kept in the message rather than consumed, so a decorated line still reads as USMTF. Only labels the formats that are themselves on, and a label vouches for nothing: the coordinate behind it still has to be one. Only applies while \"Decorate coordinates\" is on."
+                "help_text": "Matches a coordinate introduced by a field label such as LATM:, LATS:, DMPID:, GEOK:, MGRS:, USNG:, UTMO:, UTMT:, GEOREF:, GARS: or PLUSCODE:. The label is kept in the message rather than consumed, so a decorated line still reads as USMTF. USNG: labels a grid reference, since the United States National Grid is MGRS on WGS 84 character for character. Only labels the formats that are themselves on, and a label vouches for nothing: the coordinate behind it still has to be one. Only applies while \"Decorate coordinates\" is on."
             }
         ]
     }

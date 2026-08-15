@@ -6,9 +6,29 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 )
 
 var ref = time.Date(2026, time.August, 11, 12, 0, 0, 0, time.UTC)
+
+// taggerFor runs one decorator through the real tagger.
+//
+// tagger_test.go has the same helper and cannot be shared with: it is in the
+// external test package, which is the right place for the corpus sweeps and the
+// wrong one for a test that needs to build a Formats value field by field.
+func taggerFor(t *testing.T, d *Decorator) *decorators.Tagger {
+	t.Helper()
+
+	registry, err := decorators.NewDefaultRegistry(d)
+	if err != nil {
+		t.Fatalf("NewDefaultRegistry() = %v", err)
+	}
+	return &decorators.Tagger{
+		Registry:  registry,
+		URLPrefix: "/plugins/com.mattermost.plugin-tactical-fusion/decorate",
+	}
+}
 
 func mustParams(t *testing.T, d *Decorator, token string) url.Values {
 	t.Helper()
@@ -488,6 +508,113 @@ func TestMGRSAndUTMSwitchIndependently(t *testing.T) {
 				t.Errorf("UTM parsed = %v, want %v", ok, tc.utmOK)
 			}
 		})
+	}
+}
+
+// The three area-reference systems are three switches, and each governs only
+// itself.
+//
+// Split for the same reason MGRS and UTM are: they are separate notations an
+// install may want separately, and a reader who never sees a GARS code written
+// should not have to accept its false positives in order to decline it.
+//
+// Two of the three are label-only, so this also pins the composition with the
+// moniker switch: without it there is no way to reach them at all, which is the
+// same shape LATD has.
+func TestAreaFormatsSwitchIndependently(t *testing.T) {
+	const (
+		georef   = "GEOREF:GJNJ5753"
+		gars     = "GARS:006AG39"
+		plusCode = "849VCWC8+R9"
+	)
+
+	for _, tc := range []struct {
+		name                         string
+		formats                      Formats
+		georefOK, garsOK, plusCodeOK bool
+	}{
+		{"all three on", Formats{GEOREF: true, GARS: true, PlusCode: true, Moniker: true}, true, true, true},
+		{"GEOREF alone", Formats{GEOREF: true, Moniker: true}, true, false, false},
+		{"GARS alone", Formats{GARS: true, Moniker: true}, false, true, false},
+		{"Plus Codes alone", Formats{PlusCode: true, Moniker: true}, false, false, true},
+		{
+			// The grammars are all three still enabled here, so Parse still
+			// reads their tokens; what the moniker switch takes away is the
+			// pattern that could ever hand them one, which is why the two
+			// halves of this test disagree on this row and only on this row.
+			"no moniker", Formats{GEOREF: true, GARS: true, PlusCode: true}, true, true, true,
+		},
+		{"none", Formats{}, false, false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			d := &Decorator{Enabled: func() Formats { return tc.formats }}
+
+			// Parse is given the token rather than the label, since the label is
+			// consumed by the pattern and never reaches it. What the moniker
+			// switch governs is whether a pattern exists at all, which Patterns
+			// answers below.
+			if _, ok := d.Parse("GJNJ5753", ref); ok != tc.georefOK {
+				t.Errorf("GEOREF parsed = %v, want %v", ok, tc.georefOK)
+			}
+			if _, ok := d.Parse("006AG39", ref); ok != tc.garsOK {
+				t.Errorf("GARS parsed = %v, want %v", ok, tc.garsOK)
+			}
+			if _, ok := d.Parse(plusCode, ref); ok != tc.plusCodeOK {
+				t.Errorf("Plus Code parsed = %v, want %v", ok, tc.plusCodeOK)
+			}
+
+			// And end to end through the tagger, which is what actually decides
+			// whether a message is rewritten.
+			tg := taggerFor(t, d)
+			for _, row := range []struct {
+				text string
+				want bool
+			}{
+				{georef, tc.georefOK && tc.formats.Moniker},
+				{gars, tc.garsOK && tc.formats.Moniker},
+				{plusCode, tc.plusCodeOK},
+			} {
+				if got := tg.Decorate(row.text, ref) != row.text; got != row.want {
+					t.Errorf("Decorate(%q) decorated = %v, want %v", row.text, got, row.want)
+				}
+			}
+		})
+	}
+}
+
+// Switching a format off must not cost its ROW, only its links.
+//
+// The same claim TestUTMSwitchedOffStillRendersTheUTMRow makes, extended to the
+// three notations added with the area-reference systems. A derived row comes
+// from the position rather than from the text, so an install that never wants a
+// GARS code matched still gets a GARS reading for every coordinate it does
+// match, and turning the switch off stays as cheap as it is meant to be.
+func TestAreaFormatsSwitchedOffStillRenderTheirRows(t *testing.T) {
+	d := &Decorator{Enabled: func() Formats { return Formats{MGRS: true} }}
+
+	params, ok := d.Parse("18S UJ 23478 06483", ref)
+	if !ok {
+		t.Fatal("Parse declined an MGRS token while MGRS is on")
+	}
+
+	rec := httptest.NewRecorder()
+	d.RenderPage(rec, params)
+
+	if rec.Code != 200 {
+		t.Fatalf("RenderPage() status = %d, want 200", rec.Code)
+	}
+
+	for _, row := range []struct{ label, value string }{
+		{"GEOREF", "GJNJ57885337"},
+		{"GARS", "206LT26"},
+		{"Plus Code", "87C4VXQ7+RV44"},
+	} {
+		if !strings.Contains(rec.Body.String(), "<th>"+row.label+"</th>") {
+			t.Errorf("the page has no %s row", row.label)
+		}
+		if !strings.Contains(rec.Body.String(), row.value) {
+			t.Errorf("the %s row has no value in it, want %q", row.label, row.value)
+		}
 	}
 }
 

@@ -420,6 +420,62 @@
             simply has no grid rows.
         </p>
 
+        <h3 id="location-area">Area references: GEOREF, GARS and Plus Codes</h3>
+
+        <p>
+            Three notations that name a <strong>cell of the graticule</strong> rather than a
+            point, the way a grid reference names a square. They need no projection, which
+            has one visible consequence: they still render above 84&deg; north and below
+            80&deg; south, where the MGRS and UTM rows are blank.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Notation</th><th>Example</th><th>Cell</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>GEOREF</td><td><code>GEOREF:GJNJ5753</code></td><td>1 minute</td></tr>
+                <tr><td>GEOREF</td><td><code>GEOREF:GJNJ575337</code></td><td>a tenth of a minute</td></tr>
+                <tr><td>GEOREF</td><td><code>GEOREF:GJNJ57533752</code></td><td>a hundredth</td></tr>
+                <tr><td>GARS</td><td><code>GARS:206LT</code></td><td>30 minutes</td></tr>
+                <tr><td>GARS</td><td><code>GARS:206LT2</code></td><td>15 minutes</td></tr>
+                <tr><td>GARS</td><td><code>GARS:006AG39</code></td><td>5 minutes</td></tr>
+                <tr><td>Plus Code</td><td><code>849VCWC8+R9</code></td><td>about 14 m</td></tr>
+                <tr><td>Plus Code</td><td><code>849VCWC8+R9C</code></td><td>about 3 m</td></tr>
+                <tr><td>Plus Code</td><td><code>849V0000+</code></td><td>1 degree, padded</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            <strong>GEOREF is written longitude first.</strong> That is the standard's own
+            order and the opposite of every other format on this page: in
+            <code>GJNJ5753</code>, <code>G</code>, <code>N</code> and <code>57</code> are
+            longitude and <code>J</code>, <code>J</code> and <code>53</code> are latitude.
+        </p>
+
+        <p>
+            <strong>GEOREF and GARS are matched behind their labels and never bare.</strong>
+            <code>GJNJ5753</code> is four letters and four digits, and <code>006AG39</code>
+            is seven alphanumerics whose only structural check rules out just over a third of the
+            possible letter pairs. Neither has anything in it a part number does not, so a
+            bare pattern would rewrite ordinary text. This is the same posture
+            <code>LATD</code> is held to.
+        </p>
+
+        <p>
+            <strong>A Plus Code is matched without a label, in upper case.</strong> Its
+            twenty-character alphabet contains no vowel at all, so an eight-character run of
+            it is not a word, and the separator sits at a fixed position in the middle. Lower
+            case needs a <code>PLUSCODE:</code> or <code>OLC:</code> label, because a
+            lower-case run of that shape is what a version string with build metadata looks
+            like and about one in 50,000 of those is a well-formed code.
+        </p>
+
+        <p>
+            Short Plus Codes such as <code>CWC8+R9</code> are left alone. They are meaningless
+            without a nearby reference location, which this plugin does not have.
+        </p>
+
         <h3 id="location-moniker">Labeled coordinates</h3>
 
         <p>
@@ -428,9 +484,18 @@
             <code>LATDS:</code>, <code>GEOK:</code>, <code>DMPID:</code>,
             <code>DEPLATM:</code>, <code>ARRLATM:</code>, the verified variants
             <code>VLATD:</code>, <code>VLATM:</code>, <code>VLATS:</code> and
-            <code>VGEOT:</code>, and the grid labels <code>MGRS:</code>,
+            <code>VGEOT:</code>, the grid labels <code>MGRS:</code>, <code>USNG:</code>,
             <code>UTMO:</code>, <code>UTMT:</code>, <code>DEPUTMO:</code> and
-            <code>ARRUTMO:</code>.
+            <code>ARRUTMO:</code>, and the area-reference labels
+            <code>GEOREF:</code>, <code>GARS:</code>, <code>PLUSCODE:</code> and
+            <code>OLC:</code>.
+        </p>
+
+        <p>
+            <code>USNG:</code> introduces a <a href="#location-grid">grid reference</a>. The
+            United States National Grid is MGRS on WGS 84, character for character, so it is
+            not a separate format here: a <code>USNG:</code> token is read and stored as
+            MGRS.
         </p>
 
         <p>
@@ -525,6 +590,26 @@
                     <td>Bare LATD</td>
                     <td><code>35N079W</code></td>
                     <td>Too short to detect on its own. <code>LATD:35N079W</code> is recognized.</td>
+                </tr>
+                <tr>
+                    <td>Bare GEOREF</td>
+                    <td><code>GJNJ5753</code></td>
+                    <td>Four letters and four digits is also a part number. <code>GEOREF:GJNJ5753</code> is recognized.</td>
+                </tr>
+                <tr>
+                    <td>Bare GARS</td>
+                    <td><code>006AG39</code></td>
+                    <td>Seven alphanumerics with almost nothing in them to check. <code>GARS:006AG39</code> is recognized.</td>
+                </tr>
+                <tr>
+                    <td>Lower-case Plus Code</td>
+                    <td><code>849vcwc8+r9</code></td>
+                    <td>That shape is what a version string with build metadata looks like, and about one in 50,000 of those is a valid code. <code>PLUSCODE:849vcwc8+r9</code> is recognized.</td>
+                </tr>
+                <tr>
+                    <td>Short Plus Code</td>
+                    <td><code>CWC8+R9</code></td>
+                    <td>Meaningless without a nearby reference location, which this plugin does not have and would have to guess at.</td>
                 </tr>
                 <tr>
                     <td>Null Island</td>

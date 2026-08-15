@@ -1,6 +1,7 @@
 import React from 'react';
 
 import LocationPanelHarness from './LocationPanelHarness';
+import {ROWS} from './rows';
 
 import {expect, test} from '../../../playwright/ct-coverage';
 
@@ -46,6 +47,18 @@ test('a grid link shows its own reference before the conversion answers', async 
 
     await component.getByRole('button', {name: 'answer the conversion'}).click();
     await expect(component.getByText('34.0561° N, 118.2500° W').first()).toBeVisible();
+});
+
+test('an area code shows its own code and resolution before the conversion answers', async ({mount}) => {
+    const component = await mount(
+        <LocationPanelHarness
+            format='georef'
+            canonical='GJNJ5753'
+        />);
+
+    await expect(component.getByText('GJNJ5753').first()).toBeVisible();
+    await expect(component.getByText('1.9 km cell, at center')).toBeVisible();
+    await expect(component.getByText('converting…').first()).toBeVisible();
 });
 
 // Nothing may fail the panel. A request that never arrives costs the rows it
@@ -249,14 +262,21 @@ test('offers a copy control on every value row and none on the prose rows', asyn
     const component = await mount(<LocationPanelHarness/>);
     await component.getByRole('button', {name: 'answer the conversion'}).click();
 
-    const labels = ['Copy MGRS', 'Copy Lat / lon', 'Copy DMS', 'Copy DDM', 'Copy USMTF',
-        'Copy UTM', 'Copy Original text'];
-    await Promise.all(labels.map((label) =>
-        expect(component.getByRole('button', {name: label}), label).toBeVisible()));
+    // Read off the catalog rather than listed by hand, for the reason the
+    // hide-everything test below is: the hand-written list went stale the moment
+    // rows were added, still named seven of them, still passed, and had quietly
+    // stopped meaning "every value row".
+    //
+    // Normalized is the one value row absent here, and correctly: this fixture's
+    // author text already is the canonical form, so that row does not apply.
+    const copyable = ROWS.filter((row) => row.copyable && row.id !== 'canonical');
+
+    await Promise.all(copyable.map((row) =>
+        expect(component.getByRole('button', {name: `Copy ${row.label}`}), row.id).toBeVisible()));
 
     // Prose, not a value: copying "about 11 m" or "WGS 84" gets you a sentence.
-    await expect(component.getByRole('button', {name: 'Copy Resolution'})).toHaveCount(0);
-    await expect(component.getByRole('button', {name: 'Copy Datum'})).toHaveCount(0);
+    await Promise.all(ROWS.filter((row) => !row.copyable).map((row) =>
+        expect(component.getByRole('button', {name: `Copy ${row.label}`}), row.id).toHaveCount(0)));
 });
 
 // The control sits inside the row it copies, which is the whole point of moving
@@ -346,12 +366,15 @@ test.describe('customizing the view', () => {
     // what makes it recoverable: the way back is the Customize link itself.
     test('survives every row being hidden', async ({mount}) => {
         const component = await mount(
-            <LocationPanelHarness
-                hidden={['mgrs', 'decimal', 'dms', 'ddm', 'usmtf', 'utm',
-                    'resolution', 'confidence', 'datum', 'raw', 'canonical']}
-            />);
+            <LocationPanelHarness hidden={ROWS.map((row) => row.id)}/>);
 
-        await expect(component.getByRole('button', {name: 'Copy Lat / lon'})).toHaveCount(0);
+        await component.getByRole('button', {name: 'answer the conversion'}).click();
+
+        await Promise.all(ROWS.map((row) => expect(
+            component.getByRole('button', {name: `Copy ${row.label}`}),
+            row.id,
+        ).toHaveCount(0)));
+
         await expect(component.getByRole('button', {name: 'Customize your view'})).toBeVisible();
     });
 

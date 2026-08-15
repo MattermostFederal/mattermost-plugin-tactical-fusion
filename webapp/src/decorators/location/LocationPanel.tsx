@@ -9,11 +9,12 @@ import {
     ddmText,
     decimalText,
     dmsText,
-    gridResolutionText,
     gridText,
+    remoteResolutionText,
     resolutionText,
     usmtfText,
 } from './format';
+import type {LocationFormat} from './format';
 import {isRowVisible, ROWS} from './rows';
 import type {RowID} from './rows';
 
@@ -151,7 +152,7 @@ const Row: React.FC<{
  * survive the request failing outright.
  *
  * Each value row carries its own copy icon rather than the panel carrying a row
- * of labelled buttons underneath: there are eight values worth copying and a
+ * of labelled buttons underneath: there are eleven values worth copying and a
  * button per value would be wider than the coordinates themselves.
  *
  * `raw` is the one value here that originated as message text. It is rendered
@@ -231,13 +232,15 @@ const LocationPanel: React.FC<{payload: LocationPayload}> = ({payload}) => {
     // that row never waits on anything and never degrades.
     const mgrs = format === 'mgrs' ? gridText(format, canonical) : remote(conversion.data?.mgrs);
     const utm = format === 'utm' ? gridText(format, canonical) : remote(conversion.data?.utm);
+    const own = (id: LocationFormat, value: string | undefined): string =>
+        (format === id ? canonical : remote(value));
 
     const decimal = coord ? decimalText(coord) : remote(conversion.data?.decimal);
     const dms = coord ? dmsText(coord) : remote(conversion.data?.dms);
     const ddm = coord ? ddmText(coord) : remote(conversion.data?.ddm);
     const usmtf = coord ? usmtfText(coord) : remote(conversion.data?.usmtf);
 
-    const resolution = coord ? resolutionText(coord) : gridResolutionText(format, canonical);
+    const resolution = coord ? resolutionText(coord) : remoteResolutionText(format, canonical);
     const confidence = coord ? confidenceText(coord) : '';
 
     // The author's own text, but only once the server has vouched for it.
@@ -274,6 +277,9 @@ const LocationPanel: React.FC<{payload: LocationPayload}> = ({payload}) => {
         ddm,
         usmtf,
         utm,
+        georef: own('georef', conversion.data?.georef),
+        gars: own('gars', conversion.data?.gars),
+        pluscode: own('pluscode', conversion.data?.pluscode),
         resolution,
         confidence,
         datum: 'WGS 84',

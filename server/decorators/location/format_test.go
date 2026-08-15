@@ -161,6 +161,49 @@ var gridFixtures = []struct {
 	},
 }
 
+// areaFixtures is the resolution half of the shared expectation table, paired
+// with "says how big every size of cell is" in
+// webapp/src/decorators/location/format.spec.ts. Change one and change the
+// other.
+//
+// Only the resolution, because that is the one thing about an area token the
+// panel computes rather than fetches: it needs the length of the code and never
+// the position. The values come from the conversion endpoint and are Go's alone.
+var areaFixtures = []struct {
+	format     Format
+	canonical  string
+	resolution string
+}{
+	{FormatGEOREF, "GJNJ5753", "1.9 km cell, at center"},
+	{FormatGEOREF, "GJNJ575337", "186 m cell, at center"},
+	{FormatGEOREF, "GJNJ57533752", "19 m cell, at center"},
+
+	{FormatGARS, "206LT", "55.7 km cell, at center"},
+	{FormatGARS, "206LT2", "27.8 km cell, at center"},
+	{FormatGARS, "206LT26", "9.3 km cell, at center"},
+
+	{FormatPlusCode, "849V0000+", "111.3 km cell, at center"},
+	{FormatPlusCode, "849VCW00+", "5.6 km cell, at center"},
+	{FormatPlusCode, "849VCWC8+", "278 m cell, at center"},
+	{FormatPlusCode, "849VCWC8+R9", "14 m cell, at center"},
+	{FormatPlusCode, "849VCWC8+R9C", "3 m cell, at center"},
+}
+
+func TestAreaResolutionMatchesTheSharedFixtures(t *testing.T) {
+	for _, tc := range areaFixtures {
+		t.Run(tc.canonical, func(t *testing.T) {
+			loc, ok := Parse(tc.format, tc.canonical)
+			if !ok {
+				t.Fatalf("Parse(%s, %q) rejected its own canonical form", tc.format, tc.canonical)
+			}
+
+			if got := loc.ResolutionText(); got != tc.resolution {
+				t.Errorf("ResolutionText() = %q, want %q", got, tc.resolution)
+			}
+		})
+	}
+}
+
 func TestGridRenderingMatchesTheSharedFixtures(t *testing.T) {
 	for _, tc := range gridFixtures {
 		t.Run(tc.canonical, func(t *testing.T) {
@@ -309,6 +352,25 @@ func TestCoarseTokensDoNotGrowFields(t *testing.T) {
 
 	if got := loc.DMSText(); got != "35°N 79°W" {
 		t.Fatalf("DMSText() = %q, want degrees only", got)
+	}
+}
+
+func TestOnlyAVerifiedTokenReportsConfidence(t *testing.T) {
+	for _, tc := range acceptedTokens {
+		loc, ok := Parse(tc.format, tc.token)
+		if !ok {
+			t.Fatalf("Parse(%s, %q) rejected a valid token", tc.format, tc.token)
+		}
+
+		want := tc.format == FormatVLATM
+		if _, _, got := loc.Confidence(); got != want {
+			t.Errorf("Confidence() reported = %v for %s %q, want %v",
+				got, tc.format, tc.token, want)
+		}
+
+		if got := loc.ConfidenceText(); (got != "") != want {
+			t.Errorf("ConfidenceText() = %q for %s %q", got, tc.format, tc.token)
+		}
 	}
 }
 

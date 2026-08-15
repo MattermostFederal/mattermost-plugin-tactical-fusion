@@ -77,6 +77,27 @@ type Formats struct {
 	// two more letters and cannot be read as a hemisphere.
 	UTM bool
 
+	// GEOREF is the World Geographic Reference System, and GARS the Global Area
+	// Reference System.
+	//
+	// Two switches rather than one for the same reason MGRS and UTM are split:
+	// they are separate notations an install may want separately, and a reader
+	// who never sees one written should not have to accept the other's false
+	// positives to decline it. Both are label-only, so both also need Moniker,
+	// which is the posture LATD already has.
+	GEOREF bool
+	GARS   bool
+
+	// PlusCode is an Open Location Code.
+	//
+	// The only grammar added with the area-reference systems that is detected
+	// unlabeled, and the only one that could be: its alphabet is twenty
+	// characters with no vowel among them, and the separator sits at a fixed
+	// position in the middle, which is a shape ordinary text mostly does not
+	// have. "Mostly" is measured rather than assumed, and the bare grammar is
+	// upper case only because of what was measured; see olcBareExpr.
+	PlusCode bool
+
 	// Moniker is a USMTF field label in front of any of the others.
 	Moniker bool
 }
@@ -86,7 +107,10 @@ type Formats struct {
 // Every grammar, UTM included. This is the test and library default, not the
 // shipped one: plugin.json is where an install's posture is set, and there UTM
 // defaults off.
-var AllFormats = Formats{DDSigned: true, LatLon: true, USMTF: true, MGRS: true, UTM: true, Moniker: true}
+var AllFormats = Formats{
+	DDSigned: true, LatLon: true, USMTF: true, MGRS: true, UTM: true,
+	GEOREF: true, GARS: true, PlusCode: true, Moniker: true,
+}
 
 // Decorator recognizes coordinates and renders the conversion page.
 type Decorator struct {
@@ -114,10 +138,18 @@ func (d *Decorator) Type() string { return Type }
 // for a grid reference and are the fields mattermost-plugin-aocanywhere reads
 // them out of; MGRS is not a USMTF field label but is what everybody writes,
 // and unlike LOC it collides with nothing in the standard.
+//
+// USNG is here and is not a format anywhere else in this package, deliberately.
+// The United States National Grid is MGRS on WGS 84, character for character,
+// so there is nothing for a separate grammar to do except accept MGRS's tokens
+// and make the format id on the page a guess about which of two identical
+// readings was meant. What "USNG:" needs is to be recognized as introducing a
+// grid reference, which is exactly what a moniker is.
 var monikerPrefixes = []string{
 	"LATDS", "DEPLATM", "ARRLATM", "VLATD", "VLATM", "VLATS", "VGEOT",
 	"DMPID", "GEOK", "LATD", "LATM", "LATS",
-	"DEPUTMO", "ARRUTMO", "UTMO", "UTMT", "MGRS",
+	"DEPUTMO", "ARRUTMO", "UTMO", "UTMT", "MGRS", "USNG",
+	"GEOREF", "GARS", "PLUSCODE", "OLC",
 }
 
 // monikerExpr is the label alternation, longest first so a prefix that is the
@@ -164,15 +196,24 @@ func bareFormats(f Formats) []Format {
 	if f.UTM {
 		out = append(out, FormatUTM)
 	}
+	if f.PlusCode {
+		out = append(out, FormatPlusCode)
+	}
 	return out
 }
 
 // labeledFormats are the grammars a label may introduce, which is every bare
-// one plus LATD.
+// one plus the three that are reachable no other way.
 func labeledFormats(f Formats) []Format {
 	out := bareFormats(f)
 	if f.USMTF {
 		out = append(out, FormatLATD)
+	}
+	if f.GEOREF {
+		out = append(out, FormatGEOREF)
+	}
+	if f.GARS {
+		out = append(out, FormatGARS)
 	}
 	return out
 }

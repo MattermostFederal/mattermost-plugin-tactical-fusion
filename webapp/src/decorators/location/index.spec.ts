@@ -172,3 +172,53 @@ test.describe('grid links the server issues', () => {
         }
     });
 });
+
+test.describe('area-reference links the server issues', () => {
+    test('accepts every shape at every resolution', () => {
+        const cases: Array<[string, string]> = [
+            ['georef', 'GJNJ5753'],
+            ['georef', 'GJNJ575337'],
+            ['georef', 'GJNJ57533752'],
+            ['gars', '206LT'],
+            ['gars', '206LT2'],
+            ['gars', '006AG39'],
+            ['pluscode', '849VCWC8+R9'],
+            ['pluscode', '849VCWC8+R9C'],
+            ['pluscode', '849VCWC8+'],
+            ['pluscode', '849V0000+'],
+        ];
+
+        for (const [f, v] of cases) {
+            const payload = fromParams(params({f, v}));
+
+            expect(payload, `${f} ${v} must open in the sidebar`).not.toBeNull();
+            expect(payload?.canonical).toBe(v);
+            expect(payload?.coord).toBeNull();
+        }
+    });
+
+    test('accepts the author text a Plus Code link carries', () => {
+        const payload = fromParams(params({
+            f: 'pluscode',
+            v: '849VCWC8+R9',
+            r: '849vcwc8+r9',
+        }));
+
+        expect(payload).not.toBeNull();
+        expect(payload?.raw).toBe('849vcwc8+r9');
+    });
+
+    test('rejects a code the server would not have issued', () => {
+        const cases: Array<[string, string, string]> = [
+            ['an I in a GEOREF zone', 'georef', 'IJNJ5753'],
+            ['a bare GEOREF quadrangle', 'georef', 'GJNJ'],
+            ['an I in a GARS letter pair', 'gars', '206IT'],
+            ['a short Plus Code', 'pluscode', 'CWC8+R9'],
+            ['a lower-case Plus Code as the canonical form', 'pluscode', '849vcwc8+r9'],
+        ];
+
+        for (const [name, f, v] of cases) {
+            expect(fromParams(params({f, v})), name).toBeNull();
+        }
+    });
+});

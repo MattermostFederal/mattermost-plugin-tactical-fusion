@@ -209,6 +209,33 @@ const (
 	utmAxisNorth = `(?:m?[Nn])?`
 )
 
+const (
+	georefZoneBody = `A-HJ-NP-Z`
+	georefBandBody = `A-HJ-M`
+	georefUnitBody = `A-HJ-NP-Q`
+
+	garsLetterBody = `A-HJ-NP-Z`
+)
+
+var (
+	georefExpr = anyCase(georefZoneBody) + anyCase(georefBandBody) +
+		anyCase(georefUnitBody) + anyCase(georefUnitBody) + `(?:\d{8}|\d{6}|\d{4})`
+
+	garsExpr = `\d{3}` + anyCase(garsLetterBody) + anyCase(garsLetterBody) + `(?:\d\d|\d)?`
+
+	olcExpr     = olcShapes(olcChar)
+	olcBareExpr = olcShapes(`[` + olcBody + `]`)
+)
+
+func olcShapes(char string) string {
+	return `(?:` + char + `{8}\+` + char + `{2,7}` +
+		`|` + char + `{8}\+` +
+		`|` + char + `{6}00\+` +
+		`|` + char + `{4}0000\+` + `)`
+}
+
+var olcChar = anyCase(olcBody)
+
 // tokenExprs lists every expression that can produce a given format, longest
 // and most specific first. A format has more than one when the same reading can
 // be written compactly or with separators.
@@ -222,6 +249,10 @@ var tokenExprs = map[Format][]string{
 	FormatVLATM: {vlatmExpr},
 	FormatMGRS:  {mgrsSpacedExpr, mgrsCompactExpr},
 	FormatUTM:   {utmSpacedExpr, utmCompactExpr},
+
+	FormatGEOREF:   {georefExpr},
+	FormatGARS:     {garsExpr},
+	FormatPlusCode: {olcExpr},
 }
 
 // bareExprs is what a format matches with no label in front of it, for the
@@ -253,8 +284,9 @@ var tokenExprs = map[Format][]string{
 // that the northing lands in the band, which a great many thirteen-digit runs
 // do. There is nothing there to make narrower.
 var bareExprs = map[Format][]string{
-	FormatMGRS: {mgrsSpacedExpr, mgrsBareCompactExpr},
-	FormatUTM:  {utmSpacedExpr},
+	FormatMGRS:     {mgrsSpacedExpr, mgrsBareCompactExpr},
+	FormatUTM:      {utmSpacedExpr},
+	FormatPlusCode: {olcBareExpr},
 }
 
 // anchoredToken is the whole-string form of each format's expressions, which is

@@ -79,6 +79,9 @@ func (p *Plugin) locationFormats() location.Formats {
 		USMTF:    config.EnableLocationUSMTF,
 		MGRS:     config.EnableLocationGrid,
 		UTM:      config.EnableLocationUTM,
+		GEOREF:   config.EnableLocationGEOREF,
+		GARS:     config.EnableLocationGARS,
+		PlusCode: config.EnableLocationPlusCode,
 		Moniker:  config.EnableLocationMoniker,
 	}
 }

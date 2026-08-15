@@ -27,6 +27,28 @@ func tagger(t *testing.T, ds ...decorators.Decorator) *decorators.Tagger {
 
 func linkCount(s string) int { return strings.Count(s, "](") }
 
+// skipCorpusSweepWhenShort drops the generated corpus sweeps under -short.
+//
+// They are the slowest thing in this repository by a wide margin, and
+// make coverage-backend runs the suite under BOTH -race and coverage
+// instrumentation, which together pushed this package past go test's ten
+// minute default and broke that target outright.
+//
+// Skipping them costs no PRODUCT coverage: every path they exercise, Decorate,
+// findCandidates, findProtectedRanges, the scanning patterns and the boundary
+// guard, is covered many times over by the ordinary cases in this file. What
+// they measure is a RATE, which needs hundreds of thousands of samples and is
+// worth nothing at a smaller size, so they run in full under make test, which
+// is what CI gates on, and are skipped only where the number they produce is
+// not what is being asked for.
+func skipCorpusSweepWhenShort(t *testing.T) {
+	t.Helper()
+
+	if testing.Short() {
+		t.Skip("generated corpus sweep; runs in full under make test")
+	}
+}
+
 // The case the consumed-guard design got wrong, now against the real tagger.
 //
 // Two coordinates separated by a single space must BOTH be decorated. This is
@@ -143,6 +165,153 @@ func TestLATDNeedsItsLabel(t *testing.T) {
 	}
 	if got := tg.Decorate("LATD:35N079W", ref); got == "LATD:35N079W" {
 		t.Fatal("labeled LATD was not decorated")
+	}
+}
+
+func TestAreaCodeDetectionFollowsTheAlphabet(t *testing.T) {
+	tg := tagger(t, &location.Decorator{})
+
+	for _, tc := range []struct {
+		bare      string
+		labeled   string
+		wantsBare bool
+	}{
+		{"GJNJ5753", "GEOREF:GJNJ5753", false},
+		{"006AG39", "GARS:006AG39", false},
+		{"849VCWC8+R9", "PLUSCODE:849VCWC8+R9", true},
+	} {
+		t.Run(tc.bare, func(t *testing.T) {
+			text := "posn " + tc.bare + " confirmed"
+			if decorated := tg.Decorate(text, ref) != text; decorated != tc.wantsBare {
+				t.Errorf("bare %q decorated = %v, want %v", tc.bare, decorated, tc.wantsBare)
+			}
+
+			if got := tg.Decorate(tc.labeled, ref); got == tc.labeled {
+				t.Errorf("labeled %q was not decorated", tc.labeled)
+			}
+		})
+	}
+}
+
+func TestAreaLabelsDoNotRescueAnInvalidCode(t *testing.T) {
+	tg := tagger(t, &location.Decorator{})
+
+	for _, input := range []string{
+		"GEOREF:IJNJ5753",
+		"GARS:721LT",
+		"GARS:206ZZ",
+		"PLUSCODE:CWC8+R9",
+		"PLUSCODE:849VC000+",
+	} {
+		if got := tg.Decorate(input, ref); got != input {
+			t.Errorf("Decorate(%q) = %q, want it left alone", input, got)
+		}
+	}
+}
+
+func TestUSNGLabelsAGridReference(t *testing.T) {
+	tg := tagger(t, &location.Decorator{})
+
+	got := tg.Decorate("USNG:18SUJ2306", ref)
+	if got == "USNG:18SUJ2306" {
+		t.Fatal("a USNG label did not reach the grid grammar")
+	}
+	if !strings.Contains(got, "f=mgrs") {
+		t.Fatalf("a USNG label produced %q, want a link carrying f=mgrs", got)
+	}
+
+	if !strings.HasPrefix(got, "USNG:") {
+		t.Fatalf("the USNG label was consumed: %q", got)
+	}
+}
+
+func TestBarePlusCodesDoNotMatchOrdinaryRuns(t *testing.T) {
+	skipCorpusSweepWhenShort(t)
+
+	tg := tagger(t, &location.Decorator{})
+
+	rng := rand.New(rand.NewSource(20260814)) //nolint:gosec // deterministic on purpose, not a security context
+
+	const base64Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+
+	versions := func(alphabet, tail string) func() string {
+		return func() string {
+			var b strings.Builder
+			for range 4 + rng.Intn(8) {
+				b.WriteByte(alphabet[rng.Intn(len(alphabet))])
+			}
+			b.WriteByte('+')
+			for range 2 + rng.Intn(8) {
+				b.WriteByte(tail[rng.Intn(len(tail))])
+			}
+			return b.String()
+		}
+	}
+
+	const (
+		lowerBody = "0123456789abcdefghijklmnopqrstuvwxyz"
+		upperBody = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	)
+
+	for _, corpus := range []struct {
+		name  string
+		build func() string
+		n     int
+
+		allowedRate float64
+	}{
+		{
+			// Smaller than the version-string corpora because there is no rate
+			// to size against: this class is refused by the trailing guard as
+			// much as by the case, and measured zero both before and after the
+			// upper-case restriction. It is a shape check, not a rate check.
+			name: "base64 fragments",
+			build: func() string {
+				var b strings.Builder
+				for range 12 + rng.Intn(20) {
+					b.WriteByte(base64Alphabet[rng.Intn(len(base64Alphabet))])
+				}
+				return b.String()
+			},
+			n: 50000,
+		},
+		{
+			// Sized to the same standard the grid sweep uses: about five
+			// expected hits if the upper-case restriction were lifted, against
+			// the measured one-in-50,000 rate. Larger buys nothing and this
+			// runs under -race and coverage instrumentation in make coverage.
+			name:  "version strings",
+			build: versions(lowerBody+".", lowerBody),
+			n:     250000,
+		},
+		{
+			name:        "upper case version strings",
+			build:       versions(upperBody+".", upperBody),
+			n:           100000,
+			allowedRate: 1.0 / 10000,
+		},
+	} {
+		t.Run(corpus.name, func(t *testing.T) {
+			var decorated []string
+
+			for range corpus.n {
+				run := corpus.build()
+
+				text := "see build " + run + " for the fix"
+				if tg.Decorate(text, ref) != text {
+					decorated = append(decorated, run)
+				}
+			}
+
+			if rate := float64(len(decorated)) / float64(corpus.n); rate > corpus.allowedRate {
+				show := decorated
+				if len(show) > 10 {
+					show = show[:10]
+				}
+				t.Fatalf("%d of %d %s were rewritten into links (%.5f, allowed %.5f): %v",
+					len(decorated), corpus.n, corpus.name, rate, corpus.allowedRate, show)
+			}
+		})
 	}
 }
 
@@ -265,6 +434,8 @@ func TestBareRunTogetherGridReferences(t *testing.T) {
 // proves that the strings someone thought of are safe, and nobody thinks of
 // 58cbe40.
 func TestBareGridReferencesDoNotMatchOrdinaryRuns(t *testing.T) {
+	skipCorpusSweepWhenShort(t)
+
 	tg := tagger(t, &location.Decorator{})
 
 	// A fixed seed, deliberately. This corpus exists to catch a regression in
