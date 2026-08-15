@@ -1,6 +1,6 @@
 import type {ZoneSelection} from '../decorators/dtg/zones';
-import {isRowID} from '../decorators/location/rows';
-import type {RowID} from '../decorators/location/rows';
+import {isHideableID} from '../decorators/location/rows';
+import type {HideableID} from '../decorators/location/rows';
 
 /**
  * One reader's view of a date-time group. Mirrors DTGPreferences in
@@ -38,7 +38,7 @@ export interface LocationPreferences {
      * everybody rather than being invisible to exactly the readers who cared
      * enough to choose.
      */
-    hiddenRows: RowID[];
+    hiddenRows: HideableID[];
 }
 
 /**
@@ -130,14 +130,14 @@ export function fromWire(raw: unknown): Preferences {
  * where refusing the blob would lock a reader out of their own settings over a
  * row that no longer exists.
  */
-function asRowIDs(value: unknown): RowID[] {
+function asRowIDs(value: unknown): HideableID[] {
     if (!Array.isArray(value)) {
         return [];
     }
 
-    const ids: RowID[] = [];
+    const ids: HideableID[] = [];
     for (const raw of value) {
-        if (typeof raw === 'string' && isRowID(raw) && !ids.includes(raw)) {
+        if (typeof raw === 'string' && isHideableID(raw) && !ids.includes(raw)) {
             ids.push(raw);
         }
     }

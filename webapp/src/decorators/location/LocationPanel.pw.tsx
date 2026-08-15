@@ -1,8 +1,17 @@
 import React from 'react';
 
 import LocationPanelHarness from './LocationPanelHarness';
+import {MAP_ID, ROWS} from './rows';
 
 import {expect, test} from '../../../playwright/ct-coverage';
+
+/*
+ * Built from the catalog rather than written out. The literal it replaced had
+ * gone stale twice over: it was missing the Region row and the map, so a test
+ * named "every row being hidden" was hiding eleven of thirteen things and still
+ * passing.
+ */
+const EVERYTHING_HIDEABLE = [MAP_ID, ...ROWS.map((row) => row.id)];
 
 /*
  * The panel is split by where a value can be worked out, not by format, and
@@ -290,9 +299,11 @@ test('shows each reading once, with no lead line repeating the table', async ({m
     // holding the author's own spelling, which happens to be identical here.
     await expect(component.getByText('18S UJ 23478 06483')).toHaveCount(2);
 
-    // Nothing above the table at all.
+    // One table, and the note still closes the panel. What sits above the table
+    // is the map and nothing else: the lead line this guards against was a bare
+    // repeat of the grid reference, which would make the count above 3.
     await expect(component.locator('table')).toHaveCount(1);
-    await expect(component.locator('div > p').first()).toContainText('Positions are WGS 84');
+    await expect(component.getByText('Positions are WGS 84', {exact: false})).toBeVisible();
 });
 
 // The USMTF row is the only derived reading a person pastes into another
@@ -347,8 +358,7 @@ test.describe('customizing the view', () => {
     test('survives every row being hidden', async ({mount}) => {
         const component = await mount(
             <LocationPanelHarness
-                hidden={['mgrs', 'decimal', 'dms', 'ddm', 'usmtf', 'utm',
-                    'resolution', 'confidence', 'datum', 'raw', 'canonical']}
+                hidden={EVERYTHING_HIDEABLE}
             />);
 
         await expect(component.getByRole('button', {name: 'Copy Lat / lon'})).toHaveCount(0);
@@ -395,4 +405,113 @@ test.describe('customizing the view', () => {
         await expect(component.getByText('Rows to show')).toHaveCount(0);
         await expect(component.getByText('18SUJ2347806483')).toBeVisible();
     });
+});
+
+test('the region row names the country once the conversion lands', async ({mount}) => {
+    const component = await mount(<LocationPanelHarness/>);
+
+    await expect(component.getByText('Region')).toHaveCount(0);
+
+    await component.getByRole('button', {name: 'answer the conversion'}).click();
+
+    await expect(component.getByText('Region')).toBeVisible();
+    await expect(
+        component.getByText('United States of America (Natural Earth 110m)'),
+    ).toBeVisible();
+});
+
+/*
+ * A position in no polygon is an answer, not an outage, and the two must not
+ * look the same. The server-supplied rows run through a helper that turns any
+ * empty value into "converting…" or "unavailable", so routing Region through it
+ * would render "Region: unavailable" over open ocean while the standalone page
+ * omitted the row entirely, and "unavailable" reads as a request that failed.
+ */
+test('the region row is omitted over open ocean rather than reading unavailable', async ({mount}) => {
+    const component = await mount(
+        <LocationPanelHarness
+            format='dd'
+            canonical='30.0000,-40.0000'
+        />);
+
+    await component.getByRole('button', {name: 'answer the conversion'}).click();
+
+    await expect(component.getByText('30.0000° N, 40.0000° W').first()).toBeVisible();
+    await expect(component.getByText('Region')).toHaveCount(0);
+    await expect(component.getByText('unavailable')).toHaveCount(0);
+});
+
+// A failed request must not invent a region either.
+test('a failed conversion omits the region rather than guessing', async ({mount}) => {
+    const component = await mount(<LocationPanelHarness outcome='fail'/>);
+
+    await component.getByRole('button', {name: 'answer the conversion'}).click();
+
+    await expect(component.getByText('unavailable').first()).toBeVisible();
+    await expect(component.getByText('Region')).toHaveCount(0);
+});
+
+/*
+ * The map is hideable and is not a row, so its id travels through a separate
+ * union. If the read path ever narrows back to isRowID, `asRowIDs` drops 'map'
+ * silently: the reader unticks Map, saves, and it is back after a reload with
+ * nothing logged on either side. This drives the id through the stubbed
+ * preferences endpoint, so it is a round trip rather than a write.
+ */
+test('a reader who hid the map gets the table and no map', async ({mount}) => {
+    const component = await mount(<LocationPanelHarness hidden={['map']}/>);
+
+    await component.getByRole('button', {name: 'answer the conversion'}).click();
+
+    await expect(component.getByText('11S LT 8463 6908').first()).toBeVisible();
+
+    // "Open larger" is the map's marker here. The basemap citation is NOT: the
+    // Region row carries the same words in its value.
+    await expect(component.getByText('Open larger')).toHaveCount(0);
+});
+
+test('the map is shown when the reader has hidden nothing', async ({mount}) => {
+    const component = await mount(<LocationPanelHarness/>);
+
+    await expect(component.getByText('Open larger')).toBeVisible();
+});
+
+// A grid token has no position until the conversion lands, and if it never
+// lands the frame would otherwise sit blank under a caption naming the basemap.
+test('a position that never arrives says so rather than leaving an empty frame', async ({mount}) => {
+    const component = await mount(
+        <LocationPanelHarness
+            format='mgrs'
+            canonical='11SLT84636908'
+            outcome='fail'
+        />);
+
+    await component.getByRole('button', {name: 'answer the conversion'}).click();
+
+    // Twice, deliberately: the visible placeholder and the screen-reader label,
+    // because role='img' on a MapLibre container would hide the canvas's own.
+    await expect(
+        component.getByText('The position for this coordinate is unavailable.'),
+    ).toHaveCount(2);
+    await expect(
+        component.getByText('The position for this coordinate is unavailable.').first(),
+    ).toBeVisible();
+});
+
+/*
+ * The map is created once and moved thereafter, so a change of selection no
+ * longer rebuilds it. That makes a stale pin possible in a way it was not when
+ * the whole map was thrown away: clicking a grid coordinate while an earlier one
+ * is drawn must clear the marker rather than leave the previous position on
+ * screen beside the new one's readings.
+ */
+test('changing selection to a grid token clears the previous pin', async ({mount}) => {
+    const component = await mount(<LocationPanelHarness/>);
+    await component.getByRole('button', {name: 'answer the conversion'}).click();
+    await expect(component.getByText('34.0561° N, 118.2500° W').first()).toBeVisible();
+
+    await component.getByRole('button', {name: 'select the second coordinate'}).click();
+
+    // The second coordinate's readings, not the first's.
+    await expect(component.getByText('34.0561° N, 118.2500° W')).toHaveCount(0);
 });

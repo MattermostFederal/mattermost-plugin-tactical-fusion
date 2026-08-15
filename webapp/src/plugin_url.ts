@@ -23,6 +23,28 @@ export function pluginBaseUrl(): string {
  * from whatever `plugin.json` says. The one place the id is spelled in full is
  * `plugin.json` itself, which is where it is defined.
  */
+/**
+ * Where Mattermost serves this plugin's webapp bundle and its lazy chunks.
+ *
+ * Validated before use, because assigning it to `__webpack_public_path__`
+ * promotes `window.basename` from a value that builds fetch URLs into one that
+ * decides where the browser loads executable JavaScript from. The server side
+ * of this plugin applies the same rule to SiteURL: a path that is not rooted is
+ * ignored rather than emitted, since it would resolve against whatever page the
+ * reader happens to be on.
+ */
+export function staticBaseUrl(): string {
+    const globalWindow = typeof window === 'undefined' ? undefined : (window as {basename?: string});
+    const basename = globalWindow?.basename ?? '';
+    const base = `${basename}/static/plugins/${manifest.id}/`;
+
+    if (!base.startsWith('/') || base.startsWith('//') || base.includes('://')) {
+        return `/static/plugins/${manifest.id}/`;
+    }
+
+    return base;
+}
+
 export function docsUrl(): string {
     return `${pluginBaseUrl()}/public/help/help.html`;
 }

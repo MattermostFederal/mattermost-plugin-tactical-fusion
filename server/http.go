@@ -7,12 +7,22 @@ import (
 	"github.com/mattermost/mattermost/server/public/plugin"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
 // decoratePath is the route prefix for decorator pages, relative to the
 // plugin's own base path.
 const decoratePath = "/decorate"
+
+// mapPath is the coordinate rendered as a page of its own, which is what
+// "Open larger" in the sidebar opens.
+//
+// A sibling of /decorate rather than a mode of it: the decorator route answers
+// "what is this token" and every page under it opens onto a table, where this
+// answers "where is it" and gives the window to one picture. Public and a pure
+// function of its query string on the same terms.
+const mapPath = "/map"
 
 // ServeHTTP routes GET /decorate/<type> to the matching decorator's page, and
 // everything under /api/v1 to the authenticated JSON API.
@@ -38,6 +48,11 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 	if r.Method != http.MethodGet {
 		decorators.WriteError(w, http.StatusMethodNotAllowed,
 			errcode.WithCode(errcode.HTTPMethodNotAllowed, "Method not allowed."))
+		return
+	}
+
+	if r.URL.Path == mapPath {
+		location.RenderMapPage(w, r.URL.Query())
 		return
 	}
 

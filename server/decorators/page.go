@@ -47,7 +47,22 @@ type Page struct {
 	// It is emitted without escaping, so like StyleCSS it must be a constant in
 	// the decorator's own source and must never carry anything from a request.
 	ScriptJS string
+
+	// ScriptSrc is a same-origin script for the page to load, or "", written
+	// relative to the page's own route. Emitted only under PageMapping.
+	ScriptSrc string
+
+	// Capability is how much of default-src 'none' this page gives back. The
+	// zero value gives back nothing. See CLAUDE.md, "The page content policy".
+	Capability PageCapability
 }
+
+type PageCapability int
+
+const (
+	PageStatic PageCapability = iota
+	PageMapping
+)
 
 // styleCSS returns the decorator's extra rules, or nothing when they are
 // unusable.
@@ -62,19 +77,43 @@ func (p Page) styleCSS() string {
 	return p.StyleCSS
 }
 
-// scriptPolicy is the script-src directive for this page.
-//
-// A page with script is pinned to that script's digest, so the directive names
-// the one program allowed to run and nothing else can be added to the page by
-// any means.
 func (p Page) scriptPolicy() string {
+	sources := ""
+	if p.Capability == PageMapping {
+		sources = " 'self'"
+	}
+
 	js := p.scriptJS()
 	if js == "" {
-		return "script-src 'none'"
+		if sources == "" {
+			return "script-src 'none'"
+		}
+		return "script-src" + sources
 	}
 
 	sum := sha256.Sum256([]byte(js))
-	return "script-src 'sha256-" + base64.StdEncoding.EncodeToString(sum[:]) + "'"
+	return "script-src" + sources + " 'sha256-" + base64.StdEncoding.EncodeToString(sum[:]) + "'"
+}
+
+func (p Page) contentPolicy() string {
+	directives := []string{
+		"default-src 'none'",
+		"style-src 'unsafe-inline'",
+		p.scriptPolicy(),
+	}
+
+	if p.Capability == PageMapping {
+		directives[1] = "style-src 'self' 'unsafe-inline'"
+		directives = append(directives,
+			"worker-src 'self'",
+			"img-src 'self' data: blob:",
+			"connect-src 'self'")
+	}
+
+	directives = append(directives,
+		"base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'")
+
+	return strings.Join(directives, "; ")
 }
 
 // scriptJS returns the page's script, or nothing when it is unusable.
@@ -91,13 +130,29 @@ func (p Page) scriptJS() string {
 	return p.ScriptJS
 }
 
-// scriptTag is the script element, or nothing at all.
 func (p Page) scriptTag() string {
-	js := p.scriptJS()
-	if js == "" {
+	out := ""
+
+	if src := p.scriptSrc(); src != "" {
+		out += `<script src="` + html.EscapeString(src) + `" defer></script>`
+	}
+
+	if js := p.scriptJS(); js != "" {
+		out += "<script>" + js + "</script>"
+	}
+
+	return out
+}
+
+func (p Page) scriptSrc() string {
+	src := p.ScriptSrc
+	if src == "" || p.Capability != PageMapping {
 		return ""
 	}
-	return "<script>" + js + "</script>"
+	if !strings.HasPrefix(src, "./") && !strings.HasPrefix(src, "../") {
+		return ""
+	}
+	return src
 }
 
 // themeAttribute renders the theme as a root attribute, or nothing at all.
@@ -233,9 +288,7 @@ func setPageHeaders(w http.ResponseWriter, p Page) {
 	// anybody can write, so what has to survive an escaping mistake is that
 	// injected markup cannot execute. A hash keeps that; 'unsafe-inline' would
 	// hand it back.
-	h.Set("Content-Security-Policy",
-		"default-src 'none'; style-src 'unsafe-inline'; "+p.scriptPolicy()+
-			"; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+	h.Set("Content-Security-Policy", p.contentPolicy())
 	h.Set("Referrer-Policy", "no-referrer")
 
 	if h.Get("Cache-Control") == "" {

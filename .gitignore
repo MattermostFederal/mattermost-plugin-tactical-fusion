@@ -44,3 +44,6 @@ webapp/coverage-merged/
 webapp/.v8-ct-coverage/
 webapp/.v8-unit-coverage/
 webapp/.v8-merged-coverage/
+
+# Built by webpack from webapp/src/page, like webapp/dist.
+public/app/

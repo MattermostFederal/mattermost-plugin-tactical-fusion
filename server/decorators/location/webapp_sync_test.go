@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location/mapdata"
 )
 
 // The webapp keeps its own copy of the canonical shapes, and this is the seam
@@ -228,26 +230,47 @@ func TestWebappConversionShapeMatches(t *testing.T) {
 	}
 
 	var webapp []string
-	for _, m := range regexp.MustCompile(`(?m)^\s+(\w+):\s*string;`).FindAllStringSubmatch(block[1], -1) {
-		webapp = append(webapp, m[1])
+	for _, m := range regexp.MustCompile(`(?m)^\s+(\w+):\s*(\w+);`).FindAllStringSubmatch(block[1], -1) {
+		webapp = append(webapp, m[1]+" "+m[2])
 	}
 
-	// The Go side, read from the struct tags rather than repeated by hand, so
-	// this cannot be satisfied by editing the test.
+	// Names AND types, not names alone. While every field was a string, name
+	// agreement implied type agreement; with numbers on the wire a TypeScript
+	// `lat: string` against a Go float64 type-checks, ships, and puts the pin
+	// at NaN.
 	var server []string
 	for field := range reflect.TypeFor[Conversion]().Fields() {
 		tag, ok := field.Tag.Lookup("json")
 		if !ok {
 			t.Fatalf("Conversion.%s has no json tag, so the webapp cannot read it", field.Name)
 		}
-		server = append(server, strings.Split(tag, ",")[0])
+		ts, ok := tsTypeFor(field.Type.Kind())
+		if !ok {
+			t.Fatalf("Conversion.%s is a %s, which this test does not know how to "+
+				"compare against TypeScript", field.Name, field.Type.Kind())
+		}
+		server = append(server, strings.Split(tag, ",")[0]+" "+ts)
 	}
 
 	if !slices.Equal(server, webapp) {
 		t.Errorf("the conversion payload is %v here and %v in the webapp.\n"+
-			"They must agree field for field and in order: a rename on either side is "+
-			"silent, and shows up as a permanently blank row in the sidebar.",
+			"They must agree field for field, type for type, and in order: a rename or a "+
+			"changed type on either side is silent, and shows up as a permanently blank "+
+			"row or a pin at NaN.",
 			server, webapp)
+	}
+}
+
+func tsTypeFor(k reflect.Kind) (string, bool) {
+	switch k {
+	case reflect.String:
+		return "string", true
+	case reflect.Float64, reflect.Float32:
+		return "number", true
+	case reflect.Bool:
+		return "boolean", true
+	default:
+		return "", false
 	}
 }
 
@@ -285,5 +308,62 @@ func TestWebappGridZoneIsBounded(t *testing.T) {
 					"gridPoint accepts zones 1 to 60 and nothing else", spelled, got, want)
 			}
 		}
+	}
+}
+
+// The map's geometry constants live in three places: this package, the panel's
+// span.ts, and the page module tf-map.mjs. They must agree or the sidebar and
+// the two pages draw the same coordinate at different scales, which is the one
+// thing having them in more than one place is supposed to prevent.
+func TestWebappMapConstantsMatch(t *testing.T) {
+	span := readWebappSource(t, "map/span.ts")
+
+	cases := []struct {
+		name   string
+		server float64
+	}{
+		{"MERCATOR_LIMIT", mapdata.MercatorLimit},
+		{"DEGREE_METERS", degreeMeters},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if webapp := tsConstant(t, span, "map/span.ts", c.name); webapp != c.server {
+				t.Errorf("%s is %v here and %v in the webapp", c.name, c.server, webapp)
+			}
+		})
+	}
+}
+
+// Reads a `const NAME = <number>;` out of either language.
+func tsConstant(t *testing.T, source, where, name string) float64 {
+	t.Helper()
+
+	m := regexp.MustCompile(`const ` + name + ` = ([0-9.]+);`).FindStringSubmatch(source)
+	if m == nil {
+		t.Fatalf("no `const %s` in %s; if it was renamed, point this test at the new "+
+			"name rather than deleting it", name, where)
+	}
+
+	v, err := strconv.ParseFloat(m[1], 64)
+	if err != nil {
+		t.Fatalf("%s = %q, which is not a number", name, m[1])
+	}
+
+	return v
+}
+
+// The map is hideable and is not a row, so it is carried by its own constant on
+// both sides. A rename is silent: the reader unticks Map, the server stores it,
+// and the webapp's forgiving read drops it again on the next load.
+func TestWebappMapSectionIDMatches(t *testing.T) {
+	source := readWebappSource(t, "map/../rows.ts")
+
+	m := regexp.MustCompile(`export const MAP_ID = '([a-z]+)';`).FindStringSubmatch(source)
+	if m == nil {
+		t.Fatal("no `export const MAP_ID` in rows.ts")
+	}
+	if m[1] != SectionMap {
+		t.Errorf("the map section is %q here and %q in the webapp", SectionMap, m[1])
 	}
 }

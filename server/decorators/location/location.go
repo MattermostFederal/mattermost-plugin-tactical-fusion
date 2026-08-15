@@ -353,16 +353,12 @@ func (d *Decorator) RenderPage(w http.ResponseWriter, params url.Values) {
 	w.Header().Set("Cache-Control", "private, max-age=300")
 
 	decorators.WritePage(w, decorators.Page{
-		Title:    pageTitle,
-		BodyHTML: renderBody(page),
-		Theme:    decorators.ThemeFromParams(params),
-		StyleCSS: pageStyles,
-
-		// The copy controls, and the only script this page carries. It is a
-		// source constant, so the shell pins the policy to its digest rather
-		// than opening the page to 'unsafe-inline': an escaping mistake in the
-		// author's own text still cannot become execution.
-		ScriptJS: copyScript,
+		Title:      pageTitle,
+		BodyHTML:   renderRoot(page, pageModeLocation),
+		Theme:      decorators.ThemeFromParams(params),
+		StyleCSS:   pageStyles,
+		ScriptSrc:  pageAppFromDecorate,
+		Capability: decorators.PageMapping,
 	})
 }
 

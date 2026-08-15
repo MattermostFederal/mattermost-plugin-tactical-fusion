@@ -147,6 +147,22 @@ manifest-check:
 apply:
 	./build/bin/manifest apply
 
+## Regenerates the bundled basemap from the Natural Earth source in build/mapdata/source.
+## The outputs are committed, so a clean checkout builds and an air-gapped `go test` runs
+## without this target. Run it only when the source or the generator changes.
+.PHONY: map-data
+map-data:
+	$(GO) run ./build/mapdata
+
+## Fails when the committed basemap is not what the committed source produces through the
+## current generator. Idempotence is the wrong check: a generator edited without
+## regenerating is perfectly idempotent and fully drifted.
+.PHONY: map-data-check
+map-data-check: map-data
+	@git diff --exit-code -- server/decorators/location/mapdata public/map \
+		webapp/src/decorators/location/map/basemap_digest.ts \
+		|| (echo "map data is stale: run 'make map-data' and commit the result" && exit 1)
+
 ## Builds the server, if it exists, for all supported architectures, unless MM_SERVICESETTINGS_ENABLEDEVELOPER is set.
 .PHONY: server
 server:
@@ -201,6 +217,24 @@ endif
 ifneq ($(HAS_WEBAPP),)
 	mkdir -p dist/$(PLUGIN_ID)/webapp
 	cp -r webapp/dist dist/$(PLUGIN_ID)/webapp/
+	@# The standalone pages are rendered by webpack's second bundle. Without it
+	@# the pages serve their shell and render nothing at all.
+	@if [ ! -f "dist/$(PLUGIN_ID)/public/app/page.js" ]; then \
+		echo "ERROR: the bundle is missing public/app/page.js."; \
+		echo "The standalone pages render nothing without it. Run 'make dist'."; \
+		exit 1; \
+	fi
+	@# MapLibre's worker is a module that imports ./maplibre-gl-shared.mjs by that
+	@# literal name. Shipping the worker without it is silent: the worker 404s,
+	@# the style never finishes, and the map sits on "Loading map..." with no
+	@# error. Neither the type checker nor any test sees this, so it is checked
+	@# here, where the bundle is actually assembled.
+	@if ls dist/$(PLUGIN_ID)/webapp/dist/maplibre-gl-worker.*.mjs >/dev/null 2>&1 && \
+		[ ! -f dist/$(PLUGIN_ID)/webapp/dist/maplibre-gl-shared.mjs ]; then \
+		echo "ERROR: the MapLibre worker ships without maplibre-gl-shared.mjs beside it."; \
+		echo "The worker imports it by a fixed relative name and will 404 at runtime."; \
+		exit 1; \
+	fi
 endif
 ifeq ($(shell uname),Darwin)
 	cd dist && tar --disable-copyfile -cvzf $(BUNDLE_NAME) $(PLUGIN_ID)
@@ -245,7 +279,7 @@ endif
 
 ## Runs any lints and unit tests defined for the server and webapp, if they exist.
 .PHONY: test
-test: apply webapp/node_modules install-go-tools
+test: map-data-check apply webapp/node_modules install-go-tools
 ifneq ($(HAS_SERVER),)
 	$(GOBIN)/gotestsum -- -v ./...
 endif

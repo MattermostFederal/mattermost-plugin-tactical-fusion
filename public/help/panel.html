@@ -94,9 +94,11 @@
         <h2 id="page">The standalone page</h2>
 
         <p>
-            Clients that do not run the plugin's web bundle, notably the mobile app, get
-            a server-rendered page instead of the sidebar. It shows the same countdown
-            and the same table.
+            Clients that do not run the plugin's web bundle, notably the mobile app, get a
+            page of their own instead of the sidebar. It shows the same countdown and the
+            same table, because for a coordinate it runs the same code the sidebar does:
+            the server validates the link and works out every reading, and the page draws
+            them.
         </p>
 
         <div class="alert alert-warning">
@@ -125,12 +127,13 @@
 
         <table class="field-table">
             <tbody>
-                <tr><td>MGRS</td><td>The military grid reference, at the resolution the original text carried. First in the table, because for most readers of this plugin it is the reading that gets used. Nothing sits above the table: an earlier version repeated this reference on a line of its own, three lines above the row that already carried it.</td></tr>
                 <tr><td>Lat / lon</td><td>Decimal degrees with hemisphere letters.</td></tr>
                 <tr><td>DMS</td><td>Degrees, minutes and seconds.</td></tr>
                 <tr><td>DDM</td><td>Degrees and decimal minutes.</td></tr>
+                <tr><td>MGRS</td><td>The military grid reference, at the resolution the original text carried. It follows the three angular readings rather than opening the table, so the notations that read the same way sit together.</td></tr>
                 <tr><td>USMTF</td><td>The fixed-width compact form, for pasting into an ATO or a USMTF field. The shape follows the resolution: <code>35N079W</code> for a degrees-only coordinate, <code>3510N07901W</code> at whole minutes, <code>400948N1221400W</code> at whole seconds, and <code>331000.0N1183000.0W</code> finer than that. Sized from the <a href="#location-resolution">pair</a> rather than per axis, because it is one shape covering both halves. It never carries <a href="formats.html#location-usmtf">confidence digits</a>: those say how well a position is known, which a derived reading cannot claim.</td></tr>
                 <tr><td>UTM</td><td>Zone, band, easting and northing, rounded to the same resolution.</td></tr>
+                <tr><td>Region</td><td>Which country the position falls in, looked up in the bundled basemap. See <a href="#location-region">what it is and is not</a>. Omitted where there is no answer, such as open ocean.</td></tr>
                 <tr><td>Resolution</td><td>How finely the original text was written, in meters. For a grid reference, how big the square is.</td></tr>
                 <tr><td>Confidence</td><td>Only for a <a href="formats.html#location-usmtf">verified USMTF coordinate</a>, which states one.</td></tr>
                 <tr><td>Datum</td><td>Always WGS 84.</td></tr>
@@ -138,6 +141,128 @@
                 <tr><td>Normalized</td><td>The canonical form, shown only when it differs from what the author typed.</td></tr>
             </tbody>
         </table>
+
+        <h3 id="location-map">The map</h3>
+
+        <p>
+            The panel draws a small world map above the table, centred on the coordinate,
+            and <strong>Open larger</strong> beneath it opens a page that is nothing but
+            the map. The <a href="#page">standalone page</a> the mobile app opens draws the
+            same map above the same table. All three are the same map: drag to pan, scroll
+            or pinch to zoom, the <code>+</code> and <code>&minus;</code> buttons in the
+            corner, the arrow and <code>+</code> / <code>&minus;</code> keys once the map
+            has focus, and <strong>Reset view</strong> to return to the opening centre and
+            zoom.
+        </p>
+
+        <p>
+            Everything the map needs is bundled with the plugin and served from your own
+            Mattermost, so it works with no network at all: no tile service, no map API,
+            nothing fetched from outside. This is the one part of the plugin designed
+            first for disconnected and air-gapped installs rather than adapted to them.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">The standalone page needs JavaScript.</p>
+            <p>
+                The sidebar, the <a href="#page">standalone page</a> and the map page all
+                run the same code, which is what keeps them from disagreeing about a
+                coordinate. The readings on the standalone page are worked out on the
+                server and delivered with the page, so nothing waits on a second request,
+                but the page draws nothing until its script has loaded.
+            </p>
+        </div>
+
+        <div class="alert alert-info">
+            <p class="alert-title">The map needs WebGL2.</p>
+            <p>
+                Drawing happens in the browser, which on a hardened or virtualised desktop
+                with WebGL disabled means no map. The panel and the page both say so in
+                place of the map, and <strong>every reading in the table still renders</strong>:
+                the coordinate, the conversions and the
+                <a href="#location-region">Region</a> row are worked out on the server and
+                do not depend on it.
+            </p>
+        </div>
+
+        <p>
+            The basemap is Natural Earth at 1:110 million. That is coarse on purpose. It
+            answers <em>which part of the world is this</em> and it is not a navigation
+            chart: coastlines are generalised by roughly a kilometre, and there are no
+            roads, no towns and no labels.
+        </p>
+
+        <h4>The square around the pin</h4>
+
+        <p>
+            A coordinate written to whole degrees is drawn with a rectangle around it, and
+            one written to a metre is drawn as a plain dot. The rectangle is the area the
+            original text actually names, so a coarse coordinate looks coarse. Without it
+            <code>35N079W</code>, which names a square about 111 km across, would be
+            indistinguishable from a ten-figure grid reference that names a square one
+            metre across.
+        </p>
+
+        <p>
+            It is drawn at the size of the square, not twice it, and each half of the
+            coordinate uses its own resolution, so a position written finely in latitude
+            and coarsely in longitude is drawn as the tall thin rectangle it is. Below a
+            few pixels the rectangle is too small to see and only the dot is drawn, because
+            a rectangle smaller than a pixel is not information. The
+            <a href="#location-resolution">Resolution</a> row carries the figure in either
+            case.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">It is not a range ring.</p>
+            <p>
+                The shape around the pin says how precisely the coordinate was written. It
+                is not a weapons envelope, not a communications range, not a search radius
+                and not a GPS accuracy estimate. It is drawn as a rectangle rather than a
+                circle partly for that reason, and partly because a grid reference names a
+                square.
+            </p>
+        </div>
+
+        <h4>Positions the map cannot show</h4>
+
+        <p>
+            The projection the map uses runs out at about 85 degrees north and south. A
+            coordinate beyond that is a perfectly good position and every reading still
+            renders, but the map is left out and a line says so rather than drawing a pin
+            up to 550 km from where the coordinate actually is. Coordinates either side of
+            the 180th meridian are drawn correctly, with land on both sides.
+        </p>
+
+        <h3 id="location-region">The Region row</h3>
+
+        <p>
+            The Region row names the country a position falls in, worked out from the same
+            bundled basemap the map is drawn from. It is there because an unlabelled
+            coastline at this size will tell you Italy and will not tell you Chad from
+            Niger, and because it still answers the question when the map is not shown at
+            all.
+        </p>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">This is a basemap lookup, not an authority on borders.</p>
+            <p>
+                The row cites its source in the value itself, as
+                <code>United States of America (Natural Earth 110m)</code>, because that is
+                what it is: a point tested against a public-domain dataset whose borders are
+                generalised by roughly a kilometre. Near any border, and anywhere a border
+                is disputed, treat it as a hint about which part of the world you are
+                looking at and nothing more. It is not a determination of sovereignty and
+                must not be used as one.
+            </p>
+            <p>
+                Where the dataset gives more than one answer, the plugin does not choose
+                between them. It names the administering entity rather than a claimed
+                sovereign, and it is deliberately silent rather than approximate: a
+                position in no country at all, such as open ocean, omits the row rather
+                than naming the nearest land.
+            </p>
+        </div>
 
         <h3 id="location-resolution">Resolution is not accuracy</h3>
 

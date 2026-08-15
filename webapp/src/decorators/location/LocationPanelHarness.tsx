@@ -29,6 +29,9 @@ const FIRST: Conversion = {
     dms: '34°03\'22.0"N 118°15\'00.0"W',
     ddm: '34°03.366\'N 118°15.000\'W',
     usmtf: '340322.0N1181500.0W',
+    region: 'United States of America (Natural Earth 110m)',
+    lat: 34.0561,
+    lon: -118.25,
 };
 
 /**
@@ -43,6 +46,9 @@ const SECOND: Conversion = {
     dms: '38°53\'22.2"N 77°02\'07.1"W',
     ddm: '38°53.370\'N 77°02.118\'W',
     usmtf: '385322.2N0770207.1W',
+    region: 'United States of America (Natural Earth 110m)',
+    lat: 38.8895,
+    lon: -77.0353,
 };
 
 let settle: (() => void) | null = null;
@@ -71,9 +77,22 @@ let lastRequest = '';
  * stale-frame test could pass for the wrong reason: one fixture for two
  * coordinates cannot tell a stale row from a fresh one.
  */
+const OCEAN: Conversion = {
+    mgrs: '25P CN 00000 00000',
+    utm: '25P 500000E 3319000N',
+    decimal: '30.0000° N, 40.0000° W',
+    dms: '30\u00b000\'00.0"N 40\u00b000\'00.0"W',
+    ddm: '30\u00b000.000\'N 40\u00b000.000\'W',
+    usmtf: '300000.0N0400000.0W',
+    region: '',
+    lat: 30,
+    lon: -40,
+};
+
 const ANSWERS: Record<string, Conversion> = {
     '34.0561,-118.2500': FIRST,
     '18SUJ2347806483': SECOND,
+    '30.0000,-40.0000': OCEAN,
 };
 
 /*

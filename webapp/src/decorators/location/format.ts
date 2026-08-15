@@ -295,6 +295,32 @@ function len(s: string | undefined): number {
  * That is the coarser half, which is what the resolution row quotes. Not what a
  * value row renders at: see `axisResolutionDegrees`.
  */
+/**
+ * The cell a token names, as a lat/lon rectangle.
+ *
+ * A degree of longitude is DEGREE_METERS * cos(lat), not DEGREE_METERS, so a
+ * grid square needs the latitude to size its width. Without it the drawn
+ * rectangle is narrow by 1/cos(lat): 18% at 35 north and half its true width at
+ * 60, and the panel then disagrees with the standalone page, which gets this
+ * right. Mirrors CellDegrees in mapsvg.go.
+ */
+export function cellDegrees(
+    c: Coordinate | null, format: LocationFormat, canonical: string, lat: number | null,
+): [number, number] {
+    if (c) {
+        return [axisResolutionDegrees(c, c.lat), axisResolutionDegrees(c, c.lon)];
+    }
+
+    const meters = gridResolutionMeters(format, canonical);
+    if (meters === null || lat === null) {
+        return [0, 0];
+    }
+
+    const cos = Math.max(Math.cos((lat * Math.PI) / 180), 1e-6);
+
+    return [meters / DEGREE_METERS, meters / (DEGREE_METERS * cos)];
+}
+
 export function resolutionDegrees(c: Coordinate): number {
     return resolutionAt(c.format, c.digits);
 }
@@ -305,7 +331,7 @@ export function resolutionDegrees(c: Coordinate): number {
  * The grammars with no fraction at all fall through to the pair's figure, which
  * for them is the same number. Mirrors `axisResolutionDegrees` in `format.go`.
  */
-function axisResolutionDegrees(c: Coordinate, a: Axis): number {
+export function axisResolutionDegrees(c: Coordinate, a: Axis): number {
     switch (c.format) {
     case 'dd':
     case 'ddh':
@@ -408,6 +434,25 @@ export function gridText(format: LocationFormat, canonical: string): string {
  *
  * Must match `ResolutionText` in `format.go`.
  */
+/**
+ * The size of a grid square in metres, or null when the token is not one.
+ *
+ * The numeric half of gridResolutionText, so the map can size a cell without
+ * parsing prose back out of a row.
+ */
+export function gridResolutionMeters(format: LocationFormat, canonical: string): number | null {
+    if (format === 'utm') {
+        return 1;
+    }
+
+    const m = CANONICAL.mgrs.exec(canonical);
+    if (!m) {
+        return null;
+    }
+
+    return 100000 / Math.pow(10, m[5].length / 2);
+}
+
 export function gridResolutionText(format: LocationFormat, canonical: string): string {
     if (format === 'utm') {
         // Exact rather than hedged: a UTM easting is written to the meter.

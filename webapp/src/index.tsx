@@ -11,6 +11,23 @@ import {clearSelection, initRhs, toggleRhs} from './decorators/selection';
 import {installDecoratorStyles} from './decorators/styles';
 import {DecoratorTooltip} from './decorators/Tooltip';
 import {HeaderIcon} from './HeaderIcon';
+import {staticBaseUrl} from './plugin_url';
+
+/*
+ * Where the browser fetches this bundle's lazy chunks from.
+ *
+ * Assigned here and nowhere else. It has to run before the first dynamic
+ * import, and `plugin_url.ts` is imported by `convert.ts`, which the component
+ * tests mount through Vite as strict-mode ESM, where a module-scope assignment
+ * to this webpack-only free variable is a ReferenceError.
+ */
+/* eslint-disable no-underscore-dangle, @typescript-eslint/naming-convention, @typescript-eslint/no-unused-vars */
+declare let __webpack_public_path__: string;
+declare const __webpack_require__: unknown;
+if (typeof __webpack_require__ !== 'undefined') {
+    __webpack_public_path__ = staticBaseUrl();
+}
+/* eslint-enable no-underscore-dangle, @typescript-eslint/naming-convention, @typescript-eslint/no-unused-vars */
 
 export default class Plugin {
     private disposers: Array<() => void> = [];

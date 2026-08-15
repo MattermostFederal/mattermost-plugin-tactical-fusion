@@ -23,6 +23,7 @@ const (
 	RowDDM        RowID = "ddm"
 	RowUSMTF      RowID = "usmtf"
 	RowUTM        RowID = "utm"
+	RowRegion     RowID = "region"
 	RowResolution RowID = "resolution"
 	RowConfidence RowID = "confidence"
 	RowDatum      RowID = "datum"
@@ -52,12 +53,13 @@ type Row struct {
 
 // Rows is every row, in render order.
 var Rows = []Row{
-	{RowMGRS, "MGRS", true, func(l Location, _ string) string { return l.MGRSText() }},
 	{RowDecimal, "Lat / lon", true, func(l Location, _ string) string { return l.DecimalText() }},
 	{RowDMS, "DMS", true, func(l Location, _ string) string { return l.DMSText() }},
 	{RowDDM, "DDM", true, func(l Location, _ string) string { return l.DDMText() }},
+	{RowMGRS, "MGRS", true, func(l Location, _ string) string { return l.MGRSText() }},
 	{RowUSMTF, "USMTF", true, func(l Location, _ string) string { return l.USMTFText() }},
 	{RowUTM, "UTM", true, func(l Location, _ string) string { return l.UTMText() }},
+	{RowRegion, "Region", false, func(l Location, _ string) string { return l.RegionText() }},
 	{RowResolution, "Resolution", false, func(l Location, _ string) string { return l.ResolutionText() }},
 	{RowConfidence, "Confidence", false, func(l Location, _ string) string { return l.ConfidenceText() }},
 	{RowDatum, "Datum", false, func(Location, string) string { return "WGS 84" }},
@@ -94,5 +96,6 @@ var rowByID = func() map[RowID]bool {
 	return m
 }()
 
-// KnownRow reports whether an id names a row this build renders.
-func KnownRow(id RowID) bool { return rowByID[id] }
+const SectionMap RowID = "map"
+
+func KnownRow(id RowID) bool { return rowByID[id] || id == SectionMap }

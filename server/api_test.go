@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -464,14 +465,25 @@ func TestConvertReturnsEveryDerivedReading(t *testing.T) {
 		DMS:     `38°53'22.21"N 77°02'07.06"W`,
 		DDM:     "38°53.3701'N 77°02.1177'W",
 		USMTF:   "385322.21N0770207.06W",
+		Region:  "United States of America (Natural Earth 110m)",
+		Lat:     got.Lat,
+		Lon:     got.Lon,
 	}
 	if got != want {
 		t.Fatalf("conversion =\n%+v\nwant\n%+v", got, want)
 	}
 
+	// The position is compared separately, and to a tolerance. Pinning a
+	// seventeen-digit float in a golden struct breaks on any change to the
+	// projection that is far smaller than the resolution the token carries.
+	const wantLat, wantLon = 38.889502, -77.035295
+	if math.Abs(got.Lat-wantLat) > 1e-5 || math.Abs(got.Lon-wantLon) > 1e-5 {
+		t.Errorf("position = %v, %v, want %v, %v within 1e-5", got.Lat, got.Lon, wantLat, wantLon)
+	}
+
 	// Every field named, so a renamed JSON tag fails here rather than silently
 	// leaving a row blank in the panel.
-	for _, field := range []string{"mgrs", "utm", "decimal", "dms", "ddm", "usmtf"} {
+	for _, field := range []string{"mgrs", "utm", "decimal", "dms", "ddm", "usmtf", "region", "lat", "lon"} {
 		if !strings.Contains(rec.Body.String(), `"`+field+`":`) {
 			t.Errorf("body has no %q field: %s", field, rec.Body.String())
 		}

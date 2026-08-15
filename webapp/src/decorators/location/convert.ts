@@ -22,6 +22,10 @@ export interface Conversion {
     dms: string;
     ddm: string;
     usmtf: string;
+    region: string;
+
+    lat: number;
+    lon: number;
 }
 
 /**
@@ -75,7 +79,45 @@ async function fetchConversion(
         throw new Error(`The server returned ${response.status}.`);
     }
 
-    return response.json() as Promise<Conversion>;
+    return asConversion(await response.json());
+}
+
+/**
+ * Turns a decoded body into a Conversion, or refuses it.
+ *
+ * `response.ok` is any 2xx, and a captive portal or a transparent proxy, which
+ * is the ordinary DDIL failure, answers 200 with something else entirely. An
+ * unchecked cast would leave `lat` undefined and put the pin at NaN.
+ *
+ * The position test is `Number.isFinite`, never a truthiness check: 0, 0 is a
+ * real position, and dropping the equator and the prime meridian is a bug this
+ * plugin deliberately did not inherit.
+ */
+export function _asConversionForTesting(body: unknown): Conversion { // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
+    return asConversion(body);
+}
+
+export function asConversion(body: unknown): Conversion {
+    if (typeof body !== 'object' || body === null) {
+        throw new Error('The server did not return a conversion.');
+    }
+
+    const value = body as Record<string, unknown>;
+    for (const key of ['mgrs', 'utm', 'decimal', 'dms', 'ddm', 'usmtf', 'region']) {
+        if (typeof value[key] !== 'string') {
+            throw new Error('The server did not return a conversion.');
+        }
+    }
+
+    const {lat, lon} = value;
+    if (typeof lat !== 'number' || !Number.isFinite(lat) || Math.abs(lat) > 90) {
+        throw new Error('The server did not return a position.');
+    }
+    if (typeof lon !== 'number' || !Number.isFinite(lon) || Math.abs(lon) > 180) {
+        throw new Error('The server did not return a position.');
+    }
+
+    return value as unknown as Conversion;
 }
 
 /**

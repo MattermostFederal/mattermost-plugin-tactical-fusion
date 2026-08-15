@@ -400,6 +400,11 @@ func TestValidateHiddenRows(t *testing.T) {
 	}{
 		{name: "nothing hidden is the default", rows: nil, want: []string{}},
 		{name: "a row this build renders", rows: []string{"ddm"}, want: []string{"ddm"}},
+
+		// The map is hideable and is NOT a row, so it travels by its own
+		// constant. Revert the widening in KnownRow and every other test here
+		// stays green while a reader can never hide the map.
+		{name: "the map, which is hideable but is not a row", rows: []string{"map"}, want: []string{"map"}},
 		{
 			name: "duplicates collapse, because they were never two rows",
 			rows: []string{"ddm", "ddm", "datum"}, want: []string{"ddm", "datum"},

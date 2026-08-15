@@ -1,7 +1,7 @@
 import React, {useEffect, useState} from 'react';
 
-import {ROWS} from './rows';
-import type {RowID} from './rows';
+import {MAP_ID, ROWS} from './rows';
+import type {HideableID} from './rows';
 
 import LinkButton from '../../components/LinkButton';
 import {resetPreferencesSection, savePreferencesSection, usePreferences} from '../../preferences/store';
@@ -78,7 +78,7 @@ interface Props {
 const Customize: React.FC<Props> = ({onClose}) => {
     const {preferences, loading, error: loadError} = usePreferences();
 
-    const [hidden, setHidden] = useState<RowID[]>(() => [...preferences.location.hiddenRows]);
+    const [hidden, setHidden] = useState<HideableID[]>(() => [...preferences.location.hiddenRows]);
     const [busy, setBusy] = useState(false);
     const [status, setStatus] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -107,7 +107,7 @@ const Customize: React.FC<Props> = ({onClose}) => {
         setHidden([...preferences.location.hiddenRows]);
     }, [preferences.location.hiddenRows, touched]);
 
-    const toggle = (id: RowID) => {
+    const toggle = (id: HideableID) => {
         setStatus(null);
         setError(null);
         setTouched(true);
@@ -152,7 +152,12 @@ const Customize: React.FC<Props> = ({onClose}) => {
         }
     };
 
-    const shown = ROWS.length - hidden.length;
+    // Counted over what this editor actually offers, not over ROWS alone. The
+    // map is hideable and is not a row, so subtracting the hidden list from
+    // ROWS.length went negative once everything was hidden and silenced the
+    // warning in exactly the case it exists for.
+    const offered: HideableID[] = [MAP_ID, ...ROWS.map((row) => row.id)];
+    const shown = offered.filter((id) => !hidden.includes(id)).length;
 
     return (
         <div style={styles.root}>
@@ -179,6 +184,18 @@ const Customize: React.FC<Props> = ({onClose}) => {
                     role='group'
                     aria-labelledby='tf-location-rows-legend'
                 >
+                    <label style={styles.row}>
+                        <input
+                            type='checkbox'
+                            checked={!hidden.includes(MAP_ID)}
+                            disabled={busy || loading}
+                            onChange={() => toggle(MAP_ID)}
+                        />
+                        <span style={styles.label}>
+                            {'Map'}
+                            <span style={styles.rowHint}>{'A small world map showing where the coordinate is'}</span>
+                        </span>
+                    </label>
                     {ROWS.map((row) => (
                         <label
                             key={row.id}

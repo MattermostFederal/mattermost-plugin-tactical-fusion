@@ -8,8 +8,11 @@
 
 ## Coding Conventions
 - Follow existing patterns in the codebase
-- Match the style of surrounding code
-- Use meaningful variable and function names
+- Match the style of surrounding code, except its commenting: do not add prose
+  comments, and remove the ones you encounter in code you touch. Tool and
+  compiler directives stay. See `~/CLAUDE.md` and the root `CLAUDE.md`
+- Use meaningful variable and function names, since they carry what a comment
+  would have
 - Keep functions focused and small
 
 ## Testing

@@ -2,20 +2,6 @@ package location
 
 import "net/url"
 
-// Conversion is the rows the panel cannot work out for itself, already
-// rendered.
-//
-// Exactly those rows and no others. The webapp has its own renderer in
-// format.ts, pinned against format.go by paired fixtures, and it uses it for
-// every textual grammar; what it does not have is a projection. So the two grid
-// rows are here because they need one, and the three coordinate rows are here
-// because a grid token has no Coordinate for format.ts to render from and its
-// resolution is linear rather than angular.
-//
-// Everything else a panel shows, it computes: the resolution of a grid token
-// from its digit count, the confidence digits from a verified USMTF token, the
-// author's text from the link. Sending those too would put fields on the wire
-// that nothing reads, which is how a payload starts drifting from its consumer.
 type Conversion struct {
 	MGRS string `json:"mgrs"`
 	UTM  string `json:"utm"`
@@ -24,6 +10,10 @@ type Conversion struct {
 	DMS     string `json:"dms"`
 	DDM     string `json:"ddm"`
 	USMTF   string `json:"usmtf"`
+	Region  string `json:"region"`
+
+	Lat float64 `json:"lat"`
+	Lon float64 `json:"lon"`
 }
 
 // Convert derives every reading of a coordinate from its format and canonical
@@ -70,7 +60,8 @@ func Convert(f Format, canonical, raw string) (Conversion, bool) {
 	// required this same computation to succeed before validateParams accepted
 	// the token, but the alternative if it ever changes is a panel rendering
 	// blanks it would read as "outside the grid".
-	if _, _, ok := loc.Point(); !ok {
+	lat, lon, ok := loc.Point()
+	if !ok {
 		return Conversion{}, false
 	}
 
@@ -81,5 +72,8 @@ func Convert(f Format, canonical, raw string) (Conversion, bool) {
 		DMS:     loc.DMSText(),
 		DDM:     loc.DDMText(),
 		USMTF:   loc.USMTFText(),
+		Region:  loc.RegionText(),
+		Lat:     lat,
+		Lon:     lon,
 	}, true
 }

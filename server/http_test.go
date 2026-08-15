@@ -165,3 +165,32 @@ func TestServeHTTPInvalidParamsAreNotCached(t *testing.T) {
 	}
 	assertCode(t, rec.Body.String(), errcode.DTGPageParamsInvalid)
 }
+
+// The map page is a sibling of /decorate, not a mode of it, and it is public on
+// the same terms: the clients it exists for have no session.
+func TestMapRouteIsPublicAndServesTheMap(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	req := httptest.NewRequest(http.MethodGet, "/map?f=mgrs&v=18SUJ2347806483", nil)
+	rec := httptest.NewRecorder()
+	p.ServeHTTP(&plugin.Context{}, rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 without a session (%s)", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `data-mode="map"`) {
+		t.Fatal("the map route served no map")
+	}
+}
+
+func TestMapRouteRejectsANonGet(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	req := httptest.NewRequest(http.MethodPost, "/map?f=mgrs&v=18SUJ2347806483", nil)
+	rec := httptest.NewRecorder()
+	p.ServeHTTP(&plugin.Context{}, rec, req)
+
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status = %d, want 405", rec.Code)
+	}
+}

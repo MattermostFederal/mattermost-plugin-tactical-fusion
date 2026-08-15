@@ -22,7 +22,8 @@ The repo ships the decorator framework and two decorators, DTG and Location. The
 - `webapp/` - TypeScript/React webapp. Entry point is `src/index.tsx`. The `Plugin` class's `initialize()` method receives a `PluginRegistry` and Redux `Store` and is where components and hooks are registered.
   - `src/decorators/` - the webapp half of the framework: registry, click handler, styles, selection store, theme sniffing, and the shared `Tooltip`.
   - `src/decorators/dtg/` - the DTG panel, hover, title, countdown, zone catalog and preference editor.
-  - `src/decorators/location/` - the location panel, the copy buttons, `convert.ts` (the conversion client and its degrade-versus-refuse split), and `format.ts`, which slices a canonical token and renders it. No grammar and no projection live there.
+  - `src/decorators/location/` - `LocationReadings.tsx` (the map and the table, with no opinion about where its data came from, rendered by both the sidebar and the pages), `LocationPanel.tsx` (the sidebar's environment around it), the copy buttons, `convert.ts` (the conversion client and its degrade-versus-refuse split), and `format.ts`, which slices a canonical token and renders it. No grammar and no projection live there.
+  - `src/page/` - the standalone pages' entry point, built by a second webpack configuration into `public/app/page.js`. It renders the same components the sidebar does; see Mapping, "The page bundle".
   - `src/components/rhs/` - `RhsView` and `RhsTitle`, which look the panel up by decorator type.
   - `src/preferences/` - the wire types and the module-state cache in front of `/api/v1/preferences`.
   - `src/HeaderIcon.tsx` - the channel header button, registered in `index.tsx`. It clears the selection and toggles the sidebar, so it always lands on the empty state, which is also the only way back from a decorator panel. The mark is `assets/icon.svg` without its plate, and `server/icon_test.go` asserts the two keep the same pin color.
@@ -600,10 +601,10 @@ gap while rewriting a range is corruption.
 ### Rendering
 
 **Neither surface has a lead line.** The panel and the page both open straight
-onto the table, whose first row is MGRS. There used to be a large line above it
-repeating the grid reference, three lines above the labeled row that already
-carried it with a copy button beside it, so it said the same thing twice and the
-copy of it that a reader could actually use was the lower one. The page's
+onto the table. There used to be a large line above it repeating the grid
+reference, three lines above the labeled row that already carried it with a copy
+button beside it, so it said the same thing twice and the copy of it that a
+reader could actually use was the lower one. The page's
 `described` class belongs to the DTG page now.
 `TestRenderPageHasNoLeadLineAboveTheTable` and the panel's "shows each reading
 once" hold the two halves together, since this layout is implemented twice in
@@ -628,11 +629,14 @@ the identical magnitude, so it is fixed the identical way: `Location.Digits()`
 telling the truth twice rather than contradicting itself, and `Digits()` must
 reach nothing that writes a value out.
 
-The page is Go and the panel is TypeScript, so they cannot share a render
-function. `renderFixtures` in `server/decorators/location/format_test.go` and the
-matching table in `webapp/src/decorators/location/format.spec.ts` are the same
-inputs and the same expected strings. **Change one and change the other.** Two
-of those rows are mixed-precision pairs and exist only to pin the split above.
+Both implementations are still live and still have to agree, though not for the
+reason they used to. Every surface renders through `format.ts` now, but Go
+renders the same values into the `Conversion` payload, which is where a grid
+token's readings come from on every surface. So `renderFixtures` in
+`server/decorators/location/format_test.go` and the matching table in
+`webapp/src/decorators/location/format.spec.ts` are the same inputs and the same
+expected strings. **Change one and change the other.** Two of those rows are
+mixed-precision pairs and exist only to pin the split above.
 
 The webapp also keeps its own copy of the **canonical shapes**, in `CANONICAL`
 in `format.ts`, because `fromParams` has to validate the token a link carries
@@ -811,6 +815,414 @@ are deliberately not inherited, each with a test here: no range validation at al
 truthiness check that drops the equator and the prime meridian, and lon-first
 axis order in one corner of the repo and lat-first everywhere else.
 
+
+## Mapping
+
+The location panel and both server-rendered location pages draw a world map,
+and the Region row names the country a position falls in. Everything is bundled:
+no tile service, no map API, nothing fetched from outside the plugin.
+
+**All three surfaces are the same code.** Not just one map library: one
+implementation of the readings table, the resolution rules, the copy buttons and
+the map. `LocationReadings` is the table and the map together, with no opinion
+about where its data came from; `LocationPanel` wraps it in the sidebar's
+environment and the page bundle wraps it in the page's. They did not: the two Go
+pages rendered their own table and their own hand-written SVG map, which meant
+two implementations of the projection, two of the palette, two of the resolution
+rule, two sets of copy buttons and two answers to "how far out is far enough".
+
+The cost of consolidating is stated in **The page content policy** and **What
+the pages gave up** below, and neither is small.
+
+### The basemap is vector, and generated
+
+`build/mapdata/` reads Natural Earth 110m GeoJSON from `build/mapdata/source/`
+and writes two things from it: `public/map/world.geo.json`, which is what every
+map actually draws, and `server/decorators/location/mapdata/admin.go`, the
+admin-0 polygons at source precision, which is what the Region row is computed
+from. It also writes the basemap's digest into the webapp.
+
+There used to be a third, `paths.go`, holding land, lakes and boundary lines
+pre-projected to the Web Mercator unit square, for the Go SVG renderer. It went
+with that renderer: **two representations of one basemap is two things that can
+disagree**, and the browser one is the one anybody would notice was wrong.
+
+Raster tiles were the original proposal and lost on three counts, only one of
+which is size. A raster tile has one lightness baked in, so matching the
+reader's theme needs two tile sets, and the palette here has to carry a measured
+contrast ratio in both. Past its maximum a raster basemap goes blurry, which is
+the map equivalent of rendering `35°00'00"N` for a token that said `35°N`. And
+tiles are a fetch per tile, where one 168 KB vector file is one cacheable
+response for every coordinate a reader ever opens.
+
+`admin.go` is **committed**, unlike `build/manifest/`'s output, which is
+gitignored and regenerated by `make apply`. A clean checkout must build and an
+air-gapped `go test` must run without anyone having run a generator first. So is
+`world.geo.json`, for the same reason plus one more: it ships.
+
+`admin.go` is encoded as **delta fixed-point base-36 strings parsed at package
+init**, not as Go literal slices. That is 116 KB compiling in about a tenth of a
+second; the same data as literals is a known Go compile-time problem.
+`mapdata.go` holds the decoder and is hand-written.
+
+`make map-data` regenerates. The check is `make map-data-check`, which is
+`git diff --exit-code`, **not** an idempotence check: a generator edited without
+regenerating is perfectly idempotent and fully drifted. It runs as a prerequisite
+of `make test`, because a guard nothing invokes is not a guard, and this
+particular drift is invisible everywhere a developer looks (see Build and test).
+
+The generator is **standard-library only**. There is one `go.mod` at the repo
+root, so `build/mapdata/` is in the shipping module and `cyclonedx-gomod`
+enumerates it; a shapefile reader pulled in here would sit on the Grype gate
+forever despite never reaching a released binary.
+
+### The page content policy
+
+`Page.Capability` is how much of `default-src 'none'` a page gives back.
+`PageStatic`, the zero value, gives back nothing and is what every page should
+want. `PageMapping` is the only other one, and it exists for one thing: the map
+pages run MapLibre, which is a real script file with a worker beside it, fetches
+the basemap, and draws through a canvas.
+
+```
+PageStatic   default-src 'none'; style-src 'unsafe-inline'; script-src 'none'|'sha256-...'
+PageMapping  ... plus 'self' on script-src and style-src,
+             worker-src 'self'; img-src 'self' data: blob:; connect-src 'self'
+```
+
+**This is a real reduction in a defence, on a public route that echoes author
+text, and it was taken deliberately.** Under `PageStatic` an escaping mistake in
+the author's own text was inert markup: it could not execute, because the only
+script allowed was the one named by digest, and it could not exfiltrate, because
+`img-src` and `connect-src` were **absent** and their absence is what blocks
+`<image>`, `<feImage>` and CSS `url()`. Under `PageMapping` an injected
+`<script src>` to anything else on this origin runs, and an injected image URL
+is a channel. **Escaping is now the only defence**, so a map page may never
+interpolate a request value into script or markup without it.
+
+What did not change: the error page and every DTG page stay on `PageStatic`, and
+`font-src` stays absent because nothing loads a font.
+`TestPageCapabilityDecidesTheWholePolicy` pins both policies as whole strings,
+so widening either is a visible diff rather than a directive appearing in a
+builder.
+
+The digest is still kept **beside** `'self'` rather than replaced by it, for a
+page that has an inline script. No location page does any more, so
+`script-src 'self'` is the whole story there; `'unsafe-inline'` stays absent,
+which is what keeps injected markup from executing whatever it is spelled as.
+
+`ScriptSrc` is refused unless the page declared `PageMapping`, so a page cannot
+name a script its own policy forbids, and it is refused unless it is
+**relative**. Absolute would be a same-origin claim nothing checked, and
+relative is also what makes a subpath install work: the page renderers are pure
+functions of a query string and cannot see `SiteURL`, so `/map` writes
+`./public/app/page.js` and `/decorate/<type>`, one level down, writes
+`../public/app/page.js`. A test asserts the two differ by exactly one level,
+because getting it wrong is silent: the page renders its shell and the bundle
+404s, so the reader gets an empty document.
+
+### The page bundle
+
+`webapp/src/page/` is the pages' entry point, built by a **second webpack
+configuration** into `public/app/page.js`. Two configurations rather than two
+entries, because two things have to differ at once: the output directory, and
+`externals`. Mattermost hands the plugin bundle React and Redux as globals, and
+a page served from `/decorate` or `/map` has no Mattermost around it, so this
+build carries its own React. That is what the second copy costs, and it is the
+whole reason the pages could not simply import the panel before.
+
+`publicPath` is `'auto'`, so lazy chunks and the MapLibre worker resolve against
+the script's own URL. The page renderers are pure functions of a query string
+and cannot see `SiteURL`, so deriving the base from where the file actually is
+beats anything they could pass in. `applyBasename` does the same job for
+everything that goes through `pluginBaseUrl`, reading the subpath back out of
+the page's own address: that one assignment is what makes the basemap fetch, the
+documentation link and the link between the two pages work on a subpath install
+without a single URL being passed in from Go.
+
+**The shell carries the parameters and the conversion, and nothing else.**
+`renderRoot` writes `data-f`, `data-v`, `data-r` and `data-conversion` onto one
+empty div. The conversion goes through `Convert`, the same function
+`/api/v1/convert` calls, which is what stops a page and the sidebar disagreeing
+about a coordinate: a public page has no session and cannot call that route, so
+it is handed the answer instead of a second route being opened for it.
+
+**A disagreement about the grammar degrades rather than blanking the page.**
+`fromParams` runs on the server's own parameters, and the webapp keeps only a
+copy of the canonical shapes, so it can refuse a token Go issued. That already
+happened once, when the band class was widened in Go and not here. On the
+sidebar the click handler simply stood aside and the browser opened the page;
+on a page there is nothing to fall through to. So a refusal now logs and falls
+back to a payload with no local coordinate, where every row comes from the
+conversion the server already worked out.
+
+**One palette, in `mapColors()`, and nothing else has a copy.** It used to be
+declared again as `--map-*` custom properties in `pageStyles` for the Go
+renderer. What `pageStyles` declares now is **Mattermost's own** theme
+variables, `--center-channel-color`, `--center-channel-bg` and `--link-color`,
+in both themes, which is what lets the panel's components style themselves
+unchanged on a page that has no Mattermost around it. `mapColors` sniffs
+`--center-channel-bg` for lightness, so the map follows `_theme` for free.
+`TestMapPaletteCarriesItsContrast` reads `maplibre.ts` and holds the measured
+pairs to WCAG 1.4.11's 3:1 for non-text; the first palette was picked by eye and
+sat at 1.46:1 in dark and 1.28:1 in light, which filling a window read as a
+near-uniform slab with a dot on it.
+
+**The pages have no inline script at all.** The digest that used to pin the copy
+controls is gone because there is nothing left to pin, and the property is
+stronger for it: `'unsafe-inline'` is absent, so an escaping mistake in the
+author's own text cannot become a running script however it is spelled.
+
+MapLibre is no longer vendored. It was copied into `public/map/vendor/` for the
+hand-written page module, and that whole directory, the `map-vendor` target and
+the two tests guarding the copy went with it: webpack resolves it from
+`node_modules` for both builds now. It still ships twice, once per bundle, but
+from one source rather than one source and one copy.
+
+### What the pages gave up
+
+**The readings no longer render without JavaScript.** They were server HTML, so
+they appeared instantly and survived a failed script; now the page is a shell
+until the bundle runs. That is a real regression on the page the mobile app
+opens over a DDIL link, and it was accepted deliberately in exchange for one
+implementation of the table.
+
+What softens it: the shell is about 4 KB and carries every value already, so
+nothing waits on a second request; the bundle is one cacheable response for
+every coordinate a reader ever opens; and the readings that used to be
+Go-rendered are still Go-*computed*, in the `Conversion` the shell carries.
+
+**WebGL2 is required to see a map**, on every surface including the standalone
+page, where the SVG renderer always drew one. Every reading still renders, and
+the note says which of the two failures it is: reporting a load failure as a
+missing capability sends the reader, and whoever they report it to, looking at
+the wrong thing.
+
+### What the map states, and what it does not
+
+**A pin is never drawn at a position the projection cannot represent.** Web
+Mercator caps at ±85.0511287798066 while the grammars validate latitude to 90,
+so `89.9000, 12.0000` is a decoratable token today and clamping it would put the
+pin 550 km from what the author wrote. Past the limit the map is omitted and a
+line says so. `mapNorthOfMercator` and `mapSouthOfMercator` are those two
+strings.
+
+**The cell is always drawn, and its SIZE carries the resolution.** A coordinate
+is drawn as a rectangle the size of the token's own resolution, plus a dot. Two
+things this gets right that a radius does not: `resolutionAt` returns a cell
+**edge**, so a radius equal to it draws a footprint twice the size of the square
+the token names; and a ring around a point reads as a range ring to this
+audience, and contradicts the page's own note that a grid reference names a
+square. Each axis uses `axisResolutionDegrees`, so a mixed-precision pair like
+`34.0561N,118.2W` is not squared off to its coarser half. For MGRS and UTM the
+rectangle **bounds** the grid square rather than being it: an MGRS square is
+axis-aligned in UTM space and rotated by the grid convergence, which is
+invisible at this scale.
+
+There is no minimum size and no threshold below which the cell is dropped. These
+surfaces zoom, so there is no one scale to test against: a metre-wide cell is
+invisible until the reader zooms far enough to see it, which is more honest than
+a number guessing on their behalf.
+
+**Zoom follows a target ground span, not a zoom level**, because Mercator scale
+is 1/cos(lat) and a constant zoom is not a constant answer: the same 320 px is
+about 2,940 km at the equator and about 1,000 km at 70°N. `zoomForSpan` is in
+`span.ts` and every surface calls it. It was briefly written twice, once in Go
+and once for a page module, and neither copy exists now: nothing in Go computes
+map geometry at all, and `mapcell.go` went with it.
+
+**The label is HTML-escaped specifically.** It lands in the container's
+`aria-label`, and `TestMapEscapesAHostileLabel` holds it. Its content is a
+country name from generated data, so nothing from a request reaches it today,
+but the escaping is what makes that a defence rather than an accident.
+
+**No `symbol` layers, and therefore no `glyphs` and no `sprite`.** Those are the
+only two style fields MapLibre resolves as URLs, and an air-gapped install has
+nowhere for them to point. Both copies of the style are asserted against it. A
+future overlay wanting a text label has to solve that first rather than discover
+it in the field.
+
+**WebGL2 is now required to see a map at all**, on every surface including the
+standalone page the mobile app opens, where the SVG renderer always drew one.
+That is the second real cost of consolidating, and it is why the note says which
+of the two failures it is: reporting a load failure as a missing capability
+sends the reader, and whoever they report it to, looking at the wrong thing.
+Every reading in the table still renders, because the conversions and the Region
+row are worked out on the server and do not depend on it.
+
+### The Region row
+
+Derived server-side by point-in-polygon against `mapdata.Countries`, with a
+per-feature bounding box as a prefilter, and served as a **string** over the
+wire, which is what `/api/v1/convert` is for.
+
+It exists because an unlabelled 110m coastline at 300 px identifies Italy and
+does not identify Chad from Niger, and it answers the question with the map
+hidden, with no WebGL, and with the basemap unavailable.
+
+**The field is `ADMIN` from `ne_110m_admin_0_countries`**, the de facto
+administering entity, not `SOVEREIGNT` (the claimed sovereign) and not `NAME`.
+That choice, not the citation, is the sovereignty decision, and it is a policy
+call rather than a technical one. The row renders
+`United States of America (Natural Earth 110m)` so it reads as a basemap lookup
+rather than a determination.
+
+**A position in no polygon omits the row** and never guesses at a nearest
+country. On a shared border the **lowest feature index wins**, and the generator
+sorts by name so that answer cannot change when the source is regenerated.
+Natural Earth splits geometries at the antimeridian, which is why Fiji is three
+polygons; a fixture pins each side.
+
+The 2-decimal rounding used for display **must not reach `admin.go`**. At 1.1 km
+quantization adjacent countries stop sharing edges, so borders develop overlaps
+and gaps, and a gap would then be misread as the intended "no answer".
+
+**The panel renders Region outside `remote()`.** That helper turns any empty
+value into `converting…` or `unavailable`, so routing Region through it would
+render `Region: unavailable` over open ocean while the page omitted the row, and
+"unavailable" reads as an outage rather than as an answer.
+
+### What `Conversion` may carry
+
+Exactly the rows the panel cannot work out for itself. The webapp has its own
+renderer in `format.ts` and uses it for every textual grammar; what it does not
+have is a projection. So the two grid rows are on the wire because they need
+one, the three coordinate rows because a grid token has no `Coordinate` for
+`format.ts` to render from, and Region because the polygons are Go-only.
+
+`Lat` and `Lon` are the one pair of numbers, and they are there because a map
+needs a position rather than a rendering of one: the resolution rule reaches the
+map through the drawn cell, not through digit counts. The webapp refuses a
+non-finite or out-of-range value on arrival (`asConversion`), and it must never
+gate on truthiness, since `0, 0` is a position.
+
+Everything else a panel shows, it computes. Adding a field nothing reads is how
+a payload starts drifting from its consumer, and `webapp_sync_test.go` holds the
+two definitions to the same names, **the same types** and the same order: while
+every field was a string, name agreement implied type agreement, and with
+numbers on the wire a TypeScript `lat: string` against a Go `float64`
+type-checks, ships, and puts the pin at `NaN`.
+
+### The map page
+
+`/map` is a route of its own, a sibling of `/decorate` rather than a mode of it.
+The decorator route answers "what is this token" and every page under it opens
+onto a table; this answers "where is it" and gives the window to one picture,
+which is what a reader following **Open larger** from a 300 px sidebar is asking
+for. It validates through `validateParams`, the same gate, so a link one page
+refuses the other cannot render.
+
+**Both pages are a 4 KB shell now.** They were about 110 KB and 130 KB when the
+basemap was inlined and the table was Go-rendered. The basemap, the bundle and
+the MapLibre chunk are each one cacheable response shared by every coordinate a
+reader opens, instead of a fresh copy of the world inside every page on
+`Cache-Control: private, max-age=300`.
+
+**One set of controls, because there is one map component.** They cannot
+disagree about what the buttons are called: `LocationMap` writes them once, and
+the page passes `fill` to give the window to the picture and omit the "Open
+larger" link that would point at itself. The label is **Reset view**
+everywhere. Zoom is MapLibre's own `NavigationControl` on all three and the
+scale bar sits bottom-right on all three, because bottom-left collides with the
+hint.
+
+### The panel map
+
+The sidebar draws the same coordinate with the same library, which is the one
+dependency this plugin takes on for a feature. It costs about 250 KB gzipped and
+22 packages on the npm SBOM, permanently on the Grype gate.
+
+**Suppression is not an available mitigation for it.** `.grype.yaml` allows
+suppression for a dev-only transitive dependency or one Mattermost externalizes,
+and MapLibre is neither: it ships and it runs in the reader's browser. The
+process for an advisory against it is upgrade or pin.
+
+**The library is dynamically imported**, so it costs nothing until a reader opens
+a coordinate. That is a bytes-over-the-wire property and nothing else: it changes
+neither the SBOM surface nor reachability. Types come in through `import type`,
+which TypeScript erases, so the entry bundle contains no reference to `maplibre`
+at all and the 950 KB chunk stays lazy. Both the style and the map handle are
+typed as MapLibre's own `StyleSpecification` and `Map` rather than cast, so a
+typo in a layer id or a paint property is a compile error rather than a runtime
+failure that presents as a map stuck on "Loading map…".
+
+**Chunks need no new route.** `plugin/environment.go` copies the whole directory
+containing `bundle_path` into Mattermost's static plugin directory and renames
+only `main.js`, so a sibling chunk in `webapp/dist/` is already served at
+`/static/plugins/<id>/`. `plugin.json`, the Makefile and `.gitignore` are all
+untouched; the only change is `chunkFilename` with a contenthash and a validated
+`__webpack_public_path__` set in `index.tsx` and nowhere else. It has to be there
+rather than in `plugin_url.ts`, because the component tests load that import
+graph through Vite as strict-mode ESM, where a module-scope assignment to a
+webpack free variable is a `ReferenceError`.
+
+**The worker is served, not laundered through a blob.** MapLibre builds its
+worker from `URL.createObjectURL` by default, which needs `worker-src blob:` in
+whatever CSP the host serves under. It is emitted as a hashed asset and handed
+to `setWorkerUrl` instead, by `maplibre.ts`, which both builds share. The
+stylesheet is imported in the same module, without which the zoom control's
+glyphs, which are CSS background images, and the control container's corner
+placement are simply absent, leaving invisible focusable elements.
+
+**One map, created once and moved.** Rebuilding per coordinate meant a fresh
+WebGL context and a re-tessellation of the whole basemap on every click, against
+the browser's cap of roughly sixteen live contexts, and the panel stays mounted
+across a change of selection so those clicks arrive in a run. Creation and
+movement are separate effects; the position is read through a ref at apply time,
+so the asynchronous `load` handler positions the map at whatever the reader has
+selected now rather than at whatever was selected when the load started. The
+pages need none of this: a page is one coordinate and is thrown away.
+
+That split introduces the one hazard rebuilding used to hide for free: a **stale
+pin**. Clicking a grid coordinate while an earlier one is drawn would leave the
+previous position on screen beside the new one's readings until the conversion
+lands, and permanently if it never does, so both overlay sources are cleared
+whenever the position is unknown or beyond the projection.
+
+Camera moves are `jumpTo`, never `flyTo`. A world-crossing animation on every
+click is a vestibular risk and says nothing in a box this size, which is also why
+`prefers-reduced-motion` needs no special case. Rotation is disabled, because a
+rotatable map with no compass means a reader misreads every bearing taken off it.
+
+**The wheel zooms, and the cost is that it does not scroll.** The map sits at the
+top of a panel that scrolls, so a wheel event over it is consumed rather than
+passed to the sidebar; a reader reaching the readings below has to move the
+pointer off the map first. `cooperativeGestures` is the one-line alternative and
+trades a modifier key for that, which is the trade Google's map embeds make.
+
+**`maxZoom` belongs on the map, not only on the arithmetic.** `zoomForSpan`
+clamps the opening view, but the controls and the wheel let a reader leave that
+range, and past z6 the 110m basemap is a polygonal coastline at street scale with
+nothing saying so. **Reset view** restores the opening view, because once a
+reader can zoom and pan there is otherwise no way back to the pin.
+
+**The probe is memoised and releases its context.** `hasWebGL2` is called on
+every creation attempt, and an unreleased probe context is a real driver
+allocation: probing afresh each time walks the same sixteen-context cap and
+evicts the oldest, which is the map the reader is looking at, silently and with
+no placeholder.
+
+**The basemap distinguishes a broken deploy from a bad minute.** A 404, an
+oversized body, a digest mismatch or a body that is not GeoJSON is definitive,
+is remembered, and stops further requests. A timeout or a network throw is not
+remembered: latching on those means one stalled fetch on a DDIL link tells a
+reader the map is broken for the rest of the session, with a reload the only way
+back, in exactly the environment this plugin is built for.
+
+The digest itself is generated beside the basemap and checked with
+`crypto.subtle`, which is undefined on a plain-HTTP origin, so an unverifiable
+digest passes rather than disabling the map. That is the posture the copy buttons
+already take, and it is why `map-data-check` runs in `make test`: drift is
+invisible on HTTP and fatal on HTTPS. The page module does **not** check the
+digest, because it has no bundled constant to check against: the page and the
+basemap ship together and are served by the same plugin.
+
+**The map is hideable and is not a row.** `MAP_ID` and `SectionMap` carry it, and
+`HideableID` is a separate union rather than a widened `RowID`, because the panel
+declares its values as an exhaustive `Record<RowID, string>` and a key with no
+string value does not type-check there. The webapp's read path is deliberately
+forgiving, so a regression that narrows it back drops the id silently: the reader
+unticks Map, saves, and it is back after a reload with nothing logged.
 
 ## The post size limit
 
@@ -1053,6 +1465,17 @@ that appended to `Zones` would be editing what the next reader gets.
 
 ### The location rows
 
+The table opens with the three angular readings, then MGRS, then USMTF and UTM:
+the notations that read the same way sit together. MGRS led the table for a
+while, on the grounds that it is the reading this audience reaches for most, and
+the order is a judgment either way rather than a derivation.
+
+**Order is part of the contract, not a per-surface choice.** `Rows` drives the
+panel, the page and the reader's hidden-row list from one list, and
+`webapp_sync_test.go` holds the two languages to the same ids in the same
+sequence, so reordering for one surface alone is not something the code can
+express.
+
 `Rows` in `server/decorators/location/rows.go` is the catalog, and it is the
 single source for **three** things: the standalone page renders from it, the
 panel renders from it again in TypeScript, and a reader's hidden-row list names
@@ -1283,7 +1706,18 @@ entry, the call site, and a row in `public/help/error-codes.html`.
 
 ## Coding conventions
 
-- Match the style of surrounding code.
+- Match the style of surrounding code, **except its commenting**. This codebase
+  was written with heavy explanatory comments and is no longer written that way:
+  do not add prose comments, and remove the ones you encounter in code you touch.
+  Compiler and tool directives (`//go:embed`, `//nolint`, `//go:build`,
+  `// Code generated ... DO NOT EDIT.`, `// #nosec`, `// eslint-disable-*`) are
+  syntax rather than prose and stay. See `~/CLAUDE.md` for the full rule.
+- Carry meaning in names and tests instead. An invariant belongs in a test name
+  (`TestRoundToNormalizesNegativeZero`); durable design rationale belongs in this
+  file. Much of what is written here started as a comment.
+- Deleting a comment can destroy the only record of a measurement, a defect that
+  caused the current shape, or a contract a future change would silently break.
+  Say so and ask before removing one of those, rather than deleting it silently.
 - Keep the plugin minimal: avoid abstractions that are not needed by the code that exists today.
 - Server: follow Mattermost plugin API conventions. Use `p.API.LogError`/`LogWarn`/`LogInfo` for logging.
 - Webapp: prefer functional React components with hooks.
@@ -1292,7 +1726,14 @@ entry, the call site, and a row in `public/help/error-codes.html`.
 
 - `make dist` - build the plugin bundle
 - `make check-style` - lint both Go and webapp code
-- `make test` - run tests
+- `make test` - run tests. Depends on `map-data-check`, so a basemap that is not
+  what the committed source produces fails here rather than in production. That
+  ordering is load-bearing: `crypto.subtle` is undefined on a plain-HTTP origin,
+  so the webapp's digest check is skipped on dev boxes and on air-gapped HTTP
+  installs, and drift would otherwise surface only on an HTTPS install, as every
+  panel reporting that the map could not be loaded
+- `make map-data` / `make map-data-check` - regenerate the basemap, and fail when
+  the committed artifacts are stale
 - `make coverage` - backend and frontend coverage summaries. The backend one
   passes `-coverpkg=./server/...`, which is load-bearing: without it each
   package is measured only by its own tests, so the shared page shell in
