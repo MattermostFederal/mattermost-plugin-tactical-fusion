@@ -162,7 +162,7 @@ test.describe('rendering at the token resolution', () => {
     });
 
     // "0 m" would read as infinite precision. An eight-decimal token reaches
-    // this, and the wording must match the Go page.
+    // this.
     test('does not claim zero meters for a very fine token', () => {
         expect(resolutionText(parse('dd', '34.12345678,-118.12345678'))).toBe('finer than 0.01 m');
         expect(resolutionText(parse('dms', '340322.1234N1181500.1234W'))).toBe('finer than 0.01 m');
@@ -184,10 +184,10 @@ test.describe('rendering at the token resolution', () => {
     // not an edge case, it is what an ordinary phone emits, and it lands at
     // 0.11 m squarely in the gap.
     //
-    // The same three rows are pinned in TestResolutionTextBelowAMeter in
-    // server/decorators/location/format_test.go. Change one and change the
-    // other: this pair of tables is the only thing keeping the panel and the
-    // server-rendered page saying the same words about the same link.
+    // This is now the only implementation. Go rendered resolution too while the
+    // page was server-rendered, and the twin of this table lived in
+    // TestResolutionTextBelowAMeter; every surface renders from here now, so
+    // these three rows are the whole guard rather than half of a pair.
     test('names the rungs below a meter', () => {
         const cases: Array<[string, string]> = [
             ['34.05611N,118.25000W', 'about 1 m'],

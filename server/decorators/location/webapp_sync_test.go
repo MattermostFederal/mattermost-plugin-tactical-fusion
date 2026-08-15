@@ -311,10 +311,10 @@ func TestWebappGridZoneIsBounded(t *testing.T) {
 	}
 }
 
-// The map's geometry constants live in three places: this package, the panel's
-// span.ts, and the page module tf-map.mjs. They must agree or the sidebar and
-// the two pages draw the same coordinate at different scales, which is the one
-// thing having them in more than one place is supposed to prevent.
+// The map's geometry constants live in two places, this package and span.ts,
+// and every surface draws from span.ts. Go keeps them only as the anchors these
+// are compared against, so a change on either side that does not reach the other
+// fails here rather than in a browser.
 func TestWebappMapConstantsMatch(t *testing.T) {
 	span := readWebappSource(t, "map/span.ts")
 

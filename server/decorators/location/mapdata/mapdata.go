@@ -17,10 +17,6 @@ type Box struct {
 	MinX, MinY, MaxX, MaxY float64
 }
 
-func (b Box) Intersects(o Box) bool {
-	return b.MinX <= o.MaxX && b.MaxX >= o.MinX && b.MinY <= o.MaxY && b.MaxY >= o.MinY
-}
-
 func (b Box) Contains(x, y float64) bool {
 	return x >= b.MinX && x <= b.MaxX && y >= b.MinY && y <= b.MaxY
 }

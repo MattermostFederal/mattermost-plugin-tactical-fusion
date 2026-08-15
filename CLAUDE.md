@@ -865,8 +865,12 @@ init**, not as Go literal slices. That is 116 KB compiling in about a tenth of a
 second; the same data as literals is a known Go compile-time problem.
 `mapdata.go` holds the decoder and is hand-written.
 
-`make map-data` regenerates. The check is `make map-data-check`, which is
-`git diff --exit-code`, **not** an idempotence check: a generator edited without
+`make map-data` regenerates. The check is `make map-data-check`, which names the
+three generated artifacts individually rather than watching their directories:
+`mapdata.go` is hand-written and sits beside `admin.go`, so a directory-wide
+check reported an ordinary edit to the decoder as stale map data and told the
+reader to run a generator that would not fix it. It is `git diff --exit-code`,
+**not** an idempotence check: a generator edited without
 regenerating is perfectly idempotent and fully drifted. It runs as a prerequisite
 of `make test`, because a guard nothing invokes is not a guard, and this
 particular drift is invisible everywhere a developer looks (see Build and test).
@@ -886,9 +890,17 @@ the basemap, and draws through a canvas.
 
 ```
 PageStatic   default-src 'none'; style-src 'unsafe-inline'; script-src 'none'|'sha256-...'
-PageMapping  ... plus 'self' on script-src and style-src,
-             worker-src 'self'; img-src 'self' data: blob:; connect-src 'self'
+PageMapping  ... plus 'self' on script-src,
+             worker-src 'self'; img-src data:; connect-src 'self'
 ```
+
+Each of those is the narrowest form that works, measured rather than copied from
+the spec. `style-src` keeps only `'unsafe-inline'`, because MapLibre's stylesheet
+arrives through `style-loader` as an injected `<style>` and nothing emits a
+`<link>`. `img-src` keeps only `data:`, which is the zoom control's glyphs: the
+map draws through WebGL rather than `<img>`, and the style has no sprite, no
+glyphs and no raster source. Both were wider for a while on the strength of what
+MapLibre might need.
 
 **This is a real reduction in a defence, on a public route that echoes author
 text, and it was taken deliberately.** Under `PageStatic` an escaping mistake in
@@ -1023,6 +1035,15 @@ There is no minimum size and no threshold below which the cell is dropped. These
 surfaces zoom, so there is no one scale to test against: a metre-wide cell is
 invisible until the reader zooms far enough to see it, which is more honest than
 a number guessing on their behalf.
+
+There was a 6 px floor in `drawableCell` contradicting exactly that, and the way
+it was wrong is the point rather than the size of it. `applyView` runs on a
+change of selection and on **Reset view**, and nothing listens for `zoom`, so the
+floor was measured once at the opening camera and never again: a square dropped
+there stayed dropped however far the reader zoomed in. `maxZoom` is 6, so the
+visible cost was small (a 10 km cell reaches only about 10 px at that zoom, which
+the pin covers anyway), but a threshold evaluated at a scale the reader has left
+answers a question nobody asked.
 
 **Zoom follows a target ground span, not a zoom level**, because Mercator scale
 is 1/cos(lat) and a constant zoom is not a constant answer: the same 320 px is
@@ -1201,6 +1222,26 @@ every creation attempt, and an unreleased probe context is a real driver
 allocation: probing afresh each time walks the same sixteen-context cap and
 evicts the oldest, which is the map the reader is looking at, silently and with
 no placeholder.
+
+**The note is derived, not assigned.** `positionNote` is one expression over
+`beyond`, `known`, `pending` and `loaded`, and `failure` is separate so the two
+cannot overwrite each other. It was written from three effects and two event
+handlers, and two of them disagreed: the `load` handler set it to null while
+`applyView` was clearing the pin for a position it could not draw, leaving a map
+with no pin and nothing saying why.
+
+**Readiness belongs to the map, not to the effect run that made it.** The `load`
+handler is guarded on `map.current !== instance`, never on the creation effect's
+`live` flag. It was guarded on `live`, and the map is stored on a ref and removed
+only on unmount, so it outlives that run: a reader who clicked a second
+coordinate while the first was still loading left `ready` false **forever**,
+`applyView` no-opped from then on, and the panel sat on "Loading map…" until the
+page was reloaded. The first click is the slowest one, since it pulls the 950 KB
+chunk, so it is the click most likely to be interrupted.
+
+**An error after the map is usable is ignored.** `setFailure` runs only while
+`ready.current` is false. A one-way latch replaced a working map with a notice
+saying it could not be loaded.
 
 **The basemap distinguishes a broken deploy from a bad minute.** A 404, an
 oversized body, a digest mismatch or a body that is not GeoJSON is definitive,
@@ -1476,10 +1517,13 @@ panel, the page and the reader's hidden-row list from one list, and
 sequence, so reordering for one surface alone is not something the code can
 express.
 
-`Rows` in `server/decorators/location/rows.go` is the catalog, and it is the
-single source for **three** things: the standalone page renders from it, the
-panel renders from it again in TypeScript, and a reader's hidden-row list names
-its ids. A row present in two of those and not the third fails differently each
+`Rows` in `server/decorators/location/rows.go` is the catalog, and it is now a
+catalog and nothing else: an id, a label and whether the row is worth copying.
+It carried a `Value` closure per row while the page was rendered in Go, and with
+that gone so are `ResolutionText`, `ConfidenceText`, `humanMeters` and
+`trimZeroes`, whose only callers were those closures. Resolution and Confidence
+are rendered by `format.ts` on every surface, and `format.spec.ts` is the whole
+guard on them rather than half of a Go/TypeScript pair. A row present in two of those and not the third fails differently each
 time and none of them is loud, so `TestWebappRowCatalogMatches` holds the
 TypeScript half to the same ids, labels and order, the same way the band class
 is held.

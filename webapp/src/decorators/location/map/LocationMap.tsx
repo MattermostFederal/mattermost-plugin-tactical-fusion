@@ -36,8 +36,8 @@ import {MAX_ZOOM, cellBounds, isRenderable, zoomForSpan} from './span';
  * span across its WIDTH, so a taller box shows more latitude at the same scale
  * rather than zooming.
  */
-export const MAP_MIN_HEIGHT_PX = 200;
-export const MAP_MAX_HEIGHT_PX = 360;
+const MAP_MIN_HEIGHT_PX = 200;
+const MAP_MAX_HEIGHT_PX = 360;
 const MAP_HEIGHT = `clamp(${MAP_MIN_HEIGHT_PX}px, 30vh, ${MAP_MAX_HEIGHT_PX}px)`;
 
 const LOADING = 'Loading map…';
@@ -50,13 +50,13 @@ const NO_POSITION = 'The position for this coordinate is unavailable.';
 // same button. It resets the zoom as well as the centre, which is why it is not
 // "Recenter".
 const RESET_LABEL = 'Reset view';
+const BASEMAP_NOTE = 'Natural Earth 110m';
 const TOO_FAR_NORTH = 'This position is too far north for the map.';
 const TOO_FAR_SOUTH = 'This position is too far south for the map.';
 
 const DEFAULT_WIDTH_PX = 320;
-const MIN_CELL_PX = 6;
 
-interface View {
+export interface View {
     lat: number | null;
     lon: number | null;
     cellDegLat: number;
@@ -71,12 +71,6 @@ interface Props extends View {
      * Where "Open larger" goes, or absent on the page that IS the larger view.
      */
     pageHref?: string;
-
-    /**
-     * Overrides the panel's height. The map page gives the whole window to one
-     * picture, which is the thing a reader following "Open larger" asked for.
-     */
-    height?: string;
 
     /** Fills its parent rather than sitting in the flow of a panel. */
     fill?: boolean;
@@ -141,15 +135,27 @@ const styles: Record<string, React.CSSProperties> = {
 };
 
 const LocationMap: React.FC<Props> = ({
-    lat, lon, cellDegLat, cellDegLon, region, pageHref, pending, height, fill,
+    lat, lon, cellDegLat, cellDegLon, region, pageHref, pending, fill,
 }) => {
     const container = useRef<HTMLDivElement | null>(null);
     const map = useRef<MapLibreMap | null>(null);
     const ready = useRef(false);
-    const [note, setNote] = useState<string | null>(LOADING);
+
+    // `loaded` mirrors the `ready` ref because applyView is a stable callback
+    // that reads refs, while the note below has to re-render when readiness
+    // changes. `failure` is separate so the two cannot overwrite each other.
+    const [loaded, setLoaded] = useState(false);
+    const [failure, setFailure] = useState<string | null>(null);
 
     const beyond = lat === null ? null : outsideMercator(lat);
     const known = lat !== null && lon !== null && beyond === null;
+
+    // Derived, with one expression deciding it, rather than assigned from three
+    // effects and two event handlers. The load handler used to set it to null
+    // unconditionally while applyView was clearing the pin, so the two
+    // disagreed; and it read a ref it could not re-render on, so a map that
+    // finished loading after the reader moved on stayed on "Loading map…".
+    const note = failure ?? positionNote(beyond, known, pending, loaded);
 
     // Read at apply time rather than closed over, so the creation effect's
     // 'load' handler positions the map at wherever the reader is NOW, not at
@@ -187,7 +193,7 @@ const LocationMap: React.FC<Props> = ({
         });
 
         pin?.setData(pointFeature(current.lat, current.lon));
-        cell?.setData(drawableCell(current, instance));
+        cell?.setData(drawableCell(current));
     }, []);
 
     // Creation. Runs once the reader has something to look at, and then not
@@ -208,11 +214,11 @@ const LocationMap: React.FC<Props> = ({
                 // Two different failures. Reporting a load failure as a missing
                 // capability sends the reader, and whoever they report it to,
                 // looking at the wrong thing.
-                setNote(hasWebGL2() ? NO_BASEMAP : NO_WEBGL);
+                setFailure(hasWebGL2() ? NO_BASEMAP : NO_WEBGL);
                 return;
             }
             if (!basemap) {
-                setNote(NO_BASEMAP);
+                setFailure(NO_BASEMAP);
                 return;
             }
             if (!container.current) {
@@ -262,20 +268,28 @@ const LocationMap: React.FC<Props> = ({
             }
 
             // Without this a style or context failure never fires 'load' and the
-            // panel sits on "Loading map…" with no way out.
+            // panel sits on "Loading map…" with no way out. Only before the map
+            // is usable: an error afterwards would replace a working map with a
+            // notice saying it could not be loaded.
             instance.on('error', () => {
-                if (live) {
-                    setNote(NO_BASEMAP);
+                if (!ready.current) {
+                    setFailure(NO_BASEMAP);
                 }
             });
 
+            // Guarded on the instance, NOT on this effect run's `live` flag. The
+            // map is stored on a ref and removed only on unmount, so it outlives
+            // the run that made it. Tying readiness to `live` meant that a reader
+            // who clicked a second coordinate while the first was still loading
+            // left `ready` false forever: every later applyView no-opped and the
+            // map sat on "Loading map…" until the page was reloaded.
             instance.on('load', () => {
-                if (!live) {
+                if (map.current !== instance) {
                     return;
                 }
                 ready.current = true;
+                setLoaded(true);
                 applyView();
-                setNote(null);
             });
 
             if (!live) {
@@ -285,7 +299,7 @@ const LocationMap: React.FC<Props> = ({
             map.current = instance;
         })().catch(() => {
             if (live) {
-                setNote(NO_BASEMAP);
+                setFailure(NO_BASEMAP);
             }
         });
 
@@ -299,22 +313,6 @@ const LocationMap: React.FC<Props> = ({
     useEffect(() => {
         applyView();
     }, [applyView, lat, lon, cellDegLat, cellDegLon]);
-
-    // What the reader is told, which is not the same question as whether a map
-    // exists: one can be drawn and still have nothing to point at.
-    useEffect(() => {
-        if (beyond) {
-            setNote(beyond);
-            return;
-        }
-        if (!known) {
-            setNote(pending ? LOADING : NO_POSITION);
-            return;
-        }
-        if (ready.current) {
-            setNote(null);
-        }
-    }, [beyond, known, pending]);
 
     // Torn down on unmount only. Browsers cap live WebGL contexts at about
     // sixteen, and the panel outlives any one coordinate.
@@ -340,11 +338,7 @@ const LocationMap: React.FC<Props> = ({
     }, []);
 
     const root = fill ? {...styles.root, ...styles.fillRoot} : styles.root;
-    const frame = {
-        ...styles.frame,
-        ...(fill ? styles.fillFrame : null),
-        ...(height === undefined ? null : {height}),
-    };
+    const frame = fill ? {...styles.frame, ...styles.fillFrame} : styles.frame;
 
     return (
         <div style={root}>
@@ -365,7 +359,7 @@ const LocationMap: React.FC<Props> = ({
             </div>
             {!fill && (
                 <div style={styles.caption}>
-                    <span>{note === null ? scaleNote() : null}</span>
+                    <span>{note === null ? BASEMAP_NOTE : null}</span>
                     {pageHref !== undefined && (
                         <a
                             style={styles.link}
@@ -379,6 +373,22 @@ const LocationMap: React.FC<Props> = ({
         </div>
     );
 };
+
+/**
+ * What the reader is told, which is not the same question as whether a map
+ * exists: one can be drawn and still have nothing to point at.
+ */
+function positionNote(
+    beyond: string | null, known: boolean, pending: boolean, loaded: boolean,
+): string | null {
+    if (beyond) {
+        return beyond;
+    }
+    if (!known) {
+        return pending ? LOADING : NO_POSITION;
+    }
+    return loaded ? null : LOADING;
+}
 
 function outsideMercator(lat: number): string | null {
     if (isRenderable(lat)) {
@@ -394,24 +404,22 @@ function outsideMercator(lat: number): string | null {
  * Below a few pixels a rectangle is not information, so a metre-resolution token
  * draws the dot alone and the caption carries the figure instead.
  */
-function drawableCell(current: View, instance: MapLibreMap): FeatureCollection {
+function drawableCell(current: View): FeatureCollection {
     const {lat, lon, cellDegLat, cellDegLon} = current;
     if (lat === null || lon === null || !(cellDegLat > 0) || !(cellDegLon > 0)) {
         return emptyCollection();
     }
 
-    const bounds = cellBounds(lat, lon, cellDegLat, cellDegLon);
-    try {
-        const a = instance.project(bounds[0]);
-        const b = instance.project(bounds[1]);
-        if (Math.abs(b.x - a.x) < MIN_CELL_PX || Math.abs(b.y - a.y) < MIN_CELL_PX) {
-            return emptyCollection();
-        }
-    } catch {
-        return emptyCollection();
-    }
-
-    return cellFeature(bounds);
+    // No minimum size, and no threshold below which the cell is dropped. These
+    // surfaces zoom, so there is no one scale to test against: a metre-wide cell
+    // is invisible until the reader zooms far enough to see it, which is more
+    // honest than a number guessing on their behalf.
+    //
+    // There was a 6px floor here, measured once at the OPENING camera and never
+    // recomputed, because nothing listens for zoom. It dropped every square
+    // finer than about 45km permanently, including a 10km grid reference that
+    // would have been 11px across at maximum zoom.
+    return cellFeature(cellBounds(lat, lon, cellDegLat, cellDegLon));
 }
 
 /**
@@ -422,10 +430,6 @@ function drawableCell(current: View, instance: MapLibreMap): FeatureCollection {
  * Region row's value already carries its own citation, so the source was
  * printed twice in one line. The row names the place, this names what drew it.
  */
-function scaleNote(): string {
-    return 'Natural Earth 110m';
-}
-
 function label(region: string, note: string | null): string {
     if (note !== null) {
         return note;
@@ -439,3 +443,15 @@ function label(region: string, note: string | null): string {
 }
 
 export default LocationMap;
+
+/** @internal exported for tests */
+export function _drawableCellForTesting(current: View): FeatureCollection { // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
+    return drawableCell(current);
+}
+
+/** @internal exported for tests */
+export function _positionNoteForTesting( // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
+    beyond: string | null, known: boolean, pending: boolean, loaded: boolean,
+): string | null {
+    return positionNote(beyond, known, pending, loaded);
+}

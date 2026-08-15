@@ -102,11 +102,16 @@ func (p Page) contentPolicy() string {
 		p.scriptPolicy(),
 	}
 
+	// style-src keeps only 'unsafe-inline': MapLibre's stylesheet arrives through
+	// style-loader as an injected <style>, and nothing emits a <link>. img-src
+	// keeps only data:, which is the zoom control's glyphs; the map draws through
+	// WebGL, not <img>, and the style has no sprite, no glyphs and no raster
+	// source. Every source not listed here is one less exfiltration channel on a
+	// route that echoes author text.
 	if p.Capability == PageMapping {
-		directives[1] = "style-src 'self' 'unsafe-inline'"
 		directives = append(directives,
 			"worker-src 'self'",
-			"img-src 'self' data: blob:",
+			"img-src data:",
 			"connect-src 'self'")
 	}
 

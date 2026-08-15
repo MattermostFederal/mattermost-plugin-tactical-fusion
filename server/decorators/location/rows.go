@@ -32,6 +32,12 @@ const (
 )
 
 // Row is one line of the rendered location.
+//
+// A catalog rather than a renderer. It carried a Value closure per row while the
+// page was rendered in Go; every surface renders from the webapp's format.ts
+// now, so what is left here is the contract three things have to agree on: the
+// ids a reader's hidden-row list names, the labels, and which rows are worth
+// copying. webapp_sync_test.go holds the TypeScript half to all three.
 type Row struct {
 	ID    RowID
 	Label string
@@ -40,39 +46,22 @@ type Row struct {
 	// reader pasting "about 11 m" or "WGS 84" into another system has copied a
 	// sentence, not a position.
 	Copyable bool
-
-	// Value renders the row, or "" for a row that does not apply.
-	//
-	// Empty means OMIT rather than "render a blank", and every conditional row
-	// is expressed that way: the grid rows are empty at the poles, where the
-	// notation is Universal Polar Stereographic and this package does not
-	// reach; Confidence is empty unless the token stated one; and Normalized is
-	// empty when it would only repeat the author's own text.
-	Value func(l Location, raw string) string
 }
 
 // Rows is every row, in render order.
 var Rows = []Row{
-	{RowDecimal, "Lat / lon", true, func(l Location, _ string) string { return l.DecimalText() }},
-	{RowDMS, "DMS", true, func(l Location, _ string) string { return l.DMSText() }},
-	{RowDDM, "DDM", true, func(l Location, _ string) string { return l.DDMText() }},
-	{RowMGRS, "MGRS", true, func(l Location, _ string) string { return l.MGRSText() }},
-	{RowUSMTF, "USMTF", true, func(l Location, _ string) string { return l.USMTFText() }},
-	{RowUTM, "UTM", true, func(l Location, _ string) string { return l.UTMText() }},
-	{RowRegion, "Region", false, func(l Location, _ string) string { return l.RegionText() }},
-	{RowResolution, "Resolution", false, func(l Location, _ string) string { return l.ResolutionText() }},
-	{RowConfidence, "Confidence", false, func(l Location, _ string) string { return l.ConfidenceText() }},
-	{RowDatum, "Datum", false, func(Location, string) string { return "WGS 84" }},
-	{RowRaw, "Original text", true, func(_ Location, raw string) string { return raw }},
-
-	// Only when it says something the row above did not. For the whole USMTF
-	// compact family the author's text already is the canonical form.
-	{RowCanonical, "Normalized", true, func(l Location, raw string) string {
-		if canonical := l.Canonical(); canonical != raw {
-			return canonical
-		}
-		return ""
-	}},
+	{RowDecimal, "Lat / lon", true},
+	{RowDMS, "DMS", true},
+	{RowDDM, "DDM", true},
+	{RowMGRS, "MGRS", true},
+	{RowUSMTF, "USMTF", true},
+	{RowUTM, "UTM", true},
+	{RowRegion, "Region", false},
+	{RowResolution, "Resolution", false},
+	{RowConfidence, "Confidence", false},
+	{RowDatum, "Datum", false},
+	{RowRaw, "Original text", true},
+	{RowCanonical, "Normalized", true},
 }
 
 // AllRowIDs is every row id.

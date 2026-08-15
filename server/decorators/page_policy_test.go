@@ -157,8 +157,8 @@ func TestPageCapabilityDecidesTheWholePolicy(t *testing.T) {
 		{
 			name: "mapping",
 			page: decorators.Page{Capability: decorators.PageMapping},
-			want: "default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self'; " +
-				"worker-src 'self'; img-src 'self' data: blob:; connect-src 'self'; " +
+			want: "default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; " +
+				"worker-src 'self'; img-src data:; connect-src 'self'; " +
 				"base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
 		},
 	}

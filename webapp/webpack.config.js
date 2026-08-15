@@ -137,7 +137,12 @@ const shared = {
     plugins,
 };
 
-const config = shared;
+// A copy, not an alias. This used to be `const config = shared`, so the
+// Object.assign below mutated `shared` itself and the page build, spread from it
+// afterwards, silently inherited `devtool: 'eval-source-map'`. That is eval, and
+// the pages are served under script-src 'self' with no 'unsafe-eval', so a debug
+// build produced a page bundle its own policy refused to run.
+const config = {...shared};
 
 if (isDev) {
     Object.assign(config, {devtool: 'eval-source-map'});
@@ -167,6 +172,10 @@ const pageConfig = {
         filename: '[name].js',
         chunkFilename: '[name].[contenthash].js',
         publicPath: 'auto',
+
+        // `make bundle` copies public/ wholesale, so without this every
+        // content-hashed chunk from every previous build ships forever.
+        clean: true,
     },
     plugins: [],
 };

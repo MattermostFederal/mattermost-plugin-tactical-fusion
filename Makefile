@@ -159,7 +159,12 @@ map-data:
 ## regenerating is perfectly idempotent and fully drifted.
 .PHONY: map-data-check
 map-data-check: map-data
-	@git diff --exit-code -- server/decorators/location/mapdata public/map \
+	@# The three artifacts the generator writes, named individually rather than by
+	@# directory: mapdata.go and world.geo.json's neighbours are hand-written, and
+	@# watching the whole directory reported an ordinary edit to the decoder as
+	@# stale map data and told the reader to run a generator that would not fix it.
+	@git diff --exit-code -- server/decorators/location/mapdata/admin.go \
+		public/map/world.geo.json \
 		webapp/src/decorators/location/map/basemap_digest.ts \
 		|| (echo "map data is stale: run 'make map-data' and commit the result" && exit 1)
 

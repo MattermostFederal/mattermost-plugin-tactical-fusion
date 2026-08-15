@@ -172,9 +172,6 @@ func TestGridRenderingMatchesTheSharedFixtures(t *testing.T) {
 			if got := gridText(loc.Grid); got != tc.grid {
 				t.Errorf("gridText() = %q, want %q", got, tc.grid)
 			}
-			if got := loc.ResolutionText(); got != tc.resolution {
-				t.Errorf("ResolutionText() = %q, want %q", got, tc.resolution)
-			}
 			if got := loc.DecimalText(); got != tc.decimal {
 				t.Errorf("DecimalText() = %q, want %q", got, tc.decimal)
 			}
@@ -274,9 +271,6 @@ func TestRenderingMatchesTheSharedFixtures(t *testing.T) {
 			if got := loc.USMTFText(); got != tc.usmtf {
 				t.Errorf("USMTFText() = %q, want %q", got, tc.usmtf)
 			}
-			if got := loc.ResolutionText(); got != tc.resolution {
-				t.Errorf("ResolutionText() = %q, want %q", got, tc.resolution)
-			}
 		})
 	}
 }
@@ -309,78 +303,6 @@ func TestCoarseTokensDoNotGrowFields(t *testing.T) {
 
 	if got := loc.DMSText(); got != "35°N 79°W" {
 		t.Fatalf("DMSText() = %q, want degrees only", got)
-	}
-}
-
-func TestConfidenceIsSeparateFromResolution(t *testing.T) {
-	loc, ok := Parse(FormatVLATM, "3510N9-07901W7")
-	if !ok {
-		t.Fatal("Parse rejected a valid token")
-	}
-
-	if got := loc.ResolutionText(); got != "about 1.9 km" {
-		t.Errorf("ResolutionText() = %q, want the LATM resolution", got)
-	}
-	if got := loc.ConfidenceText(); got != "stated confidence 9 (latitude), 7 (longitude)" {
-		t.Errorf("ConfidenceText() = %q", got)
-	}
-}
-
-// "about 0 m" would read as a claim of infinite precision rather
-// than as the very fine figure it is, and an eight-decimal token reaches it.
-//
-// The wording must match resolutionText in
-// webapp/src/decorators/location/format.ts.
-func TestVeryFineTokensDoNotClaimZeroMeters(t *testing.T) {
-	for _, tc := range []struct {
-		format Format
-		token  string
-	}{
-		{FormatDD, "34.12345678,-118.12345678"},
-		{FormatDMS, "340322.1234N1181500.1234W"},
-		{FormatDDM, "3403.123456N11815.123456W"},
-	} {
-		loc, ok := Parse(tc.format, tc.token)
-		if !ok {
-			t.Fatalf("Parse(%s, %q) rejected a valid token", tc.format, tc.token)
-		}
-
-		const want = "finer than 0.01 m"
-		if got := loc.ResolutionText(); got != want {
-			t.Errorf("ResolutionText() for %q = %q, want %q", tc.token, got, want)
-		}
-	}
-}
-
-// The rungs between "about 11 m" and "finer than 0.01 m", which is where every
-// other fixture in this file steps straight over.
-//
-// humanMeters has three arms and the sub-meter one had never been taken: the
-// shared fixtures stop at four decimals (11 m) and the test above starts at
-// eight (below a centimeter, which returns before humanMeters is called at
-// all). Six decimals is not an edge case, it is what an ordinary phone emits,
-// and it lands at 0.11 m squarely in the gap.
-//
-// Whole numbers stay whole ("1 m", not "1.00 m") because the arms are chosen by
-// magnitude and trimZeroes runs on the sub-meter one.
-func TestResolutionTextBelowAMeter(t *testing.T) {
-	for _, tc := range []struct {
-		token, want string
-	}{
-		{"34.05611N,118.25000W", "about 1 m"},
-		{"34.056111N,118.250000W", "about 0.11 m"},
-		{"34.0561111N,118.2500000W", "about 0.01 m"},
-	} {
-		t.Run(tc.token, func(t *testing.T) {
-			loc, ok := Parse(FormatDDH, tc.token)
-			if !ok {
-				t.Fatalf("Parse rejected %q", tc.token)
-			}
-
-			if got := loc.ResolutionText(); got != tc.want {
-				t.Fatalf("ResolutionText() = %q, want %q", got, tc.want)
-			}
-		})
 	}
 }
 
@@ -503,7 +425,6 @@ func TestOversizedFractionDoesNotHangFormatting(t *testing.T) {
 		_ = loc.DecimalText()
 		_ = loc.DMSText()
 		_ = loc.DDMText()
-		_ = loc.ResolutionText()
 	}()
 
 	select {
@@ -670,9 +591,9 @@ func TestUSMTFRowNeverClaimsConfidence(t *testing.T) {
 		t.Fatalf("USMTFText() = %q, want the plain shape with no confidence digits", got)
 	}
 
-	// The claim is still on screen, in the row that owns it.
-	if loc.ConfidenceText() == "" {
-		t.Error("the confidence row lost the digits the token carried")
+	// The claim is still carried, in the fields the Confidence row renders from.
+	if loc.Lat.Conf == NoConfidence && loc.Lon.Conf == NoConfidence {
+		t.Error("the parsed token lost the confidence digits it carried")
 	}
 }
 

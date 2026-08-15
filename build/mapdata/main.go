@@ -17,10 +17,7 @@ import (
 )
 
 const (
-	mercatorLimit  = 85.0511287798066
-	pathScale      = 1000000
 	adminScale     = 1000000
-	simplifyEps    = 0.00025
 	geoSimplifyEps = 0.02
 	geoDecimals    = 2
 )
@@ -245,13 +242,6 @@ func decodePolygons(g geometry) ([][][][2]float64, error) {
 	default:
 		return nil, fmt.Errorf("unexpected geometry %q", g.Type)
 	}
-}
-
-func project(lon, lat float64) point {
-	lat = math.Max(-mercatorLimit, math.Min(mercatorLimit, lat))
-	rad := lat * math.Pi / 180
-	y := (1 - math.Log(math.Tan(rad)+1/math.Cos(rad))/math.Pi) / 2
-	return point{X: (lon + 180) / 360, Y: y}
 }
 
 func simplify(pts []point, eps float64) []point {

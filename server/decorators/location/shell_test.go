@@ -167,8 +167,8 @@ func TestBothPagesNameTheBundleRelativeToTheirOwnRoute(t *testing.T) {
 // the security posture of a public route that echoes author text, and the only
 // way a future widening stays a decision is if it shows up here as a diff.
 func TestMapPagesCarryExactlyTheMappingPolicy(t *testing.T) {
-	const want = "default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self'; " +
-		"worker-src 'self'; img-src 'self' data: blob:; connect-src 'self'; " +
+	const want = "default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; " +
+		"worker-src 'self'; img-src data:; connect-src 'self'; " +
 		"base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 
 	d := &Decorator{}

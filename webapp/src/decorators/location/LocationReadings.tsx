@@ -167,7 +167,7 @@ const LocationReadings: React.FC<{
     // Refusing to render it is the point rather than a failure state. Two of
     // the four checks on the author's text need the token grammar, which lives
     // in Go, so before the conversion carried "r" a hand-written link could put
-    // any short run of letters and digits in the "Original text" row next to a
+    // any short run of letters and digits in the "As written" row next to a
     // position derived from a different token, with a copy button beside it,
     // while the server-rendered page refused the identical link.
     //
@@ -204,8 +204,14 @@ const LocationReadings: React.FC<{
 
     // Local where possible. A grid token already is its own MGRS or UTM row, so
     // that row never waits on anything and never degrades.
-    const mgrs = format === 'mgrs' ? gridText(format, canonical) : remote(conversion.data?.mgrs);
-    const utm = format === 'utm' ? gridText(format, canonical) : remote(conversion.data?.utm);
+    //
+    // The `||` matters on the pages. gridText returns "" when the token does not
+    // match this side's copy of the canonical shapes, which is the same
+    // condition that makes fromParams fall back, so without it the one row the
+    // reader opened the link for would disappear under grammar drift while the
+    // server's own answer sat unused in the conversion.
+    const mgrs = format === 'mgrs' ? (gridText(format, canonical) || remote(conversion.data?.mgrs)) : remote(conversion.data?.mgrs);
+    const utm = format === 'utm' ? (gridText(format, canonical) || remote(conversion.data?.utm)) : remote(conversion.data?.utm);
 
     const decimal = coord ? decimalText(coord) : remote(conversion.data?.decimal);
     const dms = coord ? dmsText(coord) : remote(conversion.data?.dms);
