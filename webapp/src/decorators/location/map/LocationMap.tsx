@@ -55,6 +55,23 @@ const TOO_FAR_SOUTH = 'This position is too far south for the map.';
 
 const DEFAULT_WIDTH_PX = 320;
 
+/**
+ * Where a test can get at the map.
+ *
+ * The pin and the cell are MapLibre sources drawn through WebGL, so nothing
+ * about them reaches the DOM: a test watching the note and the Reset button
+ * sees exactly the same thing whether or not `applyView` wrote to either
+ * source. Both overlay writes, the camera move and `remove()` on unmount were
+ * executed by the suite and asserted by none of it, which is how the stale pin
+ * this component is arranged around could be reintroduced with every test
+ * green.
+ *
+ * A module-level observer rather than a prop: the panel and both pages
+ * construct this component, and none of them should carry a field that exists
+ * for the tests.
+ */
+let mapObserver: ((map: MapLibreMap | null) => void) | null = null;
+
 export interface View {
     lat: number | null;
     lon: number | null;
@@ -300,6 +317,7 @@ const LocationMap: React.FC<Props> = ({
                 return;
             }
             map.current = instance;
+            mapObserver?.(instance);
         })().catch(() => {
             if (live) {
                 setFailure(NO_BASEMAP);
@@ -323,6 +341,7 @@ const LocationMap: React.FC<Props> = ({
         map.current?.remove();
         map.current = null;
         ready.current = false;
+        mapObserver?.(null);
     }, []);
 
     // The sidebar is resizable and MapLibre does not notice on its own.
@@ -443,6 +462,13 @@ function label(region: string, note: string | null): string {
 }
 
 export default LocationMap;
+
+/** @internal exported for tests */
+export function _setMapObserverForTesting( // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
+    observer: ((map: MapLibreMap | null) => void) | null,
+): void {
+    mapObserver = observer;
+}
 
 /** @internal exported for tests */
 export function _drawableCellForTesting(current: View): FeatureCollection { // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention

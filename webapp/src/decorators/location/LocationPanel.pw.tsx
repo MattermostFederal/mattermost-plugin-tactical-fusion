@@ -491,3 +491,63 @@ test('changing selection to a grid token clears the previous pin', async ({mount
     // The second coordinate's readings, not the first's.
     await expect(component.getByText('34.0561° N, 118.2500° W')).toHaveCount(0);
 });
+
+/*
+ * Grammar drift, which is the failure this repository has already shipped once:
+ * the band class was widened in Go and the webapp kept the older narrower one,
+ * so a UTM link the server had just issued failed this side's check.
+ *
+ * `gridText` returns "" for a token that does not match this side's copy of the
+ * canonical shapes, which is the same condition that makes `fromParams` fall
+ * back. Without the fallback to the server's own answer, the one row the reader
+ * opened the link for would be the row that disappeared.
+ */
+test.describe('a grid token this build cannot spell', () => {
+    test('takes its grid row from the server rather than dropping it', async ({mount}) => {
+        const component = await mount(
+            <LocationPanelHarness
+                format='mgrs'
+                canonical='18Q323478E4306483N'
+            />,
+        );
+
+        await component.getByRole('button', {name: 'answer the conversion'}).click();
+
+        await expect(component.getByText('11S LT 8463 6908')).toBeVisible();
+    });
+
+    test('and the UTM row with it', async ({mount}) => {
+        const component = await mount(
+            <LocationPanelHarness
+                format='utm'
+                canonical='18Q323478E4306483N'
+            />,
+        );
+
+        await component.getByRole('button', {name: 'answer the conversion'}).click();
+
+        await expect(component.getByText('11S 384640E 3769080N')).toBeVisible();
+    });
+
+    /*
+     * Until the answer lands there is nothing to show, and a placeholder is the
+     * honest thing rather than a zero.
+     *
+     * Scoped to the MGRS row. Every derived row reads "converting…" for a token
+     * with no local coordinate, so `.first()` would be satisfied by any of them
+     * and would pass even if the grid row rendered blank, which is the defect
+     * this whole block exists for.
+     */
+    test('says so while the answer is still in the air', async ({mount}) => {
+        const component = await mount(
+            <LocationPanelHarness
+                format='mgrs'
+                canonical='18Q323478E4306483N'
+            />,
+        );
+
+        const mgrsRow = component.locator('tr', {has: component.page().getByText('MGRS', {exact: true})});
+
+        await expect(mgrsRow.getByText('converting…')).toBeVisible();
+    });
+});

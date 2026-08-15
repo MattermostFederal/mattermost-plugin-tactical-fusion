@@ -132,3 +132,15 @@ export function installDecoratorClickHandler(): () => void {
         installed = false;
     };
 }
+
+/**
+ * Test hook, for the same reason `basemap.ts` and `maplibre.ts` have one.
+ *
+ * `installed` is module state with no other way back: a test whose assertion
+ * fails before it reaches its disposer leaves the flag set, and the next two
+ * tests then install nothing and fail for a reason that has nothing to do with
+ * them.
+ */
+export function _resetForTesting(): void { // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
+    installed = false;
+}

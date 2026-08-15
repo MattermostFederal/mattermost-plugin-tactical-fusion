@@ -896,3 +896,31 @@ test('the form cannot be edited while a read is in the air', async ({mount, page
     await expect(page.getByRole('spinbutton')).toHaveValue('45');
     await expect(page.getByRole('button', {name: 'Remove Yokota'})).toBeVisible();
 });
+
+/*
+ * The same rule as a failed save: stay put with the reason on screen. The
+ * changed table behind is the receipt for a write that landed, so closing on
+ * one that did not would tell the reader their settings are back when they are
+ * still stored.
+ */
+test('a rejected restore stays put and says why', async ({mount, page}) => {
+    await stubPreferencesRoute(page, {
+        stored: {zones: [{iana: 'UTC'}, {iana: 'Europe/Paris'}], urgentWithinMinutes: 5},
+        resetStatus: 500,
+        resetMessage: 'Could not reach the settings store.',
+    });
+    await mount(<Customize
+        instant={instant}
+        onClose={noop}
+                />);
+
+    await expect(page.getByRole('button', {name: /^Remove /})).toHaveCount(2);
+
+    await page.getByRole('button', {name: 'Restore defaults'}).click();
+
+    await expect(page.getByRole('status')).toHaveText('Could not reach the settings store.');
+
+    // The reader's own selection is still on screen, not replaced by the
+    // defaults the restore did not manage to write.
+    await expect(page.getByRole('button', {name: /^Remove /})).toHaveCount(2);
+});

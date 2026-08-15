@@ -46,6 +46,12 @@ export interface StubOptions {
 
     /** The message the server sends with a rejected save. */
     saveMessage?: string;
+
+    /** Status for a DELETE, so a rejected "Restore defaults" can be exercised. */
+    resetStatus?: number;
+
+    /** The message the server sends with a rejected reset. */
+    resetMessage?: string;
 }
 
 const NOTHING_SAVED = {dtg: {zones: [], urgent_within_minutes: 0}, location: {hidden_rows: []}};
@@ -110,6 +116,14 @@ export async function stubPreferencesRoute(page: Page, options: StubOptions = {}
         }
 
         if (method === 'DELETE') {
+            if (options.resetStatus && options.resetStatus !== 200) {
+                await route.fulfill({
+                    status: options.resetStatus,
+                    contentType: 'application/json',
+                    body: JSON.stringify({message: options.resetMessage ?? 'Rejected.'}),
+                });
+                return;
+            }
             stored = NOTHING_SAVED;
         }
 

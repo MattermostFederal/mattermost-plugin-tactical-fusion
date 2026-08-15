@@ -51,6 +51,17 @@ test('an absent r is the canonical form, not a missing value', () => {
     expect(data!.payload.raw).toBe('3510N07901W');
 });
 
+// A shell written without one. The format is what decides whether the page
+// renders at all, so an absent token reads as empty rather than refusing, and
+// the row it fills is the one the conversion answers.
+test('an absent v reads as an empty canonical form', () => {
+    const data = readPageData(root({mode: 'location', f: 'latm'}));
+
+    expect(data).not.toBeNull();
+    expect(data!.payload.canonical).toBe('');
+    expect(data!.payload.raw).toBe('');
+});
+
 test('anything but map is the readings view', () => {
     expect(readPageData(root({mode: 'map', f: 'latm', v: '3510N07901W'}))!.mode).toBe('map');
     expect(readPageData(root({f: 'latm', v: '3510N07901W'}))!.mode).toBe('location');

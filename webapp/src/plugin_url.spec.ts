@@ -1,7 +1,7 @@
 import {expect, test} from '@playwright/test';
 import manifest from 'manifest';
 
-import {docsUrl, pluginBaseUrl} from './plugin_url';
+import {docsUrl, pluginBaseUrl, staticBaseUrl} from './plugin_url';
 
 // `window.basename` is read at call time rather than at import time, which is
 // what lets these tests set it around a single call.
@@ -64,6 +64,74 @@ test.describe('pluginBaseUrl', () => {
     // whatever plugin.json says.
     test('names the plugin from the manifest', () => {
         expect(pluginBaseUrl()).toContain(manifest.id);
+    });
+});
+
+/*
+ * Where the browser loads this plugin's lazy chunks from.
+ *
+ * Validated where `pluginBaseUrl` is not, because assigning this to
+ * `__webpack_public_path__` promotes `window.basename` from a value that builds
+ * fetch URLs into one that decides where executable JavaScript comes from. The
+ * server applies the same rule to SiteURL: a path that is not rooted is ignored
+ * rather than emitted, since it would resolve against whatever page the reader
+ * happens to be on.
+ */
+test.describe('staticBaseUrl', () => {
+    const rooted = `/static/plugins/${manifest.id}/`;
+
+    test('has no basename outside a browser', () => {
+        expect(staticBaseUrl()).toBe(rooted);
+    });
+
+    test('has no basename when the window carries none', () => {
+        withBasename(undefined);
+
+        expect(staticBaseUrl()).toBe(rooted);
+    });
+
+    test('carries the subpath Mattermost is served from', () => {
+        withBasename('/mattermost');
+
+        expect(staticBaseUrl()).toBe(`/mattermost/static/plugins/${manifest.id}/`);
+    });
+
+    test('handles a deep subpath', () => {
+        withBasename('/apps/chat');
+
+        expect(staticBaseUrl()).toBe(`/apps/chat/static/plugins/${manifest.id}/`);
+    });
+
+    test('keeps the trailing slash chunks resolve against', () => {
+        withBasename('/mattermost');
+
+        expect(staticBaseUrl().endsWith('/')).toBe(true);
+    });
+
+    // A protocol-relative value is a host, not a path, and a browser would load
+    // this plugin's chunks from it.
+    test('refuses a protocol-relative basename', () => {
+        withBasename('//evil.example');
+
+        expect(staticBaseUrl()).toBe(rooted);
+    });
+
+    test('refuses a basename carrying a scheme', () => {
+        withBasename('https://evil.example');
+
+        expect(staticBaseUrl()).toBe(rooted);
+    });
+
+    // A path that is not rooted resolves against whatever page the reader is
+    // on, which is not something this can know.
+    test('refuses a basename that is not rooted', () => {
+        withBasename('mattermost');
+
+        expect(staticBaseUrl()).toBe(rooted);
+    });
+
+    test('names the plugin from the manifest', () => {
+        expect(staticBaseUrl()).toContain(manifest.id);
     });
 });
 

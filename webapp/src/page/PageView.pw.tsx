@@ -4,6 +4,7 @@ import MapPageView from './MapPageView';
 import type {PageData} from './payload';
 
 import {expect, test} from '../../playwright/ct-coverage';
+import {parseCanonical} from '../decorators/location/format';
 import LocationReadings from '../decorators/location/LocationReadings';
 
 /*
@@ -240,4 +241,59 @@ test('the map page falls back to the token when nothing vouched for the text', a
 
     await expect(component.getByText('18SUJ2347806483', {exact: true})).toBeVisible();
     await expect(component.getByText('18S UJ 23478 06483')).toHaveCount(0);
+});
+
+/*
+ * A map page for a textual coordinate, which is the ordinary case: the position
+ * comes out of the token rather than out of the conversion, and the conversion
+ * is only there for the rows a projection is needed for.
+ */
+const TEXTUAL: PageData = {
+    payload: {
+        coord: parseCanonical('dd', '34.0561,-118.2500'),
+        format: 'dd',
+        canonical: '34.0561,-118.2500',
+        raw: '34.0561, -118.2500',
+    },
+    conversion: {
+        status: 'ready',
+        data: {
+            mgrs: '11S LT 8463 6908',
+            utm: '11S 384640E 3769080N',
+            decimal: '34.0561\u00b0 N, 118.2500\u00b0 W',
+            dms: '34\u00b003\'22.0"N 118\u00b015\'00.0"W',
+            ddm: '34\u00b003.366\'N 118\u00b015.000\'W',
+            usmtf: '340322.0N1181500.0W',
+            region: 'United States of America (Natural Earth 110m)',
+            lat: 34.0561,
+            lon: -118.25,
+        },
+    },
+    mode: 'map',
+};
+
+test('the map page draws a position the token itself carries', async ({mount}) => {
+    const component = await mount(<MapPageView data={TEXTUAL}/>);
+
+    // The author's own spelling, which is what the bar carries and all it
+    // carries now that the readings live one link away.
+    await expect(component.getByText('34.0561, -118.2500')).toBeVisible();
+    await expect(component.getByRole('link', {name: 'All readings'})).toBeVisible();
+
+    // The map is handed a position worked out here rather than one waited on,
+    // so it is never told there is none.
+    await expect(component.getByText('The position for this coordinate is unavailable.')).toHaveCount(0);
+});
+
+// The way back carries the author's text, so the readings page leads with the
+// same line this one does.
+test('the way back carries the author\'s text when it differs from the token', async ({mount}) => {
+    const component = await mount(<MapPageView data={TEXTUAL}/>);
+
+    const href = await component.getByRole('link', {name: 'All readings'}).getAttribute('href');
+    const params = new URLSearchParams(href!.split('?')[1]);
+
+    expect(params.get('f')).toBe('dd');
+    expect(params.get('v')).toBe('34.0561,-118.2500');
+    expect(params.get('r')).toBe('34.0561, -118.2500');
 });

@@ -1,6 +1,11 @@
 import {expect, test} from '@playwright/test';
 
-import {dispatchDecoratorClick, pageLinkRel} from './click_handler';
+import {
+    dispatchDecoratorClick,
+    installDecoratorClickHandler,
+    pageLinkRel,
+    _resetForTesting as resetClickHandler,
+} from './click_handler';
 import {register, _resetForTesting as resetRegistry} from './registry';
 import {getSelection, _resetForTesting as resetSelection} from './selection';
 import type {Decorator} from './types';
@@ -84,3 +89,91 @@ for (const [rel, want] of rels) {
         expect(pageLinkRel(rel)).toBe(want);
     });
 }
+
+/*
+ * The single delegated listener.
+ *
+ * `index.tsx` keeps a disposer list and runs it in `uninitialize()`. Without it
+ * a re-registration would leave the old capture listener attached and every
+ * click would be dispatched twice, so the second install has to hand back
+ * something that does not detach the listener the first one owns.
+ */
+type Listeners = Array<[string, unknown, boolean]>;
+
+function fakeDocument(): {attached: Listeners} {
+    const attached: Listeners = [];
+
+    (globalThis as {document?: unknown}).document = {
+        addEventListener: (type: string, fn: unknown, capture: boolean) => {
+            attached.push([type, fn, capture]);
+        },
+        removeEventListener: (type: string, fn: unknown, capture: boolean) => {
+            const at = attached.findIndex(
+                ([t, f, c]) => t === type && f === fn && c === capture,
+            );
+            if (at >= 0) {
+                attached.splice(at, 1);
+            }
+        },
+    };
+
+    return {attached};
+}
+
+test.describe('installing the click handler', () => {
+    // `installed` is module state, so a test that fails before reaching its
+    // disposer would otherwise leave it set and take the next two down with it.
+    test.beforeEach(() => {
+        resetClickHandler();
+    });
+
+    test.afterEach(() => {
+        resetClickHandler();
+        delete (globalThis as {document?: unknown}).document;
+    });
+
+    // Capture phase, or Mattermost's own internal-link handling routes the
+    // click through its router before this sees it.
+    test('attaches one capture listener and takes it back', () => {
+        const {attached} = fakeDocument();
+
+        const dispose = installDecoratorClickHandler();
+
+        expect(attached).toHaveLength(1);
+        expect(attached[0][0]).toBe('click');
+        expect(attached[0][2]).toBe(true);
+
+        dispose();
+
+        expect(attached).toHaveLength(0);
+    });
+
+    test('a second install attaches nothing', () => {
+        const {attached} = fakeDocument();
+
+        const dispose = installDecoratorClickHandler();
+        installDecoratorClickHandler();
+
+        expect(attached).toHaveLength(1);
+
+        dispose();
+    });
+
+    // The second call's disposer belongs to nobody: the first call owns the
+    // listener, so running this must not leave the plugin deaf to clicks while
+    // the first disposer is still outstanding.
+    test('the second install\'s disposer detaches nothing', () => {
+        const {attached} = fakeDocument();
+
+        const dispose = installDecoratorClickHandler();
+        const second = installDecoratorClickHandler();
+
+        second();
+
+        expect(attached).toHaveLength(1);
+
+        dispose();
+
+        expect(attached).toHaveLength(0);
+    });
+});

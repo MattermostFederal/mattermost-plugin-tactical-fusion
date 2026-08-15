@@ -129,3 +129,23 @@ test('names the group of checkboxes', async ({mount, page}) => {
 
     await expect(component.getByRole('group', {name: 'Rows to show'})).toBeVisible();
 });
+
+/*
+ * A failed "Restore defaults" behaves like a failed save and for the same
+ * reason: closing on a write that did not happen would tell the reader their
+ * rows are back when they are not, and the receipt for the write landing is the
+ * changed table behind.
+ */
+test('a rejected restore stays put and says why', async ({mount, page}) => {
+    await stubPreferencesRoute(page, {
+        storedHiddenRows: ['ddm'],
+        resetStatus: 500,
+        resetMessage: 'Could not reach the settings store.',
+    });
+    const component = await mount(<CustomizeHarness/>);
+
+    await component.getByRole('button', {name: 'Restore defaults'}).click();
+
+    await expect(component.getByText('Could not reach the settings store.')).toBeVisible();
+    await expect(component.getByTestId('closed')).toHaveCount(0);
+});

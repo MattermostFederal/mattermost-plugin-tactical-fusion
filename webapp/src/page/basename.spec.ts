@@ -25,6 +25,18 @@ function withPath(pathname: string): string | undefined {
     return got;
 }
 
+// The guard exists so importing the page bundle's entry point outside a
+// browser is not a crash. It is the first thing the entry point calls.
+test('there is nothing to apply outside a browser', () => {
+    const holder = globalThis as {window?: unknown};
+    const previous = holder.window;
+    delete holder.window;
+
+    expect(() => applyBasename()).not.toThrow();
+
+    holder.window = previous;
+});
+
 test('a root install has no basename', () => {
     expect(withPath(`/plugins/${manifest.id}/decorate/location`)).toBeUndefined();
 });

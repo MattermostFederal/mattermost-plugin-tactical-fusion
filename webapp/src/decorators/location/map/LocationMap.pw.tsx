@@ -1,0 +1,485 @@
+import path from 'path';
+
+import type {Locator, Page} from '@playwright/test';
+import React from 'react';
+
+import LocationMapHarness from './LocationMapHarness';
+
+import {expect, test} from '../../../../playwright/ct-coverage';
+
+/*
+ * The map, with a real basemap behind it.
+ *
+ * Every other suite that reaches this component leaves the basemap unanswered,
+ * so MapLibre was never constructed under test: the creation path, the camera
+ * and both overlay sources were dead to the whole suite. The unlock is one
+ * route. The committed basemap is what BASEMAP_SHA256 was generated against, so
+ * serving those exact bytes is the only way past the digest check, which no
+ * hand-written fixture can be.
+ *
+ * The style has no glyphs and no sprite and carries its GeoJSON inline, so once
+ * that response is mocked the map fetches nothing else. That is what makes this
+ * deterministic rather than a network test.
+ *
+ * Assertions go through the harness's outputs rather than the DOM wherever the
+ * subject is MapLibre's own state. An earlier version of this file watched the
+ * placeholder text and the Reset button instead, and deleting the overlay
+ * writes, the camera move, `remove()` on unmount, or restoring the historic
+ * `live`-flag load guard left all of it green.
+ */
+
+const BASEMAP = path.resolve(__dirname, '../../../../../public/map/world.geo.json');
+
+/*
+ * Resolved through the package rather than composed from a path, so a hoisted
+ * or differently-laid-out install fails at collection with a module-not-found
+ * rather than as thirteen unexplained timeouts.
+ */
+const WORKER = require.resolve('maplibre-gl/dist/maplibre-gl-worker.mjs');
+const SHARED = require.resolve('maplibre-gl/dist/maplibre-gl-shared.mjs');
+
+const LOADING = 'Loading map…';
+const NO_WEBGL = 'This browser cannot draw the map.';
+const NO_BASEMAP = 'The map could not be loaded.';
+const NO_POSITION = 'The position for this coordinate is unavailable.';
+const RESET = 'Reset view';
+
+/**
+ * Serves the basemap, and the worker MapLibre asks for.
+ *
+ * The worker is a property of the test bundler rather than of this component.
+ * The shipping build imports it as a webpack asset and hands the emitted URL to
+ * `setWorkerUrl`; Playwright's component runner builds with Vite, which does not
+ * honour the `?copy` marker, so `assetUrl` returns null and MapLibre falls back
+ * to deriving `./maplibre-gl-worker.mjs` from its own `import.meta.url`. Vite
+ * emits that chunk under a hashed name, so the request fails, the GeoJSON source
+ * never finishes tiling, `load` never fires, and the map sits on "Loading map…"
+ * forever. Pointing both names at the package's own dist files puts the runner
+ * back in the position the real build is in.
+ *
+ * The cost, stated because these tests should not be read as covering it:
+ * `setWorkerUrl` itself (`maplibre.ts`) is never executed here, so a regression
+ * in the shipped worker wiring is not catchable in this file.
+ *
+ * `holdWorker` keeps the worker request open, which is the only way to hold a
+ * map between construction and `load` — the window the readiness guard exists
+ * for.
+ */
+async function serveMapAssets(page: Page, holdWorker?: Promise<void>): Promise<void> {
+    await page.route('**/public/map/world.geo.json*', (route) => route.fulfill({
+        path: BASEMAP,
+        contentType: 'application/json',
+    }));
+
+    await page.route('**/maplibre-gl-shared.mjs', (route) => route.fulfill({
+        path: SHARED,
+        contentType: 'text/javascript',
+    }));
+
+    await page.route('**/maplibre-gl-worker.mjs', async (route) => {
+        if (holdWorker) {
+            await holdWorker;
+        }
+        await route.fulfill({path: WORKER, contentType: 'text/javascript'});
+    });
+}
+
+/** The visible note, which is a paragraph. The same text is also in the label. */
+function noteOf(component: Locator): Locator {
+    return component.getByRole('paragraph');
+}
+
+/**
+ * Drawn once the note clears and the one control appears.
+ *
+ * An `expect` rather than a bare `waitFor`, so a failure prints the note the
+ * component is actually showing. Every way this file can go wrong (no WebGL2, a
+ * renamed MapLibre chunk, a stale basemap digest) arrives here, and the note is
+ * the only thing that says which.
+ */
+async function expectDrawn(component: Locator): Promise<void> {
+    await expect(component.getByRole('button', {name: RESET})).toBeVisible({timeout: 15_000});
+    await expect(noteOf(component)).toHaveCount(0);
+}
+
+/** Reads MapLibre's own state into the harness's outputs. */
+async function readMap(component: Locator): Promise<void> {
+    await component.getByRole('button', {name: 'read the map'}).click();
+}
+
+/*
+ * These tests need a real WebGL2 context, which headless Chromium supplies
+ * through SwiftShader. Asserted once, by name, because without it eleven tests
+ * fail as timeouts that say nothing about the cause.
+ */
+test.beforeAll(async ({browser}) => {
+    const page = await browser.newPage();
+    const ok = await page.evaluate(() => Boolean(document.createElement('canvas').getContext('webgl2')));
+    await page.close();
+
+    expect(ok, 'these tests need WebGL2 in the component-test browser').toBe(true);
+});
+
+test.describe('with a basemap it can verify', () => {
+    test('draws a map and offers Reset view', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness/>);
+
+        await expectDrawn(component);
+        await expect(component.getByTestId('maps-created')).toHaveText('1');
+    });
+
+    // The pin and the cell are what the map is for, and neither reaches the
+    // DOM. Without this the whole overlay path could be deleted with the suite
+    // still green.
+    test('puts a pin and a cell on the map', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness/>);
+        await expectDrawn(component);
+        await readMap(component);
+
+        await expect(component.getByTestId('pin-features')).toHaveText('1');
+        await expect(component.getByTestId('cell-features')).toHaveText('1');
+    });
+
+    // The camera is held on the coordinate, not left at the style's default.
+    test('opens with the camera on the coordinate', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness/>);
+        await expectDrawn(component);
+        await readMap(component);
+
+        await expect(component.getByTestId('camera')).toHaveText('34.056,-118.250');
+    });
+
+    // A token with no resolution to draw gets its dot and no rectangle. There
+    // is no minimum cell size and no threshold below which one is dropped:
+    // these surfaces zoom, so a metre-wide cell is invisible until the reader
+    // zooms in, which is more honest than a number guessing on their behalf.
+    test('a coordinate with no cell draws the pin alone', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness start='no cell'/>);
+        await expectDrawn(component);
+        await readMap(component);
+
+        await expect(component.getByTestId('pin-features')).toHaveText('1');
+        await expect(component.getByTestId('cell-features')).toHaveText('0');
+    });
+
+    // The country reaches a reader through this label and nowhere else, now
+    // that the Region row is retired: no map, no country, and with the map
+    // drawn, no country for anyone reading it with their eyes.
+    test('names the region in its accessible label', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness region='United States of America (Natural Earth 110m)'/>,
+        );
+
+        await expectDrawn(component);
+        await expect(
+            component.getByText(
+                'World map. The marked position is in United States of America (Natural Earth 110m).',
+            ),
+        ).toBeAttached();
+    });
+
+    // A position in no polygon yields nothing, and the label never guesses at a
+    // nearest country.
+    test('says only that a position is marked when there is no region', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness/>);
+
+        await expectDrawn(component);
+        await expect(component.getByText('World map with the position marked.')).toBeAttached();
+    });
+
+    test('offers the larger view in its caption', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness pageHref='/plugins/x/map?f=dd'/>);
+
+        await expectDrawn(component);
+        await expect(component.getByRole('link', {name: 'Open larger'})).toBeVisible();
+    });
+
+    // The page that IS the larger view fills its parent, and must not offer a
+    // link to itself.
+    test('filling its parent omits the caption', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness
+                fill={true}
+                pageHref='/plugins/x/map?f=dd'
+            />,
+        );
+
+        await expectDrawn(component);
+        await expect(component.getByText('Open larger')).toHaveCount(0);
+    });
+
+    // Once a reader can zoom and pan there is otherwise no way back to the pin,
+    // which is why the control resets the zoom as well as the centre.
+    test('Reset view brings the camera back to the coordinate', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness/>);
+        await expectDrawn(component);
+
+        await page.mouse.move(160, 120);
+        await page.mouse.down();
+        await page.mouse.move(40, 120, {steps: 8});
+        await page.mouse.up();
+
+        await readMap(component);
+        await expect(component.getByTestId('camera')).not.toHaveText('34.056,-118.250');
+
+        await component.getByRole('button', {name: RESET}).click();
+        await readMap(component);
+
+        await expect(component.getByTestId('camera')).toHaveText('34.056,-118.250');
+    });
+});
+
+test.describe('changing selection', () => {
+    /*
+     * The panel stays mounted across a change of selection, so the map is moved
+     * rather than rebuilt. Rebuilding meant a fresh WebGL context and a
+     * re-tessellation of the whole basemap per click, against the browser's cap
+     * of roughly sixteen live contexts, and those clicks arrive in a run.
+     *
+     * The count is the assertion. A canvas count cannot tell the two apart,
+     * because a rebuild removes the old canvas on its way out.
+     */
+    test('moves the one map rather than building a second', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness/>);
+        await expectDrawn(component);
+
+        await component.getByRole('button', {name: 'select Washington'}).click();
+        await expect(component.getByTestId('selected')).toHaveText('Washington');
+        await readMap(component);
+
+        await expect(component.getByTestId('maps-created')).toHaveText('1');
+        await expect(component.getByTestId('camera')).toHaveText('38.889,-77.035');
+    });
+
+    /*
+     * A stale pin is worse than no pin. Clicking a grid coordinate while an
+     * earlier one is drawn would otherwise leave the previous position on
+     * screen, beside the new one's readings, until the conversion lands, and
+     * permanently if it never does.
+     */
+    test('a position that is not known yet takes the pin down', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness/>);
+        await expectDrawn(component);
+
+        await component.getByRole('button', {name: 'select unknown'}).click();
+        await expect(noteOf(component)).toHaveText(NO_POSITION);
+        await readMap(component);
+
+        await expect(component.getByTestId('pin-features')).toHaveText('0');
+        await expect(component.getByTestId('cell-features')).toHaveText('0');
+        await expect(component.getByRole('button', {name: RESET})).toHaveCount(0);
+    });
+
+    test('and the pin comes back when the position does', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness/>);
+        await expectDrawn(component);
+
+        await component.getByRole('button', {name: 'select unknown'}).click();
+        await expect(noteOf(component)).toHaveText(NO_POSITION);
+
+        await component.getByRole('button', {name: 'select Washington'}).click();
+        await expectDrawn(component);
+        await readMap(component);
+
+        await expect(component.getByTestId('pin-features')).toHaveText('1');
+        await expect(component.getByTestId('camera')).toHaveText('38.889,-77.035');
+    });
+
+    /*
+     * Web Mercator caps at about 85 while the grammars validate latitude to 90,
+     * so a decoratable token can land past it. Clamping would put the pin up to
+     * 550 km from what the author wrote, so the map is omitted, the overlays go
+     * down, and the note says which way.
+     */
+    test('a position past the projection is named, not clamped', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness/>);
+        await expectDrawn(component);
+
+        await component.getByRole('button', {name: 'select too far north'}).click();
+        await expect(noteOf(component)).toHaveText('This position is too far north for the map.');
+        await readMap(component);
+        await expect(component.getByTestId('pin-features')).toHaveText('0');
+
+        await component.getByRole('button', {name: 'select too far south'}).click();
+        await expect(noteOf(component)).toHaveText('This position is too far south for the map.');
+    });
+});
+
+test.describe('the map outliving one coordinate', () => {
+    /*
+     * The historic defect, reproduced. The 'load' handler is guarded on the
+     * instance, not on the effect run that made it: the map is stored on a ref
+     * and removed only on unmount, so it outlives that run. Guarded on the run's
+     * `live` flag, a reader who changed selection between construction and
+     * `load` left readiness false forever, every later applyView no-opped, and
+     * the panel sat on "Loading map…" until the page was reloaded.
+     *
+     * Holding the worker is what makes the window deterministic: the map is
+     * constructed as soon as the basemap lands, but nothing tiles and `load`
+     * cannot fire until the worker arrives. Selection has to leave `known` and
+     * come back, since that is the only thing that re-runs the creation effect
+     * and therefore the only thing that flips the old guard's flag.
+     */
+    test('a selection changed between construction and load still ends up drawn', async ({mount, page}) => {
+        let release = () => { /* replaced below */ };
+        const held = new Promise<void>((resolve) => {
+            release = resolve;
+        });
+        await serveMapAssets(page, held);
+
+        const component = await mount(<LocationMapHarness/>);
+
+        await expect(component.getByTestId('live-map')).toHaveText('yes');
+        await expect(noteOf(component)).toHaveText(LOADING);
+
+        await component.getByRole('button', {name: 'select unknown'}).click();
+        await expect(noteOf(component)).toHaveText(NO_POSITION);
+        await component.getByRole('button', {name: 'select Washington'}).click();
+
+        release();
+
+        await expectDrawn(component);
+        await readMap(component);
+
+        await expect(component.getByTestId('maps-created')).toHaveText('1');
+        await expect(component.getByTestId('camera')).toHaveText('38.889,-77.035');
+    });
+
+    // Browsers cap live WebGL contexts at about sixteen and the panel outlives
+    // any one coordinate, so the map is removed when the component finally
+    // goes. The canvas disappearing proves nothing: React takes the container
+    // subtree with it either way.
+    test('unmounting removes the map, not just its canvas', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness/>);
+        await expectDrawn(component);
+
+        await component.getByRole('button', {name: 'unmount the map'}).click();
+        await readMap(component);
+
+        await expect(component.getByTestId('removed')).toHaveText('yes');
+        await expect(component.getByTestId('live-map')).toHaveText('no');
+        await expect(component.locator('canvas')).toHaveCount(0);
+    });
+});
+
+/*
+ * Nothing here may fail the panel: every failure hides the map and leaves every
+ * reading on screen. Which failure it was still has to be stated, because
+ * reporting a load failure as a missing capability sends the reader, and whoever
+ * they report it to, looking at the wrong thing.
+ */
+test.describe('when there is no map to draw', () => {
+    test('a browser without WebGL2 is told that, and not that the map failed', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness noWebGL={true}/>);
+
+        await expect(noteOf(component)).toHaveText(NO_WEBGL);
+        await expect(component.getByTestId('maps-created')).toHaveText('0');
+    });
+
+    test('a library that will not load is a load failure, not a capability one', async ({mount, page}) => {
+        await serveMapAssets(page);
+        await page.route('**/maplibre-gl-*.js', (route) => route.abort());
+
+        const component = await mount(<LocationMapHarness/>);
+
+        await expect(noteOf(component)).toHaveText(NO_BASEMAP);
+        await expect(component.getByTestId('maps-created')).toHaveText('0');
+    });
+
+    // The other half: the library loaded, so this is a broken deploy rather
+    // than a browser that cannot draw. Distinguished from the case above by the
+    // library having got far enough to be asked for a map.
+    test('a basemap that will not load says so', async ({mount, page}) => {
+        await page.route('**/public/map/world.geo.json*', (route) => route.fulfill({status: 404}));
+
+        const component = await mount(<LocationMapHarness/>);
+
+        await expect(noteOf(component)).toHaveText(NO_BASEMAP);
+    });
+
+    /*
+     * A style or context failure never fires 'load', so without the error
+     * handler the panel sits on "Loading map…" with no way out. The worker is
+     * held so the map is constructed and unready, which is the only state in
+     * which this handler is allowed to speak.
+     */
+    test('a map that fails before it is usable says so rather than hanging', async ({mount, page}) => {
+        const held = new Promise<void>(() => { /* never released */ });
+        await serveMapAssets(page, held);
+
+        const component = await mount(<LocationMapHarness/>);
+        await expect(component.getByTestId('live-map')).toHaveText('yes');
+        await expect(noteOf(component)).toHaveText(LOADING);
+
+        await component.getByRole('button', {name: 'make the map fail'}).click();
+
+        await expect(noteOf(component)).toHaveText(NO_BASEMAP);
+    });
+
+    // And the other side of the same latch: an error once the map works is
+    // ignored, because a one-way latch replaced a working map with a notice
+    // saying it could not be loaded.
+    test('a map that fails after it is usable keeps working', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness/>);
+        await expectDrawn(component);
+
+        await component.getByRole('button', {name: 'make the map fail'}).click();
+
+        await expect(noteOf(component)).toHaveCount(0);
+        await expect(component.getByRole('button', {name: RESET})).toBeVisible();
+    });
+
+    // A conversion still in the air is not a failure, and must not read as one.
+    test('a pending position reads as loading rather than as missing', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness
+                start='unknown'
+                pending={true}
+            />,
+        );
+
+        await expect(noteOf(component)).toHaveText(LOADING);
+    });
+
+    test('a position that never arrives says so rather than waiting forever', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness start='unknown'/>);
+
+        await expect(noteOf(component)).toHaveText(NO_POSITION);
+    });
+});
