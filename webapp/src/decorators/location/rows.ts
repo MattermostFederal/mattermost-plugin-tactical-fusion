@@ -16,7 +16,7 @@
  * a row for everybody who had hidden it.
  */
 export type RowID =
-    'decimal' | 'dms' | 'ddm' | 'mgrs' | 'usmtf' | 'utm' | 'region' |
+    'decimal' | 'dms' | 'ddm' | 'mgrs' | 'usmtf' | 'utm' |
     'resolution' | 'confidence' | 'datum' | 'raw' | 'canonical';
 
 export interface RowSpec {
@@ -41,18 +41,17 @@ export interface RowSpec {
 
 /** Every row, in render order. */
 export const ROWS: readonly RowSpec[] = [
+    {id: 'raw', label: 'As written', copyable: true, hint: 'Exactly what the author typed'},
     {id: 'decimal', label: 'Lat / lon', copyable: true, hint: 'Decimal degrees'},
     {id: 'dms', label: 'DMS', copyable: true, hint: 'Degrees, minutes, seconds'},
     {id: 'ddm', label: 'DDM', copyable: true, hint: 'Degrees and decimal minutes'},
     {id: 'mgrs', label: 'MGRS', copyable: true, hint: 'Military grid reference'},
     {id: 'usmtf', label: 'USMTF', copyable: true, hint: 'The fixed-width compact form'},
     {id: 'utm', label: 'UTM', copyable: true, hint: 'Zone, band, easting, northing'},
-    {id: 'region', label: 'Region', copyable: false, hint: 'Which country the position falls in, from the bundled basemap'},
     {id: 'resolution', label: 'Resolution', copyable: false, hint: 'How finely the original text was written'},
     {id: 'confidence', label: 'Confidence', copyable: false, hint: 'Only for a verified USMTF coordinate'},
     {id: 'datum', label: 'Datum', copyable: false, hint: 'Always WGS 84'},
-    {id: 'raw', label: 'Original text', copyable: true, hint: 'Exactly what the author typed'},
-    {id: 'canonical', label: 'Normalized', copyable: true, hint: 'Shown only when it differs from the original'},
+    {id: 'canonical', label: 'Normalized', copyable: true, hint: 'Shown only when it differs from what the author wrote'},
 ];
 
 const KNOWN = new Set<string>(ROWS.map((row) => row.id));

@@ -23,7 +23,6 @@ const (
 	RowDDM        RowID = "ddm"
 	RowUSMTF      RowID = "usmtf"
 	RowUTM        RowID = "utm"
-	RowRegion     RowID = "region"
 	RowResolution RowID = "resolution"
 	RowConfidence RowID = "confidence"
 	RowDatum      RowID = "datum"
@@ -50,17 +49,16 @@ type Row struct {
 
 // Rows is every row, in render order.
 var Rows = []Row{
+	{RowRaw, "As written", true},
 	{RowDecimal, "Lat / lon", true},
 	{RowDMS, "DMS", true},
 	{RowDDM, "DDM", true},
 	{RowMGRS, "MGRS", true},
 	{RowUSMTF, "USMTF", true},
 	{RowUTM, "UTM", true},
-	{RowRegion, "Region", false},
 	{RowResolution, "Resolution", false},
 	{RowConfidence, "Confidence", false},
 	{RowDatum, "Datum", false},
-	{RowRaw, "Original text", true},
 	{RowCanonical, "Normalized", true},
 }
 

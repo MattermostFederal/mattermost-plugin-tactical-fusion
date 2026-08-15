@@ -774,7 +774,7 @@ Passing `r` closes a real gap. Two of the four gates on the author's text need
 the token grammar, which is Go-only, so the webapp can check length and alphabet
 and nothing more, and the alphabet had to widen to the whole Latin alphabet when
 the grid grammars arrived. Before the conversion carried `r`, a hand-edited link
-could put prose in the panel's "Original text" row beside a position derived from an
+could put prose in the panel's "As written" row beside a position derived from an
 unrelated token, with a copy button next to it, while the page refused the
 identical link. The panel now asks the same question the page asks and renders
 **Not a coordinate** when the answer is no.
@@ -819,7 +819,7 @@ axis order in one corner of the repo and lat-first everywhere else.
 ## Mapping
 
 The location panel and both server-rendered location pages draw a world map,
-and the Region row names the country a position falls in. Everything is bundled:
+and the map names the country a position falls in. Everything is bundled:
 no tile service, no map API, nothing fetched from outside the plugin.
 
 **All three surfaces are the same code.** Not just one map library: one
@@ -839,8 +839,8 @@ the pages gave up** below, and neither is small.
 `build/mapdata/` reads Natural Earth 110m GeoJSON from `build/mapdata/source/`
 and writes two things from it: `public/map/world.geo.json`, which is what every
 map actually draws, and `server/decorators/location/mapdata/admin.go`, the
-admin-0 polygons at source precision, which is what the Region row is computed
-from. It also writes the basemap's digest into the webapp.
+admin-0 polygons at source precision, which is what the country lookup is
+computed from. It also writes the basemap's digest into the webapp.
 
 There used to be a third, `paths.go`, holding land, lakes and boundary lines
 pre-projected to the Web Mercator unit square, for the Go SVG renderer. It went
@@ -1071,24 +1071,29 @@ sends the reader, and whoever they report it to, looking at the wrong thing.
 Every reading in the table still renders, because the conversions and the Region
 row are worked out on the server and do not depend on it.
 
-### The Region row
+### Naming the country
 
 Derived server-side by point-in-polygon against `mapdata.Countries`, with a
 per-feature bounding box as a prefilter, and served as a **string** over the
 wire, which is what `/api/v1/convert` is for.
 
-It exists because an unlabelled 110m coastline at 300 px identifies Italy and
-does not identify Chad from Niger, and it answers the question with the map
-hidden, with no WebGL, and with the basemap unavailable.
+**It is no longer a row.** It was one, on the grounds that an unlabelled 110m
+coastline at 300 px identifies Italy and does not identify Chad from Niger, and
+that a row answers that with the map hidden, with no WebGL, and with the basemap
+unavailable. Retiring it gives up exactly that: the country now reaches a reader
+only through the map, in its accessible label, and on the map page as a caption
+under the picture. No map, no country. The value is still computed and still
+travels in the `Conversion`, so bringing the row back is one entry in `Rows` and
+one in `ROWS`.
 
 **The field is `ADMIN` from `ne_110m_admin_0_countries`**, the de facto
 administering entity, not `SOVEREIGNT` (the claimed sovereign) and not `NAME`.
 That choice, not the citation, is the sovereignty decision, and it is a policy
-call rather than a technical one. The row renders
-`United States of America (Natural Earth 110m)` so it reads as a basemap lookup
+call rather than a technical one. The value carries its own citation,
+`United States of America (Natural Earth 110m)`, so it reads as a basemap lookup
 rather than a determination.
 
-**A position in no polygon omits the row** and never guesses at a nearest
+**A position in no polygon yields nothing** and never guesses at a nearest
 country. On a shared border the **lowest feature index wins**, and the generator
 sorts by name so that answer cannot change when the source is regenerated.
 Natural Earth splits geometries at the antimeridian, which is why Fiji is three
@@ -1098,10 +1103,10 @@ The 2-decimal rounding used for display **must not reach `admin.go`**. At 1.1 km
 quantization adjacent countries stop sharing edges, so borders develop overlaps
 and gaps, and a gap would then be misread as the intended "no answer".
 
-**The panel renders Region outside `remote()`.** That helper turns any empty
-value into `converting…` or `unavailable`, so routing Region through it would
-render `Region: unavailable` over open ocean while the page omitted the row, and
-"unavailable" reads as an outage rather than as an answer.
+**The country never goes through `remote()`.** That helper turns any empty value
+into `converting…` or `unavailable`, which over open ocean would report an
+outage where the honest answer is that there is no country. It reached the map
+unwrapped while it was a row, and still does.
 
 ### What `Conversion` may carry
 
@@ -1109,7 +1114,9 @@ Exactly the rows the panel cannot work out for itself. The webapp has its own
 renderer in `format.ts` and uses it for every textual grammar; what it does not
 have is a projection. So the two grid rows are on the wire because they need
 one, the three coordinate rows because a grid token has no `Coordinate` for
-`format.ts` to render from, and Region because the polygons are Go-only.
+`format.ts` to render from, and the country because the polygons are Go-only.
+The country is the one field on the wire that is not a row: it reaches the map's
+label and the map page's caption instead.
 
 `Lat` and `Lon` are the one pair of numbers, and they are there because a map
 needs a position rather than a rendering of one: the resolution rule reaches the
@@ -1506,10 +1513,19 @@ that appended to `Zones` would be editing what the next reader gets.
 
 ### The location rows
 
-The table opens with the three angular readings, then MGRS, then USMTF and UTM:
-the notations that read the same way sit together. MGRS led the table for a
-while, on the grounds that it is the reading this audience reaches for most, and
-the order is a judgment either way rather than a derivation.
+The table opens with **As written**, the author's own text, so every reading
+under it is visibly derived from that one line rather than from nothing. Then
+the three angular readings, then MGRS, then USMTF and UTM: the notations that
+read the same way sit together. MGRS led the table for a while, on the grounds
+that it is the reading this audience reaches for most, and the order is a
+judgment either way rather than a derivation.
+
+**Normalized stays last**, at the far end from the row it is defined against.
+It is the rarest row, absent whenever the author's text already is the canonical
+form, so leading with it would put an empty slot second on most coordinates. The
+row id is still `raw`, because ids reach the KV store and renaming one silently
+unhides a row for everybody who hid it; only the label moved, from "Original
+text".
 
 **Order is part of the contract, not a per-surface choice.** `Rows` drives the
 panel, the page and the reader's hidden-row list from one list, and

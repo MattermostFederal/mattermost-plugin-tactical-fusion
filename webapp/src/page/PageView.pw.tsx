@@ -47,7 +47,6 @@ test('a page renders every row without waiting on anything', async ({mount}) => 
     // ask a route it has no session for.
     await expect(component.getByText('18S 323478E 4306483N')).toBeVisible();
     await expect(component.getByText('38.8895° N, 77.0353° W')).toBeVisible();
-    await expect(component.getByText('United States of America (Natural Earth 110m)')).toBeVisible();
     await expect(component.getByText('converting…')).toHaveCount(0);
     await expect(component.getByText('unavailable')).toHaveCount(0);
 });
@@ -81,7 +80,7 @@ test('a page shows every row, because it has no reader to ask', async ({mount}) 
 
     // Every row the token and the conversion between them can fill: no
     // Confidence, because this token states none.
-    await expect(component.getByRole('row')).toHaveCount(11);
+    await expect(component.getByRole('row')).toHaveCount(10);
 });
 
 test('a failed conversion degrades rather than blanking the page', async ({mount}) => {

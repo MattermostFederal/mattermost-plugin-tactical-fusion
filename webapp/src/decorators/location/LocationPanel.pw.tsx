@@ -259,7 +259,7 @@ test('offers a copy control on every value row and none on the prose rows', asyn
     await component.getByRole('button', {name: 'answer the conversion'}).click();
 
     const labels = ['Copy MGRS', 'Copy Lat / lon', 'Copy DMS', 'Copy DDM', 'Copy USMTF',
-        'Copy UTM', 'Copy Original text'];
+        'Copy UTM', 'Copy As written'];
     await Promise.all(labels.map((label) =>
         expect(component.getByRole('button', {name: label}), label).toBeVisible()));
 
@@ -407,48 +407,24 @@ test.describe('customizing the view', () => {
     });
 });
 
-test('the region row names the country once the conversion lands', async ({mount}) => {
+/*
+ * The country is still computed and still travels in the conversion, because
+ * the map speaks it in its accessible label. What it no longer is, is a row.
+ *
+ * Asserted after the conversion lands rather than before, since before it the
+ * row would be absent either way and the test would pass against a build that
+ * still had one.
+ */
+test('names no Region row, even once the conversion lands', async ({mount}) => {
     const component = await mount(<LocationPanelHarness/>);
 
-    await expect(component.getByText('Region')).toHaveCount(0);
-
     await component.getByRole('button', {name: 'answer the conversion'}).click();
 
-    await expect(component.getByText('Region')).toBeVisible();
+    await expect(component.getByText('11S LT 8463 6908').first()).toBeVisible();
+    await expect(component.getByText('Region')).toHaveCount(0);
     await expect(
         component.getByText('United States of America (Natural Earth 110m)'),
-    ).toBeVisible();
-});
-
-/*
- * A position in no polygon is an answer, not an outage, and the two must not
- * look the same. The server-supplied rows run through a helper that turns any
- * empty value into "converting…" or "unavailable", so routing Region through it
- * would render "Region: unavailable" over open ocean while the standalone page
- * omitted the row entirely, and "unavailable" reads as a request that failed.
- */
-test('the region row is omitted over open ocean rather than reading unavailable', async ({mount}) => {
-    const component = await mount(
-        <LocationPanelHarness
-            format='dd'
-            canonical='30.0000,-40.0000'
-        />);
-
-    await component.getByRole('button', {name: 'answer the conversion'}).click();
-
-    await expect(component.getByText('30.0000° N, 40.0000° W').first()).toBeVisible();
-    await expect(component.getByText('Region')).toHaveCount(0);
-    await expect(component.getByText('unavailable')).toHaveCount(0);
-});
-
-// A failed request must not invent a region either.
-test('a failed conversion omits the region rather than guessing', async ({mount}) => {
-    const component = await mount(<LocationPanelHarness outcome='fail'/>);
-
-    await component.getByRole('button', {name: 'answer the conversion'}).click();
-
-    await expect(component.getByText('unavailable').first()).toBeVisible();
-    await expect(component.getByText('Region')).toHaveCount(0);
+    ).toHaveCount(0);
 });
 
 /*

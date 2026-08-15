@@ -256,7 +256,6 @@ const LocationReadings: React.FC<{
         ddm,
         usmtf,
         utm,
-        region,
         resolution,
         confidence,
         datum: 'WGS 84',

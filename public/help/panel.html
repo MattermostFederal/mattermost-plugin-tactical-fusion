@@ -127,17 +127,16 @@
 
         <table class="field-table">
             <tbody>
+                <tr><td>As written</td><td>The author's own text, exactly as they typed it. It opens the table, so every reading below it is visibly derived from the line above.</td></tr>
                 <tr><td>Lat / lon</td><td>Decimal degrees with hemisphere letters.</td></tr>
                 <tr><td>DMS</td><td>Degrees, minutes and seconds.</td></tr>
                 <tr><td>DDM</td><td>Degrees and decimal minutes.</td></tr>
                 <tr><td>MGRS</td><td>The military grid reference, at the resolution the original text carried. It follows the three angular readings rather than opening the table, so the notations that read the same way sit together.</td></tr>
                 <tr><td>USMTF</td><td>The fixed-width compact form, for pasting into an ATO or a USMTF field. The shape follows the resolution: <code>35N079W</code> for a degrees-only coordinate, <code>3510N07901W</code> at whole minutes, <code>400948N1221400W</code> at whole seconds, and <code>331000.0N1183000.0W</code> finer than that. Sized from the <a href="#location-resolution">pair</a> rather than per axis, because it is one shape covering both halves. It never carries <a href="formats.html#location-usmtf">confidence digits</a>: those say how well a position is known, which a derived reading cannot claim.</td></tr>
                 <tr><td>UTM</td><td>Zone, band, easting and northing, rounded to the same resolution.</td></tr>
-                <tr><td>Region</td><td>Which country the position falls in, looked up in the bundled basemap. See <a href="#location-region">what it is and is not</a>. Omitted where there is no answer, such as open ocean.</td></tr>
                 <tr><td>Resolution</td><td>How finely the original text was written, in meters. For a grid reference, how big the square is.</td></tr>
                 <tr><td>Confidence</td><td>Only for a <a href="formats.html#location-usmtf">verified USMTF coordinate</a>, which states one.</td></tr>
                 <tr><td>Datum</td><td>Always WGS 84.</td></tr>
-                <tr><td>Original text</td><td>The author's own text, exactly as they typed it.</td></tr>
                 <tr><td>Normalized</td><td>The canonical form, shown only when it differs from what the author typed.</td></tr>
             </tbody>
         </table>
@@ -179,9 +178,10 @@
                 Drawing happens in the browser, which on a hardened or virtualised desktop
                 with WebGL disabled means no map. The panel and the page both say so in
                 place of the map, and <strong>every reading in the table still renders</strong>:
-                the coordinate, the conversions and the
-                <a href="#location-region">Region</a> row are worked out on the server and
-                do not depend on it.
+                the coordinate and the conversions are worked out on the server
+                and do not depend on it. The country is the exception: it is
+                <a href="#location-region">named by the map itself</a>, so no map
+                means no country either.
             </p>
         </div>
 
@@ -234,20 +234,20 @@
             the 180th meridian are drawn correctly, with land on both sides.
         </p>
 
-        <h3 id="location-region">The Region row</h3>
+        <h3 id="location-region">Naming the country</h3>
 
         <p>
-            The Region row names the country a position falls in, worked out from the same
-            bundled basemap the map is drawn from. It is there because an unlabelled
-            coastline at this size will tell you Italy and will not tell you Chad from
-            Niger, and because it still answers the question when the map is not shown at
-            all.
+            The country a position falls in is worked out from the same bundled
+            basemap the map is drawn from. It is not a row in the table: the map
+            speaks it in its accessible label, and the full-window map page prints
+            it under the picture. So it is there when the map is, and not when it
+            is not.
         </p>
 
         <div class="alert alert-warning">
             <p class="alert-title">This is a basemap lookup, not an authority on borders.</p>
             <p>
-                The row cites its source in the value itself, as
+                It cites its source in the value itself, as
                 <code>United States of America (Natural Earth 110m)</code>, because that is
                 what it is: a point tested against a public-domain dataset whose borders are
                 generalised by roughly a kilometre. Near any border, and anywhere a border
@@ -340,14 +340,15 @@
             <a href="error-codes.html">code TF-13008</a>.
         </p>
 
-        <h3 id="location-as-written">Original text, and normalized</h3>
+        <h3 id="location-as-written">As written, and normalized</h3>
 
         <p>
-            The <em>Original text</em> row carries the author's own characters, including the
-            symbols and spacing they used. <em>Normalized</em> shows the canonical form the
-            link was validated against, and appears only when the two differ, which is why
-            it is usually absent for USMTF coordinates: those are already canonical as
-            typed.
+            The <em>As written</em> row opens the table and carries the author's own
+            characters, including the symbols and spacing they used, so every reading under
+            it is visibly derived from that one line. <em>Normalized</em> closes the table
+            with the canonical form the link was validated against, and appears only when
+            the two differ, which is why it is usually absent for USMTF coordinates: those
+            are already canonical as typed.
         </p>
 
         <p>
