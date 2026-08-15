@@ -51,6 +51,10 @@ const (
 
 	// FormatUTM is a UTM zone, band, easting and northing: 11S3850003769000.
 	FormatUTM Format = "utm"
+
+	FormatGEOREF   Format = "georef"
+	FormatGARS     Format = "gars"
+	FormatPlusCode Format = "pluscode"
 )
 
 // AllFormatIDs is every id this package will accept in a link, in a fixed
@@ -60,13 +64,8 @@ const (
 var AllFormatIDs = []Format{
 	FormatDD, FormatDDH, FormatDMS, FormatDDM, FormatLATD, FormatLATM, FormatVLATM,
 	FormatMGRS, FormatUTM,
+	FormatGEOREF, FormatGARS, FormatPlusCode,
 }
-
-// There is deliberately no isGrid helper here, unlike isGridFormat in the
-// webapp. Every place Go cares is already a switch over Format that has to name
-// the two grammars separately anyway, because they behave differently: MGRS
-// names a square and UTM names a point. A predicate collapsing them would read
-// as though it did not matter which.
 
 var formatByID = func() map[Format]bool {
 	m := make(map[Format]bool, len(AllFormatIDs))
@@ -179,29 +178,38 @@ type Grid struct {
 	Digits int
 }
 
+type Area struct {
+	Format Format
+	Code   string
+}
+
 // Location is a coordinate together with the grammar it was written in.
 //
-// Exactly one of the two representations is populated, chosen by Format: the
-// textual grammars fill Lat and Lon, the projected ones fill Grid. Point is
-// what reads whichever it is, and nothing outside it may assume either.
+// Exactly one of the three representations is populated, chosen by Format: the
+// textual grammars fill Lat and Lon, the projected ones fill Grid, and the
+// area-reference ones fill Area. Point is what reads whichever it is, and
+// nothing outside it may assume any of them.
 type Location struct {
 	Lat, Lon Axis
 	Grid     Grid
+	Area     Area
 	Format   Format
 }
 
 // Point is the position in signed decimal degrees.
 //
-// For a grid this is the center of the square the token names, and computing it
-// runs the inverse projection, so it can fail: a crafted token can name a
-// square that does not exist. Every caller has to handle that rather than
-// rendering whatever a failed conversion left behind.
+// For a grid or an area code this is the center of the cell the token names,
+// and for a grid computing it runs the inverse projection, so it can fail: a
+// crafted token can name a square that does not exist. Every caller has to
+// handle that rather than rendering whatever a failed conversion left behind.
 func (l Location) Point() (lat, lon float64, ok bool) {
 	switch l.Format {
 	case FormatMGRS:
 		return mgrsCenter(l.Grid)
 	case FormatUTM:
 		return utmPointOf(l.Grid)
+	case FormatGEOREF, FormatGARS, FormatPlusCode:
+		return areaCenter(l.Area)
 	default:
 		return l.Lat.Decimal(), l.Lon.Decimal(), true
 	}
@@ -271,9 +279,14 @@ func (l Location) Digits() int {
 	return min(l.Lat.Digits(), l.Lon.Digits())
 }
 
+var confidenceFormats = map[Format]bool{FormatVLATM: true}
+
 // Confidence returns the pair's USMTF confidence digits, and whether the token
 // carried any.
 func (l Location) Confidence() (lat, lon int8, ok bool) {
+	if !confidenceFormats[l.Format] {
+		return 0, 0, false
+	}
 	if l.Lat.Conf == NoConfidence || l.Lon.Conf == NoConfidence {
 		return 0, 0, false
 	}
@@ -368,6 +381,9 @@ func (l Location) canonicalString() string {
 		b.WriteByte(l.Grid.Band)
 		writePadded(&b, l.Grid.Easting, 6)
 		writePadded(&b, l.Grid.Northing, 7)
+
+	case FormatGEOREF, FormatGARS, FormatPlusCode:
+		b.WriteString(l.Area.Code)
 
 	default:
 		return ""

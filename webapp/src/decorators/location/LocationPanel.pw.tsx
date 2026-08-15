@@ -1,6 +1,7 @@
 import React from 'react';
 
 import LocationPanelHarness from './LocationPanelHarness';
+import {ROWS} from './rows';
 
 import {expect, test} from '../../../playwright/ct-coverage';
 
@@ -46,6 +47,18 @@ test('a grid link shows its own reference before the conversion answers', async 
 
     await component.getByRole('button', {name: 'answer the conversion'}).click();
     await expect(component.getByText('34.0561° N, 118.2500° W').first()).toBeVisible();
+});
+
+test('an area code shows its own code and resolution before the conversion answers', async ({mount}) => {
+    const component = await mount(
+        <LocationPanelHarness
+            format='georef'
+            canonical='GJNJ5753'
+        />);
+
+    await expect(component.getByText('GJNJ5753').first()).toBeVisible();
+    await expect(component.getByText('1.9 km cell, at center')).toBeVisible();
+    await expect(component.getByText('converting…').first()).toBeVisible();
 });
 
 // Nothing may fail the panel. A request that never arrives costs the rows it
@@ -346,12 +359,15 @@ test.describe('customizing the view', () => {
     // what makes it recoverable: the way back is the Customize link itself.
     test('survives every row being hidden', async ({mount}) => {
         const component = await mount(
-            <LocationPanelHarness
-                hidden={['mgrs', 'decimal', 'dms', 'ddm', 'usmtf', 'utm',
-                    'resolution', 'confidence', 'datum', 'raw', 'canonical']}
-            />);
+            <LocationPanelHarness hidden={ROWS.map((row) => row.id)}/>);
 
-        await expect(component.getByRole('button', {name: 'Copy Lat / lon'})).toHaveCount(0);
+        await component.getByRole('button', {name: 'answer the conversion'}).click();
+
+        await Promise.all(ROWS.map((row) => expect(
+            component.getByRole('button', {name: `Copy ${row.label}`}),
+            row.id,
+        ).toHaveCount(0)));
+
         await expect(component.getByRole('button', {name: 'Customize your view'})).toBeVisible();
     });
 

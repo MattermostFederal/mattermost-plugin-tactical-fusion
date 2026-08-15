@@ -19,25 +19,19 @@
 
 /** The grammars the server may name in `f`. */
 export type LocationFormat =
-    'dd' | 'ddh' | 'dms' | 'ddm' | 'latd' | 'latm' | 'vlatm' | 'mgrs' | 'utm';
+    'dd' | 'ddh' | 'dms' | 'ddm' | 'latd' | 'latm' | 'vlatm' | 'mgrs' | 'utm' |
+    'georef' | 'gars' | 'pluscode';
 
 export const LOCATION_FORMATS: readonly LocationFormat[] = [
     'dd', 'ddh', 'dms', 'ddm', 'latd', 'latm', 'vlatm', 'mgrs', 'utm',
+    'georef', 'gars', 'pluscode',
 ];
 
-/**
- * The two grammars whose position cannot be worked out from the token here.
- *
- * Every other format is arithmetic on digits the author wrote: slice the
- * canonical form into fields and divide by sixty. A grid reference is a
- * projection onto an ellipsoid, and that lives in Go and only in Go, so the
- * panel asks the server for the position of one and renders what it can in the
- * meantime.
- */
-export const GRID_FORMATS: readonly LocationFormat[] = ['mgrs', 'utm'];
+const REMOTE_FORMATS: readonly LocationFormat[] =
+    ['mgrs', 'utm', 'georef', 'gars', 'pluscode'];
 
-export function isGridFormat(format: LocationFormat): boolean {
-    return GRID_FORMATS.includes(format);
+export function isRemoteFormat(format: LocationFormat): boolean {
+    return REMOTE_FORMATS.includes(format);
 }
 
 /** One half of a coordinate, as it came out of the canonical token. */
@@ -112,6 +106,26 @@ const BAND = '[C-HJ-NP-X]';
  */
 const ZONE = '(?:0?[1-9]|[1-5][0-9]|60)';
 
+const GEOREF_ZONE = '[A-HJ-NP-Z]';
+const GEOREF_BAND = '[A-HJ-M]';
+const GEOREF_UNIT = '[A-HJ-NP-Q]';
+const GARS_LETTER = '[A-HJ-NP-Z]';
+const OLC_CHAR = '[23456789CFGHJMPQRVWX]';
+
+/**
+ * The numeric bounds the Go decoders enforce, expressed here where a regex can
+ * carry them.
+ *
+ * Same reason `ZONE` above is bounded rather than `\d{1,2}`: the server never
+ * issues a link outside these, so accepting one is this side rendering a
+ * coordinate the page refuses. The bounds a regex cannot carry, a Plus Code's
+ * first pair and the GARS latitude band, stay the server's alone.
+ */
+const GEOREF_MINUTES = '[0-5]\\d';
+const GARS_BAND = '(?:00[1-9]|0[1-9]\\d|[1-6]\\d\\d|7[01]\\d|720)';
+const GARS_QUADRANT = '[1-4]';
+const GARS_KEYPAD = '[1-9]';
+
 /**
  * The canonical patterns the server emits, one per format.
  *
@@ -135,6 +149,19 @@ const CANONICAL: Record<LocationFormat, RegExp> = ((f: string) => ({
 
     // Zone, band, a six-digit easting and a seven-digit northing.
     utm: new RegExp(`^(${ZONE})(${BAND})(\\d{6})(\\d{7})$`),
+
+    georef: new RegExp(
+        `^${GEOREF_ZONE}${GEOREF_BAND}${GEOREF_UNIT}${GEOREF_UNIT}` +
+        `(?:${GEOREF_MINUTES}\\d{2}${GEOREF_MINUTES}\\d{2}` +
+        `|${GEOREF_MINUTES}\\d${GEOREF_MINUTES}\\d` +
+        `|${GEOREF_MINUTES}${GEOREF_MINUTES})$`),
+
+    gars: new RegExp(
+        `^${GARS_BAND}${GARS_LETTER}{2}(?:${GARS_QUADRANT}${GARS_KEYPAD}?)?$`),
+
+    pluscode: new RegExp(
+        `^(?:${OLC_CHAR}{8}\\+${OLC_CHAR}{2,7}|${OLC_CHAR}{8}\\+` +
+        `|${OLC_CHAR}{6}00\\+|${OLC_CHAR}{4}0000\\+)$`),
 }))(`\\d{1,${MAX_FRAC}}`);
 
 /** Latitude and longitude bounds, checked the way the server checks them. */
@@ -194,13 +221,13 @@ function frac(digits: string | undefined): number {
  * Reads a canonical token into a position.
  *
  * Returns null when the string is not the canonical form for that format, and
- * also for the two grid formats, whose position is a projection rather than a
- * division. Those are not a failure and the caller must not treat them as one:
- * `isCanonical` still vouches for the token, and the position arrives from the
- * conversion endpoint instead.
+ * also for every format whose position comes from the server. Those are not a
+ * failure and the caller must not treat them as one: `isCanonical` still
+ * vouches for the token, and the position arrives from the conversion endpoint
+ * instead.
  */
 export function parseCanonical(format: LocationFormat, value: string): Coordinate | null {
-    if (isGridFormat(format)) {
+    if (isRemoteFormat(format)) {
         return null;
     }
 
@@ -399,28 +426,52 @@ export function gridText(format: LocationFormat, canonical: string): string {
     return `${m[1]}${m[2]} ${m[3]}${m[4]} ${digits.slice(0, half)} ${digits.slice(half)}`;
 }
 
-/**
- * How finely a grid token was written.
- *
- * Computed here rather than taken from the conversion, so it is on screen
- * immediately and stays there even if the request never lands. It needs only
- * the digit count, which is in the token.
- *
- * Must match `ResolutionText` in `format.go`.
- */
-export function gridResolutionText(format: LocationFormat, canonical: string): string {
+export function remoteResolutionText(format: LocationFormat, canonical: string): string {
     if (format === 'utm') {
-        // Exact rather than hedged: a UTM easting is written to the meter.
         return '1 m';
     }
 
-    const m = CANONICAL.mgrs.exec(canonical);
-    if (!m) {
+    if (format === 'mgrs') {
+        const m = CANONICAL.mgrs.exec(canonical);
+        if (!m) {
+            return '';
+        }
+        return `${humanMeters(100000 / Math.pow(10, m[5].length / 2))} grid, at center`;
+    }
+
+    const degrees = areaCellDegrees(format, canonical);
+    if (degrees === null) {
         return '';
     }
 
-    const meters = 100000 / Math.pow(10, m[5].length / 2);
-    return `${humanMeters(meters)} grid, at center`;
+    return `${humanMeters(degrees * DEGREE_METERS)} cell, at center`;
+}
+
+function areaCellDegrees(format: LocationFormat, canonical: string): number | null {
+    if (!isCanonical(format, canonical)) {
+        return null;
+    }
+
+    switch (format) {
+    case 'georef': {
+        const digits = (canonical.length - 4) / 2;
+        return digits >= 2 ? 1 / (60 * Math.pow(10, digits - 2)) : 1;
+    }
+    case 'gars': {
+        return [30, 15, 5][canonical.length - 5] / 60;
+    }
+    case 'pluscode': {
+        const plus = canonical.indexOf('+');
+        const significant =
+            canonical.slice(0, plus).replace(/0+$/, '').length + (canonical.length - plus - 1);
+
+        return significant <= 10 ?
+            20 / Math.pow(20, (significant / 2) - 1) :
+            0.000125 / Math.pow(4, significant - 10);
+    }
+    default:
+        return null;
+    }
 }
 
 function decimalPlaces(c: Coordinate, a: Axis): number {

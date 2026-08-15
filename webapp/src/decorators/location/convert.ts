@@ -7,13 +7,14 @@ import {pluginBaseUrl} from '../../plugin_url';
 /**
  * The rows the panel cannot work out for itself, already rendered.
  *
- * Exactly those and no others. `format.ts` is a full renderer, pinned against
- * `format.go` by paired fixtures, and it handles every textual grammar; what it
- * does not have is a projection. So the two grid rows are here because they
- * need one, and the three coordinate rows are here because a grid token has no
- * `Coordinate` to render from and its resolution is linear rather than angular.
+ * `format.ts` is a full renderer, pinned against `format.go` by paired
+ * fixtures, and it handles every textual grammar; what it does not have is a
+ * projection. So the two grid rows are here because they need one, and the
+ * three coordinate rows are here because a grid token has no `Coordinate` to
+ * render from and its resolution is linear rather than angular.
  *
- * Mirrors `Conversion` in `server/decorators/location/convert.go`.
+ * Mirrors `Conversion` in `server/decorators/location/convert.go`, field for
+ * field and in order, which `webapp_sync_test.go` enforces.
  */
 export interface Conversion {
     mgrs: string;
@@ -22,6 +23,9 @@ export interface Conversion {
     dms: string;
     ddm: string;
     usmtf: string;
+    georef: string;
+    gars: string;
+    pluscode: string;
 }
 
 /**

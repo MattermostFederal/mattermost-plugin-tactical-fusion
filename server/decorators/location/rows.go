@@ -23,6 +23,9 @@ const (
 	RowDDM        RowID = "ddm"
 	RowUSMTF      RowID = "usmtf"
 	RowUTM        RowID = "utm"
+	RowGEOREF     RowID = "georef"
+	RowGARS       RowID = "gars"
+	RowPlusCode   RowID = "pluscode"
 	RowResolution RowID = "resolution"
 	RowConfidence RowID = "confidence"
 	RowDatum      RowID = "datum"
@@ -58,6 +61,9 @@ var Rows = []Row{
 	{RowDDM, "DDM", true, func(l Location, _ string) string { return l.DDMText() }},
 	{RowUSMTF, "USMTF", true, func(l Location, _ string) string { return l.USMTFText() }},
 	{RowUTM, "UTM", true, func(l Location, _ string) string { return l.UTMText() }},
+	{RowGEOREF, "GEOREF", true, func(l Location, _ string) string { return l.GEOREFText() }},
+	{RowGARS, "GARS", true, func(l Location, _ string) string { return l.GARSText() }},
+	{RowPlusCode, "Plus Code", true, func(l Location, _ string) string { return l.PlusCodeText() }},
 	{RowResolution, "Resolution", false, func(l Location, _ string) string { return l.ResolutionText() }},
 	{RowConfidence, "Confidence", false, func(l Location, _ string) string { return l.ConfidenceText() }},
 	{RowDatum, "Datum", false, func(Location, string) string { return "WGS 84" }},

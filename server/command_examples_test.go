@@ -48,9 +48,21 @@ func TestExamplesRowsAreDecorated(t *testing.T) {
 
 	for _, row := range exampleFixedRows {
 		t.Run(row.text, func(t *testing.T) {
-			want := "**" + row.label + ":** " + inlineCode(row.text) + " → ["
-			if !strings.Contains(text, want) {
-				t.Fatalf("row is missing or undecorated, wanted a line starting %q:\n%s", want, text)
+			// The link does not always begin at the arrow. A location field
+			// label is matched but NOT consumed, so a labeled row renders
+			// "→ GEOREF:[GJNJ5753](...)": the label stays in the message and
+			// only the token is linked. Asserting the link starts at the arrow
+			// would have declined that on the grounds it is working correctly.
+			prefix := "**" + row.label + ":** " + inlineCode(row.text) + " → "
+
+			_, rest, found := strings.Cut(text, prefix)
+			if !found {
+				t.Fatalf("row is missing, wanted a line starting %q:\n%s", prefix, text)
+			}
+
+			line, _, _ := strings.Cut(rest, "\n")
+			if !strings.Contains(line, "](/plugins/"+manifest.Id+"/decorate/") {
+				t.Fatalf("row is undecorated: %q", line)
 			}
 		})
 	}

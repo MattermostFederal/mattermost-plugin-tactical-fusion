@@ -263,6 +263,25 @@ var locationDetailGroups = []detailGroup{{
 		{text: "UTMT:33UTS9099928000", note: "run together, which is label-only for UTM"},
 	},
 }, {
+	// The three notations that name a cell of the graticule rather than a
+	// point. Grouped together because that is what they have in common and
+	// because two of the three are label-only, which is the row a reader whose
+	// bare code did nothing needs to find.
+	heading:   "Area references (GEOREF, GARS, Plus Codes)",
+	decorates: true,
+	examples: []detailExample{
+		{text: "GEOREF:GJNJ5753", note: "longitude first: zone, band, degree, then minutes"},
+		{text: "GEOREF:GJNJ575337", note: "tenths of a minute"},
+		{text: "GEOREF:GJNJ57533752", note: "and hundredths"},
+		{text: "GARS:206LT", note: "a 30 minute cell"},
+		{text: "GARS:206LT2", note: "quadrant 2 of it, 15 minutes"},
+		{text: "GARS:006AG39", note: "and keypad cell 9 of that, 5 minutes"},
+		{text: "849VCWC8+R9", note: "a Plus Code, matched without a label"},
+		{text: "849VCWC8+R9C", note: "one character finer"},
+		{text: "849V0000+", note: "padded, which is how the notation writes a coarse cell"},
+		{text: "PLUSCODE:849vcwc8+r9", note: "lower case needs the label"},
+	},
+}, {
 	heading:   "In a sentence",
 	decorates: true,
 	examples: []detailExample{
@@ -301,6 +320,10 @@ var locationDetailGroups = []detailGroup{{
 		{text: "35N079W", note: "seven characters for a 111 km square"},
 		{text: "18SUJ2306", note: "coarser than 100 m, too short to detect unlabeled"},
 		{text: "18suj2347806483", note: "a lower-case run of that shape is a short commit hash"},
+		{text: "GJNJ5753", note: "GEOREF: four letters and four digits is also a part number"},
+		{text: "006AG39", note: "GARS: seven alphanumerics with almost nothing to check"},
+		{text: "849vcwc8+r9", note: "a lower-case Plus Code is what a version string looks like"},
+		{text: "CWC8+R9", note: "a short Plus Code needs a reference location we do not have"},
 		{text: "LOC:3510N07901W", note: "LOC introduces an ICAO airfield code in USMTF"},
 		{text: "ICAO:KLAX", note: "which is a facility to look up, not a position to compute"},
 		{text: "34.0561, -118.2500.", note: "ending a sentence: at the guard this and a range look alike"},

@@ -117,10 +117,13 @@
 
         <p>
             Most of it is worked out from the link alone and is on screen the instant the
-            panel opens. The two grid rows are the exception: a grid reference is a
-            projection onto an ellipsoid, that projection runs on the server, so those rows
-            are fetched. See <a href="#location-degrades">what happens when the request does
-            not arrive</a>, which is never a blank panel.
+            panel opens. Five rows are the exception and are fetched from the server: the
+            two grid rows, because a grid reference is a projection onto an ellipsoid and
+            that projection runs on the server, and the three area-reference rows, which
+            could be worked out here but are not worth a second implementation of each
+            notation to save a request the panel already makes. See
+            <a href="#location-degrades">what happens when the request does not arrive</a>,
+            which is never a blank panel.
         </p>
 
         <table class="field-table">
@@ -131,6 +134,9 @@
                 <tr><td>DDM</td><td>Degrees and decimal minutes.</td></tr>
                 <tr><td>USMTF</td><td>The fixed-width compact form, for pasting into an ATO or a USMTF field. The shape follows the resolution: <code>35N079W</code> for a degrees-only coordinate, <code>3510N07901W</code> at whole minutes, <code>400948N1221400W</code> at whole seconds, and <code>331000.0N1183000.0W</code> finer than that. Sized from the <a href="#location-resolution">pair</a> rather than per axis, because it is one shape covering both halves. It never carries <a href="formats.html#location-usmtf">confidence digits</a>: those say how well a position is known, which a derived reading cannot claim.</td></tr>
                 <tr><td>UTM</td><td>Zone, band, easting and northing, rounded to the same resolution.</td></tr>
+                <tr><td>GEOREF</td><td>A <a href="formats.html#location-area">World Geographic Reference System</a> code, at the coarsest of its four widths that is no coarser than the original text. Written longitude first, which is that standard's own order.</td></tr>
+                <tr><td>GARS</td><td>A <a href="formats.html#location-area">Global Area Reference System</a> cell: 30, 15 or 5 minutes, again chosen by the resolution.</td></tr>
+                <tr><td>Plus Code</td><td>An Open Location Code, which is what Google Maps calls a Plus Code. Its length follows the resolution too, so a coordinate written to whole degrees gets a padded <code>87730000+</code> rather than a full-length code implying it is known to the meter.</td></tr>
                 <tr><td>Resolution</td><td>How finely the original text was written, in meters. For a grid reference, how big the square is.</td></tr>
                 <tr><td>Confidence</td><td>Only for a <a href="formats.html#location-usmtf">verified USMTF coordinate</a>, which states one.</td></tr>
                 <tr><td>Datum</td><td>Always WGS 84.</td></tr>
@@ -186,14 +192,19 @@
 
         <p>
             Above 84&deg; north and below 80&deg; south there is no UTM grid, so both rows
-            are simply absent. Everything else on the panel is unaffected.
+            are simply absent. Everything else on the panel is unaffected, and the three
+            area-reference rows are the reason that matters less than it used to: GEOREF,
+            GARS and Plus Codes subdivide the graticule rather than a projected grid, so
+            they have no polar gap and are what remains at those latitudes.
         </p>
 
         <h3 id="location-degrades">When the conversion does not arrive</h3>
 
         <p>
-            The grid rows are the only ones fetched, and losing them costs only them. The
-            rest of the panel is computed from the link and is already on screen.
+            The five fetched rows are the only ones at risk, and losing them costs only
+            them. The rest of the panel is computed from the link and is already on screen,
+            including the resolution of a grid or area token, which needs only the length of
+            the code and never the position.
         </p>
 
         <table class="field-table">
@@ -268,7 +279,8 @@
 
         <p>
             Every row carrying a <strong>value</strong> has a copy icon at its right edge:
-            the grid reference, latitude and longitude, DMS, DDM, USMTF, UTM, the original
+            the grid reference, latitude and longitude, DMS, DDM, USMTF, UTM, GEOREF, GARS,
+            the Plus Code, the original
             text and the normalized form. The rows that carry prose rather than a value do not, since
             copying <em>about 11 m</em> or <em>WGS 84</em> gets you a sentence rather than a
             position.

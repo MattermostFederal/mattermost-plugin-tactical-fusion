@@ -34,7 +34,7 @@
         </div>
 
         <h1>Admin Settings</h1>
-        <p class="tagline">System Console, Plugins, Tactical Fusion. Eleven switches. Ten are on by default; <code>EnableLocationUTM</code> is the one that is not.</p>
+        <p class="tagline">System Console, Plugins, Tactical Fusion. Fourteen switches. Thirteen are on by default; <code>EnableLocationUTM</code> is the one that is not.</p>
 
         <h2>How the date-time group switches relate</h2>
 
@@ -183,6 +183,9 @@
                 <tr><td><a href="#enable-location-usmtf"><code>EnableLocationUSMTF</code></a></td><td>The fixed-width USMTF shapes</td><td>On</td></tr>
                 <tr><td><a href="#enable-location-grid"><code>EnableLocationGrid</code></a></td><td>Military grid references (MGRS)</td><td>On</td></tr>
                 <tr><td><a href="#enable-location-utm"><code>EnableLocationUTM</code></a></td><td>UTM, whose band letter is <a href="#enable-location-utm">ambiguous</a></td><td><strong>Off</strong></td></tr>
+                <tr><td><a href="#enable-location-georef"><code>EnableLocationGEOREF</code></a></td><td>GEOREF, behind its label only</td><td>On</td></tr>
+                <tr><td><a href="#enable-location-gars"><code>EnableLocationGARS</code></a></td><td>GARS, behind its label only</td><td>On</td></tr>
+                <tr><td><a href="#enable-location-pluscode"><code>EnableLocationPlusCode</code></a></td><td>Plus Codes (Open Location Codes)</td><td>On</td></tr>
                 <tr><td><a href="#enable-location-moniker"><code>EnableLocationMoniker</code></a></td><td>Field labels</td><td>On</td></tr>
             </tbody>
         </table>
@@ -386,16 +389,137 @@
             satisfy.
         </p>
 
+        <h3 id="enable-location-georef" data-setting="EnableLocationGEOREF">Format: GEOREF <code>EnableLocationGEOREF</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Matches</td><td><code>GEOREF:GJNJ5753</code>, <code>GEOREF:GJNJ575337</code> and <code>GEOREF:GJNJ57533752</code>, behind the label only</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-location"><code>EnableLocation</code></a> and <a href="#enable-location-moniker"><code>EnableLocationMoniker</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            The World Geographic Reference System divides the globe into 15&deg; zones and
+            bands, then degrees, then minutes. A code names a <strong>cell</strong> rather
+            than a point, so the position shown for one is its center, and the four digit
+            widths are whole minutes, tenths and hundredths.
+        </p>
+
+        <p>
+            <strong>GEOREF is written longitude first</strong>, which is the opposite of
+            every other format here and is the standard's own order. In
+            <code>GJNJ5753</code> the <code>G</code> and the <code>N</code> are longitude and
+            the <code>57</code> is its minutes; <code>J</code>, <code>J</code> and
+            <code>53</code> are latitude.
+        </p>
+
+        <p>
+            <strong>This format is matched behind its label and never bare.</strong> Four
+            letters and four digits has nothing in it that a part number does not, so a bare
+            pattern would rewrite ordinary text. That is the same posture
+            <a href="#enable-location-usmtf"><code>LATD</code></a> is held to, for the same
+            reason. Turning
+            <a href="#enable-location-moniker"><code>EnableLocationMoniker</code></a> off
+            therefore removes this format entirely.
+        </p>
+
+        <p>
+            Turning this switch off costs no GEOREF <strong>row</strong>. Every decorated
+            coordinate still shows one, because that is derived from the position rather
+            than matched in the text.
+        </p>
+
+        <h3 id="enable-location-gars" data-setting="EnableLocationGARS">Format: GARS <code>EnableLocationGARS</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Matches</td><td><code>GARS:206LT</code>, <code>GARS:206LT2</code> and <code>GARS:006AG39</code>, behind the label only</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-location"><code>EnableLocation</code></a> and <a href="#enable-location-moniker"><code>EnableLocationMoniker</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            The Global Area Reference System divides the globe into 30-minute cells, named by
+            three digits of longitude and two letters of latitude, then optionally a
+            15-minute quadrant and a 5-minute cell inside that. As with GEOREF, a code names
+            a cell and the position shown for one is its center.
+        </p>
+
+        <p>
+            <strong>Label only, and this is the stronger case of the two.</strong>
+            <code>006AG39</code> is seven alphanumerics whose only structural check is that
+            two thirds of the possible letter pairs name no band at all. There is nothing
+            else in it to tell a coordinate from a part number.
+        </p>
+
+        <h3 id="enable-location-pluscode" data-setting="EnableLocationPlusCode">Format: Plus Code <code>EnableLocationPlusCode</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Matches</td><td><code>849VCWC8+R9</code>, <code>849VCWC8+R9C</code> and the padded <code>849V0000+</code>. Bare in upper case; lower case behind a <code>PLUSCODE:</code> or <code>OLC:</code> label</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-location"><code>EnableLocation</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            An Open Location Code, which is what Google Maps calls a Plus Code. It is the one
+            format added alongside GEOREF and GARS that is matched <strong>without</strong> a
+            label, because its twenty-character alphabet contains no vowel at all, so an
+            eight-character run of it is not a word, and its separator sits at a fixed
+            position in the middle.
+        </p>
+
+        <p>
+            <strong>Unlabeled it is upper case only</strong>, and that restriction was
+            measured rather than assumed. A lower-case run of that shape is what a version
+            string with build metadata looks like, and roughly one in 50,000 of those is a
+            well-formed code. Lower case is still matched behind the label, and Plus Codes
+            are canonically written in upper case anyway.
+        </p>
+
+        <p>
+            <strong>Short codes are left alone.</strong> <code>CWC8+R9</code> is meaningless
+            without a nearby reference location, which this plugin does not have and would
+            have to guess at. Only full codes are matched.
+        </p>
+
+        <p>
+            Turn this off if your channels carry identifiers shaped like
+            <code>ABCDEFGH+IJ</code>. As with every other format here, the Plus Code
+            <strong>row</strong> stays either way.
+        </p>
+
         <h3 id="enable-location-moniker" data-setting="EnableLocationMoniker">Format: labeled coordinate <code>EnableLocationMoniker</code></h3>
 
         <table class="field-table">
             <tbody>
                 <tr><td>Type</td><td>Boolean</td></tr>
                 <tr><td>Default</td><td>On</td></tr>
-                <tr><td>Matches</td><td>A coordinate introduced by a field label such as <code>LATM:</code>, <code>LATS:</code>, <code>DMPID:</code>, <code>GEOK:</code>, <code>MGRS:</code>, <code>UTMO:</code> or <code>UTMT:</code></td></tr>
+                <tr><td>Matches</td><td>A coordinate introduced by a field label such as <code>LATM:</code>, <code>LATS:</code>, <code>DMPID:</code>, <code>GEOK:</code>, <code>MGRS:</code>, <code>USNG:</code>, <code>UTMO:</code>, <code>UTMT:</code>, <code>GEOREF:</code>, <code>GARS:</code> or <code>PLUSCODE:</code></td></tr>
                 <tr><td>Requires</td><td><a href="#enable-location"><code>EnableLocation</code></a>, plus the format being labeled</td></tr>
             </tbody>
         </table>
+
+        <p>
+            <code>USNG:</code> labels a <a href="#enable-location-grid">grid reference</a>.
+            The United States National Grid is MGRS on WGS 84, character for character, so
+            there is no separate format for it: a <code>USNG:</code> token is read, stored
+            and rendered as MGRS.
+        </p>
+
+        <p>
+            Three formats are reachable <strong>only</strong> through this switch:
+            <a href="#enable-location-usmtf"><code>LATD</code></a>,
+            <a href="#enable-location-georef">GEOREF</a> and
+            <a href="#enable-location-gars">GARS</a>. Turning it off removes them entirely
+            rather than narrowing them.
+        </p>
 
         <p>
             Unlike the <code>DTG:</code> label, a coordinate label is <strong>kept</strong>

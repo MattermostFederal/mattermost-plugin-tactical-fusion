@@ -12,6 +12,19 @@ import "net/url"
 // because a grid token has no Coordinate for format.ts to render from and its
 // resolution is linear rather than angular.
 //
+// The three area-reference rows are here for a different reason, and it is a
+// judgment rather than a necessity: GEOREF, GARS and Plus Codes need no
+// projection, so format.ts COULD render them. What it would need is an encoder
+// and a decoder for each, six pieces of arithmetic held to the Go ones by
+// fixtures, against a request the panel already makes unconditionally on every
+// open. The seam is the expensive part here, not the round trip, and this
+// phase's whole lesson from the band class is that a duplicated definition
+// fails silently.
+//
+// What the panel still computes for an area token is its RESOLUTION, from the
+// length of the code and nothing else, so that row is on screen immediately and
+// stays there even if the request never lands.
+//
 // Everything else a panel shows, it computes: the resolution of a grid token
 // from its digit count, the confidence digits from a verified USMTF token, the
 // author's text from the link. Sending those too would put fields on the wire
@@ -24,6 +37,10 @@ type Conversion struct {
 	DMS     string `json:"dms"`
 	DDM     string `json:"ddm"`
 	USMTF   string `json:"usmtf"`
+
+	GEOREF   string `json:"georef"`
+	GARS     string `json:"gars"`
+	PlusCode string `json:"pluscode"`
 }
 
 // Convert derives every reading of a coordinate from its format and canonical
@@ -75,11 +92,14 @@ func Convert(f Format, canonical, raw string) (Conversion, bool) {
 	}
 
 	return Conversion{
-		MGRS:    loc.MGRSText(),
-		UTM:     loc.UTMText(),
-		Decimal: loc.DecimalText(),
-		DMS:     loc.DMSText(),
-		DDM:     loc.DDMText(),
-		USMTF:   loc.USMTFText(),
+		MGRS:     loc.MGRSText(),
+		UTM:      loc.UTMText(),
+		Decimal:  loc.DecimalText(),
+		DMS:      loc.DMSText(),
+		DDM:      loc.DDMText(),
+		USMTF:    loc.USMTFText(),
+		GEOREF:   loc.GEOREFText(),
+		GARS:     loc.GARSText(),
+		PlusCode: loc.PlusCodeText(),
 	}, true
 }

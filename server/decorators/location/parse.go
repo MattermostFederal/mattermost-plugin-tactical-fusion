@@ -57,6 +57,10 @@ var (
 
 	utmCompactRe = anchored(
 		`(` + gridZone + `)(` + bandLetter + `)(\d{6})(\d{7})`)
+
+	georefRe = anchored(georefExpr)
+	garsRe   = anchored(garsExpr)
+	olcRe    = anchored(olcExpr)
 )
 
 func anchored(expr string) *regexp.Regexp {
@@ -91,9 +95,29 @@ func Parse(f Format, token string) (Location, bool) {
 		return parseMGRS(token)
 	case FormatUTM:
 		return parseUTM(token)
+	case FormatGEOREF:
+		return parseArea(FormatGEOREF, georefRe, token)
+	case FormatGARS:
+		return parseArea(FormatGARS, garsRe, token)
+	case FormatPlusCode:
+		return parseArea(FormatPlusCode, olcRe, token)
 	default:
 		return Location{}, false
 	}
+}
+
+func parseArea(f Format, shape *regexp.Regexp, token string) (Location, bool) {
+	if !shape.MatchString(token) {
+		return Location{}, false
+	}
+
+	area := Area{Format: f, Code: strings.ToUpper(token)}
+
+	if _, ok := decodeArea(area); !ok {
+		return Location{}, false
+	}
+
+	return Location{Area: area, Format: f}, true
 }
 
 // Canonical is the token this location is stored and validated as.
