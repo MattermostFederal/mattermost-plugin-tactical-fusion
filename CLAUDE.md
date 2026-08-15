@@ -1516,6 +1516,17 @@ one.
   which under-reports the total and points a reader at the wrong files. The
   frontend one merges Playwright unit and component runs.
 
+  It also passes **`-short`**, which skips the generated corpus sweeps in
+  `server/decorators/location`. That target runs under `-race` *and* coverage
+  instrumentation, and together those pushed the sweeps past `go test`'s ten
+  minute default, so it failed outright rather than reporting a number. The
+  sweeps cost no product coverage, since every path they exercise is covered
+  many times over by the ordinary cases beside them, and what they measure is a
+  false-positive rate or the shape of a collision class rather than a code path.
+  They run in full under `make test`, which is what CI gates on. Anything else
+  slow enough to need this should get `testing.Short()` too rather than a
+  bigger timeout.
+
 The repo ships a Docker Compose stack, which is what `make deploy` targets:
 
 - `make docker-setup` - start Mattermost and PostgreSQL, wait for readiness, and

@@ -272,15 +272,6 @@ ifneq ($(HAS_SERVER),)
 # shell in server/decorators reads as 0% while being fully exercised by the
 # tests in server. That under-reports the total and, worse, points anybody
 # reading this output at the wrong files.
-#
-# -short skips the generated corpus sweeps in server/decorators/location. This
-# target runs under -race AND coverage instrumentation, and together those
-# pushed those sweeps past go test's ten minute default, so this target failed
-# outright rather than reporting a number. They cost no product coverage: what
-# they exercise is covered many times over by the ordinary cases beside them,
-# and what they measure is a false-positive rate, or the shape of a collision
-# class, rather than a code path. They run in full under make test, which is
-# what CI gates on.
 	$(GO) test $(GO_TEST_FLAGS) -short -coverpkg=./server/... -coverprofile=server/coverage.txt ./server/...
 	$(GO) tool cover -func=server/coverage.txt
 endif
