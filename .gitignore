@@ -47,3 +47,9 @@ webapp/.v8-merged-coverage/
 
 # Built by webpack from webapp/src/page, like webapp/dist.
 public/app/
+
+# Downloaded Natural Earth sources and tiler intermediates for build/maptiles.
+# The pinned digests in build/maptiles/sources.lock are what is committed; the
+# 20MB of GeoJSON behind them is not, and neither are the per-tier archives.
+build/maptiles/source/
+build/maptiles/work/

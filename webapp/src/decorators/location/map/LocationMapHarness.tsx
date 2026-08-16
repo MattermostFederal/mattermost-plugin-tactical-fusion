@@ -27,13 +27,42 @@ const TOO_FAR_NORTH: View = {lat: 89.9, lon: 12, cellDegLat: 0.0001, cellDegLon:
 const TOO_FAR_SOUTH: View = {lat: -89.9, lon: 12, cellDegLat: 0.0001, cellDegLon: 0.0001};
 const NO_CELL: View = {lat: 34.0561, lon: -118.25, cellDegLat: 0, cellDegLon: 0};
 
+/*
+ * Positions with a known answer to "is there land here".
+ *
+ * These carry the coordinates the Go suite used to check against the GeoJSON
+ * basemap's polygons directly. The archive is vector tiles, so the equivalent
+ * question can only be asked of a renderer, and it is a better question here
+ * anyway: this asks what the reader is actually shown rather than what the
+ * source data contains.
+ */
+const KANSAS: View = {lat: 38.5, lon: -98.0, cellDegLat: 0.01, cellDegLon: 0.01};
+const CENTRAL_AUSTRALIA: View = {lat: -25.0, lon: 133.0, cellDegLat: 0.01, cellDegLon: 0.01};
+const MID_PACIFIC: View = {lat: 0, lon: -140.0, cellDegLat: 0.01, cellDegLon: 0.01};
+const MID_ATLANTIC: View = {lat: 30.0, lon: -40.0, cellDegLat: 0.01, cellDegLon: 0.01};
+
+/*
+ * Natural Earth's own label anchor for the United States, in Kansas.
+ *
+ * The opening camera always frames a fixed ground span, so whether a label is on
+ * screen is decided by how near the coordinate is to an anchor. None of the
+ * other views has one in frame, which made "no labels drawn" ambiguous between a
+ * font that failed and a label that was simply elsewhere.
+ */
+const ON_A_LABEL: View = {lat: 39.538479, lon: -97.482602, cellDegLat: 0.01, cellDegLon: 0.01};
+
 const VIEWS = {
     'Los Angeles': LOS_ANGELES,
+    'on a label': ON_A_LABEL,
     Washington: WASHINGTON,
     unknown: UNKNOWN,
     'too far north': TOO_FAR_NORTH,
     'too far south': TOO_FAR_SOUTH,
     'no cell': NO_CELL,
+    Kansas: KANSAS,
+    'central Australia': CENTRAL_AUSTRALIA,
+    'mid Pacific': MID_PACIFIC,
+    'mid Atlantic': MID_ATLANTIC,
 } satisfies Record<string, View>;
 
 export type ViewName = keyof typeof VIEWS;
@@ -59,6 +88,47 @@ HTMLCanvasElement.prototype.getContext = function patched(
     }
     return (realGetContext as (...args: unknown[]) => unknown).call(this, id, ...rest);
 } as typeof HTMLCanvasElement.prototype.getContext;
+
+/**
+ * How many labels the map has actually drawn, or -1 when there is no map to ask.
+ *
+ * Rendered rather than sourced, deliberately: a label present in the tile but
+ * dropped by collision, or one whose font never resolved, is not a label the
+ * reader can see, and it is the reader's view this pins.
+ */
+function labelsIn(map: MapLibreMap | null): number {
+    if (!map) {
+        return -1;
+    }
+
+    try {
+        return map.queryRenderedFeatures({layers: ['country-label']}).length;
+    } catch {
+        // Asked before the style finished, which is not a failure to report.
+        return -1;
+    }
+}
+
+/**
+ * Whether the map draws land under its own centre, or -1 when there is no map.
+ *
+ * Queried at the projected centre pixel rather than by testing geometry, because
+ * what matters is the fill a reader sees at the coordinate: a basemap shifted or
+ * clipped in tiling would still contain the right polygons somewhere.
+ */
+function landAtCentre(map: MapLibreMap | null): number {
+    if (!map) {
+        return -1;
+    }
+
+    try {
+        const at = map.project(map.getCenter());
+
+        return map.queryRenderedFeatures(at, {layers: ['land']}).length;
+    } catch {
+        return -1;
+    }
+}
 
 /** How many features a source is carrying, or -1 when there is no map to ask. */
 function countIn(map: MapLibreMap | null, id: string): number {
@@ -112,7 +182,7 @@ const LocationMapHarness: React.FC<Props> = ({
     const [mounted, setMounted] = useState(true);
     const [live, setLive] = useState(false);
     const [created, setCreated] = useState(0);
-    const [reading, setReading] = useState({pin: -1, cell: -1, center: 'none', removed: false});
+    const [reading, setReading] = useState({pin: -1, cell: -1, labels: -1, land: -1, center: 'none', removed: false});
 
     // The last instance, kept past the observer's null so the unmount test can
     // still ask it whether it was removed.
@@ -137,6 +207,8 @@ const LocationMapHarness: React.FC<Props> = ({
         setReading({
             pin: countIn(map, 'pin'),
             cell: countIn(map, 'cell'),
+            labels: labelsIn(map),
+            land: landAtCentre(map),
             center: at ? `${at.lat.toFixed(3)},${at.lng.toFixed(3)}` : 'none',
             removed: wasRemoved(map),
         });
@@ -182,6 +254,8 @@ const LocationMapHarness: React.FC<Props> = ({
             <output data-testid='maps-created'>{String(created)}</output>
             <output data-testid='pin-features'>{String(reading.pin)}</output>
             <output data-testid='cell-features'>{String(reading.cell)}</output>
+            <output data-testid='labels-drawn'>{String(reading.labels)}</output>
+            <output data-testid='land-at-centre'>{String(reading.land)}</output>
             <output data-testid='camera'>{reading.center}</output>
             <output data-testid='removed'>{reading.removed ? 'yes' : 'no'}</output>
         </div>

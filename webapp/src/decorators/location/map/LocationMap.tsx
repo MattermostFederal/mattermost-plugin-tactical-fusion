@@ -291,10 +291,19 @@ const LocationMap: React.FC<Props> = ({
             // panel sits on "Loading map…" with no way out. Only before the map
             // is usable: an error afterwards would replace a working map with a
             // notice saying it could not be loaded.
-            instance.on('error', () => {
-                if (!ready.current) {
-                    setFailure(NO_BASEMAP);
+            //
+            // Source-scoped errors are ignored. With a single inlined basemap
+            // there was one fetch behind the map, so any error was the basemap
+            // failing. With tiles there are hundreds, and a zoom the archive
+            // clips or a tile it omits reports here routinely; treating one of
+            // those as a broken deploy would print "could not be loaded" over a
+            // map that is drawing correctly. The archive itself is vouched for
+            // before the map is built, by the header probe in basemap.ts.
+            instance.on('error', (event) => {
+                if (ready.current || (event as {sourceId?: string}).sourceId) {
+                    return;
                 }
+                setFailure(NO_BASEMAP);
             });
 
             // Guarded on the instance, NOT on this effect run's `live` flag. The

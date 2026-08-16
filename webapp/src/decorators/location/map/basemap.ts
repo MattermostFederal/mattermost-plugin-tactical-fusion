@@ -1,38 +1,58 @@
-import type {FeatureCollection} from 'geojson';
 import manifest from 'manifest';
 
-import {BASEMAP_SHA256} from './basemap_digest';
+import {MAX_ZOOM} from './span';
 
 import {pluginBaseUrl} from '../../../plugin_url';
 
 /**
- * The bundled Natural Earth basemap, fetched once and kept.
+ * The bundled Natural Earth basemap, probed once and kept.
  *
- * Module state with no TTL, unlike the preferences cache: this file is
+ * Module state with no TTL, unlike the preferences cache: this archive is
  * immutable for the life of an install, so there is nothing for a timer to
  * refresh. A channel full of coordinates makes one request, not one per panel.
+ *
+ * Only the archive's 127-byte header is read here. The tiles themselves are
+ * fetched lazily by MapLibre through the pmtiles protocol, so there is never a
+ * whole body in the browser and the whole-file SHA-256 this module used to
+ * compute has no equivalent. That check now runs where the whole file is in
+ * hand, when the bundle is assembled; it was always weakest here anyway, since
+ * `crypto.subtle` is undefined on the plain-HTTP origins that on-prem and
+ * air-gapped installs typically run on, so it silently passed on exactly the
+ * installs it existed for.
+ *
+ * What is still worth asking on arrival is whether this is the archive we think
+ * it is: a 404 page, a captive portal's HTML, or a half-copied file all fail the
+ * magic bytes immediately, and none of them should reach MapLibre.
  */
 
 const FETCH_TIMEOUT_MS = 10000;
-const MAX_BYTES = 2 * 1024 * 1024;
 
-export type Basemap = FeatureCollection;
+const HEADER_BYTES = 127;
+const MAGIC = 'PMTiles';
+const SPEC_VERSION = 3;
+const TILE_TYPE_MVT = 1;
 
-let cached: Basemap | null = null;
-let inFlight: Promise<Basemap | null> | null = null;
+export interface Archive {
+    url: string;
+    minZoom: number;
+    maxZoom: number;
+}
+
+let cached: Archive | null = null;
+let inFlight: Promise<Archive | null> | null = null;
 let failed = false;
 
 export function basemapUrl(): string {
-    return `${pluginBaseUrl()}/public/map/world.geo.json?v=${encodeURIComponent(manifest.version)}`;
+    return `${pluginBaseUrl()}/public/map/world.pmtiles?v=${encodeURIComponent(manifest.version)}`;
 }
 
 /**
- * Loads the basemap, or resolves null.
+ * Probes the basemap, or resolves null.
  *
- * Never throws. A DEFINITIVE failure (a 404, an oversized body, a digest
- * mismatch, a body that is not GeoJSON) is a property of the deploy and will not
- * change, so it is remembered and no further request is made: a broken deploy
- * must not become a request loop from every open panel.
+ * Never throws. A DEFINITIVE failure (a 404, a body that is not a PMTiles
+ * archive, a tile type or zoom range this style cannot draw) is a property of
+ * the deploy and will not change, so it is remembered and no further request is
+ * made: a broken deploy must not become a request loop from every open panel.
  *
  * A TRANSIENT failure (a timeout, a network throw) is NOT remembered. Latching
  * on those means one stalled fetch on a DDIL link tells a reader the map is
@@ -40,7 +60,7 @@ export function basemapUrl(): string {
  * environment this plugin is built for. Retrying costs one request per panel
  * the reader opens, which is one per click.
  */
-export async function loadBasemap(): Promise<Basemap | null> {
+export async function loadBasemap(): Promise<Archive | null> {
     if (cached) {
         return cached;
     }
@@ -51,13 +71,13 @@ export async function loadBasemap(): Promise<Basemap | null> {
         return inFlight;
     }
 
-    const attempt = fetchBasemap().then((result) => {
-        if (result.map) {
-            cached = result.map;
+    const attempt = probeArchive().then((result) => {
+        if (result.archive) {
+            cached = result.archive;
         } else if (result.definitive) {
             failed = true;
         }
-        return result.map;
+        return result.archive;
     });
 
     inFlight = attempt;
@@ -69,93 +89,79 @@ export async function loadBasemap(): Promise<Basemap | null> {
             inFlight = null;
         }
     }).catch(() => {
-        // fetchBasemap never rejects; this satisfies the no-floating-promise rule.
+        // probeArchive never rejects; this satisfies the no-floating-promise rule.
     });
 
     return attempt;
 }
 
 interface Attempt {
-    map: Basemap | null;
+    archive: Archive | null;
     definitive: boolean;
 }
 
-function settled(map: Basemap | null): Attempt {
-    return {map, definitive: true};
+function settled(archive: Archive | null): Attempt {
+    return {archive, definitive: true};
 }
 
-async function fetchBasemap(): Promise<Attempt> {
+async function probeArchive(): Promise<Attempt> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    const url = basemapUrl();
 
     try {
-        const response = await fetch(basemapUrl(), {
+        const response = await fetch(url, {
 
             // A static asset needs no session, and sending one is not free.
             credentials: 'omit',
             signal: controller.signal,
+            headers: {Range: `bytes=0-${HEADER_BYTES - 1}`},
         });
-        if (!response.ok) {
+
+        // A server that ignores Range answers 200 with the whole archive. That
+        // is still usable, so it is not a failure; only the header is read.
+        if (!response.ok && response.status !== 206) {
             return settled(null);
         }
 
-        const bytes = await response.arrayBuffer();
-        if (bytes.byteLength > MAX_BYTES) {
-            return settled(null);
-        }
-        if (!await hasExpectedDigest(bytes)) {
-            return settled(null);
-        }
-
-        const parsed: unknown = JSON.parse(new TextDecoder().decode(bytes));
-        if (!isBasemap(parsed)) {
-            return settled(null);
-        }
-
-        return settled(parsed);
+        return settled(readHeader(url, await response.arrayBuffer()));
     } catch {
         // A timeout or a network throw, which may not repeat.
-        return {map: null, definitive: false};
+        return {archive: null, definitive: false};
     } finally {
         clearTimeout(timer);
     }
 }
 
 /**
- * Whether the bytes are the basemap this build was generated against.
+ * Validates the archive header, or returns null.
  *
- * As much an availability control as a security one: air-gapped installs have
- * no way to re-fetch, so a truncated or half-deployed asset would otherwise
- * render a silently wrong-shaped world.
- *
- * `crypto.subtle` is undefined on a plain-HTTP origin, which for on-prem and
- * air-gapped installs is the norm, so an unverifiable digest passes rather than
- * disabling the map. That is the same posture the copy buttons take.
+ * `maxZoom` is read rather than assumed so the camera and the data cannot drift
+ * apart: an archive built shallower than the style asks for would otherwise
+ * render blank at the zooms it lacks, which looks like a rendering bug rather
+ * than a data one.
  */
-async function hasExpectedDigest(bytes: ArrayBuffer): Promise<boolean> {
-    if (typeof crypto === 'undefined' || !crypto.subtle) {
-        return true;
+function readHeader(url: string, header: ArrayBuffer): Archive | null {
+    if (header.byteLength < HEADER_BYTES) {
+        return null;
     }
 
-    try {
-        const digest = await crypto.subtle.digest('SHA-256', bytes);
-        const hex = Array.from(new Uint8Array(digest)).
-            map((b) => b.toString(16).padStart(2, '0')).
-            join('');
-
-        return hex === BASEMAP_SHA256;
-    } catch {
-        return true;
+    const bytes = new Uint8Array(header);
+    const magic = String.fromCharCode(...Array.from(bytes.subarray(0, MAGIC.length)));
+    if (magic !== MAGIC || bytes[7] !== SPEC_VERSION) {
+        return null;
     }
-}
-
-function isBasemap(value: unknown): value is Basemap {
-    if (typeof value !== 'object' || value === null) {
-        return false;
+    if (bytes[99] !== TILE_TYPE_MVT) {
+        return null;
     }
-    const candidate = value as {type?: unknown; features?: unknown};
 
-    return candidate.type === 'FeatureCollection' && Array.isArray(candidate.features);
+    const minZoom = bytes[100];
+    const maxZoom = bytes[101];
+    if (minZoom !== 0 || maxZoom < MAX_ZOOM) {
+        return null;
+    }
+
+    return {url, minZoom, maxZoom};
 }
 
 /** Test hook. Module state outlives a component, so a test must be able to clear it. */

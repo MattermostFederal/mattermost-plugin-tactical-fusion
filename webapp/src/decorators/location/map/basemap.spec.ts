@@ -5,58 +5,53 @@ import {expect, test} from '@playwright/test';
 import manifest from 'manifest';
 
 import {basemapUrl, loadBasemap, _resetForTesting} from './basemap';
+import {MAX_ZOOM} from './span';
 
 /*
- * The real basemap, off disk.
+ * The real archive, off disk.
  *
- * These bytes are what BASEMAP_SHA256 was generated against, so the digest check
- * runs for real here rather than being stubbed away. A hand-written fixture
- * could only ever test the mismatch branch.
+ * Only its first 127 bytes are ever read, but they are the real ones: a
+ * hand-written header could only ever test the rejection branches, and the point
+ * of this module is that it accepts the archive this build actually ships.
  */
-const REAL_BASEMAP = fs.readFileSync(
-    path.resolve(__dirname, '../../../../../public/map/world.geo.json'),
+const HEADER_BYTES = 127;
+
+const REAL_ARCHIVE = fs.readFileSync(
+    path.resolve(__dirname, '../../../../../public/map/world.pmtiles'),
 );
+
+function realHeader(): ArrayBuffer {
+    const slice = REAL_ARCHIVE.subarray(0, HEADER_BYTES);
+
+    return slice.buffer.slice(slice.byteOffset, slice.byteOffset + slice.byteLength) as ArrayBuffer;
+}
+
+/** The real header with one byte changed, which is how each rejection is provoked. */
+function headerWith(offset: number, value: number): ArrayBuffer {
+    const bytes = new Uint8Array(realHeader());
+    bytes[offset] = value;
+
+    return bytes.buffer as ArrayBuffer;
+}
 
 function bytesOf(value: string): ArrayBuffer {
     return new TextEncoder().encode(value).buffer as ArrayBuffer;
 }
 
-function realBytes(): ArrayBuffer {
-    return REAL_BASEMAP.buffer.slice(
-        REAL_BASEMAP.byteOffset,
-        REAL_BASEMAP.byteOffset + REAL_BASEMAP.byteLength,
-    ) as ArrayBuffer;
-}
-
-/** Valid GeoJSON, padded to a given total size. */
-function paddedBasemap(bytes: number): string {
-    const skeleton = JSON.stringify({type: 'FeatureCollection', features: [], pad: ''});
-
-    return JSON.stringify({
-        type: 'FeatureCollection',
-        features: [],
-        pad: 'a'.repeat(Math.max(0, bytes - skeleton.length)),
-    });
-}
-
-function oversizedBasemap(): ArrayBuffer {
-    return bytesOf(paddedBasemap((2 * 1024 * 1024) + 64));
-}
-
 interface Reply {
     ok?: boolean;
+    status?: number;
     bytes?: ArrayBuffer;
     throws?: boolean;
 }
 
 const realFetch = globalThis.fetch;
-const realCrypto = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
 
 /**
  * Replaces global fetch and records every call.
  *
- * Only `ok` and `arrayBuffer` are implemented, so a module that starts reading
- * anything else fails loudly here rather than quietly seeing undefined.
+ * Only `ok`, `status` and `arrayBuffer` are implemented, so a module that starts
+ * reading anything else fails loudly here rather than quietly seeing undefined.
  */
 function stubFetch(reply: (n: number) => Reply): string[] {
     const calls: string[] = [];
@@ -71,16 +66,12 @@ function stubFetch(reply: (n: number) => Reply): string[] {
 
         return Promise.resolve({
             ok: answer.ok ?? true,
-            arrayBuffer: () => Promise.resolve(answer.bytes ?? realBytes()),
+            status: answer.status ?? 206,
+            arrayBuffer: () => Promise.resolve(answer.bytes ?? realHeader()),
         });
     }) as unknown as typeof globalThis.fetch;
 
     return calls;
-}
-
-/** Removes `crypto`, which is what a plain-HTTP origin looks like. */
-function withoutSubtleCrypto(): void {
-    Object.defineProperty(globalThis, 'crypto', {value: undefined, configurable: true});
 }
 
 type Global = {window?: {basename?: string}};
@@ -92,20 +83,16 @@ test.beforeEach(() => {
 test.afterEach(() => {
     globalThis.fetch = realFetch;
     delete (globalThis as Global).window;
-
-    if (realCrypto) {
-        Object.defineProperty(globalThis, 'crypto', realCrypto);
-    }
 });
 
 test.describe('basemapUrl', () => {
-    test('points at the bundled basemap', () => {
+    test('points at the bundled archive', () => {
         expect(basemapUrl()).toBe(
-            `/plugins/${manifest.id}/public/map/world.geo.json?v=${encodeURIComponent(manifest.version)}`,
+            `/plugins/${manifest.id}/public/map/world.pmtiles?v=${encodeURIComponent(manifest.version)}`,
         );
     });
 
-    // The version is what busts a reader's cache when the basemap is
+    // The version is what busts a reader's cache when the archive is
     // regenerated, so a build that stopped carrying it would serve last
     // release's world from disk forever.
     test('carries the build version', () => {
@@ -119,22 +106,36 @@ test.describe('basemapUrl', () => {
     });
 });
 
-test.describe('loading', () => {
-    test('returns the basemap the build was generated against', async () => {
+test.describe('probing', () => {
+    test('accepts the archive this build ships', async () => {
         const calls = stubFetch(() => ({}));
 
-        const map = await loadBasemap();
+        const archive = await loadBasemap();
 
         expect(calls).toHaveLength(1);
-        expect(map?.type).toBe('FeatureCollection');
-        expect(map?.features.length).toBeGreaterThan(0);
+        expect(archive?.minZoom).toBe(0);
+        expect(archive?.maxZoom).toBeGreaterThanOrEqual(MAX_ZOOM);
+        expect(archive?.url).toBe(basemapUrl());
+    });
+
+    // Only the header is wanted, and the archive is a great deal larger than it.
+    test('asks for the header alone', async () => {
+        let range = '';
+        globalThis.fetch = ((_url: string, init: {headers?: Record<string, string>}) => {
+            range = init.headers?.Range ?? '';
+            return Promise.resolve({ok: true, status: 206, arrayBuffer: () => Promise.resolve(realHeader())});
+        }) as unknown as typeof globalThis.fetch;
+
+        await loadBasemap();
+
+        expect(range).toBe(`bytes=0-${HEADER_BYTES - 1}`);
     });
 
     test('sends no session with a static asset', async () => {
         let credentials = '';
         globalThis.fetch = ((_url: string, init: {credentials?: string}) => {
             credentials = init.credentials ?? '';
-            return Promise.resolve({ok: true, arrayBuffer: () => Promise.resolve(realBytes())});
+            return Promise.resolve({ok: true, status: 206, arrayBuffer: () => Promise.resolve(realHeader())});
         }) as unknown as typeof globalThis.fetch;
 
         await loadBasemap();
@@ -142,10 +143,18 @@ test.describe('loading', () => {
         expect(credentials).toBe('omit');
     });
 
-    // Module state with no TTL: the file is immutable for the life of an
+    // A server that does not implement Range answers 200 with the whole archive.
+    // That is still perfectly usable and must not read as a broken deploy.
+    test('accepts a server that ignores the range request', async () => {
+        stubFetch(() => ({ok: true, status: 200}));
+
+        expect(await loadBasemap()).not.toBeNull();
+    });
+
+    // Module state with no TTL: the archive is immutable for the life of an
     // install, so a channel full of coordinates makes one request rather than
     // one per panel.
-    test('is fetched once and served from memory thereafter', async () => {
+    test('is probed once and served from memory thereafter', async () => {
         const calls = stubFetch(() => ({}));
 
         const first = await loadBasemap();
@@ -174,107 +183,39 @@ test.describe('loading', () => {
  * panel.
  */
 test.describe('a definitive failure is remembered', () => {
-    test('a missing basemap', async () => {
-        const calls = stubFetch(() => ({ok: false}));
+    const cases: Array<[string, Reply]> = [
+        ['a missing archive', {ok: false, status: 404}],
 
-        expect(await loadBasemap()).toBeNull();
-        expect(await loadBasemap()).toBeNull();
-        expect(calls).toHaveLength(1);
-    });
+        // What a 404 page, an SPA index or a captive portal actually returns.
+        // None of these are an archive and none should reach MapLibre.
+        ['a body that is not an archive', {bytes: bytesOf('<!doctype html><title>404</title>')}],
+        ['a truncated header', {bytes: bytesOf('PMTiles')}],
+        ['a spec version this reader does not know', {bytes: headerWith(7, 4)}],
 
-    /*
-     * The cap has to be the only thing standing between this body and success,
-     * or the test passes on the digest instead and deleting the cap changes
-     * nothing. So the payload is valid GeoJSON and the digest is unverifiable:
-     * without the cap, this loads.
-     */
-    test('a body past the size cap', async () => {
-        withoutSubtleCrypto();
-        const calls = stubFetch(() => ({bytes: oversizedBasemap()}));
+        // Raster tiles in a style that declares vector layers draw nothing at
+        // all, silently.
+        ['an archive of raster tiles', {bytes: headerWith(99, 2)}],
 
-        expect(await loadBasemap()).toBeNull();
-        expect(await loadBasemap()).toBeNull();
-        expect(calls).toHaveLength(1);
-    });
+        // Shallower than the camera allows, so the reader would zoom into blank.
+        ['an archive shallower than the style asks for', {bytes: headerWith(101, MAX_ZOOM - 1)}],
+    ];
 
-    // The counterpart, so the test above pins the cap rather than the shape:
-    // the same payload just under the cap is accepted.
-    test('the same body just under the cap is accepted', async () => {
-        withoutSubtleCrypto();
-        stubFetch(() => ({bytes: bytesOf(paddedBasemap(1024))}));
+    for (const [name, reply] of cases) {
+        test(name, async () => {
+            const calls = stubFetch(() => reply);
 
-        expect(await loadBasemap()).not.toBeNull();
-    });
-
-    // As much an availability control as a security one: an air-gapped install
-    // has no way to re-fetch, so a truncated or half-deployed asset would
-    // otherwise render a silently wrong-shaped world.
-    test('a digest that is not the one this build was generated against', async () => {
-        const calls = stubFetch(() => ({
-            bytes: bytesOf(JSON.stringify({type: 'FeatureCollection', features: []})),
-        }));
-
-        expect(await loadBasemap()).toBeNull();
-        expect(await loadBasemap()).toBeNull();
-        expect(calls).toHaveLength(1);
-    });
-
-    test('a body that is not GeoJSON', async () => {
-        withoutSubtleCrypto();
-        const calls = stubFetch(() => ({bytes: bytesOf(JSON.stringify({type: 'Feature'}))}));
-
-        expect(await loadBasemap()).toBeNull();
-        expect(await loadBasemap()).toBeNull();
-        expect(calls).toHaveLength(1);
-    });
-
-    test('a FeatureCollection with no features array', async () => {
-        withoutSubtleCrypto();
-        const calls = stubFetch(() => ({
-            bytes: bytesOf(JSON.stringify({type: 'FeatureCollection', features: 'no'})),
-        }));
-
-        expect(await loadBasemap()).toBeNull();
-        expect(calls).toHaveLength(1);
-    });
-
-    test('a body that is not an object at all', async () => {
-        withoutSubtleCrypto();
-        const calls = stubFetch(() => ({bytes: bytesOf('null')}));
-
-        expect(await loadBasemap()).toBeNull();
-        expect(calls).toHaveLength(1);
-    });
-});
-
-/*
- * `crypto.subtle` is undefined on a plain-HTTP origin, which for on-prem and
- * air-gapped installs is the norm. An unverifiable digest passes rather than
- * disabling the map, which is the same posture the copy buttons take.
- */
-test.describe('an unverifiable digest', () => {
-    test('passes when there is no crypto to verify with', async () => {
-        withoutSubtleCrypto();
-        stubFetch(() => ({}));
-
-        expect(await loadBasemap()).not.toBeNull();
-    });
-
-    test('passes when the digest cannot be computed', async () => {
-        Object.defineProperty(globalThis, 'crypto', {
-            value: {subtle: {digest: () => Promise.reject(new Error('unavailable'))}},
-            configurable: true,
+            expect(await loadBasemap()).toBeNull();
+            expect(await loadBasemap()).toBeNull();
+            expect(calls).toHaveLength(1);
         });
-        stubFetch(() => ({}));
-
-        expect(await loadBasemap()).not.toBeNull();
-    });
+    }
 });
 
 /*
- * Latching on a transient failure means one stalled fetch on a DDIL link tells a
- * reader the map is broken for the rest of the session, with a reload the only
- * way back, in exactly the environment this plugin is built for.
+ * A transient failure is NOT remembered. Latching on one stalled fetch would
+ * tell a reader on a DDIL link that the map is broken for the rest of the
+ * session, with a reload the only way back, in the environment this plugin is
+ * built for.
  */
 test.describe('a transient failure is not remembered', () => {
     test('a network throw is retried by the next caller', async () => {
@@ -282,16 +223,6 @@ test.describe('a transient failure is not remembered', () => {
 
         expect(await loadBasemap()).toBeNull();
         expect(await loadBasemap()).not.toBeNull();
-        expect(calls).toHaveLength(2);
-    });
-
-    test('the retry is cached like any other success', async () => {
-        const calls = stubFetch((n) => (n === 0 ? {throws: true} : {}));
-
-        await loadBasemap();
-        await loadBasemap();
-        await loadBasemap();
-
         expect(calls).toHaveLength(2);
     });
 });

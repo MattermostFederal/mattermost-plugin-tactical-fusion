@@ -201,11 +201,31 @@
         </div>
 
         <p>
-            The basemap is Natural Earth at 1:110 million. That is coarse on purpose. It
-            answers <em>which part of the world is this</em> and it is not a navigation
-            chart: coastlines are generalised by roughly a kilometre, and there are no
-            roads, no towns and no labels.
+            The basemap is Natural Earth, drawn from vector tiles and named with country
+            labels. Detail follows how far in you are: the whole world is drawn at
+            1:110&nbsp;million, and as you zoom the map moves to 1:50&nbsp;million and then
+            1:10&nbsp;million, so coastlines and borders sharpen rather than going blurry.
         </p>
+
+        <p>
+            It is still <strong>not a navigation chart</strong>. Even at its finest it is
+            accurate to roughly five kilometres, and it carries no roads, no towns and no
+            terrain. It answers <em>which part of the world is this</em>, and the square
+            around the pin, not the coastline under it, is what states how precisely the
+            original text located anything.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">Country names are the only labels.</p>
+            <p>
+                Every country Natural Earth lists is named, including disputed
+                territories, because leaving one out would be a judgement this plugin does
+                not make. Which names are visible at a given moment is decided by the room
+                available, so zooming in and out changes what is written on the map. The
+                names are drawn in a bundled Latin typeface, so a name in a non-Latin
+                script may be missing characters.
+            </p>
+        </div>
 
         <h4>The square around the pin</h4>
 
@@ -252,10 +272,13 @@
         <h3 id="location-region">Naming the country</h3>
 
         <p>
-            The country a position falls in is worked out from the same bundled
-            basemap the map is drawn from. It is not a row in the table: the map
-            speaks it in its accessible label and nowhere else. So it is there when
-            the map is, and not when it is not.
+            The country a position falls in is worked out on the server, by testing the
+            point against bundled country outlines. Those outlines are a separate copy of
+            the data from the one the map draws, kept at 1:110&nbsp;million whatever the
+            map is showing, which is why the value cites that scale even when you have
+            zoomed past it. It is not a row in the table: the map speaks it in its
+            accessible label and nowhere else. So it is there when the map is, and not
+            when it is not.
         </p>
 
         <div class="alert alert-warning">

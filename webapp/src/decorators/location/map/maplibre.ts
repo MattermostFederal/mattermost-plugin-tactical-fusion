@@ -1,7 +1,9 @@
 import type {FeatureCollection} from 'geojson';
 import type {StyleSpecification} from 'maplibre-gl';
 
-import type {Basemap} from './basemap';
+import type {Archive} from './basemap';
+
+import {pluginBaseUrl} from '../../../plugin_url';
 
 /**
  * Loading MapLibre, and the style it draws the bundled basemap with.
@@ -25,6 +27,7 @@ let failed = false;
  * rather than an error.
  */
 let webgl2: boolean | null = null;
+let protocolRegistered = false;
 
 export function hasWebGL2(): boolean {
     // Memoised, and the probe context is released. A browser's WebGL2 support
@@ -85,7 +88,7 @@ async function loadAndConfigure(): Promise<MapLibre> {
     // The stylesheet is not optional: the zoom control's + and - glyphs are CSS
     // background images and the control container's corner placement is a CSS
     // rule, so without it the controls are invisible but still focusable.
-    const [module, , worker] = await Promise.all([
+    const [module, , worker, , pmtiles] = await Promise.all([
         import('maplibre-gl'),
         import('maplibre-gl/dist/maplibre-gl.css'),
         import('maplibre-gl/dist/maplibre-gl-worker.mjs'),
@@ -94,6 +97,7 @@ async function loadAndConfigure(): Promise<MapLibre> {
         // a fixed relative name. The ?copy marker is what keeps this an asset
         // copy rather than a rewrite of MapLibre's own import of the same file.
         import('maplibre-gl/dist/maplibre-gl-shared.mjs?copy'),
+        import('pmtiles'),
     ]);
 
     const url = assetUrl(worker);
@@ -104,6 +108,19 @@ async function loadAndConfigure(): Promise<MapLibre> {
             // A build without the setter still works wherever blob: workers are
             // allowed.
         }
+    }
+
+    // Registered here rather than at module scope, which would need maplibregl
+    // at module scope and so un-lazy the chunk this whole function exists to
+    // keep lazy. Behind the `loading` memo, so it happens exactly once, and
+    // necessarily before any Map is constructed.
+    //
+    // The worker's own protocol table is empty, so a tile request made there
+    // falls through to an actor message answered on this thread, where the
+    // protocol is registered. That is why no worker-side code is needed.
+    if (!protocolRegistered) {
+        module.addProtocol('pmtiles', new pmtiles.Protocol().tile);
+        protocolRegistered = true;
     }
 
     return module;
@@ -162,6 +179,8 @@ export interface MapColors {
     cellFill: string;
     pin: string;
     pinEdge: string;
+    label: string;
+    labelHalo: string;
 }
 
 /**
@@ -188,6 +207,8 @@ export function mapColors(): MapColors {
         cellFill: dark ? 'rgba(179,209,255,0.18)' : 'rgba(11,47,122,0.16)',
         pin: dark ? '#ff6b6b' : '#c92a2a',
         pinEdge: dark ? '#0b0e13' : '#ffffff',
+        label: dark ? '#e8edf5' : '#101418',
+        labelHalo: dark ? '#12161d' : '#eef2f7',
     };
 }
 
@@ -207,16 +228,21 @@ function isDarkTheme(): boolean {
 /**
  * The style object.
  *
- * No `glyphs` and no `sprite`, deliberately, and therefore no `symbol` layers.
- * Those are the two URLs a MapLibre style fetches from the network, and an
- * air-gapped install has nowhere for them to point. A future overlay that wants
- * a text label has to solve that first rather than discover it in the field.
+ * `glyphs` and `sprite` are the only two style fields MapLibre resolves as
+ * URLs. There is still no `sprite`, and `glyphs` points at bundled font ranges
+ * under this plugin's own static path, so nothing here reaches off-origin.
+ *
+ * Glyph ranges load over fetch on the main thread, which CSP governs under
+ * `connect-src`, and the page policy already grants `connect-src 'self'`. Adding
+ * labels therefore widens no policy. A sprite would, because its image half
+ * loads under `img-src`, which is why there still is not one.
  */
-export function buildStyle(basemap: Basemap, colors: MapColors): StyleSpecification {
+export function buildStyle(archive: Archive, colors: MapColors): StyleSpecification {
     return {
         version: 8,
+        glyphs: `${pluginBaseUrl()}/public/map/fonts/{fontstack}/{range}.pbf`,
         sources: {
-            basemap: {type: 'geojson', data: basemap},
+            basemap: {type: 'vector', url: `pmtiles://${archive.url}`},
             cell: {type: 'geojson', data: emptyCollection()},
             pin: {type: 'geojson', data: emptyCollection()},
         },
@@ -226,22 +252,50 @@ export function buildStyle(basemap: Basemap, colors: MapColors): StyleSpecificat
                 id: 'land',
                 type: 'fill',
                 source: 'basemap',
-                filter: ['==', ['get', 'layer'], 'land'],
+                'source-layer': 'land',
                 paint: {'fill-color': colors.land},
             },
             {
                 id: 'lakes',
                 type: 'fill',
                 source: 'basemap',
-                filter: ['==', ['get', 'layer'], 'lakes'],
+                'source-layer': 'lakes',
                 paint: {'fill-color': colors.water},
             },
             {
                 id: 'borders',
                 type: 'line',
                 source: 'basemap',
-                filter: ['==', ['get', 'layer'], 'borders'],
+                'source-layer': 'boundary_lines',
                 paint: {'line-color': colors.line, 'line-width': 0.6},
+            },
+
+            // Every symbol layer sits BELOW the cell and the pin, and that
+            // ordering is the only thing protecting them: MapLibre's collision
+            // index sees symbols alone, so no text property can make a label
+            // yield to a circle or a polygon. A test asserts the indices.
+            {
+                id: 'country-label',
+                type: 'symbol',
+                source: 'basemap',
+                'source-layer': 'country_labels',
+                layout: {
+                    'text-field': ['get', 'name'],
+                    'text-font': ['NotoSans-Regular'],
+                    'text-size': ['interpolate', ['linear'], ['zoom'], 2, 10, 6, 14],
+                    'text-max-width': 8,
+                    'text-padding': 2,
+                    'text-allow-overlap': false,
+                    'text-ignore-placement': false,
+                    'text-optional': true,
+                    'symbol-sort-key': ['get', 'rank'],
+                },
+                paint: {
+                    'text-color': colors.label,
+                    'text-halo-color': colors.labelHalo,
+                    'text-halo-width': 1.4,
+                    'text-halo-blur': 0,
+                },
             },
             {
                 id: 'cell-fill',

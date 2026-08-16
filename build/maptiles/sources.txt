@@ -1,0 +1,14 @@
+# Natural Earth sources for the finer basemap tiers, pinned by release tag.
+#
+# The 110m tier is not listed: those four files are already committed under
+# build/mapdata/source/ because the country lookup generator needs them.
+#
+# Only the pipeline needs the network. The plugin never does.
+#
+# scale  file
+50m      ne_50m_land
+50m      ne_50m_lakes
+50m      ne_50m_admin_0_boundary_lines_land
+10m      ne_10m_land
+10m      ne_10m_lakes
+10m      ne_10m_admin_0_boundary_lines_land

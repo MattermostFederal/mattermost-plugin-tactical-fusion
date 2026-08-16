@@ -1,9 +1,11 @@
+import fs from 'fs';
 import path from 'path';
 
 import type {Locator, Page} from '@playwright/test';
 import React from 'react';
 
 import LocationMapHarness from './LocationMapHarness';
+import type {ViewName} from './LocationMapHarness';
 
 import {expect, test} from '../../../../playwright/ct-coverage';
 
@@ -13,13 +15,13 @@ import {expect, test} from '../../../../playwright/ct-coverage';
  * Every other suite that reaches this component leaves the basemap unanswered,
  * so MapLibre was never constructed under test: the creation path, the camera
  * and both overlay sources were dead to the whole suite. The unlock is one
- * route. The committed basemap is what BASEMAP_SHA256 was generated against, so
- * serving those exact bytes is the only way past the digest check, which no
- * hand-written fixture can be.
+ * route. The committed archive is served rather than a fixture, so the header
+ * probe in basemap.ts runs against the bytes this build actually ships.
  *
- * The style has no glyphs and no sprite and carries its GeoJSON inline, so once
- * that response is mocked the map fetches nothing else. That is what makes this
- * deterministic rather than a network test.
+ * Once the archive, the worker and the glyphs are routed, the map fetches
+ * nothing else, which is what makes this deterministic rather than a network
+ * test. `starveFonts` 404s the glyph ranges instead, which is how the two label
+ * tests below tell apart what the fonts are actually responsible for.
  *
  * Assertions go through the harness's outputs rather than the DOM wherever the
  * subject is MapLibre's own state. An earlier version of this file watched the
@@ -28,7 +30,9 @@ import {expect, test} from '../../../../playwright/ct-coverage';
  * `live`-flag load guard left all of it green.
  */
 
-const BASEMAP = path.resolve(__dirname, '../../../../../public/map/world.geo.json');
+const BASEMAP = path.resolve(__dirname, '../../../../../public/map/world.pmtiles');
+const ARCHIVE = fs.readFileSync(BASEMAP);
+const FONTS = path.resolve(__dirname, '../../../../../public/map/fonts/NotoSans-Regular');
 
 /*
  * Resolved through the package rather than composed from a path, so a hoisted
@@ -65,11 +69,43 @@ const RESET = 'Reset view';
  * map between construction and `load` — the window the readiness guard exists
  * for.
  */
-async function serveMapAssets(page: Page, holdWorker?: Promise<void>): Promise<void> {
-    await page.route('**/public/map/world.geo.json*', (route) => route.fulfill({
-        path: BASEMAP,
-        contentType: 'application/json',
-    }));
+async function serveMapAssets(
+    page: Page,
+    holdWorker?: Promise<void>,
+    starveFonts = false,
+): Promise<void> {
+    // PMTiles reads by byte range, so this has to answer 206 with the requested
+    // slice. route.fulfill({path}) always returns the whole file with a 200,
+    // which leaves the reader parsing the header as if it were a tile.
+    await page.route('**/public/map/world.pmtiles*', (route) => {
+        const range = (/bytes=(\d+)-(\d+)/).exec(route.request().headers().range ?? '');
+        if (!range) {
+            return route.fulfill({
+                status: 200,
+                contentType: 'application/octet-stream',
+                body: ARCHIVE,
+            });
+        }
+
+        const start = Number(range[1]);
+        const end = Math.min(Number(range[2]), ARCHIVE.length - 1);
+
+        return route.fulfill({
+            status: 206,
+            contentType: 'application/octet-stream',
+            headers: {'content-range': `bytes ${start}-${end}/${ARCHIVE.length}`},
+            body: ARCHIVE.subarray(start, end + 1),
+        });
+    });
+
+    if (starveFonts) {
+        await page.route('**/public/map/fonts/**', (route) => route.fulfill({status: 404}));
+    } else {
+        await page.route('**/public/map/fonts/**', (route) => route.fulfill({
+            path: path.resolve(FONTS, path.basename(new URL(route.request().url()).pathname)),
+            contentType: 'application/x-protobuf',
+        }));
+    }
 
     await page.route('**/maplibre-gl-shared.mjs', (route) => route.fulfill({
         path: SHARED,
@@ -331,6 +367,89 @@ test.describe('changing selection', () => {
     });
 });
 
+/*
+ * Labels need the bundled fonts. This was measured, not assumed, and it came out
+ * the opposite way to the expectation it was written to confirm.
+ *
+ * Whether a label is on screen is decided by the opening camera, which always
+ * frames a fixed ground span: none of the other views has a label anchor in
+ * frame, so they answer zero for reasons that have nothing to do with fonts.
+ * That is why these use a view sitting on an anchor.
+ *
+ * What is NOT asserted here is what a missing glyph range looks like to a
+ * reader. MapLibre still places the symbol without it, so the query cannot tell
+ * a painted label from an unpainted one, and this file deliberately does not
+ * assert pixels on a WebGL canvas. The contract pinned below is the one that can
+ * be: a font outage costs neither the map nor the panel.
+ */
+test.describe('labels', () => {
+    test('are drawn from the archive', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness start='on a label'/>);
+        await expectDrawn(component);
+
+        await expect.poll(async () => {
+            await component.getByRole('button', {name: 'read the map'}).click();
+
+            return Number(await component.getByTestId('labels-drawn').textContent());
+        }, {message: 'country labels drawn'}).toBeGreaterThan(0);
+    });
+
+    test('do not take the map with them when the fonts cannot be served', async ({mount, page}) => {
+        await serveMapAssets(page, undefined, true);
+
+        const component = await mount(<LocationMapHarness start='on a label'/>);
+
+        // The map still draws, and says nothing about a failure: geometry does
+        // not depend on the fonts, and a 404 on a glyph range is not a broken
+        // deploy. Before the error handler learned to ignore source-scoped
+        // errors, a failure like this printed "The map could not be loaded."
+        // over a map that was drawing perfectly.
+        await expectDrawn(component);
+        await expect(noteOf(component)).toHaveCount(0);
+    });
+});
+
+/*
+ * The basemap says the truth about land and water.
+ *
+ * Migrated from the Go suite, which asked the same five positions of the GeoJSON
+ * basemap's polygons directly. That check could not follow the data into vector
+ * tiles without a protobuf decoder in the shipping module, and asking a renderer
+ * is the better question regardless: a basemap whose polygons are right but
+ * whose tiling is shifted or clipped would pass the old test and still draw the
+ * sea over Kansas.
+ *
+ * The failure this guards is the one worth catching loudly. A position drawn
+ * with the wrong fill under it is a map that says the opposite of the truth, and
+ * nothing else in the suite would notice.
+ */
+test.describe('land and water', () => {
+    const positions: Array<[ViewName, boolean]> = [
+        ['Washington', true],
+        ['Kansas', true],
+        ['central Australia', true],
+        ['mid Pacific', false],
+        ['mid Atlantic', false],
+    ];
+
+    for (const [where, onLand] of positions) {
+        test(`${where} is ${onLand ? 'on land' : 'at sea'}`, async ({mount, page}) => {
+            await serveMapAssets(page);
+
+            const component = await mount(<LocationMapHarness start={where}/>);
+            await expectDrawn(component);
+
+            await expect.poll(async () => {
+                await component.getByRole('button', {name: 'read the map'}).click();
+
+                return Number(await component.getByTestId('land-at-centre').textContent());
+            }, {message: `land drawn under ${where}`}).toBe(onLand ? 1 : 0);
+        });
+    }
+});
+
 test.describe('the map outliving one coordinate', () => {
     /*
      * The historic defect, reproduced. The 'load' handler is guarded on the
@@ -420,7 +539,7 @@ test.describe('when there is no map to draw', () => {
     // than a browser that cannot draw. Distinguished from the case above by the
     // library having got far enough to be asked for a map.
     test('a basemap that will not load says so', async ({mount, page}) => {
-        await page.route('**/public/map/world.geo.json*', (route) => route.fulfill({status: 404}));
+        await page.route('**/public/map/world.pmtiles*', (route) => route.fulfill({status: 404}));
 
         const component = await mount(<LocationMapHarness/>);
 
