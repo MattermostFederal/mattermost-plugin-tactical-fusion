@@ -225,6 +225,16 @@ func TestMapPaletteCarriesItsContrast(t *testing.T) {
 		{"dark", "land against water", "#5a6472", "#12161d", 3},
 		{"dark", "the pin's edge against land", "#0b0e13", "#5a6472", 3},
 		{"dark", "the cell outline against land", "#b3d1ff", "#5a6472", 3},
+
+		// Roads carry meaning once a reader is close, so they are held to the
+		// same floor the land/water edge is. The other context layers (urban
+		// areas, railways, province lines) are deliberately below it, between
+		// 1.2:1 and 2.3:1, and are absent here on purpose: they exist to be
+		// recognised when looked for, not read, and the coordinate has to stay
+		// the loudest thing on screen when a city's worth of them is drawn
+		// underneath it.
+		{"light", "roads against land", "#2b3542", "#76889f", 3},
+		{"dark", "roads against land", "#c2ccd9", "#5a6472", 3},
 	}
 
 	for _, p := range pairs {

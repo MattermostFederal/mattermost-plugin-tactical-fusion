@@ -1,7 +1,6 @@
 package location
 
 import (
-	"encoding/binary"
 	"os"
 	"testing"
 )
@@ -75,27 +74,44 @@ func TestArchiveDepthMatchesTheCameraCeiling(t *testing.T) {
 	}
 }
 
-// A single root directory with no leaf directories is what keeps a from-scratch
-// reader down to a header parse, one directory decode and an inflate. That is
-// the recorded fallback if the pmtiles dependency ever has to be dropped, and it
-// stops being available the moment the generator emits leaves.
-func TestArchiveKeepsASingleRootDirectory(t *testing.T) {
+/*
+ * The archive stays clustered, and its directory layout is recorded rather than
+ * constrained.
+ *
+ * It used to carry a single root directory and no leaves, which kept a
+ * from-scratch PMTiles reader down to a header parse, one directory decode and
+ * an inflate. That was written down as the escape hatch if the pmtiles
+ * dependency ever had to be dropped.
+ *
+ * Enriching the basemap to z8 ended it: at roughly 32,000 tile entries the
+ * writer spills into leaf directories, which is ordinary PMTiles v3 and not a
+ * fault. Avoiding it would mean capping zoom or dropping layers, which is the
+ * opposite of what the archive grew for, so the guarantee was given up
+ * deliberately rather than tuned around.
+ *
+ * What it costs, so nobody has to rediscover it: the fallback reader now needs a
+ * second directory level, and a cold tile lookup can take two range requests
+ * instead of one. Directory caching in the client absorbs the second for every
+ * tile after the first few.
+ *
+ * Clustered still matters and is still asserted: it is what lets a reader walk
+ * tile data in order rather than seeking per tile.
+ */
+func TestArchiveIsClustered(t *testing.T) {
 	raw := readArchiveHeader(t)
 
-	if leafLen := binary.LittleEndian.Uint64(raw[48:56]); leafLen != 0 {
-		t.Errorf("leaf directory length = %d, want 0", leafLen)
-	}
 	if clustered := raw[96]; clustered != 1 {
 		t.Errorf("clustered = %d, want 1", clustered)
 	}
 }
 
-// The archive ships in the bundle and is fetched by every reader who opens a
-// coordinate, so its size is a property worth noticing rather than discovering.
-// The budget is deliberately loose: it exists to catch an order-of-magnitude
-// change, such as a tier accidentally built at full detail across every zoom.
 func TestArchiveFitsItsBudget(t *testing.T) {
-	const budget = 8 * 1024 * 1024
+	// Raised from 8 MiB when the basemap gained roads, railways, urban areas,
+	// states, rivers and populated places, and its ceiling moved from z6 to z8.
+	// Still loose on purpose: this catches an order-of-magnitude mistake, such as
+	// a tier accidentally built at full detail across every zoom, not a layer
+	// added on purpose.
+	const budget = 48 * 1024 * 1024
 
 	info, err := os.Stat(archivePath)
 	if err != nil {

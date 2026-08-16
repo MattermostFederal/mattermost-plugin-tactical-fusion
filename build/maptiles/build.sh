@@ -6,63 +6,116 @@ FINE="${FINE:-build/maptiles/source}"
 WORK="${WORK:-build/maptiles/work}"
 OUT="${OUT:-public/map/world.pmtiles}"
 
+# Four times tippecanoe's default. Override to measure what detail it is
+# costing: SIMPLIFICATION=2 make map-tiles
+SIMPLIFICATION="${SIMPLIFICATION:-4}"
+
 mkdir -p "$WORK" "$(dirname "$OUT")"
 
+# A tile with no ceiling is the failure this plugin is built to avoid: the base
+# and label tiers need one so every country label survives z0, but a z8 tile over
+# the Ruhr carrying roads, rail, urban and admin-1 has no natural bound at all.
+# MAX_TILE_BYTES scopes a limit to the runs that need it.
 tippecanoe_common=(
     --no-feature-limit
-    --no-tile-size-limit
     --no-tile-stats
     --drop-rate=1
-    --simplification=4
     --detect-shared-borders
     --quiet
 )
 
-prepare_tier() {
-    local dir="$1" scale="$2"
+parts=()
+
+# One tippecanoe run per zoom band, joined at the end. tippecanoe takes a zoom
+# range per invocation and not per layer, so a layer that should only appear
+# once the reader is close needs a run of its own.
+run() {
+    local name="$1" minz="$2" maxz="$3"
+    shift 3
+
+    local -a bound=(--no-tile-size-limit)
+    if [ -n "${MAX_TILE_BYTES:-}" ]; then
+        bound=(--maximum-tile-bytes="$MAX_TILE_BYTES" --drop-densest-as-needed)
+    fi
+
+    tippecanoe "${tippecanoe_common[@]}" "${bound[@]}" \
+        --simplification="$SIMPLIFICATION" \
+        --output="${WORK}/part_${name}.pmtiles" --force \
+        --minimum-zoom="$minz" --maximum-zoom="$maxz" \
+        "$@"
+
+    parts+=("${WORK}/part_${name}.pmtiles")
+    echo "  ${name}  z${minz}-${maxz}  $(wc -c < "${WORK}/part_${name}.pmtiles") bytes"
+}
+
+# The coastline trio, at the scale that suits each zoom band.
+outline() {
+    local dir="$1" scale="$2" minz="$3" maxz="$4"
+
     for layer in land lakes admin_0_boundary_lines_land; do
         python3 build/maptiles/strip.py \
             "${dir}/ne_${scale}_${layer}.geojson" \
             "${WORK}/${scale}_${layer}.geojson"
     done
-}
 
-build_tier() {
-    local scale="$1" minz="$2" maxz="$3"
-    tippecanoe "${tippecanoe_common[@]}" \
-        --output="${WORK}/tier_${scale}.pmtiles" --force \
-        --minimum-zoom="$minz" --maximum-zoom="$maxz" \
+    run "outline_${scale}" "$minz" "$maxz" \
         --named-layer=land:"${WORK}/${scale}_land.geojson" \
         --named-layer=lakes:"${WORK}/${scale}_lakes.geojson" \
         --named-layer=boundary_lines:"${WORK}/${scale}_admin_0_boundary_lines_land.geojson"
-    echo "  tier ${scale}  z${minz}-${maxz}  $(wc -c < "${WORK}/tier_${scale}.pmtiles") bytes"
 }
 
-node build/maptiles/glyphs.js
+strip_fine() {
+    local layer="$1"
+    shift
+    python3 build/maptiles/strip.py \
+        "${FINE}/ne_10m_${layer}.geojson" "${WORK}/10m_${layer}.geojson" "$@"
+}
 
 python3 build/maptiles/labels.py \
     "${COARSE}/ne_110m_admin_0_countries.geojson" \
     "${WORK}/country_labels.geojson"
 
-prepare_tier "$COARSE" 110m
-prepare_tier "$FINE" 50m
-prepare_tier "$FINE" 10m
+node build/maptiles/glyphs.js
 
-build_tier 110m 0 2
-build_tier 50m 3 4
-build_tier 10m 5 6
+outline "$COARSE" 110m 0 2
+outline "$FINE"   50m  3 4
+outline "$FINE"   10m  5 6
 
-tippecanoe "${tippecanoe_common[@]}" \
-    --output="${WORK}/tier_labels.pmtiles" --force \
-    --minimum-zoom=0 --maximum-zoom=6 \
+# The same three layers again, deeper and sharper. Douglas-Peucker tolerance
+# scales as 1/2^z, so dropping to full detail costs 81% more vertices at z5 and
+# only 11% at z8: the zooms where the shape is visible are the zooms where
+# keeping it is cheap. z0-6 stays byte-identical to before.
+SIMPLIFICATION=1 run outline_10m_deep 7 8 \
+    --named-layer=land:"${WORK}/10m_land.geojson" \
+    --named-layer=lakes:"${WORK}/10m_lakes.geojson" \
+    --named-layer=boundary_lines:"${WORK}/10m_admin_0_boundary_lines_land.geojson"
+
+# Everything below is 10m only, and each is held back to the zoom where it
+# starts being worth its bytes rather than drawn at every scale.
+strip_fine rivers_lake_centerlines
+strip_fine admin_1_states_provinces_lines
+run context 4 8 \
+    --named-layer=rivers:"${WORK}/10m_rivers_lake_centerlines.geojson" \
+    --named-layer=admin_1_lines:"${WORK}/10m_admin_1_states_provinces_lines.geojson"
+
+strip_fine urban_areas
+strip_fine roads scalerank
+strip_fine railroads
+MAX_TILE_BYTES=250000 run detail 5 8 \
+    --coalesce \
+    --named-layer=urban_areas:"${WORK}/10m_urban_areas.geojson" \
+    --named-layer=roads:"${WORK}/10m_roads.geojson" \
+    --named-layer=railroads:"${WORK}/10m_railroads.geojson"
+
+strip_fine populated_places NAME_EN SCALERANK
+run places 3 8 \
+    --named-layer=populated_places:"${WORK}/10m_populated_places.geojson"
+
+run labels 0 8 \
     --named-layer=country_labels:"${WORK}/country_labels.geojson"
 
 rm -f "$OUT"
-tile-join --output="$OUT" --no-tile-size-limit --quiet \
-    "${WORK}/tier_110m.pmtiles" \
-    "${WORK}/tier_50m.pmtiles" \
-    "${WORK}/tier_10m.pmtiles" \
-    "${WORK}/tier_labels.pmtiles"
+tile-join --output="$OUT" --no-tile-size-limit --quiet "${parts[@]}"
 
 ls -l "$OUT"
 shasum -a 256 "$OUT" 2>/dev/null || sha256sum "$OUT"

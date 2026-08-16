@@ -118,6 +118,50 @@ test('every label is drawn beneath the cell and the pin', () => {
     }
 });
 
+/*
+ * Every layer the archive carries is drawn, and every layer drawn exists.
+ *
+ * These two halves fail in opposite, equally quiet ways. A source-layer named
+ * in the style that the archive does not carry draws nothing and looks like a
+ * data problem; a layer built into the archive that no style layer names is
+ * bytes in every install that nobody can see.
+ */
+test('the style draws every source-layer the archive carries', () => {
+    const style = buildStyle(ARCHIVE, mapColors());
+
+    const drawn = new Set(style.layers.
+        map((layer) => (layer as {'source-layer'?: string})['source-layer']).
+        filter(Boolean));
+
+    expect([...drawn].sort()).toEqual([
+        'admin_1_lines',
+        'boundary_lines',
+        'country_labels',
+        'lakes',
+        'land',
+        'populated_places',
+        'railroads',
+        'rivers',
+        'roads',
+        'urban_areas',
+    ]);
+});
+
+// Countries name the view while it spans one and hand over to towns past that.
+// Without the handover the country label goes on winning every collision it
+// enters, because symbols are placed in layer order and first placed wins.
+test('country labels hand over to place labels', () => {
+    const style = buildStyle(ARCHIVE, mapColors());
+    const byId = (id: string) => style.layers.find((layer) => layer.id === id) as {
+        minzoom?: number; maxzoom?: number;
+    };
+
+    expect(byId('country-label').maxzoom).toBe(6);
+    expect(byId('place-label').minzoom).toBeLessThanOrEqual(6);
+    expect(style.layers.findIndex((l) => l.id === 'country-label')).
+        toBeLessThan(style.layers.findIndex((l) => l.id === 'place-label'));
+});
+
 test('a point feature is longitude first, as GeoJSON requires', () => {
     // Every other surface in this plugin is latitude first, and lon/lat
     // inversion is one of the bugs this repo deliberately did not inherit.

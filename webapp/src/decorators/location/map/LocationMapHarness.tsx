@@ -42,14 +42,20 @@ const MID_PACIFIC: View = {lat: 0, lon: -140.0, cellDegLat: 0.01, cellDegLon: 0.
 const MID_ATLANTIC: View = {lat: 30.0, lon: -40.0, cellDegLat: 0.01, cellDegLon: 0.01};
 
 /*
- * Natural Earth's own label anchor for the United States, in Kansas.
+ * A coordinate sitting on a named place.
  *
  * The opening camera always frames a fixed ground span, so whether a label is on
- * screen is decided by how near the coordinate is to an anchor. None of the
- * other views has one in frame, which made "no labels drawn" ambiguous between a
- * font that failed and a label that was simply elsewhere.
+ * screen is decided by how near the coordinate is to one. This used to be
+ * Natural Earth's label anchor for the United States, in Kansas, which worked
+ * while the opening span was 2,400 km and stopped working the moment it became
+ * 400 km: the anchor is farmland, and the nearest named towns are about 200 km
+ * away, right at the frame edge.
+ *
+ * Paris is a rank-1 place, so it survives the zoom gating at every zoom the
+ * layer is drawn at, and it is nowhere near a coastline, which keeps it out of
+ * the way of the land-and-water fixtures.
  */
-const ON_A_LABEL: View = {lat: 39.538479, lon: -97.482602, cellDegLat: 0.01, cellDegLon: 0.01};
+const ON_A_LABEL: View = {lat: 48.8566, lon: 2.3522, cellDegLat: 0.01, cellDegLon: 0.01};
 
 const VIEWS = {
     'Los Angeles': LOS_ANGELES,
@@ -95,6 +101,11 @@ HTMLCanvasElement.prototype.getContext = function patched(
  * Rendered rather than sourced, deliberately: a label present in the tile but
  * dropped by collision, or one whose font never resolved, is not a label the
  * reader can see, and it is the reader's view this pins.
+ *
+ * Both label layers count, because which of them is drawing depends on the
+ * zoom: countries name the view while it spans one, and hand over to towns
+ * past z6. Naming only one here would make the test a test of the handover
+ * rather than of whether any label reaches the reader.
  */
 function labelsIn(map: MapLibreMap | null): number {
     if (!map) {
@@ -102,7 +113,7 @@ function labelsIn(map: MapLibreMap | null): number {
     }
 
     try {
-        return map.queryRenderedFeatures({layers: ['country-label']}).length;
+        return map.queryRenderedFeatures({layers: ['country-label', 'place-label']}).length;
     } catch {
         // Asked before the style finished, which is not a failure to report.
         return -1;
@@ -182,7 +193,7 @@ const LocationMapHarness: React.FC<Props> = ({
     const [mounted, setMounted] = useState(true);
     const [live, setLive] = useState(false);
     const [created, setCreated] = useState(0);
-    const [reading, setReading] = useState({pin: -1, cell: -1, labels: -1, land: -1, center: 'none', removed: false});
+    const [reading, setReading] = useState({pin: -1, cell: -1, labels: -1, land: -1, zoom: -1, center: 'none', removed: false});
 
     // The last instance, kept past the observer's null so the unmount test can
     // still ask it whether it was removed.
@@ -210,6 +221,7 @@ const LocationMapHarness: React.FC<Props> = ({
             labels: labelsIn(map),
             land: landAtCentre(map),
             center: at ? `${at.lat.toFixed(3)},${at.lng.toFixed(3)}` : 'none',
+            zoom: map && !wasRemoved(map) ? Number(map.getZoom().toFixed(2)) : -1,
             removed: wasRemoved(map),
         });
     };
@@ -257,6 +269,7 @@ const LocationMapHarness: React.FC<Props> = ({
             <output data-testid='labels-drawn'>{String(reading.labels)}</output>
             <output data-testid='land-at-centre'>{String(reading.land)}</output>
             <output data-testid='camera'>{reading.center}</output>
+            <output data-testid='zoom'>{String(reading.zoom)}</output>
             <output data-testid='removed'>{reading.removed ? 'yes' : 'no'}</output>
         </div>
     );

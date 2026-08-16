@@ -37,14 +37,23 @@ because SIL OFL 1.1 requires the notice to travel with any Modified Version, and
 SDF ranges generated from a TTF are one. Noto declares no Reserved Font Name,
 which is what allows the generated ranges to keep the `NotoSans-Regular` name.
 
-One archive, four layers:
+One archive, ten layers, z0 through z8:
 
-| Layer | Geometry | Attributes |
-|---|---|---|
-| `land` | polygons | none |
-| `lakes` | polygons | none |
-| `boundary_lines` | lines | none |
-| `country_labels` | points | `name`, `rank` |
+| Layer | Geometry | Zooms | Attributes |
+|---|---|---|---|
+| `land`, `lakes` | polygons | z0-8 | none |
+| `boundary_lines` | lines | z0-8 | none |
+| `country_labels` | points | z0-8 | `name`, `rank` |
+| `rivers`, `admin_1_lines` | lines | z4-8 | none |
+| `urban_areas` | polygons | z5-8 | none |
+| `roads` | lines | z5-8 | `scalerank` |
+| `railroads` | lines | z5-8 | none |
+| `populated_places` | points | z3-8 | `name_en`, `scalerank` |
+
+Layers held back to a higher zoom are held back for two reasons at once. Below
+that zoom they are a smear rather than information, and every layer present in a
+tile costs about 40 bytes of framing before a single coordinate, against roughly
+27,000 non-empty tiles at z8.
 
 ## Two things in here are decisions, not mechanics
 
@@ -59,22 +68,41 @@ priority for it.
 `--drop-rate=1` exists for the same reason: tippecanoe's default drops points at
 low zoom, which left one label of 177 in the z0 tile.
 
-**Geometry layers carry no attributes.** `strip.py` removes them. Lakes carry 37
+**Layers keep only what the style draws with.** `strip.py` takes a keep-list and
+drops everything else. Lakes carry 37
 fields and boundary lines 38, none of which the style reads, and among the
 boundary-line fields are 34 `FCLASS_*` columns holding Natural Earth's
 per-country classifications of disputed boundaries. This plugin takes no
 position on those, and not shipping the data is how you take no position.
-Stripping them also cut the archive by 45%.
+Stripping them cut the first archive by 45%.
+
+Two fields survive that rule. `roads` keeps `scalerank`, which widens the roads
+worth following and holds the minor ones back until a reader is close.
+`populated_places` keeps `name_en` and `scalerank`. The name comes from Natural
+Earth's English field rather than the local one because the bundled glyphs are
+Latin: a local-language name would need Cyrillic, Arabic and CJK ranges, and a
+CJK face alone is larger than this whole archive.
+
+**A third decision is unresolved and is not this generator's to make.** Both
+boundary layers classify their lines, and neither classification ships. Among the
+515 admin-0 boundaries are ten `Line of control (please verify)`, thirty-nine
+`Disputed` and four `Indeterminant frontier`, which today draw in the same
+stroke as the France-Germany border. Stripping the field is not neutrality
+there, it is an assertion that the lines are the same kind of thing. See the
+Mapping section of the root CLAUDE.md.
 
 ## Shape of the archive
 
 `build.sh` produces, and the reader is entitled to assume:
 
 - PMTiles spec version 3, tile type MVT
-- **a single root directory, zero leaf directories**
 - clustered, gzip tile compression
-- zoom 0 through 6
+- zoom 0 through 8
 
-That shape is deliberate and worth preserving: it is what keeps a from-scratch
-reader down to a header parse, one directory decode and an inflate, which is the
-fallback if the `pmtiles` package ever has to be dropped.
+It **used** to carry a single root directory and no leaves, which kept a
+from-scratch reader down to a header parse, one directory decode and an inflate.
+Extending to z8 ended that: past roughly 8,000 directory entries the writer
+partitions into leaf directories, and there is no flag to prevent it. Avoiding
+it would mean capping zoom or dropping layers, so the guarantee was given up
+deliberately. The fallback reader now needs a second directory level, and a cold
+tile lookup can take two range requests instead of one.

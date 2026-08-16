@@ -393,7 +393,7 @@ test.describe('labels', () => {
             await component.getByRole('button', {name: 'read the map'}).click();
 
             return Number(await component.getByTestId('labels-drawn').textContent());
-        }, {message: 'country labels drawn'}).toBeGreaterThan(0);
+        }, {message: 'labels drawn'}).toBeGreaterThan(0);
     });
 
     test('do not take the map with them when the fonts cannot be served', async ({mount, page}) => {

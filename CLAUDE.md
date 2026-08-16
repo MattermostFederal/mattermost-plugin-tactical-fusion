@@ -868,8 +868,10 @@ Earth 110m from `build/mapdata/source/` and writes exactly one thing:
 precision, which is what the country lookup is computed from. It draws no map.
 
 `build/maptiles/` builds what every map actually draws:
-`public/map/world.pmtiles`, a PMTiles archive of vector tiles, plus the glyph
-ranges under `public/map/fonts/`. It runs `tippecanoe` and `fontnik` in a
+`public/map/world.pmtiles`, a PMTiles archive of vector tiles covering z0-z8,
+plus the glyph ranges under `public/map/fonts/`. It carries ten layers:
+coastlines and lakes, country and province boundaries, roads, railways, rivers,
+urban areas, and the names of countries and towns. It runs `tippecanoe` and `fontnik` in a
 container, by `make map-tiles`, and is **a prerequisite of nothing**: it is
 never reached by `make test` and never runs in CI, which is why the archive is
 committed rather than built on demand. See `build/maptiles/README.md` for the
@@ -1101,6 +1103,47 @@ map geometry at all, and `mapcell.go` went with it.
 `aria-label`, and `TestMapEscapesAHostileLabel` holds it. Its content is a
 country name from generated data, so nothing from a request reaches it today,
 but the escaping is what makes that a defence rather than an accident.
+
+### Two zoom numbers, and why they are those numbers
+
+**`TARGET_SPAN_METERS` decides what a reader sees first**, and it is 400 km. It
+was 2,400 km, which opened the panel at about z3.4 at the equator: two and a half
+zoom levels below the map's own ceiling, with a one metre grid reference framed
+exactly like a whole-degree one. It is pinned by no test in either language, and
+it is the single constant with the largest effect on whether the map feels like
+it is showing you anything.
+
+**`MAX_ZOOM` is 8, and that is where Natural Earth stops being honest.** 1:10m
+data carries roughly 5 km of positional accuracy, which is about 16 px at z8 and
+65 px at z10. At z8 a coastline reads as generalised; at z10 it reads as fact to
+a reader with no way to tell, which for an audience acting on grid references is
+the wrong way to be wrong. The archive is built to exactly this depth and
+`TestArchiveDepthMatchesTheCameraCeiling` holds the two together, so neither can
+move alone. MapLibre's overzoom is deliberately not used to run the camera past
+it: it magnifies without sharpening.
+
+Simplification follows the same logic in reverse. Douglas-Peucker tolerance
+scales as 1/2^z, so full detail costs 81% more vertices at z5 and 11% at z8: the
+zooms where shape is visible are the zooms where keeping it is cheap. The
+pipeline uses tippecanoe's default at z7-8 and four times that below.
+
+### The boundary classification, which is unresolved
+
+Natural Earth classifies its boundary lines, and this plugin ships none of that
+classification. Among the 515 admin-0 lines are ten `Line of control (please
+verify)` (the Korean DMZ, the Cyprus buffer zone, UNDOF, the 1974 ceasefire
+lines), thirty-nine `Disputed`, thirteen `Indefinite` and four `Indeterminant
+frontier`. All of them draw in the same stroke as the France-Germany border, and
+adding province boundaries doubles the question.
+
+**Stripping the field is not neutrality here.** Silence about the attribute is an
+assertion that a ceasefire line and a settled border are the same kind of thing,
+which is a stronger claim than the one the `FCLASS_*` decision refused to make.
+Three coherent answers exist and one has to be chosen deliberately: draw them
+alike as now, drop the contested features so the map is simply silent where
+boundaries are contested, or keep one `disputed` flag and dash those lines the
+way most basemaps do. The third depicts rather than determines but uses Natural
+Earth's classification to do it. This is recorded rather than settled.
 
 **`glyphs` and `sprite` are the only two style fields MapLibre resolves as
 URLs.** There is still no `sprite`, and `glyphs` points at font ranges bundled

@@ -12,3 +12,12 @@
 10m      ne_10m_land
 10m      ne_10m_lakes
 10m      ne_10m_admin_0_boundary_lines_land
+
+# Detail layers. These are what make the map read as inhabited terrain rather
+# than an outline, and they are the bulk of the archive.
+10m      ne_10m_roads
+10m      ne_10m_railroads
+10m      ne_10m_urban_areas
+10m      ne_10m_populated_places
+10m      ne_10m_admin_1_states_provinces_lines
+10m      ne_10m_rivers_lake_centerlines

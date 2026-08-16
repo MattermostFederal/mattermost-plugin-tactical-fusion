@@ -10,11 +10,32 @@
 /** Where Web Mercator runs out. Beyond this there is no map, and no pin. */
 export const MERCATOR_LIMIT = 85.0511287798066;
 
-/** How much ground the map tries to show across its width, in metres. */
-export const TARGET_SPAN_METERS = 2400000;
+/**
+ * How much ground the map tries to show across its width, in metres.
+ *
+ * This decides what a reader sees first, and it used to be 2,400 km, which
+ * opened the panel at about z3.4 at the equator: two and a half zoom levels
+ * below the map's own ceiling, with a one metre grid reference framed exactly
+ * like a whole-degree one. 400 km frames a region instead, which is the
+ * question somebody with a coordinate is usually asking. Zooming out to the
+ * whole world is still one gesture away.
+ */
+export const TARGET_SPAN_METERS = 400000;
 
-/** Past this the 110m basemap stops being honest about what it is. */
-export const MAX_ZOOM = 6;
+/**
+ * Past this the basemap stops being honest about what it is.
+ *
+ * Natural Earth 10m carries roughly 5 km of positional accuracy. At z8 that is
+ * about 16 px of possible error, which reads as generalisation; at z10 it is
+ * 65 px, which reads as fact to a reader with no way to tell. For an audience
+ * acting on grid references, the second is the wrong way to be wrong.
+ *
+ * The archive is built to exactly this depth, and
+ * TestArchiveDepthMatchesTheCameraCeiling holds the two together: built
+ * shallower and a reader zooms into blank tiles, built deeper and every install
+ * carries zoom levels nothing can display.
+ */
+export const MAX_ZOOM = 8;
 
 /** A degree of latitude, the same approximation the Go side makes. */
 export const DEGREE_METERS = 111320;

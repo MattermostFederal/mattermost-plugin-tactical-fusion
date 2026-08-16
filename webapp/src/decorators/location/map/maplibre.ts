@@ -181,6 +181,10 @@ export interface MapColors {
     pinEdge: string;
     label: string;
     labelHalo: string;
+    urban: string;
+    road: string;
+    rail: string;
+    adminLine: string;
 }
 
 /**
@@ -209,6 +213,20 @@ export function mapColors(): MapColors {
         pinEdge: dark ? '#0b0e13' : '#ffffff',
         label: dark ? '#e8edf5' : '#101418',
         labelHalo: dark ? '#12161d' : '#eef2f7',
+
+        // Roads carry meaning once a reader is close, so they are held to the
+        // same measured 3:1 the land/water edge is: 3.43:1 light, 3.69:1 dark.
+        road: dark ? '#c2ccd9' : '#2b3542',
+
+        // The rest are context and are deliberately BELOW that floor, between
+        // 1.2:1 and 2.3:1 against land. They are there to be recognised when
+        // looked for, not to be read, and the coordinate has to stay the
+        // loudest thing on screen when a city's worth of them is drawn under
+        // it. That is why they are absent from the contrast table in
+        // shell_test.go rather than failing it.
+        urban: dark ? '#68717f' : '#6a7c93',
+        rail: dark ? '#98a3b1' : '#55637a',
+        adminLine: dark ? '#7b8593' : '#8fa0b5',
     };
 }
 
@@ -256,6 +274,13 @@ export function buildStyle(archive: Archive, colors: MapColors): StyleSpecificat
                 paint: {'fill-color': colors.land},
             },
             {
+                id: 'urban',
+                type: 'fill',
+                source: 'basemap',
+                'source-layer': 'urban_areas',
+                paint: {'fill-color': colors.urban},
+            },
+            {
                 id: 'lakes',
                 type: 'fill',
                 source: 'basemap',
@@ -263,11 +288,64 @@ export function buildStyle(archive: Archive, colors: MapColors): StyleSpecificat
                 paint: {'fill-color': colors.water},
             },
             {
+                id: 'rivers',
+                type: 'line',
+                source: 'basemap',
+                'source-layer': 'rivers',
+                paint: {
+                    'line-color': colors.water,
+                    'line-width': ['interpolate', ['linear'], ['zoom'], 4, 0.4, 8, 1.4],
+                },
+            },
+            {
+                id: 'admin-1',
+                type: 'line',
+                source: 'basemap',
+                'source-layer': 'admin_1_lines',
+                paint: {
+                    'line-color': colors.adminLine,
+                    'line-width': 0.5,
+                    'line-dasharray': [3, 2],
+                },
+            },
+            {
                 id: 'borders',
                 type: 'line',
                 source: 'basemap',
                 'source-layer': 'boundary_lines',
                 paint: {'line-color': colors.line, 'line-width': 0.6},
+            },
+            {
+                id: 'railroads',
+                type: 'line',
+                source: 'basemap',
+                'source-layer': 'railroads',
+                paint: {
+                    'line-color': colors.rail,
+                    'line-width': 0.5,
+                    'line-dasharray': [2, 3],
+                },
+            },
+
+            // Natural Earth ranks roads, and the rank is the only attribute
+            // kept. It does two jobs: it widens the ones worth following, and
+            // it holds the minor ones back until a reader is close enough for
+            // them to mean something rather than fill the frame.
+            {
+                id: 'roads',
+                type: 'line',
+                source: 'basemap',
+                'source-layer': 'roads',
+                filter: ['<=', ['coalesce', ['get', 'scalerank'], 12],
+                    ['interpolate', ['linear'], ['zoom'], 5, 6, 8, 12]],
+                paint: {
+                    'line-color': colors.road,
+                    'line-width': [
+                        'interpolate', ['linear'], ['zoom'],
+                        5, 0.4,
+                        8, ['interpolate', ['linear'], ['coalesce', ['get', 'scalerank'], 12], 0, 2.2, 12, 0.6],
+                    ],
+                },
             },
 
             // Every symbol layer sits BELOW the cell and the pin, and that
@@ -279,6 +357,13 @@ export function buildStyle(archive: Archive, colors: MapColors): StyleSpecificat
                 type: 'symbol',
                 source: 'basemap',
                 'source-layer': 'country_labels',
+
+                // Countries name the view when it spans one; past that the
+                // reader can see which country they are in and wants the towns
+                // instead. Symbols are placed in layer order and first placed
+                // wins, so without this the country would go on beating every
+                // town it overlaps.
+                maxzoom: 6,
                 layout: {
                     'text-field': ['get', 'name'],
                     'text-font': ['NotoSans-Regular'],
@@ -289,6 +374,37 @@ export function buildStyle(archive: Archive, colors: MapColors): StyleSpecificat
                     'text-ignore-placement': false,
                     'text-optional': true,
                     'symbol-sort-key': ['get', 'rank'],
+                },
+                paint: {
+                    'text-color': colors.label,
+                    'text-halo-color': colors.labelHalo,
+                    'text-halo-width': 1.4,
+                    'text-halo-blur': 0,
+                },
+            },
+
+            // Natural Earth ranks places, and the rank gates them in the same
+            // way it gates roads: capitals and major cities at the zoom where
+            // the view still spans a country, villages only once the reader is
+            // close. NAME_EN, not NAME, so the bundled Latin ranges cover it.
+            {
+                id: 'place-label',
+                type: 'symbol',
+                source: 'basemap',
+                'source-layer': 'populated_places',
+                minzoom: 3,
+                filter: ['<=', ['coalesce', ['get', 'scalerank'], 10],
+                    ['interpolate', ['linear'], ['zoom'], 3, 1, 8, 8]],
+                layout: {
+                    'text-field': ['get', 'name_en'],
+                    'text-font': ['NotoSans-Regular'],
+                    'text-size': ['interpolate', ['linear'], ['zoom'], 3, 10, 8, 13],
+                    'text-max-width': 8,
+                    'text-padding': 2,
+                    'text-allow-overlap': false,
+                    'text-ignore-placement': false,
+                    'text-optional': true,
+                    'symbol-sort-key': ['coalesce', ['get', 'scalerank'], 10],
                 },
                 paint: {
                     'text-color': colors.label,
