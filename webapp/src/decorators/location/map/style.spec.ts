@@ -119,14 +119,19 @@ test('every label is drawn beneath the cell and the pin', () => {
 });
 
 /*
- * Every layer the archive carries is drawn, and every layer drawn exists.
+ * The layer set, as the style declares it.
  *
- * These two halves fail in opposite, equally quiet ways. A source-layer named
- * in the style that the archive does not carry draws nothing and looks like a
- * data problem; a layer built into the archive that no style layer names is
- * bytes in every install that nobody can see.
+ * This does NOT check the archive: it cannot open one, and it used to claim it
+ * did. Whether every source-layer named here exists in the archive, and whether
+ * every layer the archive carries is drawn, is held by
+ * TestArchiveCarriesEveryLayerTheStyleDraws in Go, which is the only place that
+ * can read both the binary and this file.
+ *
+ * What it is still worth pinning here is that the set does not change by
+ * accident: adding a layer is a deliberate act, and this is the diff that says
+ * so.
  */
-test('the style draws every source-layer the archive carries', () => {
+test('the style declares exactly the layers it is meant to', () => {
     const style = buildStyle(ARCHIVE, mapColors());
 
     const drawn = new Set(style.layers.

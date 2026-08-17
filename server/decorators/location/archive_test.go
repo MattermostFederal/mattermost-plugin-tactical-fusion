@@ -1,7 +1,13 @@
 package location
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/binary"
+	"encoding/json"
 	"os"
+	"regexp"
+	"slices"
 	"testing"
 )
 
@@ -121,4 +127,103 @@ func TestArchiveFitsItsBudget(t *testing.T) {
 	if info.Size() > budget {
 		t.Errorf("the basemap archive is %d bytes, over its %d budget", info.Size(), budget)
 	}
+}
+
+/*
+ * Every layer the archive carries is drawn, and every layer drawn is carried.
+ *
+ * This is the one place that can see both sides. The style names its
+ * source-layers in TypeScript and the archive declares its own in a gzipped
+ * metadata block, so each half is invisible to the other's tests, and both
+ * failure directions are silent: a source-layer the archive does not carry
+ * draws nothing and reads as a data problem, and a layer built into the archive
+ * that no style names is bytes in every install that nobody can ever see.
+ *
+ * It replaces a TypeScript test that compared the style against a hardcoded
+ * list of ten strings and never opened the archive, so a --named-layer added to
+ * or dropped from build.sh passed it unchanged.
+ */
+func TestArchiveCarriesEveryLayerTheStyleDraws(t *testing.T) {
+	inArchive := archiveLayers(t)
+	inStyle := styleSourceLayers(t)
+
+	for _, name := range inStyle {
+		if !slices.Contains(inArchive, name) {
+			t.Errorf("the style draws source-layer %q, which the archive does not carry. "+
+				"Either the layer was dropped from build/maptiles/build.sh or the name "+
+				"is misspelled in maplibre.ts; it draws nothing either way", name)
+		}
+	}
+
+	for _, name := range inArchive {
+		if !slices.Contains(inStyle, name) {
+			t.Errorf("the archive carries layer %q, which no style layer draws. It is "+
+				"bytes in every install that nobody can see: draw it in maplibre.ts or "+
+				"drop it from build/maptiles/build.sh", name)
+		}
+	}
+}
+
+// The vector_layers the archive declares, out of its own metadata block.
+func archiveLayers(t *testing.T) []string {
+	t.Helper()
+
+	raw, err := os.ReadFile(archivePath)
+	if err != nil {
+		t.Fatalf("the basemap archive is missing: %v. Run 'make map-tiles'", err)
+	}
+
+	offset := binary.LittleEndian.Uint64(raw[24:32])
+	length := binary.LittleEndian.Uint64(raw[32:40])
+	if offset+length > uint64(len(raw)) {
+		t.Fatalf("the metadata block runs past the end of the archive")
+	}
+
+	zr, err := gzip.NewReader(bytes.NewReader(raw[offset : offset+length]))
+	if err != nil {
+		t.Fatalf("the metadata block is not gzipped: %v", err)
+	}
+	defer func() { _ = zr.Close() }()
+
+	var meta struct {
+		VectorLayers []struct {
+			ID string `json:"id"`
+		} `json:"vector_layers"`
+	}
+	if err := json.NewDecoder(zr).Decode(&meta); err != nil {
+		t.Fatalf("the metadata block is not JSON: %v", err)
+	}
+
+	names := make([]string, 0, len(meta.VectorLayers))
+	for _, l := range meta.VectorLayers {
+		names = append(names, l.ID)
+	}
+	if len(names) == 0 {
+		t.Fatal("the archive declares no vector layers at all")
+	}
+	slices.Sort(names)
+
+	return names
+}
+
+// The source-layers maplibre.ts names, read out of the style it builds.
+func styleSourceLayers(t *testing.T) []string {
+	t.Helper()
+
+	source := readWebappSource(t, "map/maplibre.ts")
+	found := regexp.MustCompile(`'source-layer': '([a-z0-9_]+)'`).FindAllStringSubmatch(source, -1)
+	if found == nil {
+		t.Fatal("no `'source-layer'` in map/maplibre.ts; if the style stopped naming " +
+			"them, point this test at the new shape rather than deleting it")
+	}
+
+	var names []string
+	for _, m := range found {
+		if !slices.Contains(names, m[1]) {
+			names = append(names, m[1])
+		}
+	}
+	slices.Sort(names)
+
+	return names
 }

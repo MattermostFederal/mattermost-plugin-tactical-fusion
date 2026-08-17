@@ -1,6 +1,8 @@
 import {expect, test} from '@playwright/test';
 
-import {MAX_ZOOM, MERCATOR_LIMIT, cellBounds, isRenderable, zoomForSpan} from './span';
+import {
+    MAX_ZOOM, MERCATOR_LIMIT, TARGET_SPAN_METERS, cellBounds, isRenderable, zoomForSpan,
+} from './span';
 
 /*
  * The map's arithmetic, which is duplicated in Go and pinned to it by
@@ -65,4 +67,39 @@ test('a cell straddling the projection limit is clamped, not extended', () => {
 
     expect(north).toBeLessThanOrEqual(MERCATOR_LIMIT);
     expect(south).toBeCloseTo(83, 6);
+});
+
+/*
+ * The opening view, pinned.
+ *
+ * TARGET_SPAN_METERS decides what a reader sees first on every surface, and it
+ * was asserted by nothing in either language: changing it by 25x left all 679
+ * tests green, in a file reporting 100% of its lines and branches. Coverage
+ * cannot see this, because every test here executes the constant and none of
+ * them cared what it was.
+ *
+ * The value is a judgment rather than a derivation, which is exactly why it
+ * wants a test: 400 km frames a region, and moving it is a decision about what
+ * the map is for rather than a tuning tweak.
+ */
+test.describe('the opening view', () => {
+    test('frames about 400 km across', () => {
+        expect(TARGET_SPAN_METERS).toBe(400000);
+    });
+
+    // The consequence, so a reader of a failure sees what actually changed for
+    // the reader rather than only which constant moved.
+    test('opens a 320px panel near z6 at the equator', () => {
+        expect(zoomForSpan(0, 320)).toBeGreaterThan(5.5);
+        expect(zoomForSpan(0, 320)).toBeLessThan(6.5);
+    });
+
+    // Wide enough to be a real view rather than a clamp: if the opening zoom
+    // ever reaches the ceiling, every coordinate opens fully zoomed in and
+    // Reset view stops meaning anything.
+    test('leaves room to zoom in on every surface', () => {
+        for (const width of [320, 600, 1200]) {
+            expect(zoomForSpan(0, width)).toBeLessThan(MAX_ZOOM);
+        }
+    });
 });
