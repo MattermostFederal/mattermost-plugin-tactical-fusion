@@ -186,7 +186,7 @@
                 <tr>
                     <td><code>TF-13008</code></td>
                     <td><code>APIConvertInvalid</code> <span class="level">400</span></td>
-                    <td><code>That is not a coordinate this plugin issued.</code> The coordinate conversion endpoint was given a format and token that do not name a coordinate. It runs exactly the checks the public coordinate page runs, so a link that renders there converts here and one that does not fails in both places. Seen in the sidebar as "Not a coordinate", which almost always means a link was edited by hand.</td>
+                    <td><code>That is not a coordinate this plugin issued.</code> The coordinate conversion endpoint was given a format and token that do not name a coordinate. It runs exactly the checks the coordinate page runs, so a link that renders there converts here and one that does not fails in both places. Seen in the sidebar as "Not a coordinate", which almost always means a link was edited by hand.</td>
                 </tr>
             </tbody>
         </table>
@@ -326,7 +326,7 @@
                 <tr>
                     <td><code>TF-17001</code></td>
                     <td><code>LocationPageParamsInvalid</code> <span class="level">400</span></td>
-                    <td><code>That link is missing or has an invalid coordinate.</code> The query string carries no usable coordinate, or the coordinate does not reproduce itself, or the copy of the author's own text does not match the coordinate it is attached to. Any one of those means the link was not written by this plugin. See <a href="troubleshooting.html#invalid-link">the troubleshooting entry</a>.</td>
+                    <td><code>That link is missing or has an invalid coordinate.</code> The query string carries no usable coordinate, or the coordinate does not reproduce itself, or the copy of the author's own text does not match the coordinate it is attached to. Any one of those means the link was not written by this plugin. The map page shares this code and refuses the same links, but words it <code>That is not a coordinate this plugin issued.</code>, so both wordings are the same failure and the same check. See <a href="troubleshooting.html#invalid-link">the troubleshooting entry</a>.</td>
                 </tr>
             </tbody>
         </table>

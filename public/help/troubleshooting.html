@@ -232,6 +232,13 @@
             than a copy.
         </p>
 
+        <p>
+            The map page refuses the same links under the same code, worded
+            <code>That is not a coordinate this plugin issued.</code> Despite matching the
+            wording of <a href="#not-a-coordinate">TF-13008</a> it is this failure, not
+            that one: check the code rather than the sentence.
+        </p>
+
         <h2 id="not-a-coordinate">The sidebar says "Not a coordinate"</h2>
 
         <p>
@@ -252,6 +259,107 @@
             This is distinct from the grid rows reading <code>unavailable</code>, which
             means the request did not arrive at all. That leaves the rest of the panel
             intact and usually clears on reopening.
+        </p>
+
+        <h2 id="sign-in">Clicking a link asks me to sign in</h2>
+
+        <p>
+            Expected. The pages a decorated link opens outside the sidebar, both the
+            readings page and the map page behind <em>Open larger</em>, require a
+            Mattermost session. Without one you are sent to the sign-in page carrying the
+            link you clicked, so signing in takes you on to the coordinate rather than
+            dropping you at the home screen.
+        </p>
+
+        <p>
+            The usual cause is a session that expired while the tab sat open, or a link
+            opened in a browser you are not signed in to. Nothing is lost either way. If
+            you are asked on <strong>every</strong> click while Mattermost itself stays
+            signed in, that is worth reporting: it points at cookies not reaching the
+            plugin's own routes rather than at the link.
+        </p>
+
+        <h2 id="page-not-sidebar">Clicking a coordinate opens a page instead of the sidebar</h2>
+
+        <p>
+            Clicking a decorator link is meant to open the right-hand sidebar without the
+            browser navigating anywhere. Landing on a full page instead means the webapp
+            did not recognise the link as one of its own and stood aside, letting the
+            browser follow it.
+        </p>
+
+        <p>
+            Everything on that page is correct, so nothing is wrong with the coordinate,
+            and it is easy to mistake for a deliberate choice. It is not. It usually means
+            the server and the webapp bundle are from different builds, so
+            <strong>reload the page first</strong>: a browser holding a cached bundle from
+            before an upgrade is the common cause. If a reload does not fix it, report it
+            with the link and the plugin version, since nothing is logged on either side.
+        </p>
+
+        <h2 id="no-map">The map is missing, or will not load</h2>
+
+        <p>
+            The map is drawn in your browser, so it can fail in ways the readings cannot.
+            <strong>Every reading in the table renders regardless</strong>: the coordinate
+            and its conversions are worked out on the server. The one thing that goes with
+            the map is the
+            <a href="panel.html#location-region">country</a>, which the map speaks and
+            nothing else does.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>What it says</th><th>Cause</th><th>Fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>This browser cannot draw the map.</code></td>
+                    <td>The browser has no WebGL2. Usual on a hardened or virtualised desktop where hardware acceleration is off or WebGL is disabled by policy, and in some remote-desktop sessions.</td>
+                    <td>Nothing you can do in the plugin. Enabling hardware acceleration, or WebGL, is a browser or desktop policy decision.</td>
+                </tr>
+                <tr>
+                    <td><code>The map could not be loaded.</code></td>
+                    <td>The bundled basemap did not arrive, or what arrived was not a basemap. Either it is missing from the deployed bundle, or something between the browser and the plugin is not serving it correctly.</td>
+                    <td>See below.</td>
+                </tr>
+                <tr>
+                    <td>Stuck on <code>Loading map&hellip;</code></td>
+                    <td>Ordinary while the map library and the basemap arrive. The first coordinate of a session is the slowest, because it fetches the library.</td>
+                    <td>Wait, then reload. If it never clears, report it.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>
+            <code>The map could not be loaded.</code> is deliberately distinct from a blank
+            or half-drawn map: rather than draw an empty sea, the plugin checks the basemap
+            on arrival and says so when it is unusable. Two causes are worth checking in
+            order.
+        </p>
+
+        <ul>
+            <li>
+                <strong>The basemap is not in the bundle.</strong> Open
+                <code>/plugins/com.mattermost.plugin-tactical-fusion/public/map/world.pmtiles</code>
+                on your own server. A 404 means the plugin was built without it; rebuild
+                and redeploy. This is the likelier cause on a plugin built from source.
+            </li>
+            <li>
+                <strong>The basemap is served, but not in pieces.</strong> The map reads
+                the file in ranges rather than downloading it whole, so a proxy, a CDN or a
+                storage backend that ignores HTTP range requests breaks it while making the
+                file itself look perfectly healthy. If the URL above downloads a file of
+                about 25&nbsp;MB but the map still refuses, this is the cause, and the fix
+                is in front of Mattermost rather than in the plugin.
+            </li>
+        </ul>
+
+        <p>
+            A momentary network failure is treated differently on purpose: it is not
+            remembered, so simply opening another coordinate retries. A cause from the list
+            above is remembered for the rest of the session, so that a broken deploy does
+            not have every panel you open asking for the same file again.
         </p>
 
         <h2 id="wrong-timezones">The panel and the standalone page show different timezones</h2>
