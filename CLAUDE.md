@@ -868,14 +868,44 @@ Earth 110m from `build/mapdata/source/` and writes exactly one thing:
 precision, which is what the country lookup is computed from. It draws no map.
 
 `build/maptiles/` builds what every map actually draws:
-`public/map/world.pmtiles`, a PMTiles archive of vector tiles covering z0-z8,
-plus the glyph ranges under `public/map/fonts/`. It carries ten layers:
+`public/map/world.pmtiles`, a PMTiles archive of vector tiles covering z0-z9,
+plus the glyph ranges under `public/map/fonts/`. It carries twelve layers:
 coastlines and lakes, country and province boundaries, roads, railways, rivers,
-urban areas, and the names of countries and towns. It runs `tippecanoe` and `fontnik` in a
+urban areas, airfields, and the names of countries, towns and provinces. It runs
+`tippecanoe` and `fontnik` in a
 container, by `make map-tiles`, and is **a prerequisite of nothing**: it is
 never reached by `make test` and never runs in CI, which is why the archive is
 committed rather than built on demand. See `build/maptiles/README.md` for the
-two decisions inside it that are decisions rather than mechanics.
+decisions inside it that are decisions rather than mechanics.
+
+**Airfields are a landmark, and that is all they are.** They carry the one hue on
+the map that is neither basemap grey nor pin red, and they are held to the same
+measured 3:1 roads are, because an aerodrome beside a coordinate is something a
+reader is looking for rather than something they are meant to notice only when
+they look. Natural Earth also classifies some of them as military, in five
+inconsistently spelled variants of a `type` field; that classification is
+deliberately not shipped and not drawn. It would be a viewpoint, and an
+unreliable one. **None of this changes what the decorator does with an airfield
+code**: `LOC:`, `DEPLOC:`, `ARRLOC:` and `ICAO:` stay permanently excluded,
+because a facility's position must be looked up rather than computed, and
+drawing airports does not look anything up.
+
+**Province names and airfield names yield to town names**, which is decided by
+layer order alone and cannot be expressed in a text property, because the
+collision index sees symbols and nothing else. **MapLibre runs placement from the
+top of the layer list down, so the LAST symbol layer wins**, and the label layers
+are therefore ordered least wanted first: countries, provinces, airfields, towns.
+A town is the better landmark when somebody is placing a coordinate, and
+provinces fill the sparse regions, which is the gap they were added for, since
+`country-label` stops at z6.
+
+This is worth stating because the file said the opposite for a long time
+("symbols are placed in layer order and first placed wins"), and appending three
+label layers after `place-label` on the strength of that comment silently
+suppressed the town label on Paris. The failure is quiet by construction: every
+layer still draws, the map still loads, and the only symptom is a label that is
+no longer there. `label layers are ordered least wanted first` in `style.spec.ts`
+pins the order now.
 
 It replaced `public/map/world.geo.json`, a single 168 KB inlined
 `FeatureCollection`, which went when labels arrived: a GeoJSON source cannot
@@ -1020,12 +1050,36 @@ declared again as `--map-*` custom properties in `pageStyles` for the Go
 renderer. What `pageStyles` declares now is **Mattermost's own** theme
 variables, `--center-channel-color`, `--center-channel-bg` and `--link-color`,
 in both themes, which is what lets the panel's components style themselves
-unchanged on a page that has no Mattermost around it. `mapColors` sniffs
-`--center-channel-bg` for lightness, so the map follows `_theme` for free.
+unchanged on a page that has no Mattermost around it.
 `TestMapPaletteCarriesItsContrast` reads `maplibre.ts` and holds the measured
 pairs to WCAG 1.4.11's 3:1 for non-text; the first palette was picked by eye and
 sat at 1.46:1 in dark and 1.28:1 in light, which filling a window read as a
 near-uniform slab with a dot on it.
+
+**The map is drawn dark in both themes**, because the dark palette reads better
+as a map: the land/water edge carries more of the frame, and the pin and cell sit
+on a ground that is not competing with the panel around them. `mapColors` used to
+sniff `--center-channel-bg` for lightness so the map followed `_theme` for free,
+and it no longer does. **The cost, accepted deliberately: a light Mattermost gets
+a dark map inside a light panel, and a light page gets a dark map under a light
+table.** Everything around the map still follows the theme; only the map does
+not.
+
+`ALWAYS_DARK` in `maplibre.ts` is the whole of it, and flipping that one constant
+restores theme-following everywhere. It is annotated `boolean` rather than left to
+infer `true`, so the other branch stays live code to the type checker instead of
+becoming unreachable.
+
+**The light palette is kept, not deleted, and is held to both halves of still
+being real.** `palette(false)` keeps it reachable; the Go contrast test proves
+the hex values in the file are still legible pairs, and `the unused light palette
+is still whole` in `style.spec.ts` proves something still returns them and that
+they differ from the dark ones in every field. A palette nothing draws today is
+exactly the kind of thing that rots into one that is wrong the day it is drawn
+again, and those two tests are what stop it. `the palette does not follow the
+theme` pins the decision itself, and it is meaningful because the unit
+environment has no document and therefore sniffs as light: it is the case that
+used to return the light palette.
 
 **The pages have no inline script at all.** The digest that used to pin the copy
 controls is gone because there is nothing left to pin, and the property is
@@ -1085,9 +1139,12 @@ a number guessing on their behalf.
 
 There was a 6 px floor in `drawableCell` contradicting exactly that, and the way
 it was wrong is the point rather than the size of it. `applyView` runs on a
-change of selection and on **Reset view**, and nothing listens for `zoom`, so the
-floor was measured once at the opening camera and never again: a square dropped
-there stayed dropped however far the reader zoomed in. `maxZoom` was 6 at the
+change of selection and on **Reset view**, and at the time nothing listened for
+`zoom`, so the floor was measured once at the opening camera and never again: a
+square dropped there stayed dropped however far the reader zoomed in. (There is
+one `zoom` listener now, for the zoom readout, and it is not a way to
+reintroduce a threshold: it reports the camera's zoom and decides nothing about
+what is drawn.) `maxZoom` was 6 at the
 time, so the visible cost was small (a 10 km cell reaches only about 10 px at that zoom, which
 the pin covers anyway), but a threshold evaluated at a scale the reader has left
 answers a question nobody asked.
@@ -1113,19 +1170,82 @@ exactly like a whole-degree one. It is pinned by no test in either language, and
 it is the single constant with the largest effect on whether the map feels like
 it is showing you anything.
 
-**`MAX_ZOOM` is 8, and that is where Natural Earth stops being honest.** 1:10m
-data carries roughly 5 km of positional accuracy, which is about 16 px at z8 and
-65 px at z10. At z8 a coastline reads as generalised; at z10 it reads as fact to
-a reader with no way to tell, which for an audience acting on grid references is
-the wrong way to be wrong. The archive is built to exactly this depth and
-`TestArchiveDepthMatchesTheCameraCeiling` holds the two together, so neither can
-move alone. MapLibre's overzoom is deliberately not used to run the camera past
-it: it magnifies without sharpening.
+**`MAX_ZOOM` is 9, and it was 8, and the arithmetic did not change.** 1:10m data
+carries roughly 5 km of positional accuracy, and a 512 px tile puts 78271.5/2^z
+metres in a pixel, so that error is about 16 px at z8, 33 px at z9 and 65 px at
+z10. At 16 px a coastline reads as generalised; at 65 px it reads as fact to a
+reader with no way to tell, which for an audience acting on grid references is
+the wrong way to be wrong. z9 sits between those, and taking it was a deliberate
+trade rather than a revision of the measurement.
+
+**What z9 buys is narrow, and is worth stating so it is not re-derived as
+generous.** The sources are the same 10m files, so z9 carries no geometry z8 did
+not, and vector tiles magnify without blurring, so this is not the raster
+sharpness argument. It buys two things: halved coordinate quantization inside a
+tile, since a 4096-unit extent spans about 38 m at the equator at z8 and about
+19 m at z9; and more room for the collision index to place labels. It buys no
+accuracy, and 33 px of possible error is what it costs.
+
+The archive is built to exactly this depth and `TestArchiveDepthMatchesTheData`
+holds the two together, so neither can move alone. `MAXZ` in
+`build/maptiles/build.sh` is the pipeline's half, written once so the depth
+cannot move for one layer and miss another.
+
+**The camera is a second number, and it deliberately runs past the data.**
+`DATA_MAX_ZOOM` is 9 and `MAX_ZOOM` is 17. They were one constant, and that made
+a cell impossible to inspect at the resolution its own token carried: the
+rectangle around a pin says how precisely the text located anything **by its
+size**, and at z9 a 10 m grid reference is about a third of a pixel. A reader
+could see that a cell existed and never how small it was, which is the one thing
+it is drawn to say.
+
+17 is where a 10 m cell reaches about 20 px, which covers the fine end of what
+the grammars actually produce: 10 m MGRS, and four decimal places of a degree
+(about 11 m). A 1 m grid reference is still about 2 px. Going deeper was
+declined: it needs z20, where the basemap is magnified 2048 times and is a flat
+colour with a straight line for a coastline.
+
+Past `DATA_MAX_ZOOM` MapLibre overzooms. For vector tiles that magnifies
+**without blurring**, so lines stay crisp and only their generalisation is
+wrong: the failure the single ceiling existed to prevent is now invisible rather
+than impossible.
+
+**Nothing on the map states that in words.** There was a notice reading "Basemap
+detail ends here", drawn past `DATA_MAX_ZOOM` and repeated in the accessible
+label, and it was removed. Record this as the state of things rather than as an
+oversight: a reader past the ceiling is looking at a coastline that may be five
+kilometres from where it is, drawn at street scale, and the only thing saying so
+is the **zoom readout**, which requires knowing that the data stops at 9. If
+that turns out to be too little in practice, the notice is the thing to bring
+back.
+
+What does still hold: **`zoomForSpan` clamps to `DATA_MAX_ZOOM`**, so nothing
+ever *opens* into overzoom. It is a gesture a reader makes, never a default they
+are given, which is what keeps the unannounced magnification something they
+chose. `the camera may overzoom and the opening view may not` in `span.spec.ts`
+pins both halves.
+
+**The zoom is on the map**, bottom-left, as `z6.3`, and with the notice gone it
+is the only indication that the camera has left the data. One decimal, because
+the wheel and a trackpad pinch are continuous and a whole number would sit still
+through most of a gesture and read as broken. It is seeded at construction as
+well as read from the `zoom` event, since building a map at a zoom fires no
+event and the readout would otherwise be blank until the reader's first gesture.
+
+The bottom edge is a row: the readout at the left, MapLibre's scale bar at the
+right.
+
+**A line width is in screen pixels, so every width interpolation has to reach the
+ceiling too.** Without a z9 stop the whole road network and every river holds its
+z8 width while the map doubles around it, which reads as the network thinning out
+exactly where a reader has zoomed in to see it. `roads` and `rivers` carry that
+stop; the deliberately faint context strokes (`railroads`, `admin-1`, `borders`)
+are constant widths and stay that way.
 
 Simplification follows the same logic in reverse. Douglas-Peucker tolerance
 scales as 1/2^z, so full detail costs 81% more vertices at z5 and 11% at z8: the
 zooms where shape is visible are the zooms where keeping it is cheap. The
-pipeline uses tippecanoe's default at z7-8 and four times that below.
+pipeline uses tippecanoe's default at z7 and above, and four times that below.
 
 ### The boundary classification, which is unresolved
 
@@ -1347,10 +1467,13 @@ pointer off the map first. `cooperativeGestures` is the one-line alternative and
 trades a modifier key for that, which is the trade Google's map embeds make.
 
 **`maxZoom` belongs on the map, not only on the arithmetic.** `zoomForSpan`
-clamps the opening view, but the controls and the wheel let a reader leave that
-range, and past `MAX_ZOOM` the basemap is a coastline generalised by about five
-kilometres drawn at street scale, with nothing saying so. **Reset view** restores the opening view, because once a
-reader can zoom and pan there is otherwise no way back to the pin.
+clamps the opening view to `DATA_MAX_ZOOM`, but the controls and the wheel let a
+reader leave that range, so the camera's own ceiling is `MAX_ZOOM` and the two
+are different numbers on purpose (see "Two zoom numbers"). Between them the
+basemap is a coastline generalised by about five kilometres drawn at street
+scale, and the zoom readout is the only thing that hints at it. **Reset view**
+restores the opening view, because once a reader can zoom and pan there is
+otherwise no way back to the pin.
 
 **The probe is memoised and releases its context.** `hasWebGL2` is called on
 every creation attempt, and an unreleased probe context is a real driver

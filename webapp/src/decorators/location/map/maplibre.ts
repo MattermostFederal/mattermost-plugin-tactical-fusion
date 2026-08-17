@@ -185,7 +185,29 @@ export interface MapColors {
     road: string;
     rail: string;
     adminLine: string;
+    airport: string;
 }
+
+/**
+ * Whether the map is drawn dark whatever theme the reader is in.
+ *
+ * It is, because the dark palette reads better as a map: the land/water edge
+ * carries more of the frame and the pin and cell sit on a ground that is not
+ * competing with the panel around them. The map therefore no longer follows
+ * `--center-channel-bg`, and a light Mattermost gets a dark map inside a light
+ * panel, which is the cost and was accepted deliberately.
+ *
+ * The light palette is deliberately KEPT rather than deleted, and stays
+ * reachable through `palette(false)`: it is still held to its measured contrast
+ * by TestMapPaletteCarriesItsContrast, which reads those hex values out of this
+ * file, so it cannot rot while it waits. Flipping this one constant restores
+ * theme-following everywhere, including on the pages, where `_theme` still
+ * decides everything around the map.
+ *
+ * Annotated `boolean` rather than left to infer `true`, so the other branch
+ * stays live code to the type checker instead of becoming unreachable.
+ */
+const ALWAYS_DARK: boolean = true;
 
 /**
  * The map's palette.
@@ -195,8 +217,11 @@ export interface MapColors {
  * stay legible against both land and water in either theme.
  */
 export function mapColors(): MapColors {
-    const dark = isDarkTheme();
+    return palette(ALWAYS_DARK || isDarkTheme());
+}
 
+/** @internal exported so the unused half of the palette stays exercised. */
+export function palette(dark: boolean): MapColors {
     // Every pair here is measured, not chosen by eye. The land/water edge IS the
     // content of this map, so it carries WCAG 1.4.11's 3:1 for non-text: the
     // first palette sat at 1.46:1 in dark and 1.28:1 in light, which read as a
@@ -217,6 +242,12 @@ export function mapColors(): MapColors {
         // Roads carry meaning once a reader is close, so they are held to the
         // same measured 3:1 the land/water edge is: 3.43:1 light, 3.69:1 dark.
         road: dark ? '#c2ccd9' : '#2b3542',
+
+        // An airfield is a landmark rather than context, so it is held to the
+        // same floor as roads: 3.73:1 light, 3.71:1 dark. It is the one hue on
+        // the map that is neither the greys of the basemap nor the red of the
+        // pin, which is what stops an aerodrome reading as a town.
+        airport: dark ? '#edc67e' : '#382d12',
 
         // The rest are context and are deliberately BELOW that floor, between
         // 1.2:1 and 2.3:1 against land. They are there to be recognised when
@@ -294,7 +325,7 @@ export function buildStyle(archive: Archive, colors: MapColors): StyleSpecificat
                 'source-layer': 'rivers',
                 paint: {
                     'line-color': colors.water,
-                    'line-width': ['interpolate', ['linear'], ['zoom'], 4, 0.4, 8, 1.4],
+                    'line-width': ['interpolate', ['linear'], ['zoom'], 4, 0.4, 8, 1.4, 9, 2],
                 },
             },
             {
@@ -344,6 +375,7 @@ export function buildStyle(archive: Archive, colors: MapColors): StyleSpecificat
                         'interpolate', ['linear'], ['zoom'],
                         5, 0.4,
                         8, ['interpolate', ['linear'], ['coalesce', ['get', 'scalerank'], 12], 0, 2.2, 12, 0.6],
+                        9, ['interpolate', ['linear'], ['coalesce', ['get', 'scalerank'], 12], 0, 3.2, 12, 0.9],
                     ],
                 },
             },
@@ -352,6 +384,11 @@ export function buildStyle(archive: Archive, colors: MapColors): StyleSpecificat
             // ordering is the only thing protecting them: MapLibre's collision
             // index sees symbols alone, so no text property can make a label
             // yield to a circle or a polygon. A test asserts the indices.
+            //
+            // Placement runs from the TOP of the layer list DOWN, so among
+            // symbol layers the LAST one wins a collision. The label layers
+            // below are therefore ordered least wanted first: countries, then
+            // provinces, then airfields, then towns.
             {
                 id: 'country-label',
                 type: 'symbol',
@@ -360,9 +397,7 @@ export function buildStyle(archive: Archive, colors: MapColors): StyleSpecificat
 
                 // Countries name the view when it spans one; past that the
                 // reader can see which country they are in and wants the towns
-                // instead. Symbols are placed in layer order and first placed
-                // wins, so without this the country would go on beating every
-                // town it overlaps.
+                // instead.
                 maxzoom: 6,
                 layout: {
                     'text-field': ['get', 'name'],
@@ -377,6 +412,78 @@ export function buildStyle(archive: Archive, colors: MapColors): StyleSpecificat
                 },
                 paint: {
                     'text-color': colors.label,
+                    'text-halo-color': colors.labelHalo,
+                    'text-halo-width': 1.4,
+                    'text-halo-blur': 0,
+                },
+            },
+
+            {
+                id: 'admin-1-label',
+                type: 'symbol',
+                source: 'basemap',
+                'source-layer': 'admin_1_labels',
+                minzoom: 5,
+                filter: ['<=', ['coalesce', ['get', 'scalerank'], 11],
+                    ['interpolate', ['linear'], ['zoom'], 5, 3, 9, 9]],
+                layout: {
+                    'text-field': ['get', 'name'],
+                    'text-font': ['NotoSans-Regular'],
+                    'text-size': ['interpolate', ['linear'], ['zoom'], 5, 9, 9, 11],
+                    'text-transform': 'uppercase',
+                    'text-letter-spacing': 0.08,
+                    'text-max-width': 8,
+                    'text-padding': 2,
+                    'text-allow-overlap': false,
+                    'text-ignore-placement': false,
+                    'text-optional': true,
+                    'symbol-sort-key': ['coalesce', ['get', 'scalerank'], 11],
+                },
+                paint: {
+                    'text-color': colors.label,
+                    'text-halo-color': colors.labelHalo,
+                    'text-halo-width': 1.4,
+                    'text-halo-blur': 0,
+                },
+            },
+            {
+                id: 'airport-dot',
+                type: 'circle',
+                source: 'basemap',
+                'source-layer': 'airports',
+                minzoom: 6,
+                filter: ['<=', ['coalesce', ['get', 'scalerank'], 9],
+                    ['interpolate', ['linear'], ['zoom'], 6, 4, 9, 9]],
+                paint: {
+                    'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 2, 9, 3.5],
+                    'circle-color': colors.airport,
+                    'circle-stroke-color': colors.labelHalo,
+                    'circle-stroke-width': 1,
+                },
+            },
+            {
+                id: 'airport-label',
+                type: 'symbol',
+                source: 'basemap',
+                'source-layer': 'airports',
+                minzoom: 7,
+                filter: ['<=', ['coalesce', ['get', 'scalerank'], 9],
+                    ['interpolate', ['linear'], ['zoom'], 7, 5, 9, 9]],
+                layout: {
+                    'text-field': ['get', 'name'],
+                    'text-font': ['NotoSans-Regular'],
+                    'text-size': ['interpolate', ['linear'], ['zoom'], 7, 10, 9, 12],
+                    'text-offset': [0, 0.9],
+                    'text-anchor': 'top',
+                    'text-max-width': 8,
+                    'text-padding': 2,
+                    'text-allow-overlap': false,
+                    'text-ignore-placement': false,
+                    'text-optional': true,
+                    'symbol-sort-key': ['coalesce', ['get', 'scalerank'], 9],
+                },
+                paint: {
+                    'text-color': colors.airport,
                     'text-halo-color': colors.labelHalo,
                     'text-halo-width': 1.4,
                     'text-halo-blur': 0,

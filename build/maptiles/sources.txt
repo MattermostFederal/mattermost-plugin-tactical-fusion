@@ -21,3 +21,5 @@
 10m      ne_10m_populated_places
 10m      ne_10m_admin_1_states_provinces_lines
 10m      ne_10m_rivers_lake_centerlines
+10m      ne_10m_airports
+10m      ne_10m_admin_1_label_points

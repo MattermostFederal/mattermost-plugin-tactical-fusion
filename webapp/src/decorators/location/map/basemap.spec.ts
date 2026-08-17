@@ -5,7 +5,7 @@ import {expect, test} from '@playwright/test';
 import manifest from 'manifest';
 
 import {basemapUrl, loadBasemap, _resetForTesting} from './basemap';
-import {MAX_ZOOM} from './span';
+import {DATA_MAX_ZOOM} from './span';
 
 /*
  * The real archive, off disk.
@@ -122,7 +122,7 @@ test.describe('probing', () => {
 
         expect(calls).toHaveLength(1);
         expect(archive?.minZoom).toBe(0);
-        expect(archive?.maxZoom).toBeGreaterThanOrEqual(MAX_ZOOM);
+        expect(archive?.maxZoom).toBeGreaterThanOrEqual(DATA_MAX_ZOOM);
         expect(archive?.url).toBe(basemapUrl());
     });
 
@@ -223,7 +223,7 @@ test.describe('a definitive failure is remembered', () => {
         ['a 200 with no Content-Length at all', {ok: true, status: 200, contentLength: null}],
 
         // Shallower than the camera allows, so the reader would zoom into blank.
-        ['an archive shallower than the style asks for', {bytes: headerWith(101, MAX_ZOOM - 1)}],
+        ['an archive shallower than the style asks for', {bytes: headerWith(101, DATA_MAX_ZOOM - 1)}],
     ];
 
     for (const [name, reply] of cases) {

@@ -59,24 +59,37 @@ func TestArchiveIsTheShapeTheReaderAssumes(t *testing.T) {
 }
 
 /*
- * The camera and the data have to stop at the same zoom, and this is the only
- * place that can see both: MAX_ZOOM is webapp-only and the archive is a binary.
+ * The archive and DATA_MAX_ZOOM have to agree, and this is the only place that
+ * can see both: the constant is webapp-only and the archive is a binary.
  *
- * Both directions are errors. Built shallower than the camera allows and a
- * reader zooms into blank tiles, which reads as a rendering bug rather than a
- * data one. Built deeper and the extra zoom levels are bytes in every install
- * that nothing can ever display, which usually means one of the two was raised
- * without the other.
+ * Both directions are errors. Built shallower than the constant claims and a
+ * reader zooms into tiles that do not exist, which reads as a rendering bug
+ * rather than a data one. Built deeper and the extra zoom levels are bytes in
+ * every install that nothing can ever display, which usually means one of the
+ * two was raised without the other.
+ *
+ * The CAMERA is deliberately not held to this any more. MAX_ZOOM runs past the
+ * data on purpose, so that the cell drawn around a pin can be inspected at the
+ * resolution its token carried; past DATA_MAX_ZOOM MapLibre overzooms and the
+ * map says so on screen. What still has to hold is that the camera never stops
+ * SHORT of the data, which would ship zoom levels nothing can reach.
  */
-func TestArchiveDepthMatchesTheCameraCeiling(t *testing.T) {
+func TestArchiveDepthMatchesTheData(t *testing.T) {
 	raw := readArchiveHeader(t)
 
-	maxZoom := int(tsConstant(t, readWebappSource(t, "map/span.ts"), "map/span.ts", "MAX_ZOOM"))
+	source := readWebappSource(t, "map/span.ts")
+	dataMax := int(tsConstant(t, source, "map/span.ts", "DATA_MAX_ZOOM"))
+	cameraMax := int(tsConstant(t, source, "map/span.ts", "MAX_ZOOM"))
 
-	if got := int(raw[101]); got != maxZoom {
-		t.Errorf("the archive stops at zoom %d and the camera at %d. Rebuild with "+
-			"'make map-tiles' or move MAX_ZOOM in map/span.ts, but not one alone",
-			got, maxZoom)
+	if got := int(raw[101]); got != dataMax {
+		t.Errorf("the archive stops at zoom %d and DATA_MAX_ZOOM is %d. Rebuild with "+
+			"'make map-tiles' or move DATA_MAX_ZOOM in map/span.ts, but not one alone",
+			got, dataMax)
+	}
+
+	if cameraMax < dataMax {
+		t.Errorf("the camera stops at zoom %d and the data goes to %d, so every install "+
+			"carries zoom levels no reader can reach", cameraMax, dataMax)
 	}
 }
 
@@ -114,9 +127,12 @@ func TestArchiveIsClustered(t *testing.T) {
 func TestArchiveFitsItsBudget(t *testing.T) {
 	// Raised from 8 MiB when the basemap gained roads, railways, urban areas,
 	// states, rivers and populated places, and its ceiling moved from z6 to z8.
-	// Still loose on purpose: this catches an order-of-magnitude mistake, such as
-	// a tier accidentally built at full detail across every zoom, not a layer
-	// added on purpose.
+	// Deliberately NOT raised again when the ceiling moved to z9, which cost
+	// +66% and left 8.8 MiB under this figure: the room it has left is the whole
+	// point of it, and a budget raised to fit whatever was just built stops
+	// catching anything. Still loose on purpose: this catches an
+	// order-of-magnitude mistake, such as a tier accidentally built at full
+	// detail across every zoom, not a layer added on purpose.
 	const budget = 48 * 1024 * 1024
 
 	info, err := os.Stat(archivePath)

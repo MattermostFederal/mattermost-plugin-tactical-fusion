@@ -11,10 +11,14 @@ const fontnik = require('fontnik');
  * than costing them their typeface: with no fonts served, the label features
  * arrive in the tiles and draw as nothing at all.
  *
- * The ranges are the four that cover every Latin script Natural Earth's ADMIN
- * field uses, plus the punctuation block that carries the apostrophe in names
- * like Cote d'Ivoire. A full plane would be about 10 MB per face; these four are
- * about a quarter of a megabyte.
+ * The ranges cover every Latin script Natural Earth's name fields use, plus the
+ * punctuation block that carries the apostrophe in names like Cote d'Ivoire, and
+ * Latin Extended Additional, which 80 of the 11,291 admin-1 label points need
+ * and which is almost entirely Vietnamese province names. A full plane would be
+ * about 10 MB per face; these five are under half a megabyte.
+ *
+ * Adding one here means adding it to the bundle check in the Makefile too, or a
+ * range can go missing from a release with no symptom but unnamed features.
  */
 
 const FONT = '/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf';
@@ -24,6 +28,7 @@ const RANGES = [
     [0, 255],       // Basic Latin, Latin-1 Supplement
     [256, 511],     // Latin Extended-A
     [512, 767],     // Latin Extended-B
+    [7680, 7935],   // Latin Extended Additional
     [8192, 8447],   // General Punctuation
 ];
 

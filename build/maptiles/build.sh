@@ -10,6 +10,12 @@ OUT="${OUT:-public/map/world.pmtiles}"
 # costing: SIMPLIFICATION=2 make map-tiles
 SIMPLIFICATION="${SIMPLIFICATION:-4}"
 
+# The archive's ceiling, written once. Every run that reaches it reads this, so
+# the depth cannot move for one layer and miss another; MAX_ZOOM in
+# webapp/src/decorators/location/map/span.ts must move with it, and
+# TestArchiveDepthMatchesTheCameraCeiling is what holds the two together.
+MAXZ="${MAXZ:-9}"
+
 mkdir -p "$WORK" "$(dirname "$OUT")"
 
 # A tile with no ceiling is the failure this plugin is built to avoid: the base
@@ -85,7 +91,7 @@ outline "$FINE"   10m  5 6
 # scales as 1/2^z, so dropping to full detail costs 81% more vertices at z5 and
 # only 11% at z8: the zooms where the shape is visible are the zooms where
 # keeping it is cheap. z0-6 stays byte-identical to before.
-SIMPLIFICATION=1 run outline_10m_deep 7 8 \
+SIMPLIFICATION=1 run outline_10m_deep 7 "$MAXZ" \
     --named-layer=land:"${WORK}/10m_land.geojson" \
     --named-layer=lakes:"${WORK}/10m_lakes.geojson" \
     --named-layer=boundary_lines:"${WORK}/10m_admin_0_boundary_lines_land.geojson"
@@ -94,24 +100,30 @@ SIMPLIFICATION=1 run outline_10m_deep 7 8 \
 # starts being worth its bytes rather than drawn at every scale.
 strip_fine rivers_lake_centerlines
 strip_fine admin_1_states_provinces_lines
-run context 4 8 \
+run context 4 "$MAXZ" \
     --named-layer=rivers:"${WORK}/10m_rivers_lake_centerlines.geojson" \
     --named-layer=admin_1_lines:"${WORK}/10m_admin_1_states_provinces_lines.geojson"
 
 strip_fine urban_areas
 strip_fine roads scalerank
 strip_fine railroads
-MAX_TILE_BYTES=250000 run detail 5 8 \
+MAX_TILE_BYTES=250000 run detail 5 "$MAXZ" \
     --coalesce \
     --named-layer=urban_areas:"${WORK}/10m_urban_areas.geojson" \
     --named-layer=roads:"${WORK}/10m_roads.geojson" \
     --named-layer=railroads:"${WORK}/10m_railroads.geojson"
 
 strip_fine populated_places NAME_EN SCALERANK
-run places 3 8 \
+run places 3 "$MAXZ" \
     --named-layer=populated_places:"${WORK}/10m_populated_places.geojson"
 
-run labels 0 8 \
+strip_fine airports NAME SCALERANK
+strip_fine admin_1_label_points NAME SCALERANK
+run sites 5 "$MAXZ" \
+    --named-layer=airports:"${WORK}/10m_airports.geojson" \
+    --named-layer=admin_1_labels:"${WORK}/10m_admin_1_label_points.geojson"
+
+run labels 0 "$MAXZ" \
     --named-layer=country_labels:"${WORK}/country_labels.geojson"
 
 rm -f "$OUT"

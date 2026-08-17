@@ -260,9 +260,9 @@ ifneq ($(HAS_PUBLIC),)
 	@# The style names these by URL. Without them the country labels have no
 	@# typeface to be drawn in, and the only symptom is a map that quietly
 	@# stopped naming anything.
-	@# All four ranges, not just the first: a missing 256-511 costs every
-	@# accented name and nothing else would fail.
-	@for r in 0-255 256-511 512-767 8192-8447; do \
+	@# Every range, not just the first: a missing 256-511 costs every accented
+	@# name and nothing else would fail.
+	@for r in 0-255 256-511 512-767 7680-7935 8192-8447; do \
 		if [ ! -f "dist/$(PLUGIN_ID)/public/map/fonts/NotoSans-Regular/$$r.pbf" ]; then \
 			echo "ERROR: the bundle is missing glyph range $$r under public/map/fonts."; \
 			echo "The map's labels need them. Run 'make map-tiles'."; \

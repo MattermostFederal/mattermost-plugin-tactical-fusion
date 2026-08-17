@@ -235,6 +235,12 @@ func TestMapPaletteCarriesItsContrast(t *testing.T) {
 		// underneath it.
 		{"light", "roads against land", "#2b3542", "#76889f", 3},
 		{"dark", "roads against land", "#c2ccd9", "#5a6472", 3},
+
+		// An airfield is a landmark rather than context, so it is held to the
+		// same floor rather than left among the things that are only meant to
+		// be recognised when looked for.
+		{"light", "airports against land", "#382d12", "#76889f", 3},
+		{"dark", "airports against land", "#edc67e", "#5a6472", 3},
 	}
 
 	for _, p := range pairs {

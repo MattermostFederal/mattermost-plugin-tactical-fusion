@@ -1,6 +1,6 @@
 import manifest from 'manifest';
 
-import {MAX_ZOOM} from './span';
+import {DATA_MAX_ZOOM} from './span';
 
 import {pluginBaseUrl} from '../../../plugin_url';
 
@@ -170,7 +170,7 @@ function readHeader(url: string, header: ArrayBuffer): Archive | null {
 
     const minZoom = bytes[100];
     const maxZoom = bytes[101];
-    if (minZoom !== 0 || maxZoom < MAX_ZOOM) {
+    if (minZoom !== 0 || maxZoom < DATA_MAX_ZOOM) {
         return null;
     }
 

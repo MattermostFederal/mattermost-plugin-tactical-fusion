@@ -25,17 +25,55 @@ export const TARGET_SPAN_METERS = 400000;
 /**
  * Past this the basemap stops being honest about what it is.
  *
- * Natural Earth 10m carries roughly 5 km of positional accuracy. At z8 that is
- * about 16 px of possible error, which reads as generalisation; at z10 it is
- * 65 px, which reads as fact to a reader with no way to tell. For an audience
- * acting on grid references, the second is the wrong way to be wrong.
+ * Natural Earth 10m carries roughly 5 km of positional accuracy, and a 512 px
+ * tile puts 78271.5/2^z metres in a pixel. So that error is about 16 px at z8,
+ * 33 px at z9 and 65 px at z10. At 16 px it reads as generalisation; at 65 px it
+ * reads as fact to a reader with no way to tell, which for an audience acting on
+ * grid references is the wrong way to be wrong.
+ *
+ * This was 8 for exactly that reason and is now 9, which is a deliberate trade
+ * rather than a change of mind about the arithmetic. What z9 buys is narrow and
+ * worth stating so nobody re-derives it as generous: the sources are the same
+ * 10m files, so z9 carries no geometry z8 did not, and vector tiles magnify
+ * without blurring. It buys halved coordinate quantization inside a tile
+ * (a 4096-unit extent over a z8 tile is about 38 m at the equator, and about
+ * 19 m at z9) and more room for the collision index to place labels. It does
+ * not buy accuracy, and 33 px of possible error is the price.
  *
  * The archive is built to exactly this depth, and
- * TestArchiveDepthMatchesTheCameraCeiling holds the two together: built
- * shallower and a reader zooms into blank tiles, built deeper and every install
- * carries zoom levels nothing can display.
+ * TestArchiveDepthMatchesTheData holds the two together: built shallower and a
+ * reader zooms into tiles that do not exist, built deeper and every install
+ * carries zoom levels nothing can display. MAXZ in build/maptiles/build.sh is
+ * the other half.
+ *
+ * This bounds the DATA and no longer bounds the CAMERA; see MAX_ZOOM.
  */
-export const MAX_ZOOM = 8;
+export const DATA_MAX_ZOOM = 9;
+
+/**
+ * How far the camera may go, which is deliberately past where the data stops.
+ *
+ * The two used to be one number, so a coordinate could never be inspected at
+ * its own resolution: the cell drawn around a pin carries the token's precision
+ * in its SIZE, and at z9 a 10 m grid reference is about a third of a pixel. The
+ * reader could see that a cell existed and never how small it was, which is the
+ * one thing it is drawn to say.
+ *
+ * 17 is where a 10 m cell reaches about 20 px, which covers the fine end of what
+ * the grammars actually produce: 10 m MGRS, and four decimal places of a degree
+ * (about 11 m). A 1 m grid reference is still about 2 px, and going deeper was
+ * declined: it would need z20, where the basemap is magnified 2048 times and is
+ * a flat colour with a straight line for a coastline.
+ *
+ * Past DATA_MAX_ZOOM MapLibre overzooms, which for vector tiles magnifies
+ * without blurring, so lines stay crisp and only their GENERALISATION is wrong.
+ * That is exactly the failure the ceiling used to exist to prevent, and nothing
+ * on the map states it in words: a notice saying so was drawn here and then
+ * removed, leaving the zoom readout as the only hint. What keeps that a choice
+ * rather than something done to a reader is that `zoomForSpan` still clamps to
+ * DATA_MAX_ZOOM, so nothing ever OPENS into overzoom.
+ */
+export const MAX_ZOOM = 17;
 
 /** A degree of latitude, the same approximation the Go side makes. */
 export const DEGREE_METERS = 111320;
@@ -67,7 +105,7 @@ export function zoomForSpan(lat: number, widthPx: number): number {
     const worldPx = (360 * widthPx * DEGREE_METERS * cos) / TARGET_SPAN_METERS;
     const zoom = Math.log2(worldPx / TILE_PIXELS);
 
-    return Math.max(0, Math.min(MAX_ZOOM, zoom));
+    return Math.max(0, Math.min(DATA_MAX_ZOOM, zoom));
 }
 
 /** The bounding rectangle of a cell, as MapLibre wants it. */

@@ -144,6 +144,21 @@ const styles: Record<string, React.CSSProperties> = {
         background: 'var(--center-channel-bg)',
         color: 'var(--center-channel-color)',
     },
+    zoomLevel: {
+        position: 'absolute',
+        left: 8,
+        bottom: 8,
+        margin: 0,
+        padding: '2px 6px',
+        borderRadius: 4,
+        fontSize: 11,
+        lineHeight: '16px',
+        fontVariantNumeric: 'tabular-nums',
+        pointerEvents: 'none',
+        border: '1px solid rgba(var(--center-channel-color-rgb), 0.16)',
+        background: 'var(--center-channel-bg)',
+        color: 'rgba(var(--center-channel-color-rgb), 0.72)',
+    },
     srOnly: {
         position: 'absolute',
         width: 1,
@@ -166,6 +181,10 @@ const LocationMap: React.FC<Props> = ({
     // changes. `failure` is separate so the two cannot overwrite each other.
     const [loaded, setLoaded] = useState(false);
     const [failure, setFailure] = useState<string | null>(null);
+
+    // The live camera zoom, and the only thing on this map read from a `zoom`
+    // event. Null until the map exists.
+    const [zoomLevel, setZoomLevel] = useState<number | null>(null);
 
     const beyond = lat === null ? null : outsideMercator(lat);
     const known = lat !== null && lon !== null && beyond === null;
@@ -248,7 +267,7 @@ const LocationMap: React.FC<Props> = ({
             const start = view.current;
             const width = container.current.clientWidth || DEFAULT_WIDTH_PX;
 
-            let instance;
+            let instance: MapLibreMap | undefined;
             try {
                 instance = new maplibre.Map({
                     container: container.current,
@@ -277,6 +296,12 @@ const LocationMap: React.FC<Props> = ({
 
                 instance.addControl(new maplibre.NavigationControl({showCompass: false}), 'top-right');
                 instance.addControl(new maplibre.ScaleControl({maxWidth: 90, unit: 'metric'}), 'bottom-right');
+
+                // Seeded as well as listened for, because constructing a map at
+                // a zoom fires no event and the readout would otherwise be blank
+                // until the reader's first gesture.
+                instance.on('zoom', (event) => setZoomLevel(event.target.getZoom()));
+                setZoomLevel(instance.getZoom());
             } catch (e) {
                 // The constructor allocates its canvas and GL context before it
                 // validates the style, so a throw here leaks a context unless it
@@ -396,7 +421,15 @@ const LocationMap: React.FC<Props> = ({
                         onClick={applyView}
                     >{RESET_LABEL}</button>
                 )}
-                {note !== null && <p style={styles.placeholder}>{note}</p>}
+                {note !== null && (
+                    <p
+                        data-testid='map-note'
+                        style={styles.placeholder}
+                    >{note}</p>
+                )}
+                {note === null && zoomLevel !== null && (
+                    <p style={styles.zoomLevel}>{`z${zoomLevel.toFixed(1)}`}</p>
+                )}
                 <span style={styles.srOnly}>{label(region, note)}</span>
             </div>
             {!fill && pageHref !== undefined && (

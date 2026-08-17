@@ -3,6 +3,7 @@ import React, {useEffect, useRef, useState} from 'react';
 
 import LocationMap, {_setMapObserverForTesting} from './LocationMap';
 import type {View} from './LocationMap';
+import {DATA_MAX_ZOOM} from './span';
 
 /**
  * Harness for the map.
@@ -271,6 +272,14 @@ removed: false,
                 type='button'
                 onClick={() => last.current?.fire('error', {error: new Error('style failed')})}
             >{'make the map fail'}</button>
+            <button
+                type='button'
+                onClick={() => last.current?.setZoom(DATA_MAX_ZOOM + 3)}
+            >{'zoom past the data'}</button>
+            <button
+                type='button'
+                onClick={() => last.current?.setZoom(DATA_MAX_ZOOM - 1)}
+            >{'zoom back within the data'}</button>
             <output data-testid='selected'>{name}</output>
             <output data-testid='live-map'>{live ? 'yes' : 'no'}</output>
             <output data-testid='maps-created'>{String(created)}</output>

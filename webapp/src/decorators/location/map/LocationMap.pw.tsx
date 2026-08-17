@@ -6,6 +6,7 @@ import React from 'react';
 
 import LocationMapHarness from './LocationMapHarness';
 import type {ViewName} from './LocationMapHarness';
+import {DATA_MAX_ZOOM} from './span';
 
 import {expect, test} from '../../../../playwright/ct-coverage';
 
@@ -120,9 +121,17 @@ async function serveMapAssets(
     });
 }
 
-/** The visible note, which is a paragraph. The same text is also in the label. */
+/*
+ * The visible note. The same text is also in the label.
+ *
+ * Addressed by test id rather than by role, because the frame carries other
+ * paragraphs now: the overzoom notice and the zoom readout. This used to be
+ * `getByRole('paragraph')`, and `expectDrawn` asserts the note is ABSENT, so
+ * every one of those assertions started failing the moment a second paragraph
+ * was drawn over a perfectly working map.
+ */
 function noteOf(component: Locator): Locator {
-    return component.getByRole('paragraph');
+    return component.getByTestId('map-note');
 }
 
 /**
@@ -615,5 +624,45 @@ test.describe('when there is no map to draw', () => {
         const component = await mount(<LocationMapHarness start='unknown'/>);
 
         await expect(noteOf(component)).toHaveText(NO_POSITION);
+    });
+});
+
+const ZOOM_READOUT = /^z\d+\.\d$/;
+
+/*
+ * The camera's zoom, on the map.
+ *
+ * It is one decimal because the wheel and a trackpad pinch are continuous, so a
+ * whole number would sit still through most of a gesture and read as broken.
+ * Derived from the same state the overzoom notice is, so the two can never
+ * disagree about which side of the data ceiling the reader is on.
+ */
+test.describe('the zoom readout', () => {
+    test('is there before the reader touches anything, and follows them', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness start='Los Angeles'/>);
+        await expectDrawn(component);
+
+        // Seeded at construction: creating a map at a zoom fires no zoom event,
+        // so without the seed this stays blank until the first gesture.
+        const readout = component.getByText(ZOOM_READOUT);
+        await expect(readout).toBeVisible();
+        const opening = await readout.textContent();
+
+        await component.getByRole('button', {name: 'zoom past the data'}).click();
+        await expect(readout).toHaveText(`z${(DATA_MAX_ZOOM + 3).toFixed(1)}`);
+        expect(await readout.textContent()).not.toBe(opening);
+
+        await component.getByRole('button', {name: 'Reset view'}).click();
+        await expect(readout).toHaveText(opening!);
+    });
+
+    test('is absent while there is no map to have a zoom', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness noWebGL={true}/>);
+        await expect(noteOf(component)).toHaveText(NO_WEBGL);
+        await expect(component.getByText(ZOOM_READOUT)).toBeHidden();
     });
 });

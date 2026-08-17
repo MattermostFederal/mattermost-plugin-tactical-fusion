@@ -8,9 +8,10 @@ package location
 // shared shell declares its own. Everything else a coordinate looks like is in
 // the components.
 //
-// This is also what makes the map follow the page's theme: mapColors reads
-// --center-channel-bg to decide which palette to draw, so there is no second
-// copy of a measured palette here to keep in step.
+// The map itself no longer follows this. It is drawn dark in both themes, by
+// ALWAYS_DARK in maplibre.ts, so a light page carries a dark map. What these
+// properties still decide is everything AROUND it: the table, the links and the
+// page's own ground. There is still no second copy of a measured palette here.
 const pageStyles = `
 :root {
   --center-channel-color: #3f4350; --center-channel-color-rgb: 63,67,80;

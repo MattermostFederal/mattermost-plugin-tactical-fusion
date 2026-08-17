@@ -1,7 +1,7 @@
 import {expect, test} from '@playwright/test';
 
 import {
-    MAX_ZOOM, MERCATOR_LIMIT, TARGET_SPAN_METERS, cellBounds, isRenderable, zoomForSpan,
+    DATA_MAX_ZOOM, MAX_ZOOM, MERCATOR_LIMIT, TARGET_SPAN_METERS, cellBounds, isRenderable, zoomForSpan,
 } from './span';
 
 /*
@@ -28,7 +28,7 @@ test('a wider viewport shows more ground at the same zoom step', () => {
 });
 
 test('clamps to the honest range of the basemap', () => {
-    expect(zoomForSpan(85, 320)).toBeLessThanOrEqual(MAX_ZOOM);
+    expect(zoomForSpan(85, 320)).toBeLessThanOrEqual(DATA_MAX_ZOOM);
     expect(zoomForSpan(0, 1)).toBeGreaterThanOrEqual(0);
 });
 
@@ -99,7 +99,26 @@ test.describe('the opening view', () => {
     // Reset view stops meaning anything.
     test('leaves room to zoom in on every surface', () => {
         for (const width of [320, 600, 1200]) {
-            expect(zoomForSpan(0, width)).toBeLessThan(MAX_ZOOM);
+            expect(zoomForSpan(0, width)).toBeLessThan(DATA_MAX_ZOOM);
         }
     });
+});
+
+/*
+ * The camera goes past the data on purpose, and the opening view never does.
+ *
+ * These are two halves of one decision. If the ceiling stopped at the data a
+ * cell could not be inspected at the resolution its token carried, which is the
+ * one thing its size is drawn to say; and if the OPENING zoom could land past
+ * the data, every coordinate would open onto a magnified basemap without the
+ * reader ever asking for it. Overzoom has to be a gesture, not a default.
+ */
+test('the camera may overzoom and the opening view may not', () => {
+    expect(MAX_ZOOM).toBeGreaterThan(DATA_MAX_ZOOM);
+
+    for (const lat of [0, 35, 60, 85]) {
+        for (const width of [200, 320, 640, 1000, 4000]) {
+            expect(zoomForSpan(lat, width)).toBeLessThanOrEqual(DATA_MAX_ZOOM);
+        }
+    }
 });
