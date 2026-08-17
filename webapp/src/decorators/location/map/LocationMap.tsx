@@ -40,6 +40,21 @@ const MAP_MIN_HEIGHT_PX = 200;
 const MAP_MAX_HEIGHT_PX = 360;
 const MAP_HEIGHT = `clamp(${MAP_MIN_HEIGHT_PX}px, 30vh, ${MAP_MAX_HEIGHT_PX}px)`;
 
+/*
+ * The hover card's map.
+ *
+ * Sized HERE rather than left to fill the card, because the frame has no
+ * intrinsic width: inside a tooltip that sizes itself to its content, a child
+ * with only a height is at the mercy of whatever the overlay happens to give it,
+ * and what it gave it was a strip. An explicit pair also keeps the aspect fixed
+ * at 16:9, so the opening view frames the same ground on every card rather than
+ * whatever the chrome left over.
+ *
+ * The framework's card caps at 360px, which is this plus its padding.
+ */
+const PREVIEW_WIDTH_PX = 320;
+const PREVIEW_HEIGHT_PX = 180;
+
 const LOADING = 'Loading map…';
 const NO_WEBGL = 'This browser cannot draw the map.';
 const NO_BASEMAP = 'The map could not be loaded.';
@@ -90,6 +105,18 @@ interface Props extends View {
 
     /** Fills its parent rather than sitting in the flow of a panel. */
     fill?: boolean;
+
+    /**
+     * A picture and nothing else: no controls, no gestures, no readout.
+     *
+     * For the hover card, where the reader is pointing rather than working. A
+     * card is dismissed by moving the pointer, so a map inside one that swallowed
+     * the wheel would trap a scroll over a channel, and controls small enough to
+     * fit would be too small to hit before the card vanished. Everything that
+     * makes the panel's map operable is therefore off, and what is left is the
+     * one thing a glance is asking: where.
+     */
+    preview?: boolean;
 }
 
 const styles: Record<string, React.CSSProperties> = {
@@ -105,6 +132,8 @@ const styles: Record<string, React.CSSProperties> = {
     canvas: {position: 'absolute', inset: 0},
     fillRoot: {marginBottom: 0, display: 'flex', flexDirection: 'column', height: '100%'},
     fillFrame: {flex: 1, borderRadius: 0, border: 'none'},
+    previewRoot: {marginBottom: 0},
+    previewFrame: {width: PREVIEW_WIDTH_PX, height: PREVIEW_HEIGHT_PX},
     placeholder: {
         position: 'absolute',
         inset: 0,
@@ -170,7 +199,7 @@ const styles: Record<string, React.CSSProperties> = {
 };
 
 const LocationMap: React.FC<Props> = ({
-    lat, lon, cellDegLat, cellDegLon, region, pageHref, pending, fill,
+    lat, lon, cellDegLat, cellDegLon, region, pageHref, pending, fill, preview,
 }) => {
     const container = useRef<HTMLDivElement | null>(null);
     const map = useRef<MapLibreMap | null>(null);
@@ -195,6 +224,11 @@ const LocationMap: React.FC<Props> = ({
     // disagreed; and it read a ref it could not re-render on, so a map that
     // finished loading after the reader moved on stayed on "Loading map…".
     const note = failure ?? positionNote(beyond, known, pending, loaded);
+
+    // Read through a ref for the same reason `view` is: the creation effect runs
+    // once and must not gain a dependency that would rebuild the map.
+    const previewRef = useRef(preview);
+    previewRef.current = preview;
 
     // Read at apply time rather than closed over, so the creation effect's
     // 'load' handler positions the map at wherever the reader is NOW, not at
@@ -281,7 +315,11 @@ const LocationMap: React.FC<Props> = ({
                     pitchWithRotate: false,
                     touchZoomRotate: false,
 
-                    scrollZoom: true,
+                    scrollZoom: !previewRef.current,
+                    dragPan: !previewRef.current,
+                    doubleClickZoom: !previewRef.current,
+                    keyboard: !previewRef.current,
+                    interactive: !previewRef.current,
 
                     // zoomForSpan clamps only the OPENING zoom, but the wheel
                     // and the controls let a reader leave that range, so the
@@ -294,8 +332,10 @@ const LocationMap: React.FC<Props> = ({
                     fadeDuration: 0,
                 });
 
-                instance.addControl(new maplibre.NavigationControl({showCompass: false}), 'top-right');
-                instance.addControl(new maplibre.ScaleControl({maxWidth: 90, unit: 'metric'}), 'bottom-right');
+                if (!previewRef.current) {
+                    instance.addControl(new maplibre.NavigationControl({showCompass: false}), 'top-right');
+                    instance.addControl(new maplibre.ScaleControl({maxWidth: 90, unit: 'metric'}), 'bottom-right');
+                }
 
                 // Seeded as well as listened for, because constructing a map at
                 // a zoom fires no event and the readout would otherwise be blank
@@ -404,8 +444,12 @@ const LocationMap: React.FC<Props> = ({
         return () => observer.disconnect();
     }, []);
 
-    const root = fill ? {...styles.root, ...styles.fillRoot} : styles.root;
-    const frame = fill ? {...styles.frame, ...styles.fillFrame} : styles.frame;
+    let root = fill ? {...styles.root, ...styles.fillRoot} : styles.root;
+    let frame = fill ? {...styles.frame, ...styles.fillFrame} : styles.frame;
+    if (preview) {
+        root = {...styles.root, ...styles.previewRoot};
+        frame = {...styles.frame, ...styles.previewFrame};
+    }
 
     return (
         <div style={root}>
@@ -414,7 +458,7 @@ const LocationMap: React.FC<Props> = ({
                     ref={container}
                     style={styles.canvas}
                 />
-                {note === null && (
+                {note === null && !preview && (
                     <button
                         type='button'
                         style={styles.recenter}
@@ -427,12 +471,12 @@ const LocationMap: React.FC<Props> = ({
                         style={styles.placeholder}
                     >{note}</p>
                 )}
-                {note === null && zoomLevel !== null && (
+                {note === null && !preview && zoomLevel !== null && (
                     <p style={styles.zoomLevel}>{`z${zoomLevel.toFixed(1)}`}</p>
                 )}
                 <span style={styles.srOnly}>{label(region, note)}</span>
             </div>
-            {!fill && pageHref !== undefined && (
+            {!fill && !preview && pageHref !== undefined && (
                 <div style={styles.caption}>
                     <a
                         style={styles.link}

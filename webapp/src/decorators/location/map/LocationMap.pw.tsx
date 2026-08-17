@@ -666,3 +666,90 @@ test.describe('the zoom readout', () => {
         await expect(component.getByText(ZOOM_READOUT)).toBeHidden();
     });
 });
+
+/*
+ * Preview mode, which is what the hover card renders.
+ *
+ * A card is dismissed by moving the pointer, so everything that makes the
+ * panel's map operable is wrong inside one: controls too small to hit before the
+ * card vanishes, and a wheel handler that would swallow a scroll over a channel.
+ * What is left is the picture, which is the whole of what a glance is asking.
+ */
+test.describe('preview mode', () => {
+    test('draws the map and none of the furniture', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness
+                start='Los Angeles'
+                preview={true}
+            />);
+
+        // The map itself is there: the pin lands, which is the only proof that
+        // survives the controls being gone.
+        await expect.poll(async () => {
+            await readMap(component);
+
+            return component.getByTestId('pin-features').textContent();
+        }, {message: 'pin drawn'}).toBe('1');
+
+        await expect(component.getByRole('button', {name: RESET})).toBeHidden();
+        await expect(component.getByText(ZOOM_READOUT)).toBeHidden();
+        await expect(component.locator('.maplibregl-ctrl-zoom-in')).toBeHidden();
+        await expect(component.locator('.maplibregl-ctrl-scale')).toBeHidden();
+    });
+
+    /*
+     * The card's map has a size of its own.
+     *
+     * The frame carries only a height in the panel, where a block element fills
+     * the sidebar. Inside a tooltip that sizes itself to its content there is
+     * nothing to fill, so the map came out a narrow strip, and every test above
+     * passed while it did: a pin lands, labels draw and the wheel is ignored at
+     * any width at all. Nothing but a measurement catches this.
+     */
+    test('is a map rather than a strip', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness
+                start='Los Angeles'
+                preview={true}
+            />);
+        await expect(component.locator('canvas').first()).toBeVisible();
+
+        const box = await component.locator('canvas').first().boundingBox();
+        expect(box, 'the map has no box at all').not.toBeNull();
+        expect(box!.width).toBeGreaterThan(280);
+        expect(box!.width / box!.height).toBeGreaterThan(1.4);
+        expect(box!.width / box!.height).toBeLessThan(2.2);
+    });
+
+    // The wheel belongs to the channel behind the card, not to the card. A map
+    // that consumed it would trap a scroll on a hover the reader did not ask for.
+    test('does not take the wheel', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness
+                start='Los Angeles'
+                preview={true}
+            />);
+
+        await expect.poll(async () => {
+            await readMap(component);
+
+            return component.getByTestId('pin-features').textContent();
+        }).toBe('1');
+
+        await readMap(component);
+        const before = await component.getByTestId('zoom').textContent();
+
+        await component.locator('canvas').first().hover();
+        await page.mouse.wheel(0, -600);
+        await page.waitForTimeout(300);
+
+        await readMap(component);
+        expect(await component.getByTestId('zoom').textContent()).toBe(before);
+    });
+});

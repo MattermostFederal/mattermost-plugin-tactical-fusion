@@ -249,7 +249,9 @@ optional `Hover` component, so the tooltip is registered once for the whole
 plugin and nothing in the bootstrap changes when a decorator adds one. Keep a
 hover to the one thing worth knowing without opening the sidebar: the DTG hover
 is the countdown and nothing else, and leaves the reading and the timezone table
-to the panel. It still honors the reader's flash threshold, or pointing at a
+to the panel. **The location hover is the map and nothing else**, for the same
+reason: a glance at a coordinate is asking where, and every reading is one click
+away. It still honors the reader's flash threshold, or pointing at a
 link and opening it could disagree about whether the same DTG is imminent.
 
 The sidebar also opens from a **channel header button**, which clears the
@@ -1777,6 +1779,56 @@ cache to remove, so the write invalidates nothing and the slower read then
 installs the value the write had just replaced. And every value handed out is
 **cloned**, since the cache returns the same value to every caller and a caller
 that appended to `Zones` would be editing what the next reader gets.
+
+### The location hover
+
+The card is `LocationMap` in **`preview` mode**, not a second map: two
+implementations of a projection and a palette are two things that can disagree,
+and this one would disagree in the place a reader looks first. Preview turns off
+everything that makes the panel's map operable, because a card is dismissed by
+moving the pointer: no controls (too small to hit before the card vanishes), no
+gestures (a wheel handler inside a hover would swallow a scroll over the
+channel), no Reset view and no zoom readout. What is left is the picture.
+
+**The card's map carries its own width and height**, 320x180, and the framework's
+tooltip caps at that plus its padding. The frame carries only a height everywhere
+else, because a block element fills the sidebar; inside a tooltip that sizes
+itself to its content there is nothing to fill, and the map came out a narrow
+strip. Every behavioural test passed while it did: a pin lands, labels draw and
+the wheel is ignored at any width at all, so `is a map rather than a strip`
+measures the box instead. The 360px cap on the card is a max rather than a width,
+so the DTG countdown still shrinks to its own line.
+
+**It carried no hover for a long time, and the blocker was real.** A hover fires
+on pointer movement rather than on a click, so wiring one to `/api/v1/convert`
+would have put a request behind every coordinate a cursor crossed in a busy
+channel. What unblocked it is the module cache in `convert.ts`.
+
+**That cache needs no TTL, and that is a property of the data rather than a
+shortcut.** A conversion is a pure function of `(format, canonical, raw)`: the
+projection is arithmetic and the region comes from polygons compiled into the
+binary, so the same token converts to the same readings forever. Reader
+preferences can change in another tab; a grid reference cannot. What it does
+*not* remember is a **failure**, because caching an outage would mean one bad
+minute costs every coordinate in the channel for the life of the tab with a
+reload the only way back. `ready` and `rejected` are verdicts about a fixed
+token and are kept; `failed` is weather and is not. That is the same split
+`basemap.ts` makes about the archive.
+
+The in-flight map matters as much as the answers one: the click that follows a
+hover arrives while the hover's own fetch is still outstanding, and joins it
+rather than issuing a second. `request()` therefore checks the cache **itself**
+rather than leaving that to its one caller, which it did not at first: a cache
+only the hook consulted would have sent the next caller to the network with
+every appearance of being cached.
+
+Two costs, stated because a hover is not a click. Pointing at a coordinate now
+pulls the MapLibre chunk, about 950 KB, where it used to take a click; it is one
+cacheable response per session and the panel would have pulled it on the first
+open anyway. And a hover builds a WebGL context and tears it down again, which
+is why the panel's "one map, created once and moved" rule does not extend here:
+a card is mounted and unmounted by the pointer, and `LocationMap` already
+releases its context on unmount.
 
 ### The location rows
 

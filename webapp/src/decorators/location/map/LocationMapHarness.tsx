@@ -180,10 +180,13 @@ interface Props {
 
     /** Makes this browser look like one with WebGL2 switched off. */
     noWebGL?: boolean;
+
+    /** Renders the card-sized map: no controls, no gestures, no readout. */
+    preview?: boolean;
 }
 
 const LocationMapHarness: React.FC<Props> = ({
-    start = 'Los Angeles', region = '', pending = false, pageHref, fill, noWebGL,
+    start = 'Los Angeles', region = '', pending = false, pageHref, fill, noWebGL, preview,
 }) => {
     // Assigned during render, never installed during render: the patch above is
     // already in place, so this only has to be decided before the child probes
@@ -251,6 +254,7 @@ removed: false,
                     pending={pending}
                     pageHref={pageHref}
                     fill={fill}
+                    preview={preview}
                 />
             )}
             {Object.keys(VIEWS).map((key) => (
