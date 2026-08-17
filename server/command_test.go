@@ -145,3 +145,35 @@ func TestBareCommandListsSubcommands(t *testing.T) {
 		t.Fatalf("ResponseType = %q, want ephemeral", response.ResponseType)
 	}
 }
+
+// argumentText recovers the text after the subcommand by finding it rather than
+// by trimming a fixed prefix, because dispatch splits on Fields and tolerates
+// repeated spaces a prefix trim would not. Getting that wrong made
+// "/tactical-fusion  check X" echo the whole command line back as the text
+// under test.
+func TestArgumentText(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		command    string
+		subcommand string
+		want       string
+	}{
+		{"the ordinary shape", "/tactical-fusion check 34.0561, -118.2500", "check", "34.0561, -118.2500"},
+		{"repeated spaces before the subcommand", "/tactical-fusion  check  X", "check", "X"},
+		{"spacing inside the argument is kept", "/tactical-fusion check a  b", "check", "a  b"},
+		{"nothing after the subcommand", "/tactical-fusion check", "check", ""},
+		{"only whitespace after it", "/tactical-fusion check   ", "check", ""},
+
+		// A subcommand the line does not contain yields nothing rather than the
+		// whole line, which is what the prefix-trim version got wrong.
+		{"a subcommand that is not there", "/tactical-fusion examples", "check", ""},
+		{"an empty command", "", "check", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := argumentText(tc.command, tc.subcommand); got != tc.want {
+				t.Fatalf("argumentText(%q, %q) = %q, want %q",
+					tc.command, tc.subcommand, got, tc.want)
+			}
+		})
+	}
+}

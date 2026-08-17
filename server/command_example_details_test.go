@@ -684,3 +684,25 @@ func TestDetailsExplainTheInlineMap(t *testing.T) {
 			inlineDetailHeading, drawn, notDrawn)
 	}
 }
+
+// capitalize raises a set name for its heading, and an empty name has no first
+// byte to raise. Every set has a name, so only a direct call reaches the guard.
+func TestCapitalize(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"a lower-case name", "coordinates", "Coordinates"},
+		{"one already raised", "Coordinates", "Coordinates"},
+		{"a single letter", "c", "C"},
+		{"a name that starts with a digit", "3d", "3d"},
+		{"empty", "", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := capitalize(tc.in); got != tc.want {
+				t.Fatalf("capitalize(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
