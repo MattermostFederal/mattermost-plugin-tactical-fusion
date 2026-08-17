@@ -1,9 +1,7 @@
-import fs from 'fs';
-import path from 'path';
-
-import type {Locator, Page} from '@playwright/test';
+import type {Locator} from '@playwright/test';
 import React from 'react';
 
+import {serveMapAssets} from './asset_fixtures';
 import LocationMapHarness from './LocationMapHarness';
 import type {ViewName} from './LocationMapHarness';
 import {DATA_MAX_ZOOM} from './span';
@@ -21,8 +19,9 @@ import {expect, test} from '../../../../playwright/ct-coverage';
  *
  * Once the archive, the worker and the glyphs are routed, the map fetches
  * nothing else, which is what makes this deterministic rather than a network
- * test. `starveFonts` 404s the glyph ranges instead, which is how the two label
- * tests below tell apart what the fonts are actually responsible for.
+ * test. `serveMapAssets` is shared with the hover suite; `starveFonts` 404s the
+ * glyph ranges instead, which is how the two label tests below tell apart what
+ * the fonts are actually responsible for.
  *
  * Assertions go through the harness's outputs rather than the DOM wherever the
  * subject is MapLibre's own state. An earlier version of this file watched the
@@ -31,95 +30,11 @@ import {expect, test} from '../../../../playwright/ct-coverage';
  * `live`-flag load guard left all of it green.
  */
 
-const BASEMAP = path.resolve(__dirname, '../../../../../public/map/world.pmtiles');
-const ARCHIVE = fs.readFileSync(BASEMAP);
-const FONTS = path.resolve(__dirname, '../../../../../public/map/fonts/NotoSans-Regular');
-
-/*
- * Resolved through the package rather than composed from a path, so a hoisted
- * or differently-laid-out install fails at collection with a module-not-found
- * rather than as thirteen unexplained timeouts.
- */
-const WORKER = require.resolve('maplibre-gl/dist/maplibre-gl-worker.mjs');
-const SHARED = require.resolve('maplibre-gl/dist/maplibre-gl-shared.mjs');
-
 const LOADING = 'Loading map…';
 const NO_WEBGL = 'This browser cannot draw the map.';
 const NO_BASEMAP = 'The map could not be loaded.';
 const NO_POSITION = 'The position for this coordinate is unavailable.';
 const RESET = 'Reset view';
-
-/**
- * Serves the basemap, and the worker MapLibre asks for.
- *
- * The worker is a property of the test bundler rather than of this component.
- * The shipping build imports it as a webpack asset and hands the emitted URL to
- * `setWorkerUrl`; Playwright's component runner builds with Vite, which does not
- * honour the `?copy` marker, so `assetUrl` returns null and MapLibre falls back
- * to deriving `./maplibre-gl-worker.mjs` from its own `import.meta.url`. Vite
- * emits that chunk under a hashed name, so the request fails, the GeoJSON source
- * never finishes tiling, `load` never fires, and the map sits on "Loading map…"
- * forever. Pointing both names at the package's own dist files puts the runner
- * back in the position the real build is in.
- *
- * The cost, stated because these tests should not be read as covering it:
- * `setWorkerUrl` itself (`maplibre.ts`) is never executed here, so a regression
- * in the shipped worker wiring is not catchable in this file.
- *
- * `holdWorker` keeps the worker request open, which is the only way to hold a
- * map between construction and `load` — the window the readiness guard exists
- * for.
- */
-async function serveMapAssets(
-    page: Page,
-    holdWorker?: Promise<void>,
-    starveFonts = false,
-): Promise<void> {
-    // PMTiles reads by byte range, so this has to answer 206 with the requested
-    // slice. route.fulfill({path}) always returns the whole file with a 200,
-    // which leaves the reader parsing the header as if it were a tile.
-    await page.route('**/public/map/world.pmtiles*', (route) => {
-        const range = (/bytes=(\d+)-(\d+)/).exec(route.request().headers().range ?? '');
-        if (!range) {
-            return route.fulfill({
-                status: 200,
-                contentType: 'application/octet-stream',
-                body: ARCHIVE,
-            });
-        }
-
-        const start = Number(range[1]);
-        const end = Math.min(Number(range[2]), ARCHIVE.length - 1);
-
-        return route.fulfill({
-            status: 206,
-            contentType: 'application/octet-stream',
-            headers: {'content-range': `bytes ${start}-${end}/${ARCHIVE.length}`},
-            body: ARCHIVE.subarray(start, end + 1),
-        });
-    });
-
-    if (starveFonts) {
-        await page.route('**/public/map/fonts/**', (route) => route.fulfill({status: 404}));
-    } else {
-        await page.route('**/public/map/fonts/**', (route) => route.fulfill({
-            path: path.resolve(FONTS, path.basename(new URL(route.request().url()).pathname)),
-            contentType: 'application/x-protobuf',
-        }));
-    }
-
-    await page.route('**/maplibre-gl-shared.mjs', (route) => route.fulfill({
-        path: SHARED,
-        contentType: 'text/javascript',
-    }));
-
-    await page.route('**/maplibre-gl-worker.mjs', async (route) => {
-        if (holdWorker) {
-            await holdWorker;
-        }
-        await route.fulfill({path: WORKER, contentType: 'text/javascript'});
-    });
-}
 
 /*
  * The visible note. The same text is also in the label.
