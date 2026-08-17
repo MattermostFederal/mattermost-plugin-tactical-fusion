@@ -174,6 +174,24 @@ means "no subpath" and decoration continues normally; a path that is not rooted
 is ignored rather than emitted, since that would produce a URL relative to
 whatever page the reader happens to be on.
 
+`siteURLPath` returns the **escaped** path, **cleaned**, and both halves are
+load-bearing. This is the one value here that can leave the origin, and three
+things reach off-origin through a decoded path: `//elsewhere`, which a browser
+reads as scheme-relative; `/\elsewhere`, which WHATWG folds to `//` for a
+special scheme where Go does not; and `/%09/elsewhere`, since browsers strip
+TAB, LF and CR before parsing. `EscapedPath` re-encodes the last two so they
+cannot be folded or stripped, closing the class rather than enumerating it, and
+it also keeps a space as `%20`: the decoded form produced a markdown destination
+containing a literal space, which CommonMark refuses, so the link rendered as
+text forever in whatever post it was written into.
+
+`path.Clean` is what makes `//elsewhere` collapse rather than be refused, and
+that distinction is the difference between hardening and a regression.
+Mattermost derives its own subpath with `path.Clean`, so such an install **is**
+served at `/elsewhere` and is merely typo'd; refusing it outright swapped an
+off-origin redirect for root-relative links that 404 there, permanently, in
+stored post text that correcting `SiteURL` afterwards cannot repair.
+
 **The tagger protects spans, not whole messages.** A token in ordinary prose is
 decorated even when the message also contains a link or a code block; a token
 *inside* one of those is left exactly as written. So
@@ -1047,6 +1065,24 @@ on a page there is nothing to fall through to. So a refusal now logs and falls
 back to a payload with no local coordinate, where every row comes from the
 conversion the server already worked out.
 
+**An unrecognized format id degrades the same way**, and refusing it was the
+coarser half of the same drift behaving oppositely: `readPageData` returned null,
+the entry point rendered nothing, and the reader got a wholly blank document with
+the server's own conversion sitting unread three attributes away. An **empty**
+id still refuses, since that means the shell was not written by this plugin.
+`TestWebappFormatListMatches` pins the two format lists so the drift is caught in
+Go rather than on somebody's phone.
+
+Two things follow from an arbitrary string being a legal `format` on that path,
+and both were live defects. `CANONICAL` is **null-prototype**, because
+`CANONICAL['toString']` on an ordinary literal resolves up the chain to a
+function, which is truthy and has no `.exec`, so `?.` sails through and the call
+throws. And `gridResolutionMeters` refuses any id that is not `mgrs` rather than
+reading the MGRS pattern for everything non-UTM: a token whose format this build
+does not know, whose canonical happens to match the MGRS shape, was rendered as
+`1 m grid, at center` with a 1 m cell drawn around it, which is a resolution
+claimed from a grammar the page had just said it does not have.
+
 **One palette, in `mapColors()`, and nothing else has a copy.** It used to be
 declared again as `--map-*` custom properties in `pageStyles` for the Go
 renderer. What `pageStyles` declares now is **Mattermost's own** theme
@@ -1519,7 +1555,37 @@ fails.
 A timeout or a network throw is **not** remembered. Latching on those means one
 stalled fetch tells a reader the map is broken for the rest of the session, with
 a reload the only way back, and a request can stall on any network rather than
-only a bad one.
+only a bad one. `loadMapLibre` makes the same split for the library chunk, and
+bounds it with the same 10 seconds, because a chunk fetch that **hangs** never
+rejects: clearing the memo in the catch alone left every retry joining one
+pending promise, which is the identical failure one step removed.
+
+**That retry has to be reachable from the component, and twice it was not.**
+Both failures were the same shape and neither was visible from `basemap.ts`:
+
+- `LocationMap`'s creation effect kept the position out of its deps, so after a
+  failure it never ran again and `loadBasemap()` was never called again. It also
+  failed asymmetrically, which is the tell: `known` flips per selection for a
+  grid token and stays true across every textual one, so grid links retried and
+  lat/lon links did not.
+- A map that was **built and then errored before `load`** stayed in the ref, so
+  `map.current` was truthy forever and every later attempt returned at the
+  guard, leaving a frozen map under a stale note with `applyView` no-opping on
+  `!ready.current`. That is the likelier failure, since `loadBasemap` reads only
+  127 bytes and every tile fetch happens after construction. The error handler
+  therefore **releases the instance** rather than only reporting, and is
+  identity-guarded like the `load` handler beside it.
+
+A verdict belongs to the coordinate that produced it, so a change of position
+retires it, in an effect of its own ahead of creation rather than inside it:
+inside, the clear sat behind the `map.current` guard and never ran in either
+case above. `NO_WEBGL` is kept rather than cleared, since `hasWebGL2` is
+memoised precisely because that answer cannot change mid-session.
+
+Both halves are pinned, and pinned by tests that were **checked against a
+reverted fix**: an earlier version of the second one released the held worker,
+which let the original instance load and clear its own verdict, so it passed
+whether or not the dead map was ever let go.
 
 The whole-file SHA-256 the webapp used to compute is gone with the GeoJSON
 basemap it checked: only a 127-byte header is read now. That check moved to

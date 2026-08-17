@@ -3,7 +3,8 @@
  *
  * Mirrors `Rows` in `server/decorators/location/rows.go`, and
  * `webapp_sync_test.go` holds the two to the same ids in the same order. Three
- * things have to agree about what the rows are: the standalone page renders
+ * things have to agree about what the rows are: the server validates a hidden
+ * row id against them, the panel and the pages render
  * them in Go, this panel renders them again, and a reader's stored view
  * settings name them.
  */

@@ -147,7 +147,18 @@ func TestLoginRedirectKeepsTheSubpath(t *testing.T) {
 // absolute URL bakes in a hostname, and this one bakes it into the address bar
 // of somebody who is mid-login.
 func TestLoginRedirectIsRootRelative(t *testing.T) {
-	for _, siteURL := range []string{"https://example.com", "https://example.com/mattermost", "", "not a url"} {
+	// The last four are the ways this value reaches off-origin, and the
+	// assertion below already stated the property before any of them were fed
+	// to it. A browser reads "//x" as scheme-relative, folds "\" to "/" for a
+	// special scheme where Go does not, and strips TAB/LF/CR before parsing,
+	// so all four resolve to another host if the path is emitted decoded.
+	for _, siteURL := range []string{
+		"https://example.com", "https://example.com/mattermost", "", "not a url",
+		"https://example.com//elsewhere",
+		"https://example.com/\\elsewhere",
+		"https://example.com/%5Celsewhere",
+		"https://example.com/%09/elsewhere",
+	} {
 		p := newTestPlugin(t, siteURL, true)
 
 		rec := httptest.NewRecorder()
@@ -160,6 +171,15 @@ func TestLoginRedirectIsRootRelative(t *testing.T) {
 		}
 		if strings.Contains(got, "example.com") {
 			t.Fatalf("SiteURL %q leaked a host into Location %q", siteURL, got)
+		}
+
+		// A browser folds a backslash to a slash and strips a tab, so a
+		// Location a browser would read as "//host" is off-origin however Go
+		// spells it. Checked on the second character, which is the only place
+		// either can produce an authority.
+		if len(got) > 1 && (got[1] == '\\' || got[1] == '\t') {
+			t.Fatalf("SiteURL %q gave Location %q, which a browser reads as an authority",
+				siteURL, got)
 		}
 	}
 }

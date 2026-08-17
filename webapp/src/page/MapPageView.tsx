@@ -3,7 +3,8 @@ import React from 'react';
 import type {PageData} from './payload';
 
 import {vouchedText} from '../decorators/location/convert';
-import LocationMap, {viewFor} from '../decorators/location/map/LocationMap';
+import LocationMap from '../decorators/location/map/LocationMap';
+import {viewFor} from '../decorators/location/map/view';
 import {withTheme} from '../decorators/theme';
 import {pluginBaseUrl} from '../plugin_url';
 

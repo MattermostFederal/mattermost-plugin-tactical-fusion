@@ -2,8 +2,8 @@ import type {GeoJSONSource, Map as MapLibreMap} from 'maplibre-gl';
 import React, {useEffect, useRef, useState} from 'react';
 
 import LocationMap, {_setMapObserverForTesting} from './LocationMap';
-import type {View} from './LocationMap';
 import {DATA_MAX_ZOOM} from './span';
+import type {View} from './view';
 
 /**
  * Harness for the map.

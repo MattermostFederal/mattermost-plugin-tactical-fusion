@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/url"
+	"path"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -166,17 +167,38 @@ func siteURLPath(config *model.Config) string {
 		return ""
 	}
 
-	// "//host" is rejected as well as an unrooted path. A browser reads a
-	// leading "//" as scheme-relative, so a SiteURL of "https://host//elsewhere"
-	// made redirectToLogin emit Location: //elsewhere/login and sent a reader
-	// mid-sign-in to another origin. Admin-controlled rather than
-	// attacker-controlled, so this is hardening, but it is the one place these
-	// URLs can leave the origin and the webapp already applies exactly this rule
-	// to the same value twice (plugin_url.ts, page/basename.ts).
 	parsed, err := url.Parse(raw)
-	if err != nil || !strings.HasPrefix(parsed.Path, "/") || strings.HasPrefix(parsed.Path, "//") {
+	if err != nil {
 		return ""
 	}
 
-	return strings.TrimSuffix(parsed.Path, "/")
+	// The ESCAPED path, cleaned, and both halves are load-bearing.
+	//
+	// This is the one value in the plugin that can leave the origin: it prefixes
+	// the login redirect and every link decoration writes permanently into a
+	// stored message. Three things reach off-origin through a decoded path, and
+	// only the first is obvious:
+	//
+	//   "//elsewhere"   a browser reads a leading "//" as scheme-relative
+	//   "/\elsewhere"   WHATWG folds "\" to "/" for a special scheme; Go does not
+	//   "/\t/elsewhere" browsers strip TAB/LF/CR before parsing, leaving "//"
+	//
+	// EscapedPath re-encodes the last two ("%5C", "%09"), which cannot be folded
+	// or stripped, so the class is closed rather than enumerated. It also keeps a
+	// space as "%20": the decoded form produced a markdown destination containing
+	// a literal space, which CommonMark refuses, so the link rendered as text
+	// forever in whatever post it was written into.
+	//
+	// path.Clean is what makes "//elsewhere" collapse to "/elsewhere" rather than
+	// being rejected. Mattermost derives its own subpath with path.Clean, so that
+	// install IS served at /elsewhere and is merely typo'd, not broken. Refusing
+	// it outright swapped an off-origin redirect for root-relative links that
+	// 404, permanently, in stored post text that fixing SiteURL cannot repair.
+	cleaned := path.Clean(parsed.EscapedPath())
+	if cleaned == "/" || cleaned == "." || !strings.HasPrefix(cleaned, "/") ||
+		strings.HasPrefix(cleaned, "//") {
+		return ""
+	}
+
+	return cleaned
 }

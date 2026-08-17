@@ -132,6 +132,19 @@ func TestRegionSurvivesDegenerateGeometry(t *testing.T) {
 		{Name: "empty polys", Polys: [][]mapdata.Ring{}},
 		{Name: "empty poly", Polys: [][]mapdata.Ring{{}}},
 		{Name: "one point", Polys: [][]mapdata.Ring{{{Lon: []float64{1}, Lat: []float64{1}}}}},
+
+		// Ring is exported with exported slice fields and no constructor, so
+		// nothing in the type stops the two axes disagreeing. Indexing Lat by
+		// len(Lon) panicked here, and nothing on the HTTP path recovers, so it
+		// would have taken the plugin down for every reader on the node rather
+		// than failing one request. decodeCountries refuses such a ring now;
+		// this pins the read path against a hand-built one either way.
+		{Name: "more lons than lats", Polys: [][]mapdata.Ring{{{
+			Lon: []float64{0, 1, 2, 3}, Lat: []float64{0, 1},
+		}}}},
+		{Name: "more lats than lons", Polys: [][]mapdata.Ring{{{
+			Lon: []float64{0, 1}, Lat: []float64{0, 1, 2, 3},
+		}}}},
 	} {
 		if countryContains(c, 0, 0) {
 			t.Fatalf("%q claimed a position it has no geometry for", c.Name)

@@ -13,7 +13,8 @@ import {
     resolutionText,
     usmtfText,
 } from './format';
-import LocationMap, {viewFor} from './map/LocationMap';
+import LocationMap from './map/LocationMap';
+import {viewFor} from './map/view';
 import {MAP_ID, isRowVisible, ROWS} from './rows';
 import type {HideableID, RowID} from './rows';
 

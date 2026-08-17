@@ -2,7 +2,9 @@
  * The map's shared geometry constants, and the arithmetic that turns a target
  * ground span into a zoom level.
  *
- * These are pinned against the Go renderer by `webapp_sync_test.go`. The page
+ * DEGREE_METERS is pinned against Go by `webapp_sync_test.go`, which reads it
+ * out of this file; there is no Go renderer any more, and the rest of these are
+ * TypeScript-only. The page
  * and the panel draw the same coordinate at the same scale, or a reader who
  * opens both sees two different maps of one position.
  */

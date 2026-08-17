@@ -95,6 +95,33 @@ test.describe('the card is a glance', () => {
     });
 
     /*
+     * A link the server refused draws no map, and says why.
+     *
+     * The card branched on `ready` alone, so a hand-edited link whose author
+     * text failed the server's gates showed a confident pin here while the panel
+     * one click later said "Not a coordinate": two surfaces disagreeing about a
+     * link this plugin says it did not issue, on the surface a reader meets
+     * first.
+     *
+     * The refusal is a line rather than `null`, because the framework's tooltip
+     * builds its chrome around whatever a Hover returns, so `null` is an empty
+     * bordered box rather than no card.
+     */
+    test('a link the server refuses says so instead of drawing a pin', async ({mount}) => {
+        const component = await mount(
+            <LocationHoverHarness
+                format='mgrs'
+                canonical='11SLT84636908'
+                outcome='reject'
+            />);
+
+        await component.getByRole('button', {name: ANSWER}).click();
+
+        await expect(component.getByText('Not a coordinate')).toBeVisible();
+        await expect(component.getByTestId('map-note')).toHaveCount(0);
+    });
+
+    /*
      * Web Mercator caps at 85.05 while the grammars validate latitude to 90, so
      * this is a decoratable token whose position the projection cannot hold.
      * Clamping it would put the pin 550 km from what the author wrote, so the

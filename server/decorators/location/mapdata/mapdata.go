@@ -49,11 +49,22 @@ func decodeCountries(encoded string) []Country {
 			sound := true
 			for ringPart := range strings.SplitSeq(polyPart, ":") {
 				lons, lats, ok := decodePoints(ringPart, adminScale)
-				if !ok || len(lons) < 3 {
+				if !ok || len(lons) < 3 || len(lons) != len(lats) {
 					// The whole polygon goes, not just this ring. poly[0] is the
 					// outer ring and poly[1:] are its holes, so dropping one in
 					// place would promote a hole to the outer ring and invert
 					// the polygon.
+					//
+					// The length equality is checked HERE, where a violation can
+					// still be refused outright, rather than only where the two
+					// slices are read. ringContains and boxOf bound themselves by
+					// the shorter axis so a violation cannot panic inside
+					// ServeHTTP, but truncating is exactly the silently shifted
+					// shape decodePoints refuses to produce: a clipped bounding
+					// box rejects positions inside the part it dropped, and an
+					// unclosed ring flips the parity test, so the reader gets a
+					// neighbouring country rather than no answer. Refuse the
+					// polygon and let the country come back short and visible.
 					sound = false
 					break
 				}

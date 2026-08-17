@@ -523,6 +523,62 @@ test.describe('when there is no map to draw', () => {
         await expect(noteOf(component)).toHaveText(NO_BASEMAP);
     });
 
+    /*
+     * A transient failure is retried by the next coordinate.
+     *
+     * This is the property the whole retry design exists for and it was pinned
+     * by nothing: basemap.ts deliberately declines to remember a network throw,
+     * and the panel then made that retry unreachable by keeping the position out
+     * of the creation effect's deps, so every later coordinate read "The map
+     * could not be loaded" until the panel unmounted.
+     *
+     * Aborted rather than 404'd, and the difference is the whole test: a 404 is
+     * DEFINITIVE, so basemap.ts latches it on purpose and no retry is possible.
+     */
+    test('a transient failure is retried by the next coordinate', async ({mount, page}) => {
+        await page.route('**/public/map/world.pmtiles*', (route) => route.abort());
+
+        const component = await mount(<LocationMapHarness/>);
+        await expect(noteOf(component)).toHaveText(NO_BASEMAP);
+
+        await page.unroute('**/public/map/world.pmtiles*');
+        await serveMapAssets(page);
+
+        await component.getByRole('button', {name: 'select Washington'}).click();
+
+        await expectDrawn(component);
+    });
+
+    /*
+     * And the harder half: a map that was BUILT and then errored before 'load'.
+     *
+     * That is the likelier failure, because loadBasemap reads only 127 bytes and
+     * every tile fetch happens after construction. The instance stayed in the
+     * ref, so `map.current` was truthy forever and every later creation attempt
+     * returned at the guard: a frozen map under a stale note, with applyView
+     * no-opping on !ready.current and no way back short of unmounting the panel.
+     * Clearing the verdict alone does not fix it; the dead instance has to go.
+     */
+    test('a map that failed before it was usable is released, not kept in the ref',
+        async ({mount, page}) => {
+            const held = new Promise<void>(() => { /* never released */ });
+            await serveMapAssets(page, held);
+
+            const component = await mount(<LocationMapHarness/>);
+            await expect(component.getByTestId('live-map')).toHaveText('yes');
+
+            await component.getByRole('button', {name: 'make the map fail'}).click();
+            await expect(noteOf(component)).toHaveText(NO_BASEMAP);
+
+            // The assertion that matters, and it has to be this one rather than
+            // "a later coordinate draws": releasing the worker would let the
+            // original instance finish loading and clear its own verdict, so a
+            // recovery test passes whether or not the dead map was ever let go.
+            // What must be true is that the ref no longer holds it, since that
+            // is what every later creation attempt returns at.
+            await expect(component.getByTestId('live-map')).toHaveText('no');
+        });
+
     // And the other side of the same latch: an error once the map works is
     // ignored, because a one-way latch replaced a working map with a notice
     // saying it could not be loaded.

@@ -14,7 +14,9 @@ import {
 test('holds the ground span rather than the zoom as latitude rises', () => {
     // A degree of longitude is 111 km at the equator and 56 km at 60 north, so
     // showing the same 2,400 km there takes twice as many degrees, which is one
-    // zoom level further OUT. Mirrors viewFor in mapsvg.go, where the half-width
+    // zoom level further OUT. This is the rule the deleted Go renderer applied
+    // too (not to be confused with `viewFor` in map/view.ts, which is a different
+    // thing entirely), where the half-width
     // doubles over the same range. A dropped cos factor shows a third of the
     // intended area at high latitude with no visible symptom.
     const equator = zoomForSpan(0, 320);

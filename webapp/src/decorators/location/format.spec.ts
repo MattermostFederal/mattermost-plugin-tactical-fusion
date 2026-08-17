@@ -6,6 +6,7 @@ import {
     ddmText,
     decimalText,
     dmsText,
+    gridResolutionMeters,
     gridResolutionText,
     gridText,
     isCanonical,
@@ -323,10 +324,42 @@ test.describe('hardening', () => {
      * whole panel with it.
      */
     test('a format this build has no grammar for is refused, not thrown on', () => {
-        const unknown = 'someday' as LocationFormat;
+        // Every id, not one hand-picked miss. This asserted a universal claim
+        // against a single own-property miss, which is the same shape as the
+        // fixtures-chosen-to-satisfy-the-claim defect CLAUDE.md records against
+        // TestUSMTFRowIsATokenThisPackageAccepts. The prototype keys are the
+        // ones that mattered: `CANONICAL['toString']` resolves up the chain to a
+        // function, which is truthy and has no `.exec`, so `?.` sails through
+        // and the call throws.
+        for (const name of ['someday', 'toString', 'constructor', 'valueOf', '__proto__']) {
+            const unknown = name as LocationFormat;
 
-        expect(isCanonical(unknown, '34.0000,-118.2500')).toBe(false);
-        expect(parseCanonical(unknown, '34.0000,-118.2500')).toBeNull();
+            expect(isCanonical(unknown, '34.0000,-118.2500'), name).toBe(false);
+            expect(parseCanonical(unknown, '34.0000,-118.2500'), name).toBeNull();
+            expect(gridText(unknown, '18SUJ2347806483'), name).toBe('');
+        }
+    });
+
+    /*
+     * A grid resolution belongs to a grid grammar, and to no other.
+     *
+     * gridResolutionMeters read the MGRS pattern for EVERY non-UTM id, which was
+     * unreachable while the page refused an unknown format and went live the
+     * moment it began degrading instead. A token whose format this build does
+     * not know, whose canonical happens to match the MGRS shape, was rendered as
+     * "1 m grid, at center" with a 1 m cell drawn around it: a resolution
+     * claimed from a grammar the page had just said it does not have.
+     */
+    test('only a grid format has a grid resolution', () => {
+        expect(gridResolutionText('mgrs', '18SUJ2347806483')).toBe('1 m grid, at center');
+        expect(gridResolutionMeters('mgrs', '18SUJ2347806483')).toBe(1);
+
+        for (const name of ['dd', 'ddh', 'latm', 'someday']) {
+            const other = name as LocationFormat;
+
+            expect(gridResolutionText(other, '18SUJ2347806483'), name).toBe('');
+            expect(gridResolutionMeters(other, '18SUJ2347806483'), name).toBeNull();
+        }
     });
 
     // The same fall-through on the rendering side. A degree is the coarsest

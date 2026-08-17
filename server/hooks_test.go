@@ -254,6 +254,45 @@ func TestDecoratePostCarriesSubpathButNeverHost(t *testing.T) {
 	}
 }
 
+// A subpath is normalized the way Mattermost normalizes it, not refused.
+//
+// These URLs are what makes the difference between hardening and a regression.
+// Mattermost derives its own subpath with path.Clean, so "https://host//mm" is
+// served at /mm: a typo'd but WORKING install. Refusing it outright wrote
+// root-relative links that 404 there, permanently, into stored post text that
+// correcting SiteURL afterwards cannot repair.
+//
+// The escaped forms are the off-origin half of the same rule. A browser folds
+// "\" to "/" and strips a tab, so both have to survive as %5C and %09 rather
+// than as characters a URL parser can turn into an authority.
+func TestDecoratePostNormalizesAnAwkwardSubpath(t *testing.T) {
+	cases := []struct {
+		name    string
+		siteURL string
+		want    string
+	}{
+		{"a doubled slash is cleaned, as Mattermost cleans it", "https://example.com//mm", "(/mm/plugins/"},
+		{"a dot segment is cleaned", "https://example.com/a/../mm", "(/mm/plugins/"},
+		{"a backslash cannot become an authority", "https://example.com/\\mm", "(/%5Cmm/plugins/"},
+		{"a tab cannot become an authority", "https://example.com/%09mm", "(/%09mm/plugins/"},
+		{"a space stays encoded, or the markdown link breaks", "https://example.com/my%20mm", "(/my%20mm/plugins/"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			p := newTestPlugin(t, tc.siteURL, true)
+
+			got := p.decoratePost(&model.Post{Message: "091630ZAUG26"}, hookRef)
+			if got == nil {
+				t.Fatal("decoratePost skipped; an awkward subpath is not a reason to skip")
+			}
+			if !strings.Contains(got.Message, tc.want) {
+				t.Fatalf("message = %q, want a link starting %q", got.Message, tc.want)
+			}
+		})
+	}
+}
+
 func TestDecoratePostReturnsNilWhenNothingMatches(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 

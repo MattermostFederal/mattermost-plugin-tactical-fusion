@@ -222,6 +222,14 @@ test.describe('a definitive failure is remembered', () => {
             {ok: true, status: 200, contentLength: '25000953'}],
         ['a 200 with no Content-Length at all', {ok: true, status: 200, contentLength: null}],
 
+        // Both of these read as 0 through Number(), which is finite and under
+        // the header size, so a bare Number() comparison ACCEPTED them as a
+        // valid range response and every tile then threw. NaN is the only
+        // honest reading of a length that is not a number.
+        ['a 200 whose Content-Length is not a number',
+            {ok: true, status: 200, contentLength: 'gzip'}],
+        ['a 200 whose Content-Length is blank', {ok: true, status: 200, contentLength: '  '}],
+
         // Shallower than the camera allows, so the reader would zoom into blank.
         ['an archive shallower than the style asks for', {bytes: headerWith(101, DATA_MAX_ZOOM - 1)}],
     ];

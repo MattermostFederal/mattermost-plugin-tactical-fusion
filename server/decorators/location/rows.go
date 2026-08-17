@@ -3,7 +3,8 @@ package location
 // The rows a location is rendered as, in the order they are shown.
 //
 // One table rather than a sequence of calls, because three things have to agree
-// about what the rows are: the standalone page renders them, the panel renders
+// about what the rows are: the server validates a hidden row id against them,
+// the panel and the standalone pages render
 // them again in TypeScript, and a reader's stored view preferences name them.
 // A row that existed in two of those and not the third is the failure this
 // table exists to make impossible; `webapp_sync_test.go` holds the TypeScript

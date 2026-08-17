@@ -19,6 +19,9 @@ export type MapLibre = typeof import('maplibre-gl');
 
 let loading: Promise<MapLibre | null> | null = null;
 
+/** The same bound basemap.ts puts on its own fetch, for the same reason. */
+const LOAD_TIMEOUT_MS = 10000;
+
 /**
  * Whether this browser can draw a WebGL map at all.
  *
@@ -76,8 +79,27 @@ export async function loadMapLibre(): Promise<MapLibre | null> {
         return null;
     }
     if (!loading) {
-        loading = loadAndConfigure().catch(() => {
+        // Bounded, because a REJECTION is not the only way this fails and it is
+        // not the likeliest. A chunk fetch that hangs never rejects, so clearing
+        // `loading` in the catch alone left every retry joining the same pending
+        // promise and the note reading "Loading map…" forever, with a reload the
+        // only way back. That is the failure this policy exists to prevent, one
+        // step removed from the one it was written against. basemap.ts bounds
+        // its own fetch the same way and for the same reason.
+        loading = Promise.race([
+            loadAndConfigure(),
+            new Promise<never>((_, reject) => {
+                setTimeout(() => reject(new Error('maplibre load timed out')), LOAD_TIMEOUT_MS);
+            }),
+        ]).catch((error: unknown) => {
+            // Logged, not swallowed. A failed chunk, a CSP refusal and a throw
+            // inside addProtocol all reach the reader as one string, so without
+            // this a report of "the map never loads" leaves nothing behind that
+            // says which of them it was.
+            // eslint-disable-next-line no-console
+            console.warn('[tactical-fusion] MapLibre failed to load', error);
             loading = null;
+
             return null;
         });
     }

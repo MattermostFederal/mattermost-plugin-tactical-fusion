@@ -27,7 +27,13 @@ import type {LocationPayload} from './index';
  * would ever load.
  */
 
-type Outcome = 'ok' | 'fail';
+/*
+ * 'reject' is the server saying the link is not one it issued (HTTP 400), which
+ * is a VERDICT about a fixed token; 'fail' is an outage. The card treats them
+ * differently and only had a way to reach one of them, so the branch that
+ * refuses a hand-edited link was unreachable from the suite.
+ */
+type Outcome = 'ok' | 'fail' | 'reject';
 
 const LOS_ANGELES: Conversion = {
     mgrs: '11S LT 8463 6908',
@@ -80,6 +86,11 @@ window.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
         settle = () => {
             if (outcome === 'fail') {
                 rejectRequest(new Error('offline'));
+                return;
+            }
+
+            if (outcome === 'reject') {
+                resolve({ok: false, status: 400, json: () => Promise.resolve({})} as Response);
                 return;
             }
 

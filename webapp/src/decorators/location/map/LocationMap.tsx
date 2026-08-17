@@ -7,10 +7,7 @@ import {
     buildStyle, cellFeature, emptyCollection, hasWebGL2, loadMapLibre, mapColors, pointFeature,
 } from './maplibre';
 import {MAX_ZOOM, cellBounds, isRenderable, zoomForSpan} from './span';
-
-import type {ConversionState} from '../convert';
-import {cellDegrees} from '../format';
-import type {LocationPayload} from '../index';
+import type {View} from './view';
 
 /**
  * The map above the readings table.
@@ -90,38 +87,6 @@ const DEFAULT_WIDTH_PX = 320;
  * for the tests.
  */
 let mapObserver: ((map: MapLibreMap | null) => void) | null = null;
-
-export interface View {
-    lat: number | null;
-    lon: number | null;
-    cellDegLat: number;
-    cellDegLon: number;
-}
-
-/**
- * Where a coordinate is drawn, and how big its cell is.
- *
- * One function rather than four lines copied into the panel, the hover card and
- * the map page. Those three copies agreed, and the hover's carried a comment
- * saying it had to ("a hover and the panel behind it disagreeing about where a
- * coordinate is would be the worst possible place for the two to drift"). An
- * invariant a comment asks three files to keep is one this codebase turns into
- * code everywhere else, and this is the value where drifting costs most.
- *
- * `data` is read only once the status is `ready`, which is what keeps a failed
- * or refused conversion from putting a pin at a position nothing vouched for.
- */
-export function viewFor(
-    payload: LocationPayload, conversion: ConversionState): View & {region: string} {
-    const {coord, format, canonical} = payload;
-    const position = conversion.status === 'ready' ? conversion.data : null;
-
-    const lat = coord ? coord.lat.decimal : (position?.lat ?? null);
-    const lon = coord ? coord.lon.decimal : (position?.lon ?? null);
-    const [cellDegLat, cellDegLon] = cellDegrees(coord, format, canonical, lat);
-
-    return {lat, lon, cellDegLat, cellDegLon, region: position?.region ?? ''};
-}
 
 interface Props extends View {
     region: string;
@@ -298,18 +263,36 @@ const LocationMap: React.FC<Props> = ({
         cell?.setData(drawableCell(current));
     }, []);
 
+    // A verdict belongs to the coordinate that produced it, so a change of
+    // position retires it.
+    //
+    // This is its own effect, ahead of creation, and that placement is the whole
+    // point. Clearing inside the creation effect put the clear BEHIND
+    // `if (map.current || !known)`, so it never ran in the two cases that matter
+    // most: a map that was built and then errored before `load` (the likeliest
+    // failure, since loadBasemap reads only 127 bytes and every tile fetch comes
+    // after construction) latched `failure` with `ready` false, and every later
+    // coordinate returned at that guard with nothing left to clear it. The note
+    // read "The map could not be loaded" for the life of the panel while
+    // applyView no-opped on !ready.current, so the map was frozen too.
+    //
+    // NO_WEBGL is kept rather than cleared. hasWebGL2 is memoised precisely
+    // because the answer cannot change mid-session, so clearing it only made
+    // every coordinate flash "Loading map…" before restating it.
+    useEffect(() => {
+        setFailure((prev) => (prev === NO_WEBGL ? prev : null));
+    }, [lat, lon]);
+
     // Creation. Runs once the reader has something to look at, and then not
-    // again while a map exists: the guard below, not the deps, is what stops a
-    // rebuild.
+    // again while a usable map exists: the guard below, not the deps, is what
+    // stops a rebuild.
     //
     // The position IS a dependency, and only because creation can fail. A
-    // transient basemap or chunk failure leaves `map.current` null, and
-    // `failure` is otherwise cleared only by a `load` event that a map which
-    // was never built can never fire. With the position out of the deps this
-    // effect never ran again, so `loadBasemap()` was never called again either
-    // and every later coordinate read "The map could not be loaded" until the
-    // panel unmounted. That is precisely the retry basemap.ts declines to latch
-    // away, made unreachable one layer up.
+    // transient basemap or chunk failure leaves `map.current` null, and with the
+    // position out of the deps this effect never ran again, so `loadBasemap()`
+    // was never called again either and every later coordinate read "The map
+    // could not be loaded" until the panel unmounted. That is precisely the
+    // retry basemap.ts declines to latch away, made unreachable one layer up.
     //
     // The old shape also failed asymmetrically, which is the tell: `known`
     // flips false->true per selection for a GRID token (it has no position
@@ -321,10 +304,6 @@ const LocationMap: React.FC<Props> = ({
         }
 
         let live = true;
-
-        // A new attempt starts with no verdict, or a stale "could not be
-        // loaded" would sit over one that is in flight.
-        setFailure(null);
 
         (async () => {
             const [maplibre, basemap] = await Promise.all([loadMapLibre(), loadBasemap()]);
@@ -420,7 +399,26 @@ const LocationMap: React.FC<Props> = ({
                 if (ready.current || (event as {tile?: unknown}).tile) {
                     return;
                 }
+
+                // Identity-guarded, like the load handler beside it. An instance
+                // abandoned by a superseded run still carries these handlers, and
+                // without this its error would write a verdict over the map the
+                // reader is actually looking at.
+                if (map.current !== instance) {
+                    return;
+                }
+
                 setFailure(NO_BASEMAP);
+
+                // Torn down, not just reported. This map never became usable, so
+                // leaving it in the ref made `map.current` truthy forever and
+                // every later creation attempt returned at the guard: the reader
+                // was left with a frozen map, a stale note, and no way back short
+                // of unmounting the panel. Releasing it also returns the WebGL
+                // context rather than holding one for a map that draws nothing.
+                instance.remove();
+                map.current = null;
+                mapObserver?.(null);
             });
 
             // Guarded on the instance, NOT on this effect run's `live` flag. The

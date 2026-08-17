@@ -81,9 +81,6 @@ export interface Coordinate {
     digits: number;
 }
 
-/*
- * Length of a degree of latitude, imported rather than restated.
- *
 /**
  * The most fractional digits a token may carry. Mirrors `maxFrac` in Go.
  *
@@ -129,7 +126,19 @@ const ZONE = '(?:0?[1-9]|[1-5][0-9]|60)';
  * These are anchored and fixed-width. They are not the grammar: the server
  * matched the author's text against something far broader and handed back this.
  */
-const CANONICAL: Record<LocationFormat, RegExp> = ((f: string) => ({
+/*
+ * Null-prototype, and that is a guard rather than tidiness.
+ *
+ * Every lookup here is `CANONICAL[format]`, and `?.` guards null and undefined
+ * only. On an ordinary object literal `CANONICAL['toString']` resolves up the
+ * prototype chain to a function, which is truthy and has no `.exec`, so the
+ * optional chain sails through and the call throws a TypeError. That was
+ * unreachable while the page refused any id outside LOCATION_FORMATS; it became
+ * reachable when the page started degrading instead, since `format` is then an
+ * arbitrary string from a data attribute. A throw on a page is the blank
+ * document that degrade exists to prevent.
+ */
+const CANONICAL: Record<LocationFormat, RegExp> = Object.assign(Object.create(null), ((f: string) => ({
     dd: new RegExp(`^(-?)(\\d{1,2})(?:\\.(${f}))?,(-?)(\\d{1,3})(?:\\.(${f}))?$`),
     ddh: new RegExp(`^(\\d{1,2})(?:\\.(${f}))?([NS]),(\\d{1,3})(?:\\.(${f}))?([EW])$`),
     dms: new RegExp(
@@ -146,7 +155,7 @@ const CANONICAL: Record<LocationFormat, RegExp> = ((f: string) => ({
 
     // Zone, band, a six-digit easting and a seven-digit northing.
     utm: new RegExp(`^(${ZONE})(${BAND})(\\d{6})(\\d{7})$`),
-}))(`\\d{1,${MAX_FRAC}}`);
+}))(`\\d{1,${MAX_FRAC}}`));
 
 /** Latitude and longitude bounds, checked the way the server checks them. */
 const MAX_LAT = 90;
@@ -313,7 +322,8 @@ function len(s: string | undefined): number {
  * grid square needs the latitude to size its width. Without it the drawn
  * rectangle is narrow by 1/cos(lat): 18% at 35 north and half its true width at
  * 60, and the panel then disagrees with the standalone page, which gets this
- * right. Mirrors CellDegrees in mapsvg.go.
+ * right. There is no Go counterpart: mapsvg.go and its CellDegrees went with
+ * the Go renderer, and nothing in Go computes map geometry now.
  */
 export function cellDegrees(
     c: Coordinate | null, format: LocationFormat, canonical: string, lat: number | null,
@@ -385,7 +395,8 @@ export function resolutionText(c: Coordinate): string {
     const meters = resolutionDegrees(c) * DEGREE_METERS;
 
     // Below a centimeter the figure rounds to "0 m", which reads as a claim of
-    // infinite precision. Must match ResolutionText in format.go.
+    // infinite precision. Go no longer renders this: ResolutionText went with
+    // the Go page, and format.spec.ts is the whole guard rather than half a pair.
     if (meters < 0.01) {
         return 'finer than 0.01 m';
     }
@@ -443,7 +454,8 @@ export function gridText(format: LocationFormat, canonical: string): string {
  * immediately and stays there even if the request never lands. It needs only
  * the digit count, which is in the token.
  *
- * Must match `ResolutionText` in `format.go`.
+ * Rendered here and only here. `ResolutionText` in Go went with the Go page,
+ * so `format.spec.ts` is the whole guard on this rather than half a pair.
  */
 /**
  * The size of a grid square in metres, or null when the token is not one.
@@ -454,6 +466,18 @@ export function gridText(format: LocationFormat, canonical: string): string {
 export function gridResolutionMeters(format: LocationFormat, canonical: string): number | null {
     if (format === 'utm') {
         return 1;
+    }
+
+    // Anything that is not MGRS has no grid resolution, and saying so is the
+    // point. This read the MGRS pattern for EVERY non-UTM id, which was
+    // unreachable while the page refused an unknown format and became live the
+    // moment it started degrading instead: a token whose format this build does
+    // not know, whose canonical happens to match the MGRS shape, was rendered
+    // as "1 m grid, at center" with a 1 m cell drawn around it. Claiming a
+    // resolution from a grammar the page has just said it does not have is the
+    // one thing every rendering rule here exists to prevent.
+    if (format !== 'mgrs') {
+        return null;
     }
 
     const m = CANONICAL.mgrs.exec(canonical);
@@ -470,13 +494,11 @@ export function gridResolutionText(format: LocationFormat, canonical: string): s
         return '1 m';
     }
 
-    const m = CANONICAL.mgrs.exec(canonical);
-    if (!m) {
-        return '';
-    }
+    // Through gridResolutionMeters rather than repeating the ladder, so the row
+    // and the drawn cell cannot disagree about how big a square is.
+    const meters = gridResolutionMeters(format, canonical);
 
-    const meters = 100000 / Math.pow(10, m[5].length / 2);
-    return `${humanMeters(meters)} grid, at center`;
+    return meters === null ? '' : `${humanMeters(meters)} grid, at center`;
 }
 
 function decimalPlaces(c: Coordinate, a: Axis): number {

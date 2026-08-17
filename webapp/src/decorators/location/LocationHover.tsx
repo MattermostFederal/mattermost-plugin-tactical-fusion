@@ -1,7 +1,8 @@
 import React from 'react';
 
 import {useConversion} from './convert';
-import LocationMap, {viewFor} from './map/LocationMap';
+import LocationMap from './map/LocationMap';
+import {viewFor} from './map/view';
 
 import type {LocationPayload} from './index';
 
@@ -31,18 +32,27 @@ import type {LocationPayload} from './index';
  * that follows a hover joins the same request rather than issuing a second.
  * That cache is what this component was waiting for.
  */
+const styles: Record<string, React.CSSProperties> = {
+    refused: {fontSize: 12, color: 'var(--center-channel-color)'},
+};
+
 const LocationHover: React.FC<{payload: LocationPayload}> = ({payload}) => {
     const {format, canonical, raw} = payload;
     const conversion = useConversion(format, canonical, raw);
 
-    // A link the server refused draws nothing, which is the verdict
-    // LocationReadings already honours by refusing to render the table. The card
-    // used to branch on `ready` alone, so a hand-edited link whose author text
-    // failed validation showed a confident pin here and "Not a coordinate" on
-    // the panel one click later: two surfaces disagreeing about a link this
-    // plugin says it did not issue, on the surface a reader meets first.
+    // A link the server refused says so, rather than drawing a pin for it. That
+    // is the verdict LocationReadings already honours by refusing the table; the
+    // card used to branch on `ready` alone, so a hand-edited link whose author
+    // text failed validation showed a confident pin here and "Not a coordinate"
+    // on the panel one click later.
+    //
+    // A line rather than `null`, because the framework's tooltip builds its
+    // chrome around whatever a Hover returns: `null` there is not "no card", it
+    // is an empty bordered box floating beside the link. Inside Tooltip.tsx null
+    // means no card at all, since it returns before the chrome; that distinction
+    // is invisible from in here, and an empty box agrees with nothing.
     if (conversion.status === 'rejected') {
-        return null;
+        return <span style={styles.refused}>{'Not a coordinate'}</span>;
     }
 
     // Derived through the same viewFor the panel and the map page use, so a
