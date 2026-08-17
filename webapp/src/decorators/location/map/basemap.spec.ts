@@ -43,6 +43,9 @@ interface Reply {
     status?: number;
     bytes?: ArrayBuffer;
     throws?: boolean;
+
+    /** What the server claims it is sending, which is how byte serving is detected. */
+    contentLength?: string | null;
 }
 
 const realFetch = globalThis.fetch;
@@ -64,9 +67,14 @@ function stubFetch(reply: (n: number) => Reply): string[] {
             return Promise.reject(new Error('offline'));
         }
 
+        const length = answer.contentLength === undefined ?
+            String(HEADER_BYTES) :
+            answer.contentLength;
+
         return Promise.resolve({
             ok: answer.ok ?? true,
             status: answer.status ?? 206,
+            headers: {get: (name: string) => (name === 'Content-Length' ? length : null)},
             arrayBuffer: () => Promise.resolve(answer.bytes ?? realHeader()),
         });
     }) as unknown as typeof globalThis.fetch;
@@ -123,7 +131,12 @@ test.describe('probing', () => {
         let range = '';
         globalThis.fetch = ((_url: string, init: {headers?: Record<string, string>}) => {
             range = init.headers?.Range ?? '';
-            return Promise.resolve({ok: true, status: 206, arrayBuffer: () => Promise.resolve(realHeader())});
+            return Promise.resolve({
+                ok: true,
+                status: 206,
+                headers: {get: () => String(HEADER_BYTES)},
+                arrayBuffer: () => Promise.resolve(realHeader()),
+            });
         }) as unknown as typeof globalThis.fetch;
 
         await loadBasemap();
@@ -135,7 +148,12 @@ test.describe('probing', () => {
         let credentials = '';
         globalThis.fetch = ((_url: string, init: {credentials?: string}) => {
             credentials = init.credentials ?? '';
-            return Promise.resolve({ok: true, status: 206, arrayBuffer: () => Promise.resolve(realHeader())});
+            return Promise.resolve({
+                ok: true,
+                status: 206,
+                headers: {get: () => String(HEADER_BYTES)},
+                arrayBuffer: () => Promise.resolve(realHeader()),
+            });
         }) as unknown as typeof globalThis.fetch;
 
         await loadBasemap();
@@ -143,10 +161,10 @@ test.describe('probing', () => {
         expect(credentials).toBe('omit');
     });
 
-    // A server that does not implement Range answers 200 with the whole archive.
-    // That is still perfectly usable and must not read as a broken deploy.
-    test('accepts a server that ignores the range request', async () => {
-        stubFetch(() => ({ok: true, status: 200}));
+    // A 200 whose body is only the requested bytes is a well-behaved backend
+    // answering without the 206 status. That is usable.
+    test('accepts a 200 that still honoured the range', async () => {
+        stubFetch(() => ({ok: true, status: 200, contentLength: String(HEADER_BYTES)}));
 
         expect(await loadBasemap()).not.toBeNull();
     });
@@ -195,6 +213,14 @@ test.describe('a definitive failure is remembered', () => {
         // Raster tiles in a style that declares vector layers draw nothing at
         // all, silently.
         ['an archive of raster tiles', {bytes: headerWith(99, 2)}],
+
+        // A backend without byte serving answers 200 with the WHOLE archive.
+        // It looks healthy and is not: the pmtiles reader applies this same
+        // test to every tile and throws, so accepting it would pass a deploy
+        // whose every tile then fails, drawing water with no land.
+        ['a backend that does not support byte serving',
+            {ok: true, status: 200, contentLength: '25000953'}],
+        ['a 200 with no Content-Length at all', {ok: true, status: 200, contentLength: null}],
 
         // Shallower than the camera allows, so the reader would zoom into blank.
         ['an archive shallower than the style asks for', {bytes: headerWith(101, MAX_ZOOM - 1)}],

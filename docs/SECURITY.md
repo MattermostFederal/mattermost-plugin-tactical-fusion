@@ -102,10 +102,14 @@ can — re-check on the next dependency bump rather than suppressing forever.
 transitive `fflate` all ship and all run in the reader's browser, so an advisory
 against any of them has no legitimate suppression and the answer is to upgrade or
 pin. If `pmtiles` ever becomes unfixable, the recorded way out is to replace it:
-the archive is deliberately generated in a shape (spec v3, clustered, a single
-root directory, no leaf directories) that a from-scratch reader can decode with a
-header parse, one directory decode and an inflate. That constraint exists to keep
-this option open and is asserted by `TestArchiveKeepsASingleRootDirectory`.
+the archive is generated in a deliberately boring shape (spec v3, clustered, tile
+type MVT) that a from-scratch reader can decode.
+
+It no longer carries a single root directory. Extending the basemap to z8 spilled
+it into leaf directories, which no flag prevents and which avoiding would mean
+capping zoom, so a fallback reader now needs a second directory level and a cold
+tile lookup can take two range requests. `TestArchiveIsClustered` and
+`TestArchiveIsTheShapeTheReaderAssumes` assert what still holds.
 
 ## The bundled map data
 

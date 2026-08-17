@@ -118,9 +118,22 @@ async function probeArchive(): Promise<Attempt> {
             headers: {Range: `bytes=0-${HEADER_BYTES - 1}`},
         });
 
-        // A server that ignores Range answers 200 with the whole archive. That
-        // is still usable, so it is not a failure; only the header is read.
-        if (!response.ok && response.status !== 206) {
+        if (!response.ok) {
+            return settled(null);
+        }
+
+        // A 200 here means the server ignored Range and is sending the whole
+        // archive. That is NOT usable, however healthy it looks: the pmtiles
+        // reader applies this same test to every tile request and throws
+        // ("Check that your storage backend supports HTTP Byte Serving"), so
+        // accepting it would pass a deploy whose every tile then fails, and
+        // the map would draw water with no land and say nothing.
+        //
+        // Reading Content-Length rather than the body is also what keeps this
+        // from pulling 24 MB to look at 127 bytes, which is the whole reason
+        // the old MAX_BYTES cap existed.
+        const length = response.headers.get('Content-Length');
+        if (response.status === 200 && (!length || Number(length) > HEADER_BYTES)) {
             return settled(null);
         }
 

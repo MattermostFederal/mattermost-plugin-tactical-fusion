@@ -242,8 +242,9 @@
         <h4>The square around the pin</h4>
 
         <p>
-            A coordinate written to whole degrees is drawn with a rectangle around it, and
-            one written to a metre is drawn as a plain dot. The rectangle is the area the
+            A coordinate written to whole degrees is drawn with a large rectangle around
+            it, and one written to a metre with a rectangle so small it reads as the dot
+            alone until you zoom in. The rectangle is the area the
             original text actually names, so a coarse coordinate looks coarse. Without it
             <code>35N079W</code>, which names a square about 111 km across, would be
             indistinguishable from a ten-figure grid reference that names a square one
@@ -253,11 +254,12 @@
         <p>
             It is drawn at the size of the square, not twice it, and each half of the
             coordinate uses its own resolution, so a position written finely in latitude
-            and coarsely in longitude is drawn as the tall thin rectangle it is. Below a
-            few pixels the rectangle is too small to see and only the dot is drawn, because
-            a rectangle smaller than a pixel is not information. The
-            <a href="#location-resolution">Resolution</a> row carries the figure in either
-            case.
+            and coarsely in longitude is drawn as the tall thin rectangle it is. Nothing is
+            ever dropped for being small: a very fine coordinate simply draws a rectangle
+            below a pixel, which becomes visible as you zoom toward it, because a threshold
+            guessing on your behalf would answer a question you had not asked. The
+            <a href="#location-resolution">Resolution</a> row carries the figure either
+            way.
         </p>
 
         <div class="alert alert-info">

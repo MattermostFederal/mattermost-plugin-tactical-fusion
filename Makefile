@@ -157,7 +157,8 @@ apply:
 ## never reached by `make test` and never runs in CI. Commit the result.
 .PHONY: map-tiles
 map-tiles:
-	docker build -t tf-maptiles:$(TIPPECANOE_VERSION) build/maptiles/
+	docker build --build-arg TIPPECANOE_VERSION=$(TIPPECANOE_VERSION) \
+		-t tf-maptiles:$(TIPPECANOE_VERSION) build/maptiles/
 	docker run --rm -v "$(PWD)":/work tf-maptiles:$(TIPPECANOE_VERSION) build/maptiles/build.sh
 
 ## Downloads the 50m and 10m Natural Earth sources the finer tiers need and
@@ -259,11 +260,15 @@ ifneq ($(HAS_PUBLIC),)
 	@# The style names these by URL. Without them the country labels have no
 	@# typeface to be drawn in, and the only symptom is a map that quietly
 	@# stopped naming anything.
-	@if [ ! -f "dist/$(PLUGIN_ID)/public/map/fonts/NotoSans-Regular/0-255.pbf" ]; then \
-		echo "ERROR: the bundle is missing the glyph ranges under public/map/fonts."; \
-		echo "The map's labels need them. Run 'make map-tiles'."; \
-		exit 1; \
-	fi
+	@# All four ranges, not just the first: a missing 256-511 costs every
+	@# accented name and nothing else would fail.
+	@for r in 0-255 256-511 512-767 8192-8447; do \
+		if [ ! -f "dist/$(PLUGIN_ID)/public/map/fonts/NotoSans-Regular/$$r.pbf" ]; then \
+			echo "ERROR: the bundle is missing glyph range $$r under public/map/fonts."; \
+			echo "The map's labels need them. Run 'make map-tiles'."; \
+			exit 1; \
+		fi; \
+	done
 	@# SIL OFL 1.1 requires the notice to travel with the font software, and SDF
 	@# ranges generated from a TTF are a Modified Version of it. Shipping the
 	@# fonts without this file is a licence violation, not an untidy bundle.

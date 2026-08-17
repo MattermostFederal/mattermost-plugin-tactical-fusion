@@ -441,11 +441,26 @@ test.describe('land and water', () => {
             const component = await mount(<LocationMapHarness start={where}/>);
             await expectDrawn(component);
 
+            // The sea cases are why this waits for tiles rather than polling
+            // the count alone: 0 is also what an unloaded map, a map with no
+            // archive, and a map whose style died all report, so without a
+            // positive control "at sea" passes against a basemap that draws
+            // nothing at all.
             await expect.poll(async () => {
                 await component.getByRole('button', {name: 'read the map'}).click();
 
-                return Number(await component.getByTestId('land-at-centre').textContent());
-            }, {message: `land drawn under ${where}`}).toBe(onLand ? 1 : 0);
+                return component.getByTestId('tiles').textContent();
+            }, {message: `tiles loaded at ${where}`}).toBe('loaded');
+
+            const drawn = Number(await component.getByTestId('land-at-centre').textContent());
+            if (onLand) {
+                // Greater-than rather than exactly one: a coastline split
+                // across tiles or tiers can legitimately return several
+                // polygons under one pixel.
+                expect(drawn).toBeGreaterThan(0);
+            } else {
+                expect(drawn).toBe(0);
+            }
         });
     }
 });

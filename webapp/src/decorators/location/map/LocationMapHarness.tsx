@@ -193,7 +193,16 @@ const LocationMapHarness: React.FC<Props> = ({
     const [mounted, setMounted] = useState(true);
     const [live, setLive] = useState(false);
     const [created, setCreated] = useState(0);
-    const [reading, setReading] = useState({pin: -1, cell: -1, labels: -1, land: -1, zoom: -1, center: 'none', removed: false});
+    const [reading, setReading] = useState({
+        pin: -1,
+cell: -1,
+labels: -1,
+land: -1,
+zoom: -1,
+        tiles: 'pending',
+center: 'none',
+removed: false,
+    });
 
     // The last instance, kept past the observer's null so the unmount test can
     // still ask it whether it was removed.
@@ -220,6 +229,7 @@ const LocationMapHarness: React.FC<Props> = ({
             cell: countIn(map, 'cell'),
             labels: labelsIn(map),
             land: landAtCentre(map),
+            tiles: map && !wasRemoved(map) && map.areTilesLoaded() ? 'loaded' : 'pending',
             center: at ? `${at.lat.toFixed(3)},${at.lng.toFixed(3)}` : 'none',
             zoom: map && !wasRemoved(map) ? Number(map.getZoom().toFixed(2)) : -1,
             removed: wasRemoved(map),
@@ -268,6 +278,7 @@ const LocationMapHarness: React.FC<Props> = ({
             <output data-testid='cell-features'>{String(reading.cell)}</output>
             <output data-testid='labels-drawn'>{String(reading.labels)}</output>
             <output data-testid='land-at-centre'>{String(reading.land)}</output>
+            <output data-testid='tiles'>{reading.tiles}</output>
             <output data-testid='camera'>{reading.center}</output>
             <output data-testid='zoom'>{String(reading.zoom)}</output>
             <output data-testid='removed'>{reading.removed ? 'yes' : 'no'}</output>

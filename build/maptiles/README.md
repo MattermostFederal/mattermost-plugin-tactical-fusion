@@ -15,10 +15,15 @@ the build flags change, and commit the result.
 
 ## What it reads
 
-The four Natural Earth 110m files already committed under
-`build/mapdata/source/`, and nothing else. **No network access is required**,
-because the label anchors this needs (`ADMIN`, `LABEL_X`, `LABEL_Y`,
-`LABELRANK`) are already carried by `ne_110m_admin_0_countries.geojson`.
+Two source sets. The four Natural Earth 110m files already committed under
+`build/mapdata/source/`, which the country-lookup generator needs anyway and
+which carry the label anchors (`ADMIN`, `LABEL_X`, `LABEL_Y`, `LABELRANK`). And
+twelve 50m and 10m files under `build/maptiles/source/`, which are **not**
+committed: 180 MB of GeoJSON, fetched by `make map-sources` and pinned by digest
+in `sources.lock`.
+
+So **run `make map-sources` before `make map-tiles` on a fresh checkout.** The
+pipeline needs the network once. The plugin never does.
 
 `build/mapdata/` is a separate generator with a separate output (`admin.go`, the
 country polygons the Region lookup uses). The two share source files and nothing

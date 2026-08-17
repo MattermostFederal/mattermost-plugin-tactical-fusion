@@ -1087,8 +1087,8 @@ There was a 6 px floor in `drawableCell` contradicting exactly that, and the way
 it was wrong is the point rather than the size of it. `applyView` runs on a
 change of selection and on **Reset view**, and nothing listens for `zoom`, so the
 floor was measured once at the opening camera and never again: a square dropped
-there stayed dropped however far the reader zoomed in. `maxZoom` is 6, so the
-visible cost was small (a 10 km cell reaches only about 10 px at that zoom, which
+there stayed dropped however far the reader zoomed in. `maxZoom` was 6 at the
+time, so the visible cost was small (a 10 km cell reaches only about 10 px at that zoom, which
 the pin covers anyway), but a threshold evaluated at a scale the reader has left
 answers a question nobody asked.
 
@@ -1348,8 +1348,8 @@ trades a modifier key for that, which is the trade Google's map embeds make.
 
 **`maxZoom` belongs on the map, not only on the arithmetic.** `zoomForSpan`
 clamps the opening view, but the controls and the wheel let a reader leave that
-range, and past z6 the 110m basemap is a polygonal coastline at street scale with
-nothing saying so. **Reset view** restores the opening view, because once a
+range, and past `MAX_ZOOM` the basemap is a coastline generalised by about five
+kilometres drawn at street scale, with nothing saying so. **Reset view** restores the opening view, because once a
 reader can zoom and pan there is otherwise no way back to the pin.
 
 **The probe is memoised and releases its context.** `hasWebGL2` is called on

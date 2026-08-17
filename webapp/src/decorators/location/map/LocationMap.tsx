@@ -264,12 +264,10 @@ const LocationMap: React.FC<Props> = ({
 
                     scrollZoom: true,
 
-                    // The basemap is Natural Earth 110m, which is honest to about
-                    // z6: past that a reader is looking at a polygonal coastline
-                    // at street scale and has no way to tell. zoomForSpan already
-                    // clamps the OPENING zoom, but the controls and the wheel let
-                    // a reader leave that range, so the ceiling belongs on the map
-                    // and not only on the arithmetic that picks the first view.
+                    // zoomForSpan clamps only the OPENING zoom, but the wheel
+                    // and the controls let a reader leave that range, so the
+                    // ceiling belongs on the map too. Why it is where it is:
+                    // see MAX_ZOOM in span.ts.
                     maxZoom: MAX_ZOOM,
                     minZoom: 0,
 
@@ -292,15 +290,21 @@ const LocationMap: React.FC<Props> = ({
             // is usable: an error afterwards would replace a working map with a
             // notice saying it could not be loaded.
             //
-            // Source-scoped errors are ignored. With a single inlined basemap
-            // there was one fetch behind the map, so any error was the basemap
-            // failing. With tiles there are hundreds, and a zoom the archive
-            // clips or a tile it omits reports here routinely; treating one of
-            // those as a broken deploy would print "could not be loaded" over a
-            // map that is drawing correctly. The archive itself is vouched for
-            // before the map is built, by the header probe in basemap.ts.
+            // TILE-scoped errors are ignored, and the distinction from
+            // source-scoped ones is the whole of it. MapLibre attaches a
+            // sourceId to EVERY error bubbling through a source, the archive
+            // failing to load at all included, so filtering on that threw away
+            // the one failure worth reporting: a truncated archive, or a
+            // backend without byte serving, drew water with no land and said
+            // nothing. Only a per-tile error carries `tile`.
+            //
+            // Worth knowing before narrowing this again: neither case it was
+            // originally written for raises an error at all. A tile the archive
+            // omits comes back from the pmtiles protocol as an empty buffer,
+            // and a glyph range that 404s falls back to a locally drawn glyph
+            // with a console warning.
             instance.on('error', (event) => {
-                if (ready.current || (event as {sourceId?: string}).sourceId) {
+                if (ready.current || (event as {tile?: unknown}).tile) {
                     return;
                 }
                 setFailure(NO_BASEMAP);
@@ -318,6 +322,13 @@ const LocationMap: React.FC<Props> = ({
                 }
                 ready.current = true;
                 setLoaded(true);
+
+                // An error before load must not outlive a map that then loads.
+                // Nothing else clears `failure`, so it was a one-way latch: a
+                // single timeout left every later coordinate reading "could not
+                // be loaded" over a working map, which is exactly the transient
+                // failure basemap.ts deliberately declines to remember.
+                setFailure(null);
                 applyView();
             });
 
@@ -427,10 +438,8 @@ function outsideMercator(lat: number): string | null {
 }
 
 /**
- * The cell, or nothing.
- *
- * Below a few pixels a rectangle is not information, so a metre-resolution token
- * draws the dot alone and the caption carries the figure instead.
+ * The cell, or nothing, where nothing means only an unknown position or a token
+ * that carries no resolution at all.
  */
 function drawableCell(current: View): FeatureCollection {
     const {lat, lon, cellDegLat, cellDegLon} = current;
@@ -451,12 +460,14 @@ function drawableCell(current: View): FeatureCollection {
 }
 
 /**
- * The caption names the basemap, and only the basemap.
+ * The accessible label, which is the only place the country reaches a reader.
  *
- * It used to append the region as well, which read
- * "Natural Earth 110m. United States of America (Natural Earth 110m)": the
- * Region row's value already carries its own citation, so the source was
- * printed twice in one line. The row names the place, this names what drew it.
+ * The Region row was retired, so this string is it: with the map hidden, or
+ * read by eye rather than by a screen reader, there is no country anywhere.
+ * Removing the region from here removes it from every surface at once.
+ *
+ * The basemap is not named. The region's own value carries its citation, and
+ * naming the source again here printed it twice in one line.
  */
 function label(region: string, note: string | null): string {
     if (note !== null) {
