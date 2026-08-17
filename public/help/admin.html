@@ -91,6 +91,46 @@
             </p>
         </div>
 
+        <h3 id="map">There is no switch for the map</h3>
+
+        <p>
+            Opening a coordinate draws <a href="panel.html#location-map">a small world
+            map</a>, in the sidebar, on the hover card and on both standalone pages. It
+            has no setting of its own. What governs it is
+            <a href="#enable-location"><code>EnableLocation</code></a> and the format
+            switches under it, and only indirectly: a coordinate that is never decorated
+            never opens a panel, so it never draws a map either.
+        </p>
+
+        <p>
+            <strong>Hiding it is the reader's decision, not yours.</strong> Every person
+            can untick <em>Map</em> under
+            <a href="panel.html#location-customize">Customize your view</a>, which is
+            stored per user in the plugin's own settings. There is no way to hide it for
+            a whole workspace, and no way to force it on for someone who has hidden it.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">The map reaches nothing outside your server.</p>
+            <p>
+                The basemap, the fonts on it and the library that draws it all ship inside
+                the plugin bundle and are served by your own Mattermost, at
+                <code>/plugins/com.mattermost.plugin-tactical-fusion/public/map/</code>.
+                There is no tile service, no map API and no key to configure, and an
+                air-gapped install needs nothing added. The one consequence worth knowing
+                is size: the basemap is the largest thing in the bundle by a wide margin,
+                so a server with a tightened upload limit may refuse the plugin archive
+                before it refuses anything else.
+            </p>
+        </div>
+
+        <p>
+            The country the map names in its accessible label is worked out the same way,
+            from outlines compiled into the plugin. It is
+            <a href="panel.html#location-region">a basemap lookup and not an authority on
+            borders</a>, which is worth reading before anyone treats it as one.
+        </p>
+
         <h2>The settings</h2>
 
         <h3 id="enable-dtg" data-setting="EnableDTG">Decorate date-time groups <code>EnableDTG</code></h3>

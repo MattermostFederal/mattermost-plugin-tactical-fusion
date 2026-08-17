@@ -49,7 +49,8 @@
             Point at a coordinate and you get the same card with a <strong>small map
             only</strong>, showing where it is and the square it names. It is not
             interactive: the controls and the wheel belong to the panel, which is one
-            click away and carries every reading.
+            click away and carries every reading. See
+            <a href="#location-hover">the hover card</a> for the whole of it.
         </p>
 
         <h2 id="panel">Clicking a link</h2>
@@ -134,10 +135,14 @@
 
         <p>
             Most of it is worked out from the link alone and is on screen the instant the
-            panel opens. The two grid rows are the exception: a grid reference is a
-            projection onto an ellipsoid, that projection runs on the server, so those rows
-            are fetched. See <a href="#location-degrades">what happens when the request does
-            not arrive</a>, which is never a blank panel.
+            panel opens. What is fetched is whatever needs a projection onto an ellipsoid,
+            which runs on the server: the two grid rows always, and, when the link is
+            <em>itself</em> a grid reference, the three angular rows as well, since a grid
+            reference has no latitude and longitude until something projects it. The
+            <a href="#location-region">country</a> is always fetched, because it is looked
+            up against outlines the browser does not have. See
+            <a href="#location-degrades">what happens when the request does not arrive</a>,
+            which is never a blank panel.
         </p>
 
         <table class="field-table">
@@ -163,10 +168,13 @@
             and <strong>Open larger</strong> beneath it opens a page that is nothing but
             the map. The <a href="#page">standalone page</a> the mobile app opens draws the
             same map above the same table. All three are the same map: drag to pan, scroll
-            to zoom, the <code>+</code> and <code>&minus;</code> buttons in the
-            corner, the arrow and <code>+</code> / <code>&minus;</code> keys once the map
-            has focus, and <strong>Reset view</strong> to return to the opening centre and
-            zoom.
+            to zoom, the <code>+</code> and <code>&minus;</code> buttons in the top right,
+            the arrow and <code>+</code> / <code>&minus;</code> keys once the map has
+            focus, and <strong>Reset view</strong>, top left, to return to the opening
+            centre and zoom. A distance scale sits in the bottom right corner, in metric
+            units, and the current zoom in the bottom left, written <code>z6.3</code>.
+            Rotating is deliberately not possible: a map that can be turned without a
+            compass on it is a map every bearing is read off wrongly.
         </p>
 
         <p>
@@ -174,6 +182,15 @@
             the author wrote it, and <strong>All readings</strong>, which opens the full
             table for the same coordinate. Both pages open in whichever theme, light or
             dark, you are using in Mattermost.
+        </p>
+
+        <p>
+            <strong>The map itself is dark in both themes</strong>, so a light Mattermost
+            draws a dark map inside a light panel. That is deliberate rather than a theme
+            that failed to apply: the dark palette carries the land and water edge better
+            at this size, and it keeps the pin and the square from competing with the
+            table beside them. Everything around the map still follows your theme, and
+            there is no setting for this.
         </p>
 
         <p>
@@ -391,8 +408,9 @@
         <h3 id="location-degrades">When the conversion does not arrive</h3>
 
         <p>
-            The grid rows are the only ones fetched, and losing them costs only them. The
-            rest of the panel is computed from the link and is already on screen.
+            Losing the <a href="#location-panel">fetched rows</a> costs those rows and
+            nothing else. Everything the link carries by itself is computed in the browser
+            and is already on screen.
         </p>
 
         <table class="field-table">
@@ -402,6 +420,16 @@
                 <tr><td>Server refused the link</td><td>The panel says <strong>Not a coordinate</strong> and shows nothing else.</td></tr>
             </tbody>
         </table>
+
+        <p>
+            For a <strong>grid reference</strong> the map goes with them, because a grid
+            reference has no latitude and longitude until the server works one out. Rather
+            than guess at a pin, the map is replaced by
+            <code>The position for this coordinate is unavailable.</code> and every reading
+            the link carries locally stays exactly where it is. For every other notation the
+            position comes from the link, so the map is unaffected and only the two grid
+            rows are lost.
+        </p>
 
         <p>
             That last case is a verdict rather than an outage, and the two are kept apart
@@ -498,22 +526,43 @@
         </p>
 
         <p>
-            There is no map button. A map link would send a grid reference to a third party,
-            which is an operational decision rather than a default, and this release does
-            not make it.
+            There is no button that opens the coordinate somewhere else. The
+            <a href="#location-map">map in the panel</a> is drawn from data bundled with
+            the plugin and served by your own Mattermost; a link out to a mapping service
+            would send a grid reference to a third party, which is an operational decision
+            rather than a default, and this release does not make it.
         </p>
 
-        <h3 id="location-hover">No hover card</h3>
+        <h3 id="location-hover">The hover card</h3>
 
         <p>
-            Pointing at a coordinate shows nothing, unlike
-            <a href="#hover">a date-time group</a>. The one thing a hover could usefully add
-            is the grid reference, and this version can now compute one, but only on the
-            server. A hover fires as the pointer crosses a link rather than on a click, so
-            wiring one up would put a request behind every coordinate a reader's cursor
-            passes over in a busy channel. A card that merely repeated the text already
-            under the cursor would earn nothing, so there is none until it can show the
-            grid without that cost.
+            Pointing at a coordinate shows a card carrying
+            <a href="#location-map">the map</a> and nothing else, in a fixed landscape
+            frame. A glance at a coordinate is asking <em>where</em>, and
+            every reading, every other notation and every copy icon is one click away in
+            the panel, so repeating any of them here would only make the glance slower.
+            That is the same bar <a href="#hover">the date-time group's card</a> is held
+            to, where the answer is the countdown alone.
+        </p>
+
+        <p>
+            It is the panel's own map, not a second one built for the card, so the two
+            cannot disagree about where a coordinate is. Everything that makes the panel's map
+            operable is switched off, because a card is dismissed by moving the pointer:
+            no zoom buttons or scale bar, no <em>Reset view</em>, no zoom readout, no
+            dragging, and <strong>the wheel is left alone</strong>, so scrolling the
+            channel with the pointer over a card scrolls the channel. To pan or zoom,
+            click through to the panel.
+        </p>
+
+        <p>
+            A grid reference has no position until the server projects it, so pointing at
+            one costs a request. Each distinct coordinate costs at most one, however many
+            times a cursor crosses it, and the click that follows a hover joins the
+            request the hover already made rather than issuing a second, which is why a
+            coordinate you pointed at opens with its grid rows already on screen. The card
+            says <code>Loading map&hellip;</code> until that lands, and reports the same
+            failures the panel does.
         </p>
 
         <h2 id="customize">Customize your view</h2>
