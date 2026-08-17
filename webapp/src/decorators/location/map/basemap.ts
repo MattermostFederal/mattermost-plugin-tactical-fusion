@@ -132,8 +132,13 @@ async function probeArchive(): Promise<Attempt> {
         // Reading Content-Length rather than the body is also what keeps this
         // from pulling 24 MB to look at 127 bytes, which is the whole reason
         // the old MAX_BYTES cap existed.
-        const length = response.headers.get('Content-Length');
-        if (response.status === 200 && (!length || Number(length) > HEADER_BYTES)) {
+        // A non-numeric Content-Length has to fail this too. `Number('gzip')`
+        // is NaN and every comparison against NaN is false, so a 200 carrying
+        // one was ACCEPTED as a valid range response, which is the one thing
+        // this branch exists to refuse.
+        const header = response.headers.get('Content-Length');
+        const length = header === null || header.trim() === '' ? NaN : Number(header);
+        if (response.status === 200 && (!Number.isFinite(length) || length > HEADER_BYTES)) {
             return settled(null);
         }
 

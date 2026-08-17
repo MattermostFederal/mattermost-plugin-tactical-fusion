@@ -101,6 +101,53 @@ func readWebappSource(t *testing.T, name string) string {
 	return string(raw)
 }
 
+// The format list is duplicated in the webapp, and it has to be the same set.
+//
+// This was the one cross-language list nothing compared, and its failure was the
+// quietest of the lot. `readPageData` refused a format id LOCATION_FORMATS did
+// not carry, and the standalone page, which is what the mobile app opens, then
+// rendered a wholly blank document: no rows, no note, nothing logged, while the
+// conversion the server had already computed sat unread in the shell. So adding
+// a tenth grammar in Go alone shipped blank pages with every test still green.
+//
+// The page degrades rather than blanking now, which is the real fix. This is the
+// other half: a build whose two halves disagree about what a format id is should
+// fail here, in Go, with the reason spelled out, rather than on somebody's phone.
+//
+// The ORDER is deliberately not compared. Nothing renders from this list, so
+// only membership carries meaning.
+func TestWebappFormatListMatches(t *testing.T) {
+	path := filepath.Join("..", "..", "..", "webapp", "src", "decorators", "location", "format.ts")
+	raw, err := os.ReadFile(path) // #nosec G304 -- fixed, repo-relative source path
+	if err != nil {
+		t.Fatalf("could not read %s: %v", path, err)
+	}
+
+	block := regexp.MustCompile(
+		`export const LOCATION_FORMATS: readonly LocationFormat\[\] = \[([^\]]*)\]`).
+		FindStringSubmatch(string(raw))
+	if block == nil {
+		t.Fatal("could not find LOCATION_FORMATS in format.ts")
+	}
+
+	var got []string
+	for _, m := range regexp.MustCompile(`'([a-z]+)'`).FindAllStringSubmatch(block[1], -1) {
+		got = append(got, m[1])
+	}
+
+	var want []string
+	for _, f := range AllFormatIDs {
+		want = append(want, string(f))
+	}
+
+	slices.Sort(got)
+	slices.Sort(want)
+
+	if !slices.Equal(got, want) {
+		t.Errorf("LOCATION_FORMATS = %v, AllFormatIDs = %v", got, want)
+	}
+}
+
 // The row catalog is duplicated in the webapp, and it has to be the same list
 // in the same order.
 //

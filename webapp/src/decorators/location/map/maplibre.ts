@@ -4,6 +4,7 @@ import type {StyleSpecification} from 'maplibre-gl';
 import type {Archive} from './basemap';
 
 import {pluginBaseUrl} from '../../../plugin_url';
+import {detectTheme} from '../../theme';
 
 /**
  * Loading MapLibre, and the style it draws the bundled basemap with.
@@ -17,7 +18,6 @@ import {pluginBaseUrl} from '../../../plugin_url';
 export type MapLibre = typeof import('maplibre-gl');
 
 let loading: Promise<MapLibre | null> | null = null;
-let failed = false;
 
 /**
  * Whether this browser can draw a WebGL map at all.
@@ -56,14 +56,28 @@ function probeWebGL2(): boolean {
     }
 }
 
-/** Loads MapLibre, or resolves null. Never throws, never retries. */
+/**
+ * Loads MapLibre, or resolves null. Never throws.
+ *
+ * A failed load is NOT remembered, which is the same split basemap.ts makes
+ * about the archive and for the same reason: the thing that fails here is a
+ * ~950 KB chunk fetch, and on the constrained links this plugin is built for a
+ * dropped fetch is weather rather than a broken deploy. Latching it meant one
+ * stalled request told a reader the map was unavailable for the rest of the
+ * session, with a reload the only way back. Clearing `loading` is what lets a
+ * later `import()` retry at all: webpack evicts a failed chunk so the next call
+ * refetches it, and holding the rejected promise here defeated that.
+ *
+ * The capability probe is the opposite case and stays memoised: WebGL2 support
+ * cannot change mid-session, and re-probing walks the browser's context cap.
+ */
 export async function loadMapLibre(): Promise<MapLibre | null> {
-    if (failed || !hasWebGL2()) {
+    if (!hasWebGL2()) {
         return null;
     }
     if (!loading) {
         loading = loadAndConfigure().catch(() => {
-            failed = true;
+            loading = null;
             return null;
         });
     }
@@ -154,23 +168,6 @@ function assetUrl(imported: unknown): string | null {
     return null;
 }
 
-/**
- * Reads a colour off the live DOM.
- *
- * The style is built here rather than shipped as a style.json because a static
- * file cannot follow the reader's theme, and this panel sits inside a Mattermost
- * whose colours are custom properties.
- */
-function themeColor(name: string, fallback: string): string {
-    if (typeof window === 'undefined' || typeof document === 'undefined') {
-        return fallback;
-    }
-
-    const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-
-    return value === '' ? fallback : value;
-}
-
 export interface MapColors {
     water: string;
     land: string;
@@ -217,7 +214,7 @@ const ALWAYS_DARK: boolean = true;
  * stay legible against both land and water in either theme.
  */
 export function mapColors(): MapColors {
-    return palette(ALWAYS_DARK || isDarkTheme());
+    return palette(ALWAYS_DARK || detectTheme() === 'dark');
 }
 
 /** @internal exported so the unused half of the palette stays exercised. */
@@ -259,19 +256,6 @@ export function palette(dark: boolean): MapColors {
         rail: dark ? '#98a3b1' : '#55637a',
         adminLine: dark ? '#7b8593' : '#8fa0b5',
     };
-}
-
-function isDarkTheme(): boolean {
-    const bg = themeColor('--center-channel-bg', '#ffffff');
-    const match = (/^#?([0-9a-f]{6})$/i).exec(bg.replace('#', '#'));
-    if (!match) {
-        return false;
-    }
-
-    const n = parseInt(match[1], 16);
-    const luma = (0.2126 * ((n >> 16) & 0xff)) + (0.7152 * ((n >> 8) & 0xff)) + (0.0722 * (n & 0xff));
-
-    return luma < 128;
 }
 
 /**
@@ -590,6 +574,5 @@ export function _assetUrlForTesting(imported: unknown): string | null { // eslin
 /** Test hook, for the same reason basemap.ts has one. */
 export function _resetForTesting(): void { // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
     loading = null;
-    failed = false;
     webgl2 = null;
 }

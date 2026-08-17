@@ -46,9 +46,13 @@ which is what allows the generated ranges to keep the `NotoSans-Regular` name.
 
 One archive, ten layers, z0 through z9. `MAXZ` at the top of `build.sh` is the
 ceiling, written once: every run that reaches it reads that variable, so the
-depth cannot move for one layer and miss another. It must move with `MAX_ZOOM`
-in `webapp/src/decorators/location/map/span.ts`, and
-`TestArchiveDepthMatchesTheCameraCeiling` is what holds the two together.
+depth cannot move for one layer and miss another. It must move with
+`DATA_MAX_ZOOM` in `webapp/src/decorators/location/map/span.ts`, and
+`TestArchiveDepthMatchesTheData` is what holds the two together.
+
+Not `MAX_ZOOM` in that same file, which is 17 and deliberately runs past the
+data so a reader can zoom in far enough to see how small a fine cell is. Pairing
+this with the camera's ceiling would collapse the two constants back into one.
 
 | Layer | Geometry | Zooms | Attributes |
 |---|---|---|---|

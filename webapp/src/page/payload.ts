@@ -2,7 +2,6 @@ import {fromParams} from '../decorators/location';
 import type {LocationPayload} from '../decorators/location';
 import {asConversion} from '../decorators/location/convert';
 import type {ConversionState} from '../decorators/location/convert';
-import {LOCATION_FORMATS} from '../decorators/location/format';
 import type {LocationFormat} from '../decorators/location/format';
 
 /**
@@ -20,9 +19,27 @@ export interface PageData {
     mode: 'location' | 'map';
 }
 
+/**
+ * The shell's parameters, or null when there is no shell to read.
+ *
+ * An unrecognised format id DEGRADES rather than refusing, for the same reason
+ * `payloadFor` degrades on a canonical-shape disagreement: on a page there is
+ * nothing to fall through to. Refusing rendered a wholly blank document, on the
+ * route the mobile app opens, with nothing logged, while the conversion the
+ * server had already computed sat unread in the shell three attributes away.
+ *
+ * That was also the coarser half of a drift the finer half already handled: the
+ * webapp keeps its own copy of the format list, so adding a grammar in Go alone
+ * blanked every page for it. `TestWebappFormatListMatches` now pins the two
+ * lists together, and this degrade is what keeps the failure legible if one is
+ * ever added anyway.
+ *
+ * An EMPTY id is different and still refuses: it means the document was not
+ * written by this plugin's shell at all, so there is nothing to render from.
+ */
 export function readPageData(root: HTMLElement): PageData | null {
     const format = root.dataset.f ?? '';
-    if (!LOCATION_FORMATS.includes(format as LocationFormat)) {
+    if (format === '') {
         return null;
     }
 

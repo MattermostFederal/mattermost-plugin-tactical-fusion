@@ -17,6 +17,17 @@
  * 4.9 km north. Must match `format.go`, which splits the same way.
  */
 
+/*
+ * The length of a degree of latitude, imported rather than restated.
+ *
+ * It was declared here too, with the same value, and this was the copy that
+ * mattered: it sizes the drawn cell and the resolution row, so it reaches every
+ * surface, while span.ts's exported copy only feeds zoomForSpan. Only the
+ * exported one is pinned against Go's `degreeMeters` by webapp_sync_test.go, so
+ * the copy a reader actually acts on was the one free to drift.
+ */
+import {DEGREE_METERS} from './map/span';
+
 /** The grammars the server may name in `f`. */
 export type LocationFormat =
     'dd' | 'ddh' | 'dms' | 'ddm' | 'latd' | 'latm' | 'vlatm' | 'mgrs' | 'utm';
@@ -70,9 +81,9 @@ export interface Coordinate {
     digits: number;
 }
 
-/** Length of a degree of latitude, near enough for a human-readable figure. */
-const DEGREE_METERS = 111320;
-
+/*
+ * Length of a degree of latitude, imported rather than restated.
+ *
 /**
  * The most fractional digits a token may carry. Mirrors `maxFrac` in Go.
  *

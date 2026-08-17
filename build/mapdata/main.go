@@ -14,11 +14,7 @@ import (
 	"strings"
 )
 
-const (
-	adminScale     = 1000000
-	geoSimplifyEps = 0.02
-	geoDecimals    = 2
-)
+const adminScale = 1000000
 
 type geoJSON struct {
 	Features []feature `json:"features"`
@@ -34,8 +30,6 @@ type geometry struct {
 	Coordinates json.RawMessage `json:"coordinates"`
 }
 
-type point struct{ X, Y float64 }
-
 func main() {
 	src := flag.String("source", "build/mapdata/source", "directory holding Natural Earth GeoJSON")
 	out := flag.String("out", "server/decorators/location/mapdata", "package directory to write")
@@ -46,21 +40,6 @@ func main() {
 
 	fail(os.MkdirAll(*out, 0o755))
 	fail(writeAdmin(filepath.Join(*out, "admin.go"), countries))
-}
-
-func writeCoordinates(b *bytes.Buffer, ring []point) {
-	b.WriteByte('[')
-	for i, p := range ring {
-		if i > 0 {
-			b.WriteByte(',')
-		}
-		b.WriteByte('[')
-		b.WriteString(strconv.FormatFloat(p.X, 'f', -1, 64))
-		b.WriteByte(',')
-		b.WriteString(strconv.FormatFloat(p.Y, 'f', -1, 64))
-		b.WriteByte(']')
-	}
-	b.WriteByte(']')
 }
 
 func fail(err error) {
@@ -85,26 +64,6 @@ func readGeoJSON(path string) (*geoJSON, error) {
 	return &g, nil
 }
 
-func roundDec(v float64, places int) float64 {
-	f := math.Pow(10, float64(places))
-	r := math.Round(v*f) / f
-	if r == 0 {
-		return 0
-	}
-	return r
-}
-
-func dedupe(pts []point) []point {
-	out := pts[:0:0]
-	for i, p := range pts {
-		if i > 0 && p == pts[i-1] {
-			continue
-		}
-		out = append(out, p)
-	}
-	return out
-}
-
 func decodePolygons(g geometry) ([][][][2]float64, error) {
 	switch g.Type {
 	case "Polygon":
@@ -122,16 +81,6 @@ func decodePolygons(g geometry) ([][][][2]float64, error) {
 	default:
 		return nil, fmt.Errorf("unexpected geometry %q", g.Type)
 	}
-}
-
-func perpendicular(p, a, b point) float64 {
-	dx, dy := b.X-a.X, b.Y-a.Y
-	if dx == 0 && dy == 0 {
-		return math.Hypot(p.X-a.X, p.Y-a.Y)
-	}
-	t := ((p.X-a.X)*dx + (p.Y-a.Y)*dy) / (dx*dx + dy*dy)
-	t = math.Max(0, math.Min(1, t))
-	return math.Hypot(p.X-(a.X+t*dx), p.Y-(a.Y+t*dy))
 }
 
 type country struct {

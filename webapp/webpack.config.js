@@ -133,7 +133,11 @@ const shared = {
         maxAssetSize: 1024 * 1024,
         maxEntrypointSize: 1024 * 1024,
     },
-    mode: (isDev) ? 'eval-source-map' : 'production',
+
+    // 'eval-source-map' is a devtool value, not a mode, and sat here reading as
+    // one. Harmless only because every npm script passes --mode on the CLI,
+    // which overrides it.
+    mode: (isDev) ? 'development' : 'production',
     plugins,
 };
 
@@ -166,6 +170,16 @@ const pageConfig = {
     ...shared,
     entry: {page: './src/page/index.tsx'},
     externals: {},
+
+    // Explicitly OFF, and this is the whole reason the copy above exists rather
+    // than a second half of it. Removing the inherited `devtool` assignment was
+    // not enough: webpack DERIVES `devtool: 'eval'` from `mode: 'development'`,
+    // and `debug:watch` passes --mode=development, so the page bundle still came
+    // out eval-based. The pages are served under script-src 'self' with no
+    // 'unsafe-eval', so their own policy refused to run them and the reader got
+    // the empty document TestBothPagesNameTheBundleRelativeToTheirOwnRoute
+    // exists to prevent, in the one build where somebody is trying to debug it.
+    devtool: false,
     output: {
         devtoolNamespace: PLUGIN_ID + '-page',
         path: path.join(__dirname, '../public/app'),

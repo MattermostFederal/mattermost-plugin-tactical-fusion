@@ -8,13 +8,12 @@ import {
     ddmText,
     decimalText,
     dmsText,
-    cellDegrees,
     gridResolutionText,
     gridText,
     resolutionText,
     usmtfText,
 } from './format';
-import LocationMap from './map/LocationMap';
+import LocationMap, {viewFor} from './map/LocationMap';
 import {MAP_ID, isRowVisible, ROWS} from './rows';
 import type {HideableID, RowID} from './rows';
 
@@ -234,8 +233,6 @@ const LocationReadings: React.FC<{
     // the conditional rows express themselves: Confidence unless the token
     // stated one, and Normalized unless it says something the row above did
     // not.
-    const region = conversion.status === 'ready' ? (conversion.data?.region ?? '') : '';
-
     const values: Record<RowID, string> = {
         mgrs,
         decimal,
@@ -266,10 +263,9 @@ const LocationReadings: React.FC<{
     }
     const pageHref = withTheme(`${pluginBaseUrl()}/map?${pageParams.toString()}`);
 
-    const position = conversion.status === 'ready' ? conversion.data : null;
-    const mapLat = coord ? coord.lat.decimal : (position?.lat ?? null);
-    const mapLon = coord ? coord.lon.decimal : (position?.lon ?? null);
-    const [cellLat, cellLon] = cellDegrees(coord, format, canonical, mapLat);
+    // Through the same viewFor the hover card and the map page use, so the
+    // three surfaces cannot come to disagree about where a coordinate is.
+    const view = viewFor(payload, conversion);
 
     // No lead line. The table already opens with the grid reference, labeled
     // and with a copy button beside it, so a bare repeat of the same string
@@ -278,11 +274,7 @@ const LocationReadings: React.FC<{
         <div>
             {isRowVisible(hidden, MAP_ID) && (
                 <LocationMap
-                    lat={mapLat}
-                    lon={mapLon}
-                    cellDegLat={cellLat}
-                    cellDegLon={cellLon}
-                    region={region}
+                    {...view}
                     pageHref={pageHref}
                     pending={conversion.status === 'loading'}
                 />

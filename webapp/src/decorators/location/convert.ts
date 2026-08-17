@@ -113,9 +113,10 @@ async function fetchConversion(
  * real position, and dropping the equator and the prime meridian is a bug this
  * plugin deliberately did not inherit.
  */
-export function _asConversionForTesting(body: unknown): Conversion { // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
-    return asConversion(body);
-}
+type ConversionStringField = Exclude<keyof Conversion, 'lat' | 'lon'>;
+
+const CONVERSION_STRING_FIELDS: readonly ConversionStringField[] =
+    ['mgrs', 'utm', 'decimal', 'dms', 'ddm', 'usmtf', 'region'];
 
 export function asConversion(body: unknown): Conversion {
     if (typeof body !== 'object' || body === null) {
@@ -123,7 +124,7 @@ export function asConversion(body: unknown): Conversion {
     }
 
     const value = body as Record<string, unknown>;
-    for (const key of ['mgrs', 'utm', 'decimal', 'dms', 'ddm', 'usmtf', 'region']) {
+    for (const key of CONVERSION_STRING_FIELDS) {
         if (typeof value[key] !== 'string') {
             throw new Error('The server did not return a conversion.');
         }
@@ -222,7 +223,15 @@ function request(
         return pending;
     }
 
-    const started = load(format, canonical, raw).then((state) => {
+    const started: Promise<ConversionState> = load(format, canonical, raw).then((state) => {
+        // Identity-checked, the same way basemap.ts checks its own in-flight
+        // slot: a request settling after the map was cleared must not write its
+        // answer back under a key nothing is waiting for, and must not delete a
+        // NEWER attempt that has since taken the slot, which would send the
+        // next joiner to the network with every appearance of being cached.
+        if (inflight.get(key) !== started) {
+            return state;
+        }
         if (remembered(state)) {
             answers.set(key, state);
         }
@@ -273,7 +282,23 @@ export function useConversion(
     }
 
     useEffect(() => {
-        if (answers.has(key)) {
+        // Read the cache AGAIN here, and adopt what it holds rather than
+        // bailing on it. Effects flush in a scheduled task after commit, so a
+        // reply can land in the window between the render above and this line:
+        // the render saw nothing and left `loading`, and an early return here
+        // would leave it there permanently, because these deps cannot change
+        // again for the same token. The answer sat in the cache while the panel
+        // said `converting…` forever.
+        //
+        // That window is the ordinary case rather than a corner: it is exactly
+        // a hover starting the request and the click that follows it mounting
+        // the panel before the reply arrives.
+        //
+        // setState with the value already in state is a React bail-out, so the
+        // hit-on-render path costs nothing.
+        const answered = answers.get(key);
+        if (answered) {
+            setState(answered);
             return undefined;
         }
 

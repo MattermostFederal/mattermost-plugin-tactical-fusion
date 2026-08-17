@@ -11,9 +11,13 @@ OUT="${OUT:-public/map/world.pmtiles}"
 SIMPLIFICATION="${SIMPLIFICATION:-4}"
 
 # The archive's ceiling, written once. Every run that reaches it reads this, so
-# the depth cannot move for one layer and miss another; MAX_ZOOM in
+# the depth cannot move for one layer and miss another; DATA_MAX_ZOOM in
 # webapp/src/decorators/location/map/span.ts must move with it, and
-# TestArchiveDepthMatchesTheCameraCeiling is what holds the two together.
+# TestArchiveDepthMatchesTheData is what holds the two together.
+#
+# NOT the camera's ceiling. MAX_ZOOM in that file is 17 and deliberately runs
+# past the data, so a reader can see how small a fine cell is; pairing this with
+# MAX_ZOOM would collapse the two back into one and take that with it.
 MAXZ="${MAXZ:-9}"
 
 mkdir -p "$WORK" "$(dirname "$OUT")"

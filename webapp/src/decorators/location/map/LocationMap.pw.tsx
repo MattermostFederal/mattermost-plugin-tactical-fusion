@@ -148,6 +148,25 @@ test.describe('with a basemap it can verify', () => {
         ).toBeAttached();
     });
 
+    // The label is the one value on this map that comes from data rather than
+    // from a source literal, so its escaping is what makes "nothing from a
+    // request reaches it" a defence rather than an accident. React escapes a
+    // text node, and this asserts that it does: the guard CLAUDE.md described
+    // was pinned by nothing in either language once the label moved out of
+    // aria-label and into a visually-hidden span.
+    test('renders a hostile region as text rather than as markup', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const hostile = '<img src=x onerror="alert(1)">';
+        const component = await mount(<LocationMapHarness region={hostile}/>);
+
+        await expectDrawn(component);
+        await expect(
+            component.getByText(`World map. The marked position is in ${hostile}.`),
+        ).toBeAttached();
+        await expect(component.locator('img')).toHaveCount(0);
+    });
+
     // A position in no polygon yields nothing, and the label never guesses at a
     // nearest country.
     test('says only that a position is marked when there is no region', async ({mount, page}) => {

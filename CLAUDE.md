@@ -631,10 +631,10 @@ onto the table. There used to be a large line above it repeating the grid
 reference, three lines above the labeled row that already carried it with a copy
 button beside it, so it said the same thing twice and the copy of it that a
 reader could actually use was the lower one. The page's
-`described` class belongs to the DTG page now.
-`TestRenderPageHasNoLeadLineAboveTheTable` and the panel's "shows each reading
-once" hold the two halves together, since this layout is implemented twice in
-two languages.
+`described` class belongs to the DTG page now. The panel's "shows each reading
+once" is what holds this, and it is now the only thing that does: the layout is
+rendered once, in TypeScript, so the Go half of that pair
+(`TestRenderPageHasNoLeadLineAboveTheTable`) went with the Go renderer.
 
 Every row renders at the resolution the token carried and no finer, and **rounds
 rather than truncating**. A coordinate written to two decimals renders
@@ -1158,10 +1158,14 @@ about 2,940 km at the equator and about 1,000 km at 70°N. `zoomForSpan` is in
 and once for a page module, and neither copy exists now: nothing in Go computes
 map geometry at all, and `mapcell.go` went with it.
 
-**The label is HTML-escaped specifically.** It lands in the container's
-`aria-label`, and `TestMapEscapesAHostileLabel` holds it. Its content is a
-country name from generated data, so nothing from a request reaches it today,
-but the escaping is what makes that a defence rather than an accident.
+**The label is escaped specifically.** It is a visually-hidden `<span>` beside
+the canvas rather than an `aria-label` on the container, so React's own text-node
+escaping is what does it, and `renders a hostile region as text rather than as
+markup` in `LocationMap.pw.tsx` holds it. Its content is a country name from
+generated data, so nothing from a request reaches it today, but the escaping is
+what makes that a defence rather than an accident. It was described here as an
+`aria-label` held by a Go test long after it was neither, which is the state a
+guard rots into when the only thing asserting it is a sentence.
 
 ### Two zoom numbers, and why they are those numbers
 

@@ -1,7 +1,7 @@
 import {expect, test} from '@playwright/test';
 
 import {
-    _asConversionForTesting as asConversion,
+    asConversion,
     _requestForTesting as requestForTesting,
     _resetConversionsForTesting as resetConversions,
 } from './convert';

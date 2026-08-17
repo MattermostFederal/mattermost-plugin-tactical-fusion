@@ -8,6 +8,10 @@ import {
 } from './maplibre';
 import {MAX_ZOOM, cellBounds, isRenderable, zoomForSpan} from './span';
 
+import type {ConversionState} from '../convert';
+import {cellDegrees} from '../format';
+import type {LocationPayload} from '../index';
+
 /**
  * The map above the readings table.
  *
@@ -92,6 +96,31 @@ export interface View {
     lon: number | null;
     cellDegLat: number;
     cellDegLon: number;
+}
+
+/**
+ * Where a coordinate is drawn, and how big its cell is.
+ *
+ * One function rather than four lines copied into the panel, the hover card and
+ * the map page. Those three copies agreed, and the hover's carried a comment
+ * saying it had to ("a hover and the panel behind it disagreeing about where a
+ * coordinate is would be the worst possible place for the two to drift"). An
+ * invariant a comment asks three files to keep is one this codebase turns into
+ * code everywhere else, and this is the value where drifting costs most.
+ *
+ * `data` is read only once the status is `ready`, which is what keeps a failed
+ * or refused conversion from putting a pin at a position nothing vouched for.
+ */
+export function viewFor(
+    payload: LocationPayload, conversion: ConversionState): View & {region: string} {
+    const {coord, format, canonical} = payload;
+    const position = conversion.status === 'ready' ? conversion.data : null;
+
+    const lat = coord ? coord.lat.decimal : (position?.lat ?? null);
+    const lon = coord ? coord.lon.decimal : (position?.lon ?? null);
+    const [cellDegLat, cellDegLon] = cellDegrees(coord, format, canonical, lat);
+
+    return {lat, lon, cellDegLat, cellDegLon, region: position?.region ?? ''};
 }
 
 interface Props extends View {
@@ -270,13 +299,32 @@ const LocationMap: React.FC<Props> = ({
     }, []);
 
     // Creation. Runs once the reader has something to look at, and then not
-    // again: the deps are deliberately not the position.
+    // again while a map exists: the guard below, not the deps, is what stops a
+    // rebuild.
+    //
+    // The position IS a dependency, and only because creation can fail. A
+    // transient basemap or chunk failure leaves `map.current` null, and
+    // `failure` is otherwise cleared only by a `load` event that a map which
+    // was never built can never fire. With the position out of the deps this
+    // effect never ran again, so `loadBasemap()` was never called again either
+    // and every later coordinate read "The map could not be loaded" until the
+    // panel unmounted. That is precisely the retry basemap.ts declines to latch
+    // away, made unreachable one layer up.
+    //
+    // The old shape also failed asymmetrically, which is the tell: `known`
+    // flips false->true per selection for a GRID token (it has no position
+    // until the conversion lands) and stays true across every textual one, so
+    // grid links retried and lat/lon links did not.
     useEffect(() => {
         if (map.current || !known) {
             return undefined;
         }
 
         let live = true;
+
+        // A new attempt starts with no verdict, or a stale "could not be
+        // loaded" would sit over one that is in flight.
+        setFailure(null);
 
         (async () => {
             const [maplibre, basemap] = await Promise.all([loadMapLibre(), loadBasemap()]);
@@ -412,7 +460,7 @@ const LocationMap: React.FC<Props> = ({
         return () => {
             live = false;
         };
-    }, [known, applyView]);
+    }, [known, lat, lon, applyView]);
 
     // Movement. The map itself survives; only its camera and its two overlay
     // sources change.

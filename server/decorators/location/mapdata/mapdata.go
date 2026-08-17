@@ -7,7 +7,6 @@ import (
 )
 
 const (
-	pathScale  = 1000000
 	adminScale = 1000000
 
 	MercatorLimit = 85.0511287798066
@@ -110,7 +109,7 @@ func decodePoints(encoded string, scale float64) ([]float64, []float64, bool) {
 
 func boxOf(xs, ys []float64) Box {
 	b := Box{MinX: math.Inf(1), MinY: math.Inf(1), MaxX: math.Inf(-1), MaxY: math.Inf(-1)}
-	for i := range xs {
+	for i := range min(len(xs), len(ys)) {
 		b.MinX = math.Min(b.MinX, xs[i])
 		b.MaxX = math.Max(b.MaxX, xs[i])
 		b.MinY = math.Min(b.MinY, ys[i])

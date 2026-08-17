@@ -1,8 +1,7 @@
 import React from 'react';
 
 import {useConversion} from './convert';
-import {cellDegrees} from './format';
-import LocationMap from './map/LocationMap';
+import LocationMap, {viewFor} from './map/LocationMap';
 
 import type {LocationPayload} from './index';
 
@@ -33,27 +32,27 @@ import type {LocationPayload} from './index';
  * That cache is what this component was waiting for.
  */
 const LocationHover: React.FC<{payload: LocationPayload}> = ({payload}) => {
-    const {coord, format, canonical, raw} = payload;
+    const {format, canonical, raw} = payload;
     const conversion = useConversion(format, canonical, raw);
 
-    // Derived exactly as LocationReadings derives it, down to reading `data`
-    // only once the status is `ready`. A hover and the panel behind it
-    // disagreeing about where a coordinate is would be the worst possible place
-    // for the two to drift, and the cell is sized through the same `cellDegrees`
-    // so a grid square is not squared off differently in the card than on the
-    // panel.
-    const position = conversion.status === 'ready' ? conversion.data : null;
-    const lat = coord ? coord.lat.decimal : (position?.lat ?? null);
-    const lon = coord ? coord.lon.decimal : (position?.lon ?? null);
-    const [cellLat, cellLon] = cellDegrees(coord, format, canonical, lat);
+    // A link the server refused draws nothing, which is the verdict
+    // LocationReadings already honours by refusing to render the table. The card
+    // used to branch on `ready` alone, so a hand-edited link whose author text
+    // failed validation showed a confident pin here and "Not a coordinate" on
+    // the panel one click later: two surfaces disagreeing about a link this
+    // plugin says it did not issue, on the surface a reader meets first.
+    if (conversion.status === 'rejected') {
+        return null;
+    }
+
+    // Derived through the same viewFor the panel and the map page use, so a
+    // hover and the panel behind it cannot come to disagree about where a
+    // coordinate is.
+    const view = viewFor(payload, conversion);
 
     return (
         <LocationMap
-            lat={lat}
-            lon={lon}
-            cellDegLat={cellLat}
-            cellDegLon={cellLon}
-            region={position?.region ?? ''}
+            {...view}
             pending={conversion.status === 'loading'}
             preview={true}
         />

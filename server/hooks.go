@@ -166,8 +166,15 @@ func siteURLPath(config *model.Config) string {
 		return ""
 	}
 
+	// "//host" is rejected as well as an unrooted path. A browser reads a
+	// leading "//" as scheme-relative, so a SiteURL of "https://host//elsewhere"
+	// made redirectToLogin emit Location: //elsewhere/login and sent a reader
+	// mid-sign-in to another origin. Admin-controlled rather than
+	// attacker-controlled, so this is hardening, but it is the one place these
+	// URLs can leave the origin and the webapp already applies exactly this rule
+	// to the same value twice (plugin_url.ts, page/basename.ts).
 	parsed, err := url.Parse(raw)
-	if err != nil || !strings.HasPrefix(parsed.Path, "/") {
+	if err != nil || !strings.HasPrefix(parsed.Path, "/") || strings.HasPrefix(parsed.Path, "//") {
 		return ""
 	}
 

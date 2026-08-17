@@ -3,8 +3,7 @@ import React from 'react';
 import type {PageData} from './payload';
 
 import {vouchedText} from '../decorators/location/convert';
-import {cellDegrees} from '../decorators/location/format';
-import LocationMap from '../decorators/location/map/LocationMap';
+import LocationMap, {viewFor} from '../decorators/location/map/LocationMap';
 import {withTheme} from '../decorators/theme';
 import {pluginBaseUrl} from '../plugin_url';
 
@@ -43,16 +42,12 @@ const styles: Record<string, React.CSSProperties> = {
  */
 const MapPageView: React.FC<{data: PageData}> = ({data}) => {
     const {payload, conversion} = data;
-    const {coord, format, canonical, raw} = payload;
+    const {format, canonical, raw} = payload;
 
-    const position = conversion.status === 'ready' ? conversion.data : null;
-    const lat = coord ? coord.lat.decimal : (position?.lat ?? null);
-    const lon = coord ? coord.lon.decimal : (position?.lon ?? null);
-    const [cellLat, cellLon] = cellDegrees(coord, format, canonical, lat);
-
-    // Not shown, but the map puts it in its accessible label, which is the only
+    // Through the same viewFor the panel and the hover use. `region` is not
+    // shown, but the map puts it in its accessible label, which is the only
     // place a reader without the picture learns the country.
-    const region = position?.region ?? '';
+    const view = viewFor(payload, conversion);
 
     // The same value the readings table leads with, through the same helper, so
     // the two surfaces cannot come to disagree about which text is the author's.
@@ -72,11 +67,7 @@ const MapPageView: React.FC<{data: PageData}> = ({data}) => {
         <div style={styles.root}>
             <div style={styles.map}>
                 <LocationMap
-                    lat={lat}
-                    lon={lon}
-                    cellDegLat={cellLat}
-                    cellDegLon={cellLon}
-                    region={region}
+                    {...view}
                     pending={false}
                     fill={true}
                 />

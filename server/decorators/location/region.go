@@ -54,7 +54,15 @@ func countryContains(c mapdata.Country, lon, lat float64) bool {
 
 func ringContains(r mapdata.Ring, lon, lat float64) bool {
 	inside := false
-	n := len(r.Lon)
+
+	// Bounded by the SHORTER axis. Ring is exported with exported slice fields
+	// and no constructor, so the equal-length invariant holds only because
+	// decodePoints is the sole producer and appends in lockstep. Indexing Lat by
+	// len(Lon) turns any future violation into an index-out-of-range inside
+	// ServeHTTP, and nothing on the HTTP path recovers: the only recover in this
+	// plugin is in decoratePost, so the panic takes the plugin process down for
+	// every reader on the node rather than failing one request.
+	n := min(len(r.Lon), len(r.Lat))
 	for i, j := 0, n-1; i < n; j, i = i, i+1 {
 		yi, yj := r.Lat[i], r.Lat[j]
 		if (yi > lat) == (yj > lat) {

@@ -67,8 +67,29 @@ test('anything but map is the readings view', () => {
     expect(readPageData(root({f: 'latm', v: '3510N07901W'}))!.mode).toBe('location');
 });
 
-test('an unknown format is refused outright', () => {
-    expect(readPageData(root({f: 'nope', v: 'x'}))).toBeNull();
+/*
+ * An unknown format DEGRADES; only a missing one refuses.
+ *
+ * This pinned the opposite, and the opposite blanked the page: `start()` returns
+ * without rendering on a null, into a shell that is one empty div, so a format id
+ * this build did not know produced a wholly empty document on the route the
+ * mobile app opens, with nothing logged and the server's own conversion sitting
+ * unread three attributes away.
+ *
+ * That is the coarser half of the drift `payloadFor` already degrades on, so it
+ * degrades the same way now: no local coordinate, every row from the conversion.
+ * An EMPTY id still refuses, because it means the document was not written by
+ * this plugin's shell at all and there is nothing to render from.
+ */
+test('an unknown format degrades to the server conversion', () => {
+    const data = readPageData(root({f: 'nope', v: 'x'}));
+
+    expect(data).not.toBeNull();
+    expect(data!.payload.coord).toBeNull();
+    expect(data!.payload.canonical).toBe('x');
+});
+
+test('a missing format is refused outright', () => {
     expect(readPageData(root({v: '3510N07901W'}))).toBeNull();
 });
 

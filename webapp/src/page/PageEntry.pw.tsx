@@ -70,20 +70,30 @@ test('a document with no root renders nothing and does not throw', async ({mount
 });
 
 /*
- * A shell whose format this build does not have. `readPageData` refuses rather
- * than rendering a table of nothing, and the entry point leaves the document
- * alone.
+ * A shell whose format this build does not have still renders every reading.
+ *
+ * This asserted the opposite, and the opposite was the defect: the entry point
+ * left the document alone, so the reader got a wholly blank page on the route
+ * the mobile app opens, while the shell's own `data-conversion` carried MGRS,
+ * UTM, all three angular readings and the region. Nothing was logged, and no
+ * test failed, because this one said blank was correct.
+ *
+ * It degrades the way a canonical-shape disagreement already did: no local
+ * coordinate, every row from the conversion the server worked out. Which is the
+ * point of the shell carrying one at all.
  */
-test('a shell naming a format this build does not have renders nothing', async ({mount, page}) => {
-    const thrown: string[] = [];
-    page.on('pageerror', (error) => thrown.push(error.message));
+test('a shell naming a format this build does not have renders the server readings',
+    async ({mount, page}) => {
+        const thrown: string[] = [];
+        page.on('pageerror', (error) => thrown.push(error.message));
 
-    await load(mount, page, {...SHELL, f: 'notaformat'});
+        await load(mount, page, {...SHELL, f: 'notaformat'});
 
-    await expect(page.locator('#page-root')).toBeEmpty();
-    await expect(page.locator('table')).toHaveCount(0);
-    await expect.poll(() => thrown).toEqual([]);
-});
+        await expect(page.locator('table')).toHaveCount(1);
+        await expect(page.getByText('18S UJ 23478 06483').first()).toBeVisible();
+        await expect(page.getByText('38.8895° N, 77.0353° W')).toBeVisible();
+        await expect.poll(() => thrown).toEqual([]);
+    });
 
 test.describe('the readings page', () => {
     test('renders the table from the shell alone', async ({mount, page}) => {

@@ -367,6 +367,44 @@ func TestOversizedValueIsRejectedBeforeMatching(t *testing.T) {
 	}
 }
 
+// MGRS and UTM are separate switches, and each governs only its own grammar.
+//
+// This is the pin CLAUDE.md names for the one format that ships OFF. UTM is the
+// only grammar here that can decorate a real coordinate and point at the wrong
+// place, because its band letter is ambiguous, so an install has to be able to
+// have grid references without it. Deleted as collateral by the commit that
+// added the map, which left the highest-consequence setting in the package
+// unpinned in both directions while CLAUDE.md still advertised this test.
+//
+// Both tokens are driven under all four states, which is what makes the name
+// true: the surviving test parsed an MGRS token only, so it said nothing about
+// UTM being off, UTM working with MGRS off, or neither being on.
+func TestMGRSAndUTMSwitchIndependently(t *testing.T) {
+	cases := []struct {
+		name          string
+		formats       Formats
+		mgrsOK, utmOK bool
+	}{
+		{"both on", Formats{MGRS: true, UTM: true}, true, true},
+		{"the shipped default: MGRS without UTM", Formats{MGRS: true}, true, false},
+		{"UTM without MGRS", Formats{UTM: true}, false, true},
+		{"neither", Formats{}, false, false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			d := &Decorator{Enabled: func() Formats { return tc.formats }}
+
+			if _, ok := d.Parse("18S UJ 23478 06483", ref); ok != tc.mgrsOK {
+				t.Errorf("MGRS parsed = %v, want %v", ok, tc.mgrsOK)
+			}
+			if _, ok := d.Parse("33U 291000 5628000", ref); ok != tc.utmOK {
+				t.Errorf("UTM parsed = %v, want %v", ok, tc.utmOK)
+			}
+		})
+	}
+}
+
 func TestUTMSwitchedOffStillRendersTheUTMRow(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
