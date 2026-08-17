@@ -149,3 +149,60 @@ test('a rejected restore stays put and says why', async ({mount, page}) => {
     await expect(component.getByText('Could not reach the settings store.')).toBeVisible();
     await expect(component.getByTestId('closed')).toHaveCount(0);
 });
+
+/*
+ * The map under a post is hideable and is not a row, so it is carried by its own
+ * id exactly as the panel's map is. Two maps under one legend, and the editor
+ * has to keep them apart in both directions.
+ */
+test.describe('the map under a post', () => {
+    test('is offered beside the panel map', async ({mount, page}) => {
+        await stubPreferencesRoute(page);
+        const component = await mount(<CustomizeHarness/>);
+
+        await expect(component.getByRole('checkbox', {name: /A small world map/})).toBeChecked();
+        await expect(component.getByRole('checkbox', {name: /Drawn in the channel/})).toBeChecked();
+    });
+
+    test('unticks on its own without taking the panel map with it', async ({mount, page}) => {
+        await stubPreferencesRoute(page, {storedHiddenRows: ['inline']});
+        const component = await mount(<CustomizeHarness/>);
+
+        await expect(component.getByRole('checkbox', {name: /Drawn in the channel/})).not.toBeChecked();
+        await expect(component.getByRole('checkbox', {name: /A small world map/})).toBeChecked();
+    });
+
+    /*
+     * `offered` counts what this editor offers rather than ROWS alone, and the
+     * count only goes wrong in one direction: leaving the new id out of it made
+     * everything-but-the-inline-map read as nothing shown, so the warning fired
+     * over a reader who still had a map in the channel. Unticking every box
+     * cannot catch that, because then the id is hidden either way.
+     */
+    test('does not claim everything is hidden while it is still shown', async ({mount, page}) => {
+        await stubPreferencesRoute(page);
+        const component = await mount(<CustomizeHarness/>);
+
+        const boxes = await component.getByRole('checkbox').all();
+        await boxes.reduce(
+            (chain, box) => chain.then(() => box.uncheck()),
+            Promise.resolve(),
+        );
+        await expect(component.getByText(/Every row is hidden/)).toBeVisible();
+
+        await component.getByRole('checkbox', {name: /Drawn in the channel/}).check();
+
+        await expect(component.getByText(/Every row is hidden/)).toHaveCount(0);
+    });
+
+    test('saves under its own id', async ({mount, page}) => {
+        const calls = await stubPreferencesRoute(page);
+        const component = await mount(<CustomizeHarness/>);
+
+        await component.getByRole('checkbox', {name: /Drawn in the channel/}).uncheck();
+        await component.getByRole('button', {name: 'Save'}).click();
+
+        await expect(component.getByTestId('closed')).toBeVisible();
+        expect(savedHiddenRows(calls)).toEqual(['inline']);
+    });
+});

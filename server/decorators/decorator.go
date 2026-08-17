@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -161,4 +162,39 @@ type Decorator interface {
 	// no-store, so a decorator carrying anything non-public can simply say
 	// nothing.
 	RenderPage(w http.ResponseWriter, params url.Values)
+}
+
+type PostRenderer interface {
+	PostType() string
+}
+
+const (
+	PostTypePrefix   = "custom_"
+	PostTypeMaxLen   = 26
+	PostPropsKey     = "tactical_fusion"
+	PostPropsVersion = 1
+)
+
+func StandalonePostType(d Decorator) string {
+	renderer, ok := d.(PostRenderer)
+	if !ok {
+		return ""
+	}
+
+	postType := renderer.PostType()
+	if !strings.HasPrefix(postType, PostTypePrefix) || len(postType) > PostTypeMaxLen {
+		return ""
+	}
+	return postType
+}
+
+func StandalonePostProps(r Result) map[string]any {
+	props := map[string]any{
+		"version": PostPropsVersion,
+		"type":    r.Type,
+	}
+	for key := range r.Params {
+		props[key] = r.Params.Get(key)
+	}
+	return props
 }

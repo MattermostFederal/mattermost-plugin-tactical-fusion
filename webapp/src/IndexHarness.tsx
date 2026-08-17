@@ -27,6 +27,8 @@ export type Recorded = {
     rhsComponentName?: string;
     rhsTitleName?: string;
     tooltipComponentName?: string;
+    postTypes?: string[];
+    postBodyComponentNames?: string[];
     headerIconName?: string;
     headerDropdownText?: string;
     headerTooltip?: string;
@@ -125,6 +127,16 @@ const IndexHarness: React.FC = () => {
                         order.push('tooltip');
                         result.tooltipComponentName = componentName(component);
                         return 'tooltip-id';
+                    }) as never,
+                    registerPostTypeComponent: ((typeName: string, component: unknown) => {
+                        order.push('post-type');
+                        result.postTypes = [...(result.postTypes ?? []), typeName];
+                        result.postBodyComponentNames = [
+                            ...(result.postBodyComponentNames ?? []), componentName(component)];
+                        return `post-type-id-${typeName}`;
+                    }) as never,
+                    unregisterPostTypeComponent: ((componentId: string) => {
+                        setUnregistered((ids) => [...ids, componentId]);
                     }) as never,
                     registerChannelHeaderButtonAction: ((
                         icon: unknown,

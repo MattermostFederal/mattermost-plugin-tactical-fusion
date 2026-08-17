@@ -217,6 +217,48 @@
             current zoom at the bottom left. <strong>Reset view</strong> takes you back.
         </p>
 
+        <h3 id="location-inline">The map under a post</h3>
+
+        <p>
+            When a message is <strong>nothing but a coordinate</strong>, the map is drawn
+            straight into the channel underneath it, so you do not have to click anything
+            to see where it is. The coordinate still appears as the same link it always
+            was, and clicking it still opens the panel with every reading. A label in
+            front of it is fine: <code>MGRS: 18SUJ2347806483</code> on its own counts, and
+            so does a plain <code>34.0561N,118.2500W</code>. A coordinate with anything
+            else around it, such as <code>target at 34.0561N,118.2500W</code>, or a
+            message with two coordinates in it, gets the link on its own as before.
+        </p>
+
+        <p>
+            It is the same map as everywhere else, with the same controls, so the same
+            caution applies: the scroll wheel over it zooms the map rather than scrolling
+            the channel. Move the pointer off the map to scroll past. Maps are drawn only
+            while their post is on or near the screen and are put away again once you
+            scroll well past, which is what keeps a channel full of coordinates from
+            running your browser out of graphics contexts. The space they occupy is held
+            open either way, so nothing jumps around as you scroll.
+        </p>
+
+        <p>
+            <a href="#location-customize">Customize your view</a> has a separate tick box
+            for this one, <strong>Map under the post</strong>, so you can turn it off in
+            the channel and keep the map in the panel, or the other way round. In compact
+            message display it is not drawn at all.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">Only new posts, and only in the web and desktop apps.</p>
+            <p>
+                Whether a message is only a coordinate is decided when it is posted, so
+                editing a message afterwards does not add the map, and editing one that
+                has it leaves the message showing its raw text until you post it again.
+                The mobile apps show the link as normal. On installs that search with
+                Elasticsearch or OpenSearch, be aware that posts drawn this way do not
+                come back in search results or Recent Mentions.
+            </p>
+        </div>
+
         <div class="alert alert-info">
             <p class="alert-title">The standalone page needs JavaScript.</p>
             <p>
@@ -472,7 +514,11 @@
             picture above the table and leaves every reading in place. It is the one entry
             that takes something else with it, since the
             <a href="#location-region">country</a> is spoken by the map and appears nowhere
-            else. The rest are the table's own rows, in the order the table lists them.
+            else. Below it, <strong>Map under the post</strong> is the other one that is
+            not a row: it controls the
+            <a href="#location-inline">map drawn in the channel</a> and nothing in the
+            panel, so the two can be turned on and off independently. The rest are the
+            table's own rows, in the order the table lists them.
         </p>
 
         <p>

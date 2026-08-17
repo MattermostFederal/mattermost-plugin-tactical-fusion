@@ -14,13 +14,12 @@ import {
     usmtfText,
 } from './format';
 import LocationMap from './map/LocationMap';
-import {viewFor} from './map/view';
+import {mapPageHref, viewFor} from './map/view';
 import {MAP_ID, isRowVisible, ROWS} from './rows';
 import type {HideableID, RowID} from './rows';
 
 import LinkButton from '../../components/LinkButton';
-import {docsUrl, pluginBaseUrl} from '../../plugin_url';
-import {withTheme} from '../theme';
+import {docsUrl} from '../../plugin_url';
 
 import type {LocationPayload} from './index';
 
@@ -253,16 +252,8 @@ const LocationReadings: React.FC<{
     // decorator link either: this route is outside /decorate, so the framework's
     // click handler does not recognise it and the browser simply follows it.
     //
-    // Which is exactly why the theme is written here. The handler is what puts
-    // _theme on every other page link, and it stands aside for this one, so a
-    // map page opened from a light sidebar on a dark laptop came up dark, map
-    // palette and all. Read at render rather than at click, one step less live
-    // than the handler, and in exchange it survives a middle-click.
-    const pageParams = new URLSearchParams({f: format, v: canonical});
-    if (raw !== '' && raw !== canonical) {
-        pageParams.set('r', raw);
-    }
-    const pageHref = withTheme(`${pluginBaseUrl()}/map?${pageParams.toString()}`);
+    // The theme travels with it, for the reason mapPageHref records.
+    const pageHref = mapPageHref(payload);
 
     // Through the same viewFor the hover card and the map page use, so the
     // three surfaces cannot come to disagree about where a coordinate is.

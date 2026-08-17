@@ -7,6 +7,8 @@ import type {PluginRegistry} from 'types/mattermost-webapp';
 import {RhsTitle, RhsView} from './components/rhs/RhsView';
 import {installDecoratorClickHandler} from './decorators/click_handler';
 import {registerBuiltinDecorators} from './decorators/index';
+import {DecoratorPostBody} from './decorators/PostBody';
+import {all} from './decorators/registry';
 import {clearSelection, initRhs, toggleRhs} from './decorators/selection';
 import {installDecoratorStyles} from './decorators/styles';
 import {DecoratorTooltip} from './decorators/Tooltip';
@@ -52,6 +54,18 @@ export default class Plugin {
         // by declaring one, not by touching the bootstrap.
         const tooltipId = registry.registerLinkTooltipComponent(DecoratorTooltip);
         this.disposers.push(() => registry.unregisterComponent(tooltipId));
+
+        // One per declared post type, because that is what the registry keys
+        // on. A type this build does not register falls through to
+        // Mattermost's own markdown, which is the fallback for an older bundle
+        // against a newer server.
+        for (const decorator of all()) {
+            if (!decorator.postType || !decorator.Inline) {
+                continue;
+            }
+            const bodyId = registry.registerPostTypeComponent(decorator.postType, DecoratorPostBody);
+            this.disposers.push(() => registry.unregisterPostTypeComponent(bodyId));
+        }
 
         const headerId = registry.registerChannelHeaderButtonAction(
             <HeaderIcon/>,

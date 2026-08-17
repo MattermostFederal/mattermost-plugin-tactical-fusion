@@ -405,6 +405,10 @@ func TestValidateHiddenRows(t *testing.T) {
 		// constant. Revert the widening in KnownRow and every other test here
 		// stays green while a reader can never hide the map.
 		{name: "the map, which is hideable but is not a row", rows: []string{"map"}, want: []string{"map"}},
+
+		// The map under a post, likewise. Revert the widening in KnownRow and
+		// every other test here stays green while a reader can never hide it.
+		{name: "the map under a post, hideable and not a row", rows: []string{"inline"}, want: []string{"inline"}},
 		{
 			name: "duplicates collapse, because they were never two rows",
 			rows: []string{"ddm", "ddm", "datum"}, want: []string{"ddm", "datum"},

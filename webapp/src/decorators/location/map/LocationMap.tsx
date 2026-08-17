@@ -39,7 +39,7 @@ import type {View} from './view';
  */
 const MAP_MIN_HEIGHT_PX = 200;
 const MAP_MAX_HEIGHT_PX = 360;
-const MAP_HEIGHT = `clamp(${MAP_MIN_HEIGHT_PX}px, 30vh, ${MAP_MAX_HEIGHT_PX}px)`;
+export const MAP_HEIGHT = `clamp(${MAP_MIN_HEIGHT_PX}px, 30vh, ${MAP_MAX_HEIGHT_PX}px)`;
 
 /*
  * The hover card's map.
@@ -171,6 +171,7 @@ const styles: Record<string, React.CSSProperties> = {
         position: 'absolute',
         left: 8,
         bottom: 8,
+        width: 'fit-content',
         margin: 0,
         padding: '2px 6px',
         borderRadius: 4,

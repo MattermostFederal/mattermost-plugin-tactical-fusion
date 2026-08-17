@@ -75,3 +75,52 @@ func TestExtractReachesParseAndTheLabel(t *testing.T) {
 		t.Fatalf("Decorate()\n got: %s\nwant: %s", got, want)
 	}
 }
+
+type postTypeDecorator struct {
+	decorators.Decorator
+	postType string
+}
+
+func (d *postTypeDecorator) PostType() string { return d.postType }
+
+// Posts.Type is VARCHAR(26) and Post.IsValid checks the prefix but never the
+// length, so an over-long type is not a bad render, it is a database error at
+// save time: the author cannot post at all. Refusing it here costs the inline
+// rendering and nothing else, which is the direction every other guard in the
+// post path already leans.
+func TestStandalonePostTypeRefusesATypeThatCannotBeStored(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		postType string
+		want     string
+	}{
+		{"a legal custom type", "custom_tf_location", "custom_tf_location"},
+		{"exactly the column width", "custom_" + "abcdefghijklmnopqrs", "custom_abcdefghijklmnopqrs"},
+		{"one over the column width", "custom_" + "abcdefghijklmnopqrst", ""},
+		{"missing the custom prefix", "tf_location", ""},
+		{"empty", "", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if len(tc.want) > decorators.PostTypeMaxLen {
+				t.Fatalf("the test case itself is over the limit: %q", tc.want)
+			}
+
+			got := decorators.StandalonePostType(&postTypeDecorator{postType: tc.postType})
+			if got != tc.want {
+				t.Fatalf("StandalonePostType(%q) = %q, want %q", tc.postType, got, tc.want)
+			}
+		})
+	}
+}
+
+// A decorator that declares nothing gets no type, which is what keeps a lone
+// DTG post an ordinary post.
+func TestStandalonePostTypeIsEmptyForADecoratorThatDeclaresNone(t *testing.T) {
+	if got := decorators.StandalonePostType(&plainDecorator{}); got != "" {
+		t.Fatalf("StandalonePostType() = %q, want %q", got, "")
+	}
+}
+
+type plainDecorator struct {
+	decorators.Decorator
+}

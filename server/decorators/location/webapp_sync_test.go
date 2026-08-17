@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location/mapdata"
 )
 
@@ -412,5 +413,48 @@ func TestWebappMapSectionIDMatches(t *testing.T) {
 	}
 	if m[1] != SectionMap {
 		t.Errorf("the map section is %q here and %q in the webapp", SectionMap, m[1])
+	}
+}
+
+// The map under a post is hideable, is not a row, and is a second thing a
+// rename would break silently in exactly the way the panel map's would.
+func TestWebappInlineSectionIDMatches(t *testing.T) {
+	source := readWebappSource(t, "map/../rows.ts")
+
+	m := regexp.MustCompile(`export const INLINE_ID = '([a-z]+)';`).FindStringSubmatch(source)
+	if m == nil {
+		t.Fatal("no `export const INLINE_ID` in rows.ts")
+	}
+	if m[1] != SectionInline {
+		t.Errorf("the inline section is %q here and %q in the webapp", SectionInline, m[1])
+	}
+}
+
+// The custom post type is a third cross-language string, and a mismatch is the
+// quietest kind: the server stamps a type this build's webapp registered
+// nothing for, Mattermost falls through to ordinary markdown, and the reader
+// simply never sees a map. Nothing is logged on either side.
+func TestWebappPostTypeMatches(t *testing.T) {
+	source := readWebappSource(t, "index.ts")
+
+	m := regexp.MustCompile(`postType: '([a-z_]+)',`).FindStringSubmatch(source)
+	if m == nil {
+		t.Fatal("no `postType:` in index.ts")
+	}
+	if m[1] != PostType {
+		t.Errorf("the post type is %q here and %q in the webapp", PostType, m[1])
+	}
+}
+
+// Posts.Type is VARCHAR(26). Post.IsValid checks the custom_ prefix and never
+// the length, so an over-long type is a database error at save time, which is
+// the author being unable to post at all.
+func TestPostTypeFitsTheColumn(t *testing.T) {
+	if len(PostType) > decorators.PostTypeMaxLen {
+		t.Fatalf("PostType %q is %d bytes, over the %d the column holds",
+			PostType, len(PostType), decorators.PostTypeMaxLen)
+	}
+	if decorators.StandalonePostType(&Decorator{}) != PostType {
+		t.Fatal("the framework refused this package's own post type")
 	}
 }

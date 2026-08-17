@@ -728,3 +728,160 @@ func TestReferenceTime(t *testing.T) {
 		}
 	})
 }
+
+// standaloneProps pulls this plugin's props off a post, or nil.
+func standaloneProps(t *testing.T, post *model.Post) map[string]any {
+	t.Helper()
+
+	if post == nil {
+		return nil
+	}
+	value, ok := post.GetProps()[decorators.PostPropsKey]
+	if !ok {
+		return nil
+	}
+	props, ok := value.(map[string]any)
+	if !ok {
+		t.Fatalf("props under %q are %T, want map[string]any", decorators.PostPropsKey, value)
+	}
+	return props
+}
+
+func TestDecoratePostStampsAMessageThatIsOnlyACoordinate(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		message string
+		wantF   string
+		wantV   string
+	}{
+		{"a bare coordinate", "34.0561N,118.2500W", "ddh", "34.0561N,118.2500W"},
+		{"a labeled grid reference", "MGRS: 18SUJ2347806483", "mgrs", "18SUJ2347806483"},
+		{"surrounding whitespace", "  34.0561N,118.2500W\n", "ddh", "34.0561N,118.2500W"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := newTestPlugin(t, "https://example.com", true)
+
+			got := p.decoratePost(&model.Post{Message: tc.message}, hookRef)
+			if got == nil {
+				t.Fatal("decoratePost left the post alone, want it decorated")
+			}
+			if got.Type != location.PostType {
+				t.Fatalf("Type = %q, want %q", got.Type, location.PostType)
+			}
+
+			props := standaloneProps(t, got)
+			if props == nil {
+				t.Fatal("no props were stamped on a standalone coordinate")
+			}
+			if props["type"] != location.Type {
+				t.Fatalf("props[type] = %v, want %q", props["type"], location.Type)
+			}
+			if props["f"] != tc.wantF {
+				t.Fatalf("props[f] = %v, want %q", props["f"], tc.wantF)
+			}
+			if props["v"] != tc.wantV {
+				t.Fatalf("props[v] = %v, want %q", props["v"], tc.wantV)
+			}
+			if props["version"] != decorators.PostPropsVersion {
+				t.Fatalf("props[version] = %v, want %d", props["version"], decorators.PostPropsVersion)
+			}
+		})
+	}
+}
+
+// The author's own spelling travels in the props exactly as it travels in the
+// URL, and is omitted when it would only repeat the canonical form.
+func TestDecoratePostCarriesTheAuthorsTextOnlyWhenItDiffers(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	differs := standaloneProps(t, p.decoratePost(&model.Post{Message: "34.0561N, 118.2500W"}, hookRef))
+	if differs["r"] != "34.0561N, 118.2500W" {
+		t.Fatalf("props[r] = %v, want the author's text", differs["r"])
+	}
+
+	same := standaloneProps(t, p.decoratePost(&model.Post{Message: "34.0561N,118.2500W"}, hookRef))
+	if _, ok := same["r"]; ok {
+		t.Fatalf("props carry r = %v when it only repeats v", same["r"])
+	}
+}
+
+func TestDecoratePostDoesNotStampACoordinateInASentence(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	got := p.decoratePost(&model.Post{Message: "target at 34.0561N,118.2500W"}, hookRef)
+	if got == nil {
+		t.Fatal("decoratePost left the post alone, want it decorated")
+	}
+	if got.Type != "" {
+		t.Fatalf("Type = %q, want it left empty", got.Type)
+	}
+	if props := standaloneProps(t, got); props != nil {
+		t.Fatalf("props were stamped on a coordinate inside a sentence: %v", props)
+	}
+}
+
+func TestDecoratePostDoesNotStampTwoCoordinates(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	got := p.decoratePost(&model.Post{Message: "34.0561N,118.2500W 35.0000N,119.0000W"}, hookRef)
+	if got == nil {
+		t.Fatal("decoratePost left the post alone, want it decorated")
+	}
+	if got.Type != "" {
+		t.Fatalf("Type = %q, want it left empty", got.Type)
+	}
+}
+
+// DTG declares no PostType, so a lone date-time group stays an ordinary post.
+// Losing that is how every DTG post would silently acquire a custom type and,
+// with it, the Elasticsearch and translation costs the location one accepts.
+func TestDecoratePostDoesNotStampALoneDateTimeGroup(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	got := p.decoratePost(&model.Post{Message: "091630ZAUG26"}, hookRef)
+	if got == nil {
+		t.Fatal("decoratePost left the post alone, want it decorated")
+	}
+	if got.Type != "" {
+		t.Fatalf("Type = %q, want it left empty", got.Type)
+	}
+	if props := standaloneProps(t, got); props != nil {
+		t.Fatalf("props were stamped on a date-time group: %v", props)
+	}
+}
+
+// Another integration's custom type is real mission content. Clobbering it
+// would be the same mistake isSystemPost's narrow deny list exists to avoid.
+func TestDecoratePostKeepsAnotherIntegrationsCustomType(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	got := p.decoratePost(&model.Post{Message: "34.0561N,118.2500W", Type: "custom_something"}, hookRef)
+	if got == nil {
+		t.Fatal("decoratePost skipped a custom post type, want it decorated")
+	}
+	if got.Type != "custom_something" {
+		t.Fatalf("Type = %q, want it left as %q", got.Type, "custom_something")
+	}
+	if props := standaloneProps(t, got); props != nil {
+		t.Fatalf("props were stamped over another integration's post: %v", props)
+	}
+}
+
+// Clone carries whatever props arrived, and AddProp is what keeps them.
+func TestDecoratePostKeepsAnotherIntegrationsProps(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	post := &model.Post{Message: "34.0561N,118.2500W"}
+	post.AddProp("attachments", "theirs")
+
+	got := p.decoratePost(post, hookRef)
+	if got == nil {
+		t.Fatal("decoratePost left the post alone, want it decorated")
+	}
+	if got.GetProps()["attachments"] != "theirs" {
+		t.Fatalf("another integration's prop was lost: %v", got.GetProps())
+	}
+	if standaloneProps(t, got) == nil {
+		t.Fatal("our own props were not stamped alongside theirs")
+	}
+}

@@ -73,10 +73,20 @@ export function isRowID(value: string): value is RowID {
  */
 export const MAP_ID = 'map';
 
-/** What the reader's hidden list may name: every row, plus the map. */
-export type HideableID = RowID | typeof MAP_ID;
+/**
+ * The map drawn under a post whose whole message is one coordinate, which a
+ * reader hides the same way and which is not a row either.
+ *
+ * Written in its own shape for the same reason MAP_ID is: the Go sync test
+ * counts row-shaped literals in this file and requires the count to equal the
+ * catalog.
+ */
+export const INLINE_ID = 'inline';
 
-const HIDEABLE = new Set<string>([...ROWS.map((row) => row.id), MAP_ID]);
+/** What the reader's hidden list may name: every row, plus the two maps. */
+export type HideableID = RowID | typeof MAP_ID | typeof INLINE_ID;
+
+const HIDEABLE = new Set<string>([...ROWS.map((row) => row.id), MAP_ID, INLINE_ID]);
 
 /**
  * Whether an id names something this build renders and a reader may hide.

@@ -1,3 +1,5 @@
+import {pluginBaseUrl} from '../../../plugin_url';
+import {withTheme} from '../../theme';
 import type {ConversionState} from '../convert';
 import {cellDegrees} from '../format';
 import type {LocationPayload} from '../index';
@@ -41,4 +43,26 @@ export function viewFor(
     const [cellDegLat, cellDegLon] = cellDegrees(coord, format, canonical, lat);
 
     return {lat, lon, cellDegLat, cellDegLon, region: position?.region ?? ''};
+}
+
+/**
+ * Where "Open larger" goes, for every surface that offers it.
+ *
+ * `/map` is outside `/decorate`, so the framework's click handler does not
+ * recognise it and the browser simply follows it. Which is exactly why the
+ * theme is written here rather than at click: the handler is what puts `_theme`
+ * on every other page link and it stands aside for this one, so a map page
+ * opened from a light sidebar on a dark laptop came up dark, palette and all.
+ * Read at render, one step less live than the handler, and in exchange it
+ * survives a middle-click.
+ */
+export function mapPageHref(payload: LocationPayload): string {
+    const {format, canonical, raw} = payload;
+
+    const params = new URLSearchParams({f: format, v: canonical});
+    if (raw !== '' && raw !== canonical) {
+        params.set('r', raw);
+    }
+
+    return withTheme(`${pluginBaseUrl()}/map?${params.toString()}`);
 }

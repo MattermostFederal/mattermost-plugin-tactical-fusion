@@ -15,6 +15,8 @@ import (
 // Type is the URL path segment and the key shared with the webapp decorator.
 const Type = "location"
 
+const PostType = decorators.PostTypePrefix + "tf_location"
+
 // pageTitle is the browser tab name and the page heading. A category rather
 // than the value, matching the sidebar header and the DTG page.
 const pageTitle = "Location"
@@ -97,7 +99,11 @@ type Decorator struct {
 
 var _ decorators.Decorator = (*Decorator)(nil)
 
+var _ decorators.PostRenderer = (*Decorator)(nil)
+
 func (d *Decorator) Type() string { return Type }
+
+func (d *Decorator) PostType() string { return PostType }
 
 // monikerPrefixes are the USMTF field labels, taken from the standard rather
 // than invented.

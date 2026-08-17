@@ -86,4 +86,8 @@ var rowByID = func() map[RowID]bool {
 
 const SectionMap RowID = "map"
 
-func KnownRow(id RowID) bool { return rowByID[id] || id == SectionMap }
+const SectionInline RowID = "inline"
+
+func KnownRow(id RowID) bool {
+	return rowByID[id] || id == SectionMap || id == SectionInline
+}

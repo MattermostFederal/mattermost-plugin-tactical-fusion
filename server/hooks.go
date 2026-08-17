@@ -103,7 +103,7 @@ func (p *Plugin) decoratePost(post *model.Post, ref time.Time) (result *model.Po
 	}
 
 	tagger := &decorators.Tagger{Registry: p.decorators, URLPrefix: p.decorateURLPrefix()}
-	decorated := tagger.Decorate(post.Message, ref)
+	decorated, found := tagger.DecorateWithResult(post.Message, ref)
 	if decorated == post.Message {
 		return nil
 	}
@@ -125,7 +125,22 @@ func (p *Plugin) decoratePost(post *model.Post, ref time.Time) (result *model.Po
 
 	updated := post.Clone()
 	updated.Message = decorated
+	stampStandalonePost(updated, p.decorators, found)
 	return updated
+}
+
+func stampStandalonePost(post *model.Post, registry *decorators.Registry, found decorators.Result) {
+	if !found.SoleToken || post.Type != "" {
+		return
+	}
+
+	postType := decorators.StandalonePostType(registry.Get(found.Type))
+	if postType == "" {
+		return
+	}
+
+	post.Type = postType
+	post.AddProp(decorators.PostPropsKey, decorators.StandalonePostProps(found))
 }
 
 // isSystemPost reports whether a post is server-generated chrome.

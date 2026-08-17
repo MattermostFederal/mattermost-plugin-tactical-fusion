@@ -655,6 +655,26 @@ test.describe('the zoom readout', () => {
         await expect(noteOf(component)).toHaveText(NO_WEBGL);
         await expect(component.getByText(ZOOM_READOUT)).toBeHidden();
     });
+
+    /*
+     * An absolutely positioned box shrinks to fit only while nothing gives it a
+     * width, and this one is a <p> drawn inside a Mattermost post body, whose
+     * own paragraph styling does exactly that. The readout stretched the width
+     * of the map on the inline surface and nowhere else, which is why the
+     * hostile rule is injected here rather than waited for.
+     */
+    test('stays its own width under a host that stretches paragraphs', async ({mount, page}) => {
+        await serveMapAssets(page);
+        await page.addStyleTag({content: 'p { width: 100%; }'});
+
+        const component = await mount(<LocationMapHarness start='Los Angeles'/>);
+        await expectDrawn(component);
+
+        const readout = await component.getByText(ZOOM_READOUT).boundingBox();
+        const canvas = await component.locator('canvas').first().boundingBox();
+
+        expect(readout!.width).toBeLessThan(canvas!.width / 2);
+    });
 });
 
 /*

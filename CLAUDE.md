@@ -388,6 +388,24 @@ UTM has a group of its own, headed with the fact that it ships off, because on a
 default install every row in it renders with no link and under a generic grid
 heading that reads as a bug.
 
+**"Drawn as a map in the channel" is the one group whose claim is per row rather
+than per group**, carried by `detailExample.inline`. Every row in it decorates,
+so `decorates` says nothing about what the group is for, and the group
+deliberately holds both answers because the distinction *is* the content: what a
+reader needs is which messages qualify, and a group of only-qualifying rows would
+not teach that. The rows cannot demonstrate it, only describe it, since an
+inline map needs the whole message and every row here lives inside a post full of
+other rows. A reader copies one and posts it alone.
+
+`TestEveryInlineDetailDrawsWhatItClaims` holds those rows to the flag in both
+directions **through `decoratePost`**, not through the tagger, so a row promising
+a map fails if anything on the stamping path stops working rather than only if
+the tagger's verdict moves. It is scoped to that one group, because most single
+coordinates elsewhere in the list would also stamp and marking each of them would
+turn an incidental property into thirty claims nobody reads; a second loop
+refuses the flag anywhere outside the group, which is what keeps that scoping
+honest rather than merely narrow.
+
 The first group is generated from the moment the command runs, at offsets either
 side of the flash threshold plus a negative one, which counts up and is the half
 of the behavior easiest to forget exists. A live group has no fixed text, so the
@@ -1604,6 +1622,187 @@ string value does not type-check there. The webapp's read path is deliberately
 forgiving, so a regression that narrows it back drops the id silently: the reader
 unticks Map, saves, and it is back after a reload with nothing logged.
 
+### The map under a post
+
+When a posted message is **only** a coordinate, the server stamps the post with a
+custom type and props, and the webapp renders that post's body itself: the link
+exactly as before, plus the map under it. Everything else is unchanged, which is
+what makes this additive rather than a second rendering path.
+
+**The verdict is the tagger's, not a regex over the decorated text.**
+`DecorateWithResult` returns a `Result` beside the string, and `SoleToken` is
+`len(accepted) == 1` **and** that candidate's `match` covering the message apart
+from surrounding whitespace. Both halves are needed: `see MGRS: 18SUJ2347806483`
+also accepts exactly one candidate. It is `match` rather than `replace`, because
+a location moniker sets `ReplaceGroup` and `replace` therefore covers only the
+token: measuring `replace` would refuse `MGRS: 18SUJ2347806483`, which is the
+ordinary military spelling of a position and the case this exists for. Guards are
+zero-width by construction, so `match` is the token, or the label and the token,
+and nothing else. The verdict is taken **before** `applyReplacements`, which
+re-sorts `accepted` in place.
+
+Recovering this from the decorated string instead would mean undoing
+`labelEscaper` and `buildURL`'s percent-encoding to learn something the tagger
+had in hand two frames earlier, and it still could not tell a lone token from one
+with a moniker in front of it.
+
+**A decorator opts in through an optional Go interface**, `PostRenderer`, type
+asserted rather than added to `Decorator`. That is the Go analogue of the
+webapp's optional `Hover`, and it leaves the five existing implementations
+untouched. DTG declares nothing, so a lone date-time group stays an ordinary
+post and pays none of the costs below.
+
+**One custom type per decorator, not one for the plugin.** That is what buys the
+fallback: `post_message_view.tsx` checks `Object.hasOwn(pluginPostTypes, postType)`
+with no `else` and falls straight through to `PostMarkdown`, so a type an older
+bundle does not know, or any type at all once the plugin is disabled, renders as
+ordinary markdown. A plugin-wide type would instead route to a component that
+then has to render the message as literal text.
+
+**`Posts.Type` is `VARCHAR(26)` and `Post.IsValid` checks the `custom_` prefix
+but never the length.** An over-long type is therefore not a bad render, it is a
+database error at save time, which is the author unable to post at all: exactly
+the failure `decoratePost` is arranged to avoid. `StandalonePostType` refuses
+anything over `PostTypeMaxLen` and the decorator simply gets no inline rendering,
+which is why the type is `custom_tf_location` and not the spelled-out form.
+
+The stamp is guarded on `post.Type == ""`, because another integration's custom
+type is real mission content, and it uses `AddProp` rather than a map assignment
+so their props survive. It happens only on the path that keeps `decorated`,
+which is the one branch where "we found a standalone token" and "the stored
+message is decorated" can diverge.
+
+**What setting `Post.Type` costs, measured against Mattermost master rather than
+assumed.** All three were checked and accepted deliberately:
+
+- **Elasticsearch and OpenSearch exclude the post from search entirely.** Their
+  `SearchPosts` builds an **allowlist** of `type: default` and
+  `type: slack_attachment`, not a `system_` denylist, so a `custom_*` post is
+  indexed and then never matches. That takes Recent Mentions with it. Installs on
+  Postgres are unaffected, since `post_store.go` filters `system_%` only. This is
+  the largest cost in the feature and it lands on exactly the posts it is for.
+- **Auto-translation is off**, at six call sites that all test `post.type === ''`.
+- **Link previews, image embeds and message attachments are dropped**, because
+  `message_with_additional_content.tsx` computes `hasPlugin` from the raw
+  `post.type` and skips `PostBodyAdditionalContent` when a plugin owns the body.
+
+`Props["type"]` was the alternative: `post_message_view.tsx` reads
+`post.props?.type ?? post.type` while all three of the above key on `post.type`,
+so dispatching through props alone keeps search, translation and embeds. It was
+declined in favour of a post that declares itself in its own `Type`. Record that
+as a decision rather than an oversight; the two differ by a few lines in
+`stampStandalonePost`.
+
+**The plugin owns the post body, so a render throw costs the message.**
+Mattermost wraps a registered post-type component in `PluggableErrorBoundary`,
+which replaces the whole body with "An error occurred in the … plugin." So the
+link renders **outside** `components/ErrorBoundary.tsx` and only the map renders
+inside it. That one nesting is what keeps a map bug from destroying what somebody
+wrote.
+
+**Props and message must agree, or nothing is drawn.** `Post.Type` survives an
+edit unconditionally (`model.PostPatch` has no `Type` field) and `Props` may not,
+since they are replaced by whatever the client sends and are absent from
+`PreserveIdentityPropsFrom`'s rescue list. So a stamped post can arrive whose
+message no longer names its payload. `DecoratorPostBody` therefore requires the
+props and the message's sole decorator link to name the same `(f, v)` and falls
+back to the message text otherwise. **The cost, accepted deliberately: markdown
+in an edited message renders literally**, because a plugin has no access to
+Mattermost's renderer. Adding `MessageWillBeUpdated` to clear a stale stamp was
+declined, and `TestPluginHasNoMessageWillBeUpdatedHook` still stands.
+
+Two more things a reader will meet before they report them as bugs. A reader
+with post formatting turned off gets `<span>{post.message}</span>` and never
+reaches the component at all. And `ShowMore` still wraps the body at 600px:
+`FULL_HEIGHT_POST_TYPES` is a one-entry allowlist for `custom_spillage_report`,
+not a `custom_` prefix rule.
+
+**The webapp half mirrors the hover exactly.** `Decorator<T>` gains `postType`
+and `Inline`, `index.tsx` registers one body component per declared type, and
+nothing in the bootstrap changes when a decorator adds one. `Inline` differs from
+`Hover` in one way worth knowing: returning `null` here means **no view at all**,
+where `Tooltip.tsx` has already built its chrome and `null` there is an empty
+bordered box.
+
+The body renders the label as text and the token as a plain
+`<a href={href}>{label}</a>`. Two of the three things a decorated link normally
+does come back for nothing, because neither is tied to Mattermost's renderer: the
+teal chip is the stylesheet's `a[href^=…]` rule, and the sidebar is the
+document-level capture click handler. **The hover card is expected not to
+survive, and that is unverified.** `registerLinkTooltipComponent` is wired into
+Mattermost's own markdown link rendering and this anchor does not go through it.
+It costs little worth having, since the hover is the map and the map is already
+on screen underneath, but confirm it on a running server and record the answer
+here.
+
+The qualifying test the component runs on the message is
+`soleDecoratorLink` in `decorators/inline.ts`, and its label is matched as a
+**shape** (`^[A-Za-z][A-Za-z0-9]{1,15}[ \t]*:[ \t]*`) rather than as the USMTF
+moniker list. That list is Go-only grammar and mirroring it would be a third
+cross-language duplication that buys nothing: the server already decided this is
+a coordinate and the link is the proof, and `Target: <coord>` is as much a
+coordinate-only message as `LATM: <coord>`. The destination pattern is
+`[^()\s]+`, which is correct **because** `buildURL` percent-encodes `(` and `)`
+in the query; the one honest limit is a subpath install whose path contains a
+paren, and such a link is already broken by CommonMark on every client.
+
+**The map is mounted only while its post is near the screen.** Browsers cap live
+WebGL contexts at roughly sixteen, shared with the panel and any hover card, and
+a channel of coordinate-only posts is exactly the shape that stresses that.
+`useNearViewport` in `map/near_viewport.ts` owns it:
+
+- `NEAR_VIEWPORT_MARGIN` is `300px 0px`. A map plus its post is roughly 420px and
+  a tall channel about 900px, so `(900 + 600) / 420` is about four live at once
+  in the worst case. A wider margin pre-warms maps the reader may never reach.
+- `RELEASE_AFTER_MS` is 2000, and the hysteresis is in **time** rather than in a
+  second observer with a wider margin: a reader parked on the boundary would
+  otherwise build and tear down a context on every small movement.
+- It returns true forever where `IntersectionObserver` is missing, the same
+  posture `LocationMap` takes for a missing `ResizeObserver`, so no host is left
+  on a permanent placeholder because it lacked an optimisation.
+
+While the map is down, the box **reserves `MAP_HEIGHT`** so the channel does not
+jump as the reader scrolls past. That is why `MAP_HEIGHT` is exported;
+passing `fill` instead would also suppress the "Open larger" caption.
+
+The preference is read in the **outer** component so the inner one never mounts,
+and `useConversion` lives in the **inner** one. Mattermost renders on the order
+of thirty posts at a time, so outside the gate every qualifying post in the
+rendered window would fetch whether or not the reader ever sees it.
+
+`INLINE_MAX_WIDTH_PX` is 640, which at the tall end of `MAP_HEIGHT` is 16:9. It
+matters because `zoomForSpan(lat, widthPx)` holds `TARGET_SPAN_METERS` across the
+**width**: uncapped, a 2000px centre channel would open roughly 1.6 zoom levels
+deeper than the panel does for the same coordinate.
+
+The map is the panel's, not the hover's: controls, gestures, zoom readout and
+"Open larger". **The wheel therefore zooms it rather than scrolling the
+channel**, and unlike the panel this is a column a reader scrolls through rather
+than one box they chose to open. `cooperativeGestures` is the one-line
+alternative if it bites. Compact display draws the link and no map, since compact
+is a density choice. There is no `isRHS` suppression today, though this hook does
+supply the signal, so it is one line if a map in a thread proves noisy.
+
+A `rejected` conversion draws **nothing** rather than the hover's "Not a
+coordinate": the post's own link is still on screen and the panel is one click
+away, so a refusal banner under somebody's message is loud out of proportion to a
+hand-edited link.
+
+**Drawing inside a post body means inheriting the host's CSS**, which the panel
+and the pages do not. The zoom readout is a `<p>` positioned with `left` and
+`bottom` and no width, and an absolutely positioned box shrinks to fit only while
+nothing gives it one: Mattermost's paragraph styling does, so the readout
+stretched the whole width of the map inline and nowhere else. `width:
+fit-content` is the fix and it belongs on the shared component rather than on the
+inline surface, since it is what that element always meant. `stays its own width
+under a host that stretches paragraphs` in `LocationMap.pw.tsx` injects the
+hostile rule rather than waiting for it, because the component environment has no
+Mattermost CSS and the test would otherwise pass either way. Anything else drawn
+over the map is exposed the same way.
+
+The reader hides it with `INLINE_ID` / `SectionInline`, its own id beside the
+panel map's, and everything the panel map's id says applies here too.
+
 ## The post size limit
 
 **It cannot be read.** `Post.IsValid` takes the limit as an argument, the server
@@ -2071,9 +2270,24 @@ Two prerequisites from the implementation plan need a running server and have
   ever checked. If it does not, every decorated link on mobile costs a sign-in
   before the page. Answer it with a phone and record both halves here.
 
+  **The mobile source points the opposite way from what that assumed**, and this
+  is worth chasing rather than leaving as a note. `openLink` runs
+  `normalizeProtocol`, which returns a string with no `:` unchanged, then
+  `matchDeepLink`, whose `parseDeepLink` recognizes only channels, DMs, `/pl/`
+  permalinks, playbooks and magic links. `/plugins/…` matches none of those, so
+  the bare relative string reaches `Linking.openURL` and the failure path shows
+  "Unable to open the link." The code path is read from source; whether
+  `Linking.openURL` actually rejects it at the OS level is not, and needs a
+  phone. If it does, **every decorated link on mobile is dead today**, which is a
+  larger problem than any one feature and should be its own piece of work.
+
 Also unverified: which post sources actually reach `MessageWillBePosted`
 (`p.API.CreatePost`, incoming webhooks, bot posts, `in_channel` command
 responses). Record the real behavior here once tested.
+
+And whether a plugin-rendered anchor still collects a
+`registerLinkTooltipComponent` hover. See "The map under a post": it is expected
+not to, which costs a coordinate-only post its hover card and nothing else.
 
 ## Built-in documentation
 

@@ -19,6 +19,8 @@ import (
 type detailExample struct {
 	text string
 	note string
+
+	inline bool
 }
 
 // detailGroup is one labeled block of examples that all share an outcome.
@@ -80,6 +82,8 @@ func liveDetailExamples(ref time.Time) []detailExample {
 
 	return examples
 }
+
+const inlineDetailHeading = "Drawn as a map in the channel"
 
 // dtgDetailGroups is every date-time group example, in the order they are posted.
 var dtgDetailGroups = []detailGroup{{
@@ -261,6 +265,16 @@ var locationDetailGroups = []detailGroup{{
 		{text: "11S 385000 3769000", note: "N and S are read as latitude bands, not as hemispheres"},
 		{text: "UTMO:33U291000 5628000", note: "the USMTF grid labels"},
 		{text: "UTMT:33UTS9099928000", note: "run together, which is label-only for UTM"},
+	},
+}, {
+	heading:   inlineDetailHeading,
+	decorates: true,
+	examples: []detailExample{
+		{text: "34.0561, -118.2500", inline: true, note: "a message that is only a coordinate draws its map below it"},
+		{text: "MGRS: 18SUJ2347806483", inline: true, note: "a field label in front of it still counts"},
+		{text: "3510N07901W", inline: true, note: "any grammar, so long as it is the whole message"},
+		{text: "target at 32U MV 12 34", note: "anything else in the message and it is the link alone"},
+		{text: "18S UJ 23478 06483 32U MV 12 34", note: "two coordinates, so neither one is the message"},
 	},
 }, {
 	heading:   "In a sentence",

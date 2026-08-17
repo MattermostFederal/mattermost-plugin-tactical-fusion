@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from 'react';
 
-import {MAP_ID, ROWS} from './rows';
+import {INLINE_ID, MAP_ID, ROWS} from './rows';
 import type {HideableID} from './rows';
 
 import LinkButton from '../../components/LinkButton';
@@ -156,7 +156,7 @@ const Customize: React.FC<Props> = ({onClose}) => {
     // map is hideable and is not a row, so subtracting the hidden list from
     // ROWS.length went negative once everything was hidden and silenced the
     // warning in exactly the case it exists for.
-    const offered: HideableID[] = [MAP_ID, ...ROWS.map((row) => row.id)];
+    const offered: HideableID[] = [MAP_ID, INLINE_ID, ...ROWS.map((row) => row.id)];
     const shown = offered.filter((id) => !hidden.includes(id)).length;
 
     return (
@@ -196,6 +196,20 @@ const Customize: React.FC<Props> = ({onClose}) => {
                             <span style={styles.rowHint}>{'A small world map showing where the coordinate is'}</span>
                         </span>
                     </label>
+                    <label style={styles.row}>
+                        <input
+                            type='checkbox'
+                            checked={!hidden.includes(INLINE_ID)}
+                            disabled={busy || loading}
+                            onChange={() => toggle(INLINE_ID)}
+                        />
+                        <span style={styles.label}>
+                            {'Map under the post'}
+                            <span style={styles.rowHint}>
+                                {'Drawn in the channel when a message is only a coordinate'}
+                            </span>
+                        </span>
+                    </label>
                     {ROWS.map((row) => (
                         <label
                             key={row.id}
@@ -229,8 +243,8 @@ const Customize: React.FC<Props> = ({onClose}) => {
                         'bottom. That is allowed, and this link is how you get back.' : ''}
                 </p>
                 <p style={styles.hint}>
-                    {'This applies to the sidebar only. The page a link opens outside Mattermost ' +
-                        'has no reader to ask, so it always shows every row.'}
+                    {'These apply inside Mattermost. The page a link opens outside it has no ' +
+                        'reader to ask, so it always shows every row.'}
                 </p>
             </div>
 

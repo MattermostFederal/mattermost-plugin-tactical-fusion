@@ -1,6 +1,7 @@
 import {isCanonical, isGridFormat, parseCanonical, LOCATION_FORMATS} from './format';
 import type {Coordinate, LocationFormat} from './format';
 import LocationHover from './LocationHover';
+import LocationInline from './LocationInline';
 import LocationPanel from './LocationPanel';
 import LocationTitle, {PANEL_TITLE} from './LocationTitle';
 
@@ -150,6 +151,9 @@ const decorator: Decorator<LocationPayload> = {
     // hover meets with the countdown: a glance at a coordinate is asking where,
     // and every reading is one click away in the panel.
     Hover: LocationHover,
+
+    postType: 'custom_tf_location',
+    Inline: LocationInline,
 };
 
 export default decorator;

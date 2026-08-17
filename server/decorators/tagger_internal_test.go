@@ -164,3 +164,96 @@ func TestResolveOverlapsBreaksTiesOnPatternIndex(t *testing.T) {
 		t.Fatalf("resolveOverlaps() kept %q, want %q", got[0].label, "earlier")
 	}
 }
+
+// monikerDecorator mirrors the shape the location decorator has: a bare pattern
+// and a labeled one whose ReplaceGroup leaves the label in the message. That
+// difference is the whole reason soleTokenResult measures match rather than
+// replace.
+type monikerDecorator struct{}
+
+func (*monikerDecorator) Type() string { return "mock" }
+
+func (*monikerDecorator) Patterns() []Pattern {
+	return []Pattern{
+		{Regexp: regexp.MustCompile(`GRID:[ \t]*(\d{4})`), ReplaceGroup: 1},
+		{Regexp: regexp.MustCompile(`\b(\d{4})\b`)},
+	}
+}
+
+func (*monikerDecorator) Parse(value string, _ time.Time) (url.Values, bool) {
+	return url.Values{"v": {value}}, true
+}
+
+func (*monikerDecorator) RenderPage(w http.ResponseWriter, _ url.Values) {
+	WritePage(w, Page{Title: "mock"})
+}
+
+func monikerTagger(t *testing.T) *Tagger {
+	t.Helper()
+
+	registry := NewRegistry()
+	if err := registry.Register(&monikerDecorator{}); err != nil {
+		t.Fatalf("Register() = %v, want nil", err)
+	}
+	return &Tagger{Registry: registry, URLPrefix: "/plugins/test/decorate"}
+}
+
+func TestSoleTokenResultRecognizesAMessageThatIsOneToken(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		message string
+		want    bool
+	}{
+		{"a bare token and nothing else", "1234", true},
+
+		// The label is not consumed, so match covers it and replace does not.
+		// Measuring replace would refuse the ordinary military spelling.
+		{"a label the decorator did not consume", "GRID: 1234", true},
+
+		{"surrounding whitespace", "\n  1234  \n", true},
+		{"a token in a sentence", "see 1234 now", false},
+		{"a labeled token in a sentence", "see GRID: 1234 now", false},
+		{"trailing prose after a label", "GRID: 1234 confirmed", false},
+		{"two tokens", "1234 5678", false},
+		{"no token at all", "nothing here", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, got := monikerTagger(t).DecorateWithResult(tc.message, time.Now().UTC())
+
+			if got.SoleToken != tc.want {
+				t.Fatalf("SoleToken = %v for %q, want %v", got.SoleToken, tc.message, tc.want)
+			}
+			if !tc.want {
+				return
+			}
+			if got.Type != "mock" {
+				t.Fatalf("Type = %q, want %q", got.Type, "mock")
+			}
+			if got.Params.Get("v") != "1234" {
+				t.Fatalf("Params[v] = %q, want %q", got.Params.Get("v"), "1234")
+			}
+		})
+	}
+}
+
+// A token inside a protected span is not decorated, so it cannot be the message
+// either, however alone it looks.
+func TestSoleTokenResultRefusesAProtectedToken(t *testing.T) {
+	_, got := monikerTagger(t).DecorateWithResult("`1234`", time.Now().UTC())
+
+	if got.SoleToken {
+		t.Fatal("a token inside a code span was reported as the whole message")
+	}
+}
+
+func TestDecorateReturnsWhatDecorateWithResultReturns(t *testing.T) {
+	tagger := monikerTagger(t)
+	ref := time.Now().UTC()
+
+	for _, message := range []string{"", "1234", "GRID: 1234", "see 1234 now", "nothing here"} {
+		withResult, _ := tagger.DecorateWithResult(message, ref)
+		if plain := tagger.Decorate(message, ref); plain != withResult {
+			t.Fatalf("Decorate(%q) = %q, DecorateWithResult = %q", message, plain, withResult)
+		}
+	}
+}
