@@ -888,9 +888,9 @@ disagree**, and the browser one is the one anybody would notice was wrong.
 **The cost is one cacheable response becoming many.** The GeoJSON basemap was a
 single 168 KB fetch, and the tile pyramid is read by HTTP range request, so a
 reader opening a coordinate makes tens of them. That was accepted deliberately
-for the detail and the labels, and it is a real regression on exactly the DDIL
-links this plugin is built for. What softens it: the archive is immutable and
-cached per install, and `MAX_ZOOM` bounds how many tiles a reader can ask for.
+for the detail and the labels, and it is a real cost on a constrained link.
+What softens it: the archive is immutable and cached per install, and
+`MAX_ZOOM` bounds how many tiles a reader can ask for.
 
 Raster tiles were the original proposal and lost on grounds that mostly still
 hold: a raster tile has one lightness baked in, so matching the reader's theme
@@ -1043,8 +1043,8 @@ from one source rather than one source and one copy.
 **The readings no longer render without JavaScript.** They were server HTML, so
 they appeared instantly and survived a failed script; now the page is a shell
 until the bundle runs. That is a real regression on the page the mobile app
-opens over a DDIL link, and it was accepted deliberately in exchange for one
-implementation of the table.
+opens, and it was accepted deliberately in exchange for one implementation of
+the table.
 
 What softens it: the shell is about 4 KB and carries every value already, so
 nothing waits on a second request; the bundle is one cacheable response for
@@ -1378,16 +1378,25 @@ chunk, so it is the click most likely to be interrupted.
 `ready.current` is false. A one-way latch replaced a working map with a notice
 saying it could not be loaded.
 
-**The basemap distinguishes a broken deploy from a bad minute.** A 404, an
-oversized body, a digest mismatch or a body that is not GeoJSON is definitive,
-is remembered, and stops further requests. A timeout or a network throw is not
-remembered: latching on those means one stalled fetch on a DDIL link tells a
-reader the map is broken for the rest of the session, with a reload the only way
-back, in exactly the environment this plugin is built for.
+**The basemap distinguishes a broken deploy from a bad minute.** Definitive, and
+therefore remembered so that no further request is made: a non-2xx response, a
+body too short to be a header, wrong magic bytes, a spec version other than 3, a
+tile type other than MVT, a `maxzoom` shallower than the camera's ceiling, and a
+200 whose `Content-Length` shows the server ignored the range request. That last
+one looks healthy and is not: the pmtiles reader applies the same test to every
+tile and throws, so accepting it would pass a deploy whose every tile then
+fails.
 
-The digest itself is generated beside the basemap and checked with
-`crypto.subtle`, which is undefined on a plain-HTTP origin, so an unverifiable
-digest passes rather than disabling the map. That is the posture the copy buttons
+A timeout or a network throw is **not** remembered. Latching on those means one
+stalled fetch tells a reader the map is broken for the rest of the session, with
+a reload the only way back, and a request can stall on any network rather than
+only a bad one.
+
+The whole-file SHA-256 the webapp used to compute is gone with the GeoJSON
+basemap it checked: only a 127-byte header is read now. That check moved to
+where the whole file is in hand, `make bundle`, which is also where it belongs,
+because `crypto.subtle` is undefined on a plain-HTTP origin and so it silently
+passed on exactly the installs it existed for. That is the posture the copy buttons
 already take, and it is why `map-data-check` runs in `make test`: drift is
 invisible on HTTP and fatal on HTTPS. The page module does **not** check the
 digest, because it has no bundled constant to check against: the page and the
