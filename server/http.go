@@ -61,6 +61,15 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 	}
 
 	if r.URL.Path == mapPath {
+		// The one route an admin switch can remove outright, because this page is
+		// the map: with nothing to draw there is no reduced version of it worth
+		// serving, unlike /decorate/<type>, which still has every reading.
+		if !p.locationMaps().Page {
+			decorators.WriteError(w, http.StatusNotFound,
+				errcode.WithCode(errcode.HTTPMapDisabled, "Not found."))
+			return
+		}
+
 		location.RenderMapPage(w, r.URL.Query())
 		return
 	}

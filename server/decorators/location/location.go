@@ -40,7 +40,7 @@ const maxRawBytes = 64
 // This governs decoration only. RenderPage never consults it, because a link
 // already written into a message must keep working after an admin turns its
 // format off: switching one off stops new messages being decorated, it does not
-// break the history.
+// break the history. Maps below is the deliberate exception and says why.
 type Formats struct {
 	// DDSigned is 34.0561, -118.2500.
 	DDSigned bool
@@ -90,11 +90,60 @@ type Formats struct {
 // defaults off.
 var AllFormats = Formats{DDSigned: true, LatLon: true, USMTF: true, MGRS: true, UTM: true, Moniker: true}
 
+// Maps selects which surfaces draw a coordinate on a map.
+//
+// The deliberate opposite of Formats above: RenderPage DOES consult this. A
+// format switch governs text already written permanently into a message, so
+// turning one off may not break the history behind it. A map is drawn live on
+// every render and is written into nothing, so turning it off has to reach
+// existing links too or the switch would not mean what it says.
+type Maps struct {
+	// Panel is the sidebar panel and the hover card.
+	//
+	// One flag for both because the card is the panel's own map component in
+	// preview mode rather than a second implementation, and because the card is
+	// the map and nothing else: with this off there is no card at all, not an
+	// empty one.
+	Panel bool
+
+	// Inline is the map under a message whose whole text is one coordinate.
+	//
+	// The only one of the three with a cost beyond bytes on the wire. Drawing
+	// there means stamping the post with a custom Type, which Elasticsearch and
+	// OpenSearch index and then never match, so the post is absent from search
+	// and from Recent Mentions. Off leaves the post ordinary, and the stamp is
+	// skipped rather than merely unread.
+	Inline bool
+
+	// Page is the standalone full-window map at /map.
+	//
+	// Off makes that route answer 404 rather than rendering an empty shell, and
+	// takes the "Open larger" link with it.
+	Page bool
+}
+
+// AllMaps is what a decorator with no selector draws, and is the shipped
+// posture: unlike UTM, every map switch defaults on.
+var AllMaps = Maps{Panel: true, Inline: true, Page: true}
+
 // Decorator recognizes coordinates and renders the conversion page.
 type Decorator struct {
 	// Enabled reports which formats to match, read fresh for every message so
 	// an admin toggle takes effect without a restart. Nil means all of them.
 	Enabled func() Formats
+
+	// Maps reports which surfaces draw a map, read fresh for every render for
+	// the same reason. Nil means all of them.
+	Maps func() Maps
+}
+
+// maps is the selector, or every surface when there is none.
+func (d *Decorator) maps() Maps {
+	if d.Maps == nil {
+		return AllMaps
+	}
+
+	return d.Maps()
 }
 
 var _ decorators.Decorator = (*Decorator)(nil)
@@ -103,7 +152,22 @@ var _ decorators.PostRenderer = (*Decorator)(nil)
 
 func (d *Decorator) Type() string { return Type }
 
-func (d *Decorator) PostType() string { return PostType }
+// PostType is the custom type a coordinate-only post is stamped with, or "" when
+// the admin has turned the inline map off.
+//
+// Answering "" rather than gating in the hook is what keeps the stamp and the
+// reason for it in one place: StandalonePostType already reads "" as "this
+// decorator renders no post body", so an unwanted stamp is never written rather
+// than written and then ignored. That distinction is the whole value of the
+// switch, since the stamp is what costs the post its Elasticsearch and
+// OpenSearch matches, and Post.Type survives every edit once it is set.
+func (d *Decorator) PostType() string {
+	if !d.maps().Inline {
+		return ""
+	}
+
+	return PostType
+}
 
 // monikerPrefixes are the USMTF field labels, taken from the standard rather
 // than invented.
@@ -342,8 +406,11 @@ func (d *Decorator) Parse(value string, _ time.Time) (url.Values, bool) {
 
 // RenderPage renders the conversion table for these params.
 //
-// A pure function of its query string: it reads no workspace data and is handed
-// no reader. ServeHTTP requires a session to reach it.
+// Every reading on it is a pure function of the query string: no store, no post,
+// no channel, and it is handed no reader, so the answer cannot vary between two
+// people holding the same link. The one thing it does consult is Maps, which is
+// admin configuration rather than per-reader state and decides only whether a
+// picture is drawn beside those readings.
 func (d *Decorator) RenderPage(w http.ResponseWriter, params url.Values) {
 	page, ok := validateParams(params)
 	if !ok {
@@ -360,7 +427,7 @@ func (d *Decorator) RenderPage(w http.ResponseWriter, params url.Values) {
 
 	decorators.WritePage(w, decorators.Page{
 		Title:      pageTitle,
-		BodyHTML:   renderRoot(page, pageModeLocation),
+		BodyHTML:   renderRoot(page, pageModeLocation, d.maps()),
 		Theme:      decorators.ThemeFromParams(params),
 		StyleCSS:   pageStyles,
 		ScriptSrc:  pageAppFromDecorate,

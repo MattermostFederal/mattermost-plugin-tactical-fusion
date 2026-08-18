@@ -1,5 +1,6 @@
 import React from 'react';
 
+import {HOVER_CARD_CLASS} from './registry';
 import TooltipHarness from './TooltipHarness';
 
 import {expect, test} from '../../playwright/ct-coverage';
@@ -75,4 +76,36 @@ test('renders nothing until the reader is actually pointing at the link', async 
     );
 
     await expect(page.getByTestId('fixture-hover')).toHaveCount(0);
+});
+
+/*
+ * A Hover that renders nothing must leave no card behind.
+ *
+ * The chrome is built before the component decides, so without the stylesheet's
+ * `:empty` rule the padding, border and shadow float beside the link as an empty
+ * bordered box. That is the difference between "this decorator has no hover",
+ * which the registry can see, and "this decorator has nothing to show right
+ * now", which only the render can. The location card needs the second: with the
+ * panel map switched off it is a card with no map, which is no card.
+ */
+test('hides the chrome when the hover renders nothing', async ({mount, page}) => {
+    await mount(
+        <TooltipHarness
+            href={`${PREFIX}fix?v=hello`}
+            emptyHover={true}
+        />);
+
+    const card = page.locator(`.${HOVER_CARD_CLASS}`);
+    await expect(card).toHaveCount(1);
+    await expect(card).toBeHidden();
+});
+
+// And the ordinary card is untouched by that rule, which is the half a
+// too-broad selector would break silently.
+test('keeps the chrome when the hover renders something', async ({mount, page}) => {
+    await mount(<TooltipHarness href={`${PREFIX}fix?v=hello`}/>);
+
+    const card = page.locator(`.${HOVER_CARD_CLASS}`);
+    await expect(card).toBeVisible();
+    await expect(page.getByTestId('fixture-hover')).toHaveText('hello');
 });

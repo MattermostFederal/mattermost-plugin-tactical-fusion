@@ -3,6 +3,7 @@ import React from 'react';
 import CustomizeHarness from './CustomizeHarness';
 
 import {expect, test} from '../../../playwright/ct-coverage';
+import {stubFeaturesRoute} from '../../features/stub_route';
 import {savedHiddenRows, stubPreferencesRoute} from '../../preferences/stub_route';
 
 /*
@@ -13,6 +14,7 @@ import {savedHiddenRows, stubPreferencesRoute} from '../../preferences/stub_rout
  */
 
 test('shows every row ticked when the reader has hidden nothing', async ({mount, page}) => {
+    await stubFeaturesRoute(page);
     await stubPreferencesRoute(page);
     const component = await mount(<CustomizeHarness/>);
 
@@ -21,6 +23,7 @@ test('shows every row ticked when the reader has hidden nothing', async ({mount,
 });
 
 test('unticks the rows the reader had hidden', async ({mount, page}) => {
+    await stubFeaturesRoute(page);
     await stubPreferencesRoute(page, {storedHiddenRows: ['ddm', 'datum']});
     const component = await mount(<CustomizeHarness/>);
 
@@ -31,6 +34,7 @@ test('unticks the rows the reader had hidden', async ({mount, page}) => {
 
 // Unticking is what gets SAVED, even though the reader is choosing what to show.
 test('saves the rows that were unticked', async ({mount, page}) => {
+    await stubFeaturesRoute(page);
     const calls = await stubPreferencesRoute(page);
     const component = await mount(<CustomizeHarness/>);
 
@@ -45,6 +49,7 @@ test('saves the rows that were unticked', async ({mount, page}) => {
 // replaces the whole blob, so the store re-reads and merges rather than sending
 // whatever this editor happened to have cached.
 test('saving rows leaves the timezone settings alone', async ({mount, page}) => {
+    await stubFeaturesRoute(page);
     const calls = await stubPreferencesRoute(page, {
         stored: {zones: [{iana: 'Asia/Tokyo', name: 'Yokota'}], urgentWithinMinutes: 42},
     });
@@ -62,6 +67,7 @@ test('saving rows leaves the timezone settings alone', async ({mount, page}) => 
 // And neither must "Restore defaults", which used to DELETE the whole blob from
 // under a legend reading "Rows to show".
 test('restoring defaults leaves the timezone settings alone', async ({mount, page}) => {
+    await stubFeaturesRoute(page);
     const calls = await stubPreferencesRoute(page, {
         stored: {zones: [{iana: 'Asia/Tokyo', name: 'Yokota'}], urgentWithinMinutes: 42},
         storedHiddenRows: ['ddm'],
@@ -81,6 +87,7 @@ test('restoring defaults leaves the timezone settings alone', async ({mount, pag
 // With nothing else stored there is nothing to keep, so the blob goes rather
 // than being written back saying nothing.
 test('restoring defaults deletes when nothing else is stored', async ({mount, page}) => {
+    await stubFeaturesRoute(page);
     const calls = await stubPreferencesRoute(page, {storedHiddenRows: ['ddm']});
     const component = await mount(<CustomizeHarness/>);
 
@@ -93,6 +100,7 @@ test('restoring defaults deletes when nothing else is stored', async ({mount, pa
 // A save that failed keeps the reader where they are, with the reason on
 // screen: closing would throw away both the message and their edits.
 test('a rejected save stays put and says why', async ({mount, page}) => {
+    await stubFeaturesRoute(page);
     await stubPreferencesRoute(page, {saveStatus: 400, saveMessage: 'Rows are wrong.'});
     const component = await mount(<CustomizeHarness/>);
 
@@ -107,11 +115,17 @@ test('a rejected save stays put and says why', async ({mount, page}) => {
 // The warning is announced, not just drawn: the reader who unticked the last
 // row is the one who most needs to hear it.
 test('announces when every row has been hidden', async ({mount, page}) => {
+    await stubFeaturesRoute(page);
     await stubPreferencesRoute(page);
     const component = await mount(<CustomizeHarness/>);
 
     // By position rather than by name: several hints mention another row's
     // label, so a name regex matches more than one box.
+    // The two map boxes are offered only once the features route has answered,
+    // so a snapshot taken on mount misses them and "uncheck everything" would
+    // quietly leave two ticked and never fire the warning.
+    await expect(component.getByRole('checkbox', {name: /Drawn in the channel/})).toBeVisible();
+
     const boxes = await component.getByRole('checkbox').all();
     await boxes.reduce(
         (chain, box) => chain.then(() => box.uncheck()),
@@ -124,6 +138,7 @@ test('announces when every row has been hidden', async ({mount, page}) => {
 
 // The checkboxes are one named group rather than eleven loose ones.
 test('names the group of checkboxes', async ({mount, page}) => {
+    await stubFeaturesRoute(page);
     await stubPreferencesRoute(page);
     const component = await mount(<CustomizeHarness/>);
 
@@ -137,6 +152,7 @@ test('names the group of checkboxes', async ({mount, page}) => {
  * changed table behind.
  */
 test('a rejected restore stays put and says why', async ({mount, page}) => {
+    await stubFeaturesRoute(page);
     await stubPreferencesRoute(page, {
         storedHiddenRows: ['ddm'],
         resetStatus: 500,
@@ -157,6 +173,7 @@ test('a rejected restore stays put and says why', async ({mount, page}) => {
  */
 test.describe('the map under a post', () => {
     test('is offered beside the panel map', async ({mount, page}) => {
+        await stubFeaturesRoute(page);
         await stubPreferencesRoute(page);
         const component = await mount(<CustomizeHarness/>);
 
@@ -165,6 +182,7 @@ test.describe('the map under a post', () => {
     });
 
     test('unticks on its own without taking the panel map with it', async ({mount, page}) => {
+        await stubFeaturesRoute(page);
         await stubPreferencesRoute(page, {storedHiddenRows: ['inline']});
         const component = await mount(<CustomizeHarness/>);
 
@@ -180,8 +198,14 @@ test.describe('the map under a post', () => {
      * cannot catch that, because then the id is hidden either way.
      */
     test('does not claim everything is hidden while it is still shown', async ({mount, page}) => {
+        await stubFeaturesRoute(page);
         await stubPreferencesRoute(page);
         const component = await mount(<CustomizeHarness/>);
+
+        // The two map boxes are offered only once the features route has answered,
+        // so a snapshot taken on mount misses them and "uncheck everything" would
+        // quietly leave two ticked and never fire the warning.
+        await expect(component.getByRole('checkbox', {name: /Drawn in the channel/})).toBeVisible();
 
         const boxes = await component.getByRole('checkbox').all();
         await boxes.reduce(
@@ -196,10 +220,66 @@ test.describe('the map under a post', () => {
     });
 
     test('saves under its own id', async ({mount, page}) => {
+        await stubFeaturesRoute(page);
         const calls = await stubPreferencesRoute(page);
         const component = await mount(<CustomizeHarness/>);
 
         await component.getByRole('checkbox', {name: /Drawn in the channel/}).uncheck();
+        await component.getByRole('button', {name: 'Save'}).click();
+
+        await expect(component.getByTestId('closed')).toBeVisible();
+        expect(savedHiddenRows(calls)).toEqual(['inline']);
+    });
+});
+
+/*
+ * A surface the admin has switched off is not offered, because a tick box that
+ * changes nothing the reader can see is worse than an absent one: they untick
+ * it, save, and nothing happens.
+ *
+ * What is STORED is untouched, which is the half worth pinning. A reader's
+ * hidden list keeps ids this editor is not showing, so turning a switch off and
+ * back on returns them to the choice they had made rather than to the default.
+ */
+test.describe('when the admin has turned a map surface off', () => {
+    test('offers no tick box for the panel map', async ({mount, page}) => {
+        await stubFeaturesRoute(page, {mapPanel: false});
+        await stubPreferencesRoute(page);
+        const component = await mount(<CustomizeHarness/>);
+
+        await expect(component.getByRole('checkbox', {name: /Drawn in the channel/})).toBeVisible();
+        await expect(component.getByRole('checkbox', {name: /A small world map/})).toHaveCount(0);
+    });
+
+    test('offers no tick box for the map under a post', async ({mount, page}) => {
+        await stubFeaturesRoute(page, {mapInline: false});
+        await stubPreferencesRoute(page);
+        const component = await mount(<CustomizeHarness/>);
+
+        await expect(component.getByRole('checkbox', {name: /A small world map/})).toBeVisible();
+        await expect(component.getByRole('checkbox', {name: /Drawn in the channel/})).toHaveCount(0);
+    });
+
+    test('offers neither when maps are off entirely', async ({mount, page}) => {
+        await stubFeaturesRoute(page, {mapPanel: false, mapInline: false, mapPage: false});
+        await stubPreferencesRoute(page);
+        const component = await mount(<CustomizeHarness/>);
+
+        await expect(component.getByRole('checkbox', {name: /MGRS/})).toBeVisible();
+        await expect(component.getByRole('checkbox', {name: /A small world map/})).toHaveCount(0);
+        await expect(component.getByRole('checkbox', {name: /Drawn in the channel/})).toHaveCount(0);
+    });
+
+    // The reader's own choice survives, so the switch coming back does not
+    // silently unhide something they had hidden.
+    test('keeps a hidden id the editor is not showing', async ({mount, page}) => {
+        await stubFeaturesRoute(page, {mapInline: false});
+        const calls = await stubPreferencesRoute(page, {storedHiddenRows: ['inline', 'ddm']});
+        const component = await mount(<CustomizeHarness/>);
+
+        await expect(component.getByRole('checkbox', {name: /DDM/})).not.toBeChecked();
+
+        await component.getByRole('checkbox', {name: /DDM/}).check();
         await component.getByRole('button', {name: 'Save'}).click();
 
         await expect(component.getByTestId('closed')).toBeVisible();

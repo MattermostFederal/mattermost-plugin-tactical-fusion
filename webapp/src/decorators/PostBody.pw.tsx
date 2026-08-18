@@ -110,6 +110,28 @@ test('renders the message when the decorator declares no inline view', async ({m
 });
 
 /*
+ * An Inline that is declared but renders nothing still leaves the link.
+ *
+ * Different from declaring no Inline at all, which the branch above covers, and
+ * far more common: a post stamped while the inline map was on keeps its
+ * Post.Type forever, because the type survives an edit and there is deliberately
+ * no MessageWillBeUpdated hook to clear one. So on any install that ever had the
+ * feature on and then switched it off, every one of those posts routes here and
+ * renders an Inline that returns null. What must survive that is what the author
+ * actually wrote.
+ */
+test('renders the link when the inline view renders nothing', async ({mount}) => {
+    const component = await mount(
+        <PostBodyHarness
+            message={LINK}
+            kind='empty'
+        />,
+    );
+
+    await expect(component.getByRole('link')).toHaveText('34.0561N,118.2500W');
+});
+
+/*
  * Mattermost wraps a registered post-type component in its own error boundary,
  * and that one replaces the whole post body with an error notice. Since this
  * plugin renders the body, a throw inside the map would otherwise cost the

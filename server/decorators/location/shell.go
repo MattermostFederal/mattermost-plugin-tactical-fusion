@@ -3,6 +3,7 @@ package location
 import (
 	"encoding/json"
 	"html"
+	"strings"
 )
 
 const (
@@ -13,6 +14,24 @@ const (
 const (
 	pageModeLocation = "location"
 	pageModeMap      = "map"
+)
+
+// MapSurfacesAttr is the shell attribute naming the surfaces that may draw a
+// map, and SurfacePanel and SurfacePage are the names it can carry.
+//
+// Exported so webapp_sync_test.go can hold them against the webapp's reader
+// rather than against a second copy written into a Go test. All three are the
+// quiet kind of contract: rename one here and the standalone pages stop drawing
+// a map, or start drawing one on an install that switched them off, with nothing
+// logged on either side. Renaming the ATTRIBUTE is the worse of the two, because
+// an absent attribute deliberately reads as every surface on.
+const (
+	MapSurfacesAttr = "data-maps"
+
+	SurfacePanel = "panel"
+	SurfacePage  = "page"
+
+	mapSurfaceSeparator = ","
 )
 
 // renderRoot is the whole body of both standalone pages.
@@ -26,11 +45,12 @@ const (
 // Everything interpolated here is escaped. The page declares PageMapping, which
 // admits same-origin script, so escaping is the only thing standing between the
 // author's own text in `r` and execution.
-func renderRoot(page pageData, mode string) string {
+func renderRoot(page pageData, mode string, maps Maps) string {
 	loc := page.loc
 
 	attrs := `<div id="root"` +
 		` data-mode="` + html.EscapeString(mode) + `"` +
+		` ` + MapSurfacesAttr + `="` + html.EscapeString(mapSurfaces(maps)) + `"` +
 		` data-f="` + html.EscapeString(string(loc.Format)) + `"` +
 		` data-v="` + html.EscapeString(loc.Canonical()) + `"`
 
@@ -47,4 +67,23 @@ func renderRoot(page pageData, mode string) string {
 	}
 
 	return attrs + `></div>`
+}
+
+// mapSurfaces is the comma-separated list of surfaces that may draw a map.
+//
+// Always written, empty included, so the bundle can tell "the admin turned maps
+// off" from "this shell predates the attribute" without either reading as the
+// other. The bundle matches these against a closed set and ignores anything
+// else, so adding a surface here cannot make an older bundle draw one it does
+// not know.
+func mapSurfaces(maps Maps) string {
+	var on []string
+	if maps.Panel {
+		on = append(on, SurfacePanel)
+	}
+	if maps.Page {
+		on = append(on, SurfacePage)
+	}
+
+	return strings.Join(on, mapSurfaceSeparator)
 }

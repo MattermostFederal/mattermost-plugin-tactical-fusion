@@ -436,3 +436,37 @@ func TestUTMSwitchedOffStillRendersTheUTMRow(t *testing.T) {
 		})
 	}
 }
+
+// A decorator that draws no inline map declares no post type.
+//
+// Answering "" here rather than gating in the hook is what keeps the stamp from
+// being written at all, and the stamp is the expensive half: Elasticsearch and
+// OpenSearch index a custom_* post and then never match it, and Post.Type
+// survives every edit once set, with no MessageWillBeUpdated hook to clear one.
+func TestPostTypeIsEmptyWhenTheInlineMapIsOff(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		maps Maps
+		want string
+	}{
+		{"every surface on", AllMaps, PostType},
+		{"inline alone on", Maps{Inline: true}, PostType},
+		{"inline off", Maps{Panel: true, Page: true}, ""},
+		{"every surface off", Maps{}, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			d := &Decorator{Maps: func() Maps { return tc.maps }}
+			if got := d.PostType(); got != tc.want {
+				t.Fatalf("PostType() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// A nil selector means every surface, the way a nil Enabled means every format,
+// so nothing that builds a bare Decorator has to know this switch exists.
+func TestPostTypeDefaultsToOnWithNoSelector(t *testing.T) {
+	if got := (&Decorator{}).PostType(); got != PostType {
+		t.Fatalf("PostType() = %q, want %q", got, PostType)
+	}
+}

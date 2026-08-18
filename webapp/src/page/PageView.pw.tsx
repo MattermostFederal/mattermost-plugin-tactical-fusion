@@ -6,6 +6,7 @@ import type {PageData} from './payload';
 import {expect, test} from '../../playwright/ct-coverage';
 import {parseCanonical} from '../decorators/location/format';
 import LocationReadings from '../decorators/location/LocationReadings';
+import {ALL_FEATURES} from '../features/types';
 
 /*
  * The standalone pages, which are what a client with no Mattermost webapp
@@ -32,6 +33,7 @@ const GRID: PageData = {
         },
     },
     mode: 'location',
+    maps: ALL_FEATURES,
 };
 
 test('a page renders every row without waiting on anything', async ({mount}) => {
@@ -40,6 +42,7 @@ test('a page renders every row without waiting on anything', async ({mount}) => 
             payload={GRID.payload}
             conversion={GRID.conversion}
             hidden={[]}
+            maps={ALL_FEATURES}
         />,
     );
 
@@ -58,6 +61,7 @@ test('a page offers no Customize link, which would need a session', async ({moun
             payload={GRID.payload}
             conversion={GRID.conversion}
             hidden={[]}
+            maps={ALL_FEATURES}
         />,
     );
 
@@ -76,6 +80,7 @@ test('a page shows every row, because it has no reader to ask', async ({mount}) 
             payload={GRID.payload}
             conversion={GRID.conversion}
             hidden={[]}
+            maps={ALL_FEATURES}
         />,
     );
 
@@ -90,6 +95,7 @@ test('a failed conversion degrades rather than blanking the page', async ({mount
             payload={GRID.payload}
             conversion={{status: 'failed', data: null}}
             hidden={[]}
+            maps={ALL_FEATURES}
         />,
     );
 
@@ -115,6 +121,7 @@ test('Open larger tells the map page which theme to paint itself with', async ({
             payload={GRID.payload}
             conversion={GRID.conversion}
             hidden={[]}
+            maps={ALL_FEATURES}
         />,
     );
 
@@ -136,6 +143,7 @@ test('Open larger passes a light theme when the sidebar is light', async ({mount
             payload={GRID.payload}
             conversion={GRID.conversion}
             hidden={[]}
+            maps={ALL_FEATURES}
         />,
     );
 
@@ -150,6 +158,7 @@ test('Open larger leaves the theme unstated when it cannot be read', async ({mou
             payload={GRID.payload}
             conversion={GRID.conversion}
             hidden={[]}
+            maps={ALL_FEATURES}
         />,
     );
 
@@ -221,6 +230,7 @@ test('the readings do not print the basemap credit either', async ({mount}) => {
             payload={GRID.payload}
             conversion={GRID.conversion}
             hidden={[]}
+            maps={ALL_FEATURES}
         />,
     );
 
@@ -270,6 +280,7 @@ const TEXTUAL: PageData = {
         },
     },
     mode: 'map',
+    maps: ALL_FEATURES,
 };
 
 test('the map page draws a position the token itself carries', async ({mount}) => {
@@ -296,4 +307,48 @@ test('the way back carries the author\'s text when it differs from the token', a
     expect(params.get('f')).toBe('dd');
     expect(params.get('v')).toBe('34.0561,-118.2500');
     expect(params.get('r')).toBe('34.0561, -118.2500');
+});
+
+/*
+ * The readings page with maps switched off.
+ *
+ * It reads the answer out of the shell rather than fetching it, because a page
+ * is handed everything it needs in one document and /api/v1/features needs a
+ * session this route does not otherwise require. Everything the table carries
+ * stays: the switch is about the picture and the bytes behind it.
+ */
+test('a page with maps off renders the table and no map', async ({mount}) => {
+    const component = await mount(
+        <LocationReadings
+            payload={GRID.payload}
+            conversion={GRID.conversion}
+            hidden={[]}
+            maps={{mapPanel: false, mapInline: false, mapPage: false}}
+        />,
+    );
+
+    await expect(component.getByText(/^World map/)).toHaveCount(0);
+    await expect(component.getByTestId('map-note')).toHaveCount(0);
+    await expect(component.getByText('Open larger')).toHaveCount(0);
+
+    // Every reading still there, which is the whole point of only /map being
+    // refused outright.
+    await expect(component.getByText('18SUJ2347806483', {exact: true})).toBeVisible();
+    await expect(component.getByText('38.8895° N, 77.0353° W')).toBeVisible();
+});
+
+// The page map and the "Open larger" link are separate switches, so a page can
+// draw its own map while the full-window one is not served.
+test('a page keeps its map when only the map page is off', async ({mount}) => {
+    const component = await mount(
+        <LocationReadings
+            payload={GRID.payload}
+            conversion={GRID.conversion}
+            hidden={[]}
+            maps={{mapPanel: true, mapInline: false, mapPage: false}}
+        />,
+    );
+
+    await expect(component.getByText('Open larger')).toHaveCount(0);
+    await expect(component.getByTestId('map-note')).toBeAttached();
 });

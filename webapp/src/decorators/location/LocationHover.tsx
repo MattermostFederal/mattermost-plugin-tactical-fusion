@@ -4,6 +4,8 @@ import {useConversion} from './convert';
 import LocationMap from './map/LocationMap';
 import {viewFor} from './map/view';
 
+import {useFeatures} from '../../features/store';
+
 import type {LocationPayload} from './index';
 
 /**
@@ -36,7 +38,16 @@ const styles: Record<string, React.CSSProperties> = {
     refused: {fontSize: 12, color: 'var(--center-channel-color)'},
 };
 
-const LocationHover: React.FC<{payload: LocationPayload}> = ({payload}) => {
+/**
+ * The card itself, mounted only once the panel map is known to be on.
+ *
+ * Split from the gate below rather than guarded inside it, because `useConversion`
+ * cannot be called conditionally and a hook that runs is a request that goes out.
+ * With the split, a maps-off install issues nothing at all as a pointer crosses a
+ * channel full of coordinates. That is the same outer/inner shape LocationInline
+ * uses, and for the same reason.
+ */
+const LocationHoverCard: React.FC<{payload: LocationPayload}> = ({payload}) => {
     const {format, canonical, raw} = payload;
     const conversion = useConversion(format, canonical, raw);
 
@@ -46,11 +57,10 @@ const LocationHover: React.FC<{payload: LocationPayload}> = ({payload}) => {
     // text failed validation showed a confident pin here and "Not a coordinate"
     // on the panel one click later.
     //
-    // A line rather than `null`, because the framework's tooltip builds its
-    // chrome around whatever a Hover returns: `null` there is not "no card", it
-    // is an empty bordered box floating beside the link. Inside Tooltip.tsx null
-    // means no card at all, since it returns before the chrome; that distinction
-    // is invisible from in here, and an empty box agrees with nothing.
+    // A line rather than `null`, and now that the framework hides an empty card
+    // it is a choice rather than a workaround: a refused link is something the
+    // reader has to be told, where a switched-off map is something they have
+    // not asked about.
     if (conversion.status === 'rejected') {
         return <span style={styles.refused}>{'Not a coordinate'}</span>;
     }
@@ -67,6 +77,22 @@ const LocationHover: React.FC<{payload: LocationPayload}> = ({payload}) => {
             preview={true}
         />
     );
+};
+
+const LocationHover: React.FC<{payload: LocationPayload}> = ({payload}) => {
+    const {features} = useFeatures();
+
+    // With the panel map switched off there is no card, because this card IS
+    // the map: there is no reduced version of it worth floating beside a link.
+    //
+    // `null` is safe here now and was not before. The framework's tooltip hides
+    // its own chrome when a Hover renders nothing, so this is no card rather
+    // than an empty bordered box; see Tooltip.tsx.
+    if (!features.mapPanel) {
+        return null;
+    }
+
+    return <LocationHoverCard payload={payload}/>;
 };
 
 export default LocationHover;

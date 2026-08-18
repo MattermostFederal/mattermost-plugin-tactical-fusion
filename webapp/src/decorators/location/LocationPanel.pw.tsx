@@ -338,6 +338,43 @@ test('takes USMTF from the server for a grid link', async ({mount}) => {
     await expect(component.getByRole('button', {name: 'Copy USMTF'})).toBeVisible();
 });
 
+test.describe('when the admin has turned maps off', () => {
+    // Every reading stays. The switch is about the picture and the bytes behind
+    // it, not about what the plugin knows, so a panel with no map is the same
+    // table it always was.
+    test('drops the map and keeps every reading', async ({mount}) => {
+        const component = await mount(<LocationPanelHarness features={{mapPanel: false}}/>);
+        await component.getByRole('button', {name: 'answer the conversion'}).click();
+
+        // Through the map's own note, which this harness always has: the
+        // basemap archive is not served in a component test, so a mounted map
+        // reports that it could not load. Its absence therefore means no map
+        // was mounted at all rather than one that merely failed to paint.
+        await expect(component.getByTestId('map-note')).toHaveCount(0);
+
+        await expect(component.getByText('34.0561° N, 118.2500° W')).toBeVisible();
+        await expect(component.getByRole('button', {name: 'Copy MGRS'})).toBeVisible();
+    });
+
+    // "Open larger" points at /map, which answers 404 when its own switch is
+    // off, so the link has to go with it rather than becoming a dead end.
+    test('offers no way to open a page that is not served', async ({mount}) => {
+        const component = await mount(<LocationPanelHarness features={{mapPage: false}}/>);
+        await component.getByRole('button', {name: 'answer the conversion'}).click();
+
+        await expect(component.getByText('Open larger')).toHaveCount(0);
+    });
+
+    // The two switches are independent, so the panel map survives the page
+    // being off. It is the caption under the frame that goes.
+    test('keeps the panel map when only the page is off', async ({mount}) => {
+        const component = await mount(<LocationPanelHarness features={{mapPage: false}}/>);
+        await component.getByRole('button', {name: 'answer the conversion'}).click();
+
+        await expect(component.getByTestId('map-note')).toBeAttached();
+    });
+});
+
 test.describe('customizing the view', () => {
     // The rows a reader hid are gone, and the rest are untouched.
     test('leaves out the rows the reader hid', async ({mount}) => {

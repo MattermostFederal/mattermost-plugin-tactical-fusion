@@ -19,6 +19,7 @@ import {MAP_ID, isRowVisible, ROWS} from './rows';
 import type {HideableID, RowID} from './rows';
 
 import LinkButton from '../../components/LinkButton';
+import type {Features} from '../../features/types';
 import {docsUrl} from '../../plugin_url';
 
 import type {LocationPayload} from './index';
@@ -159,8 +160,17 @@ const LocationReadings: React.FC<{
     payload: LocationPayload;
     conversion: ConversionState;
     hidden: HideableID[];
+
+    /**
+     * Which map surfaces the admin has left on.
+     *
+     * Handed in rather than read here, for the same reason `hidden` is: the
+     * panel learns it from /api/v1/features and a page reads it out of the
+     * shell the server wrote, and neither route is available to the other.
+     */
+    maps: Features;
     footer?: React.ReactNode;
-}> = ({payload, conversion, hidden, footer}) => {
+}> = ({payload, conversion, hidden, maps, footer}) => {
     const {coord, format, canonical, raw} = payload;
 
     // The server looked at this link and said it is not one this plugin wrote.
@@ -253,7 +263,11 @@ const LocationReadings: React.FC<{
     // click handler does not recognise it and the browser simply follows it.
     //
     // The theme travels with it, for the reason mapPageHref records.
-    const pageHref = mapPageHref(payload);
+    //
+    // Undefined when the admin has turned that page off, since /map answers 404
+    // then and a link to it is a link to nothing. LocationMap renders no caption
+    // at all without one, so the strip under the frame goes with it.
+    const pageHref = maps.mapPage ? mapPageHref(payload) : undefined;
 
     // Through the same viewFor the hover card and the map page use, so the
     // three surfaces cannot come to disagree about where a coordinate is.
@@ -264,7 +278,7 @@ const LocationReadings: React.FC<{
     // three lines above it was saying nothing twice.
     return (
         <div>
-            {isRowVisible(hidden, MAP_ID) && (
+            {maps.mapPanel && isRowVisible(hidden, MAP_ID) && (
                 <LocationMap
                     {...view}
                     pageHref={pageHref}

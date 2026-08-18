@@ -8,6 +8,10 @@ import type {LocationFormat} from './format';
 import LocationHover from './LocationHover';
 import {_setMapObserverForTesting} from './map/LocationMap';
 
+import {_resetForTesting as resetFeatures} from '../../features/store';
+import {featuresReply, isFeaturesRequest, setStubbedFeatures} from '../../features/stub_fetch';
+import type {Features} from '../../features/types';
+
 import type {LocationPayload} from './index';
 
 /**
@@ -74,13 +78,27 @@ const realFetch = window.fetch.bind(window);
 let settle: (() => void) | null = null;
 let outcome: Outcome = 'ok';
 
+/*
+ * How many conversions the card has asked for, rendered into the DOM.
+ *
+ * The hover's claim that a switched-off card costs nothing was prose until this
+ * existed: LocationInline proves the same property with a counter, and the hover
+ * asserted only that nothing renders, which is also true while a request is in
+ * flight.
+ */
+let conversions = 0;
+
 window.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
+    if (isFeaturesRequest(url)) {
+        return Promise.resolve(featuresReply());
+    }
     if (!url.includes('/api/v1/convert')) {
         return realFetch(input as RequestInfo, init);
     }
 
     const value = new URL(url, 'http://localhost').searchParams.get('v') ?? '';
+    conversions += 1;
 
     return new Promise((resolve, rejectRequest) => {
         settle = () => {
@@ -147,6 +165,9 @@ interface Props {
     canonical?: string;
     raw?: string;
     outcome?: Outcome;
+
+    /** Map surfaces the stubbed admin has left on. Every one, by default. */
+    features?: Partial<Features>;
 }
 
 const LocationHoverHarness: React.FC<Props> = ({
@@ -154,8 +175,21 @@ const LocationHoverHarness: React.FC<Props> = ({
     canonical = '34.0561,-118.2500',
     raw,
     outcome: requested = 'ok',
+    features = {},
 }) => {
     outcome = requested;
+    setStubbedFeatures(features);
+
+    // At render rather than in an effect, because child effects run before
+    // parent ones: the component's own useFeatures would have already loaded
+    // and cached, and resetting afterwards left the store empty with nothing
+    // left to re-trigger a load. Every surface then read as switched off and no
+    // map was ever mounted.
+    useState(() => {
+        resetFeatures();
+        conversions = 0;
+        return null;
+    });
 
     const last = useRef<MapLibreMap | null>(null);
     const [reading, setReading] = useState({pin: -1, cell: -1, span: -1, center: 'none'});
@@ -208,6 +242,7 @@ const LocationHoverHarness: React.FC<Props> = ({
             <output data-testid='cell-features'>{String(reading.cell)}</output>
             <output data-testid='cell-span'>{String(reading.span)}</output>
             <output data-testid='camera'>{reading.center}</output>
+            <output data-testid='conversions'>{String(conversions)}</output>
         </div>
     );
 };

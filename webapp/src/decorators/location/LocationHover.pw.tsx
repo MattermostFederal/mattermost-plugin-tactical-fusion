@@ -258,3 +258,80 @@ test.describe('with a basemap it can verify', () => {
         ).toBeAttached();
     });
 });
+
+/*
+ * The card is the map, so with the panel map switched off there is nothing left
+ * for it to be. It renders nothing at all rather than an empty bordered box: the
+ * framework's tooltip builds its chrome around whatever a Hover returns, and
+ * hides it when that turns out to be nothing.
+ */
+test.describe('when the admin has turned the panel map off', () => {
+    test('draws no card at all', async ({mount}) => {
+        const component = await mount(
+            <LocationHoverHarness
+                features={{mapPanel: false}}
+            />);
+
+        await expect(component.getByText(LOADING)).toHaveCount(0);
+        await expect(component.getByText(/^World map/)).toHaveCount(0);
+        await expect(component.getByTestId('map-note')).toHaveCount(0);
+    });
+
+    /*
+     * And it costs nothing, which is the half the assertions above cannot see:
+     * "nothing rendered" is also what an in-flight request looks like.
+     *
+     * The gate lives in an outer component so `useConversion` is never reached,
+     * because a hook that runs is a request that goes out and hooks cannot be
+     * called conditionally. Without the split, pointing at a channel full of
+     * coordinates on a maps-off install fired one authenticated request per
+     * distinct token for a card nobody would ever see.
+     */
+    test('asks for no conversion', async ({mount}) => {
+        const component = await mount(
+            <LocationHoverHarness
+                format='mgrs'
+                canonical='11SLT84636908'
+                features={{mapPanel: false}}
+            />);
+
+        // Through the harness's own readout, which forces a render: the counter
+        // is module state incremented by the fetch stub, so it reaches the DOM
+        // only when something re-renders after the request would have gone out.
+        await component.getByRole('button', {name: READ}).click();
+
+        await expect(component.getByTestId('conversions')).toHaveText('0');
+    });
+
+    // The mirror, so the counter above cannot pass because the harness simply
+    // never counts.
+    test('asks for one when the card is drawn', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationHoverHarness
+                format='mgrs'
+                canonical='11SLT84636908'
+            />);
+
+        // Wait for the card to exist before reading the counter, or the readout
+        // is taken from the render before the features answer landed.
+        await expect(component.getByTestId('map-note').or(component.getByText(/^World map/)).first()).toBeAttached();
+        await component.getByRole('button', {name: READ}).click();
+
+        await expect(component.getByTestId('conversions')).toHaveText('1');
+    });
+
+    // The other two surfaces do not reach this one. A workspace that keeps the
+    // page and the channel map but drops the sidebar map gets exactly that.
+    test('is unaffected by the other surfaces being off', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationHoverHarness
+                features={{mapInline: false, mapPage: false}}
+            />);
+
+        await expect(component.getByText(/^World map/)).toBeAttached();
+    });
+});

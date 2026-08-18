@@ -458,3 +458,75 @@ func TestPostTypeFitsTheColumn(t *testing.T) {
 		t.Fatal("the framework refused this package's own post type")
 	}
 }
+
+// The shell attribute that tells a standalone page which map surfaces are on.
+//
+// The last cross-language seam in this package without a pin, and the one whose
+// drift is quietest. Both halves are checked because they fail in opposite
+// directions:
+//
+//   - Rename the ATTRIBUTE in Go and `root.dataset.maps` is undefined, which
+//     mapsFrom deliberately reads as every surface on. So both standalone pages
+//     keep drawing maps on an install that turned them off, which is the
+//     opposite of what the admin asked for and the one thing the switch
+//     promises.
+//   - Rename a TOKEN and that surface reads off, so the page stops drawing a map
+//     an admin left on.
+//
+// Neither is logged anywhere. Nothing else can catch this: the Go tests and the
+// TypeScript tests each pin their own copy of these strings, so renaming one
+// side together with its own test leaves both suites green.
+func TestWebappMapSurfaceAttributeMatches(t *testing.T) {
+	source := readPageSource(t, "payload.ts")
+
+	t.Run("attribute", func(t *testing.T) {
+		// dataset turns data-maps into .maps, which is the spelling to look for.
+		want := strings.TrimPrefix(MapSurfacesAttr, "data-")
+		if !regexp.MustCompile(`dataset\.` + want + `\b`).MatchString(source) {
+			t.Errorf("the webapp never reads %q (as dataset.%s); an attribute it does not "+
+				"read is absent, which it takes as every map surface being on",
+				MapSurfacesAttr, want)
+		}
+	})
+
+	for _, surface := range []string{SurfacePanel, SurfacePage} {
+		t.Run(surface, func(t *testing.T) {
+			if !strings.Contains(source, `has('`+surface+`')`) {
+				t.Errorf("the webapp never matches the %q surface; a token it does not "+
+					"recognise reads as that surface being off", surface)
+			}
+		})
+	}
+}
+
+// And the separator, since the tokens are joined into one attribute value.
+//
+// Joining with ", " instead of "," would leave every token after the first
+// unmatched, so the page would draw no map with nothing saying why. Neither
+// side's own tests would notice: Go asserts the string it just built and the
+// webapp asserts the string it wrote itself.
+func TestWebappMapSurfaceSeparatorMatches(t *testing.T) {
+	source := readPageSource(t, "payload.ts")
+
+	if !strings.Contains(source, `split('`+mapSurfaceSeparator+`')`) {
+		t.Errorf("the webapp does not split the surface list on %q", mapSurfaceSeparator)
+	}
+}
+
+// readPageSource reads a file from the page bundle's source.
+//
+// A sibling of readWebappSource, which is rooted at the location decorator's own
+// directory. The shell's reader lives in the page entry point instead, and
+// reaching it through that helper needed a "map/../.." prefix that said nothing
+// about where the file is.
+func readPageSource(t *testing.T, name string) string {
+	t.Helper()
+
+	path := filepath.Join("..", "..", "..", "webapp", "src", "page", name)
+	raw, err := os.ReadFile(path) // #nosec G304 -- fixed, repo-relative source path
+	if err != nil {
+		t.Fatalf("could not read %s: %v", path, err)
+	}
+
+	return string(raw)
+}

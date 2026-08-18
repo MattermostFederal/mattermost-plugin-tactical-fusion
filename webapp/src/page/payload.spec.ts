@@ -140,3 +140,78 @@ test('a token this build cannot parse still yields a payload', () => {
     expect(data!.payload.canonical).toBe('18Q323478E4306483N');
     expect(data!.conversion.status).toBe('ready');
 });
+
+/*
+ * Which map surfaces the shell says are on.
+ *
+ * A page cannot ask /api/v1/features, so this attribute is the only thing it has
+ * to go on, and the absent case is the one that matters: a missing attribute is
+ * a shell this bundle cannot interpret, not an admin decision, and reading the
+ * two the same way would leave a maps-off install drawing and a maps-on install
+ * blank. The server writes it unconditionally, empty included, so "off" is
+ * always said out loud.
+ */
+test('reads the map surfaces out of the shell', () => {
+    const data = readPageData(root({
+        mode: 'location',
+        f: 'mgrs',
+        v: '18SUJ2347806483',
+        maps: 'panel,page',
+    }));
+
+    expect(data!.maps.mapPanel).toBe(true);
+    expect(data!.maps.mapPage).toBe(true);
+});
+
+test('reads an empty list as every surface off', () => {
+    const data = readPageData(root({
+        mode: 'location',
+        f: 'mgrs',
+        v: '18SUJ2347806483',
+        maps: '',
+    }));
+
+    expect(data!.maps.mapPanel).toBe(false);
+    expect(data!.maps.mapPage).toBe(false);
+});
+
+test('reads one surface without the other', () => {
+    const data = readPageData(root({
+        mode: 'location',
+        f: 'mgrs',
+        v: '18SUJ2347806483',
+        maps: 'panel',
+    }));
+
+    expect(data!.maps.mapPanel).toBe(true);
+    expect(data!.maps.mapPage).toBe(false);
+});
+
+// An absent attribute means a shell older than this bundle, and defaults ON.
+// Drawing a map nobody asked for costs a fetch on a page the reader is already
+// looking at; failing to draw one somebody is paying for is silent.
+test('reads an absent attribute as every surface on', () => {
+    const data = readPageData(root({
+        mode: 'location',
+        f: 'mgrs',
+        v: '18SUJ2347806483',
+    }));
+
+    expect(data!.maps.mapPanel).toBe(true);
+    expect(data!.maps.mapPage).toBe(true);
+});
+
+// A surface a later server knows about and this bundle does not is ignored
+// rather than drawn, and `inline` is never claimed: no page has posts in it.
+test('ignores a surface this bundle does not know', () => {
+    const data = readPageData(root({
+        mode: 'location',
+        f: 'mgrs',
+        v: '18SUJ2347806483',
+        maps: 'panel,hologram,inline',
+    }));
+
+    expect(data!.maps.mapPanel).toBe(true);
+    expect(data!.maps.mapPage).toBe(false);
+    expect(data!.maps.mapInline).toBe(false);
+});

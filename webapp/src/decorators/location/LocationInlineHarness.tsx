@@ -8,6 +8,9 @@ import type {LocationFormat} from './format';
 import LocationInline from './LocationInline';
 import {_setMapObserverForTesting} from './map/LocationMap';
 
+import {_resetForTesting as resetFeatures} from '../../features/store';
+import {featuresReply, isFeaturesRequest, setStubbedFeatures} from '../../features/stub_fetch';
+import type {Features} from '../../features/types';
 import {_resetForTesting as resetPreferences} from '../../preferences/store';
 
 import type {LocationPayload} from './index';
@@ -47,6 +50,9 @@ let conversions = 0;
 
 window.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
+    if (isFeaturesRequest(url)) {
+        return Promise.resolve(featuresReply());
+    }
     if (!url.includes('/api/v1/convert')) {
         return realFetch(input as RequestInfo, init);
     }
@@ -74,6 +80,9 @@ interface Props {
 
     /** Start with the post already on screen, for the tests about the map. */
     inView?: boolean;
+
+    /** Map surfaces the stubbed admin has left on. Every one, by default. */
+    features?: Partial<Features>;
 }
 
 const LocationInlineHarness: React.FC<Props> = ({
@@ -81,8 +90,20 @@ const LocationInlineHarness: React.FC<Props> = ({
     canonical = '34.0561,-118.2500',
     outcome: requested = 'ok',
     inView = false,
+    features = {},
 }) => {
     outcome = requested;
+    setStubbedFeatures(features);
+
+    // At render rather than in an effect, because child effects run before
+    // parent ones: the component's own useFeatures would have already loaded
+    // and cached, and resetting afterwards left the store empty with nothing
+    // left to re-trigger a load. Every surface then read as switched off and no
+    // map was ever mounted.
+    useState(() => {
+        resetFeatures();
+        return null;
+    });
 
     const live = useRef<MapLibreMap | null>(null);
     const [maps, setMaps] = useState({built: 0, released: 0});

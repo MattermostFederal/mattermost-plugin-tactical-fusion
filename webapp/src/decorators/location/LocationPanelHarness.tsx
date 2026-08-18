@@ -5,6 +5,9 @@ import {parseCanonical} from './format';
 import type {LocationFormat} from './format';
 import LocationPanel from './LocationPanel';
 
+import {featuresReply, isFeaturesRequest, setStubbedFeatures} from '../../features/stub_fetch';
+import type {Features} from '../../features/types';
+
 import type {LocationPayload} from './index';
 
 /**
@@ -106,16 +109,36 @@ let hiddenRows: string[] = [];
 
 window.fetch = ((input: RequestInfo | URL, init?: RequestInit) =>
     new Promise((resolve, rejectRequest) => {
-        // The preferences request answers straight away. Only the CONVERSION is
-        // deferred, because what these tests are about is what the panel shows
-        // while that one is in the air, and a settings read left hanging would
-        // just leave every row on its default forever.
+        // The preferences and features requests answer straight away. Only the
+        // CONVERSION is deferred, because what these tests are about is what the
+        // panel shows while that one is in the air, and a settings read left
+        // hanging would just leave every row on its default forever.
+        if (isFeaturesRequest(String(input))) {
+            resolve(featuresReply());
+            return;
+        }
+
         if (String(input).includes('/preferences')) {
             resolve({
                 ok: true,
                 status: 200,
                 json: () => Promise.resolve({location: {hidden_rows: hiddenRows}}),
             } as Response);
+            return;
+        }
+
+        // Anything that is not a conversion is refused rather than deferred.
+        //
+        // The map fetches the basemap archive through the same `fetch`, and it
+        // reaches here AFTER the conversion does, because the map is not mounted
+        // until the features answer lands. Letting it fall into the branch below
+        // overwrote `settle` with the archive's resolver, so "answer the
+        // conversion" settled the wrong request and every row stayed on
+        // `converting…`. The archive is not served in a component test either
+        // way, so refusing it changes nothing except which promise the button
+        // holds.
+        if (!String(input).includes('/api/v1/convert')) {
+            resolve({ok: false, status: 404, json: () => Promise.resolve({})} as Response);
             return;
         }
 
@@ -157,6 +180,9 @@ interface Props {
 
     /** Rows the stubbed reader has hidden. */
     hidden?: string[];
+
+    /** Map surfaces the stubbed admin has left on. Every one, by default. */
+    features?: Partial<Features>;
 }
 
 /**
@@ -234,9 +260,11 @@ const LocationPanelHarness: React.FC<Props> = ({
     raw,
     outcome: requested = 'ok',
     hidden = [],
+    features = {},
 }) => {
     outcome = requested;
     hiddenRows = hidden;
+    setStubbedFeatures(features);
 
     // The sidebar keeps the panel mounted across a change of selection, so the
     // harness has to change the payload rather than remount. This button is

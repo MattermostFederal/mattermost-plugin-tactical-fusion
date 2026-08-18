@@ -6,6 +6,7 @@ import {setEditing, useEditing} from './editing';
 import LocationReadings from './LocationReadings';
 
 import LinkButton from '../../components/LinkButton';
+import {useFeatures} from '../../features/store';
 import {docsUrl} from '../../plugin_url';
 import {usePreferences} from '../../preferences/store';
 
@@ -24,6 +25,7 @@ const LocationPanel: React.FC<{payload: LocationPayload}> = ({payload}) => {
 
     const conversion = useConversion(format, canonical, raw);
     const {preferences} = usePreferences();
+    const {features} = useFeatures();
     const customizing = useEditing();
 
     // Clicking a different coordinate while the editor is open would otherwise
@@ -53,6 +55,7 @@ const LocationPanel: React.FC<{payload: LocationPayload}> = ({payload}) => {
             payload={payload}
             conversion={conversion}
             hidden={preferences.location.hiddenRows}
+            maps={features}
             footer={
                 <>
                     <LinkButton onClick={() => setEditing(true)}>{'Customize your view'}</LinkButton>

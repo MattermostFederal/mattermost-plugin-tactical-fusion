@@ -15,7 +15,7 @@ The repo ships the decorator framework and two decorators, DTG and Location. The
   - `decorators/location/` - the Location decorator: `coord.go` (the textual `Axis`/`Grid`/`Location`, `Point()` and `canonical()`), `grammar.go` (token sub-expressions, the bare/labeled split and the boundary guard), `parse.go` (per-grammar parsing and range checks), `geodesy.go` (the WGS 84 transverse Mercator series, zones and bands), `mgrs.go` (the 100 km letter scheme and grid encoding), `format.go` (rendering at resolution), `convert.go` (the derived readings the API serves), `location.go` (the `Decorator`, patterns, monikers, `validateParams` and the `r` gates), and `page.go`.
   - `hooks.go` - `MessageWillBePosted` and `decoratePost`.
   - `http.go` - `ServeHTTP`, routing `/decorate/<type>` to a decorator page and `/api/v1/*` to `api.go`.
-  - `api.go` - the authenticated JSON API: `/api/v1/preferences` and `/api/v1/convert`.
+  - `api.go` - the authenticated JSON API: `/api/v1/preferences`, `/api/v1/convert` and `/api/v1/features`.
   - `preferences.go` / `preferences_cache.go` - the per-reader KV store and its cluster-aware cache.
   - `command.go` / `command_examples.go` / `command_example_details.go` / `command_check.go` - the `/tactical-fusion` slash command.
   - `errcode/` - the `TF-NNNN` catalog.
@@ -26,6 +26,8 @@ The repo ships the decorator framework and two decorators, DTG and Location. The
   - `src/page/` - the standalone pages' entry point, built by a second webpack configuration into `public/app/page.js`. It renders the same components the sidebar does; see Mapping, "The page bundle".
   - `src/components/rhs/` - `RhsView` and `RhsTitle`, which look the panel up by decorator type.
   - `src/preferences/` - the wire types and the module-state cache in front of `/api/v1/preferences`.
+  - `src/features/` - the same shape in front of `/api/v1/features`, which is the
+    only channel from admin configuration to the webapp.
   - `src/HeaderIcon.tsx` - the channel header button, registered in `index.tsx`. It clears the selection and toggles the sidebar, so it always lands on the empty state, which is also the only way back from a decorator panel. The mark is `assets/icon.svg` without its plate, and `server/icon_test.go` asserts the two keep the same pin color.
 - `plugin.json` - plugin manifest. Generates `server/manifest.go` and `webapp/src/manifest.ts` at build time (both gitignored).
 - `build/` - build tooling from mattermost-plugin-starter-template (`setup.mk`, `custom.mk`, `manifest/`, `pluginctl/`).
@@ -271,6 +273,12 @@ to the panel. **The location hover is the map and nothing else**, for the same
 reason: a glance at a coordinate is asking where, and every reading is one click
 away. It still honors the reader's flash threshold, or pointing at a
 link and opening it could disagree about whether the same DTG is imminent.
+
+**A Hover may also decline at render**, by returning `null`. The framework hides
+the card's chrome when it renders empty, through a `:empty` rule on
+`HOVER_CARD_CLASS` in `buildDecoratorStyles()`, so that is no card rather than an
+empty bordered box. The location hover uses it when an admin turns the panel map
+off, since a card that is the map has nothing left to be.
 
 The sidebar also opens from a **channel header button**, which clears the
 selection first so it always lands on the empty state. That state is the only
@@ -1622,6 +1630,136 @@ string value does not type-check there. The webapp's read path is deliberately
 forgiving, so a regression that narrows it back drops the id silently: the reader
 unticks Map, saves, and it is back after a reload with nothing logged.
 
+### Turning maps off
+
+Four admin switches, in the **Maps** section of the manifest: `EnableLocationMap`
+over `EnableLocationMapPanel` (the sidebar and the hover card),
+`EnableLocationMapInline` (under a coordinate-only post) and
+`EnableLocationMapPage` (`/map`). All four ship on, and all four are ANDed with
+`EnableLocation`, since a map is only ever drawn for a coordinate this plugin
+decorated. `Plugin.locationMaps` does that AND, beside `locationFormats`, and
+hands the result to `location.Decorator.Maps`.
+
+**Off means nothing is FETCHED, not merely nothing is drawn.** That is the whole
+point: the pmtiles archive is 43 MB, the glyph ranges are beside it and the
+MapLibre chunk is about 950 KB, which together are the largest thing this plugin
+transfers. Gating the four `<LocationMap>` mount sites is what achieves it, so
+`loadMapLibre` and `loadBasemap` need no switch of their own: they are reached
+only from that component.
+
+**What it cannot do is make the archive unreachable.** Mattermost serves the
+bundle's `public/` directory itself, before `ServeHTTP` sees the request, so the
+switch stops clients *asking* and the file ships either way. A build that omits
+`public/map/` is a separate piece of work and was declined as out of scope.
+
+**These are the only switches read at render rather than at decoration**, and the
+`Formats` doc comment names `Maps` as the exception so the two rules cannot be
+confused. A format governs text already written permanently into a message; a map
+is drawn afresh each time somebody looks.
+
+Per surface, the mechanism differs, and each one is chosen rather than uniform:
+
+- **`/map` answers 404**, gated in `ServeHTTP` with its own code
+  (`errcode.HTTPMapDisabled`, TF-12004). The only route a switch removes
+  outright, because that page **is** the map: there is no reduced version worth
+  serving, where `/decorate/location` still has every reading.
+- **The post is not stamped.** `location.Decorator.PostType()` answers `""` when
+  the inline map is off, and `decorators.StandalonePostType` already reads `""`
+  as "this decorator renders no post body", so `stampStandalonePost` needs no
+  change and the stamp is never written rather than written and ignored. That
+  distinction is the substance of the switch: the stamp is what costs the post
+  its Elasticsearch and OpenSearch matches, and `Post.Type` survives every edit
+  with no `MessageWillBeUpdated` hook to clear one. **Posts stamped while it was
+  on keep their type forever**, and render as the link alone.
+- **The hover card disappears entirely**, and costs nothing while it does.
+  `LocationHover` is split into an outer gate and an inner card so `useConversion`
+  is never reached, the same shape `LocationInline` uses: a hook that runs is a
+  request that goes out, and hooks cannot be called conditionally, so gating
+  inside one component left a maps-off install firing a conversion per hovered
+  token for a card nobody would see. The gate returns `null`, and the
+  framework's `DecoratorTooltip` now carries `HOVER_CARD_CLASS` with a
+  `:empty { display: none }` rule in `buildDecoratorStyles()`, so a Hover that
+  renders nothing gets no chrome instead of an empty bordered box. That rule
+  cannot be an inline style, since `:empty` is a selector and every other style
+  in this plugin is an inline attribute; the class name is written once in
+  `registry.ts` so the element and the rule cannot drift apart. It is what lets a
+  decorator decline a card **at render** rather than only by declining to declare
+  a `Hover` at all.
+- **`Customize` stops offering the tick box** for a surface that is off, because
+  one that changes nothing a reader can see is worse than an absent one. What is
+  *stored* is untouched: the read path already ignores an id nothing renders, so
+  the switch coming back returns each reader to the choice they had made.
+
+**The webapp learns this from `GET /api/v1/features`**, which is the only channel
+from plugin configuration to the webapp and had to be built: Mattermost hands
+plugin settings to system admins alone, the store given to `initialize()` is used
+only to dispatch RHS actions, and there is no reducer. It answers **per surface**
+rather than per setting, so the parent AND stays in Go and the two sides cannot
+reach different conclusions from the same switches.
+`webapp/src/features/` mirrors `preferences/`: module-state cache, one in-flight
+promise shared by every caller, `useFeatures()`, and the same `CACHE_TTL_MS`
+rather than a second cross-language number. `TestWebappFeatureShapeMatches` pins
+the payload, and it is a worse seam to get wrong than the `Conversion` one:
+every field is read as a boolean, so a drifted name reads `undefined`, which is
+falsy, and the symptom is a map that silently stops drawing on an install that
+never touched the switch.
+
+**The two defaults in that store are opposite, and the pair is the design.**
+`NO_FEATURES` while the answer is in flight, because assuming maps are wanted and
+correcting afterwards would pull the archive once per tab on exactly the installs
+the switch exists for; `ALL_FEATURES` on a failed **first** read, because nothing
+may fail the panel into permanently hiding a feature the admin is paying for.
+"Not answered yet" is a moment and resolves itself; "could not be answered" could
+last. A failed read does not stamp the clock, so the next mount retries. A
+payload that does not match the shape throws rather than defaulting a field,
+since `Boolean(undefined)` is a confident `false` and would report a rename as an
+admin decision.
+
+**A failed REFRESH keeps the last good answer**, which is a third case and not a
+detail of the second. This store was written from `preferences/store.ts` without
+its fix and reproduced the defect that file documents: the cache lapses every
+`CACHE_TTL_MS`, so on a maps-off install one failed refresh flipped every surface
+back on and started the archive downloading, and because a failure does not stamp
+the clock it flapped for as long as the server was unwell. `loadedAt === null` is
+the test for "has a good answer ever landed".
+
+**The read is bounded at ten seconds**, the same bound `basemap.ts` and
+`loadMapLibre` put on theirs and for the same reason: a fetch that *stalls* never
+rejects, so `inflight` is never cleared and every later caller joins one pending
+promise. Here that fails **closed**, which is the one direction this store must
+never fail in: every map off, on every surface, indistinguishable from an admin
+having switched them off.
+
+**`/api/v1/features` answers 503 while the configuration has not loaded**, rather
+than reporting the zero value. Everywhere else "not loaded" reads as "every
+switch off" and that is the safe direction, because the answer is discarded
+immediately. Here it is handed to a client that stamps its cache on a 200 and
+keeps it for half an hour, so an unloaded configuration would be cached as an
+admin decision. `configurationLoaded()` is what tells the two apart, and the
+window is not only a startup race: `OnConfigurationChange` returns before
+`setConfiguration` when the load fails.
+
+**The pages read it out of the shell instead**, as `data-maps`, a comma list of
+the surfaces that are on. A page is handed everything it needs in one document,
+and `/api/v1/features` needs a session the route does not otherwise require.
+The attribute name, the two tokens and the separator are all held to the
+webapp's reader by `TestWebappMapSurfaceAttributeMatches` and its sibling, which
+is the guard this seam was missing: each side pinned its own copy, so renaming
+one together with its own test left both suites green while the standalone
+readings page silently stopped drawing a map.
+
+Written **unconditionally, empty included**: an absent attribute has to mean "a
+shell older than this bundle", which `mapsFrom` reads as every surface on, so if
+"off" were also spelled as absence a maps-off install would keep drawing. Read
+against a closed set, so a surface a later server knows about is ignored rather
+than drawn, and `inline` is never on the wire there because no page has posts in
+it.
+
+Deliberately not done: tightening `PageMapping` back toward `PageStatic` on a
+page that now draws no map. It would still need `script-src 'self'` for the page
+bundle, so only `worker-src`, `img-src` and `connect-src` could go, and that is
+worth its own change with its own whole-policy test.
+
 ### The map under a post
 
 When a posted message is **only** a coordinate, the server stamps the post with a
@@ -1681,6 +1819,9 @@ assumed.** All three were checked and accepted deliberately:
   indexed and then never matches. That takes Recent Mentions with it. Installs on
   Postgres are unaffected, since `post_store.go` filters `system_%` only. This is
   the largest cost in the feature and it lands on exactly the posts it is for.
+  **`EnableLocationMapInline` is how an install gets out of it**: with that off
+  the stamp is never written, so those posts stay ordinary and searchable. See
+  Mapping, "Turning maps off".
 - **Auto-translation is off**, at six call sites that all test `post.type === ''`.
 - **Link previews, image embeds and message attachments are dropped**, because
   `message_with_additional_content.tsx` computes `hasPlugin` from the raw
@@ -1852,15 +1993,39 @@ to discover a limit it is not told.
 
 ## Admin settings
 
-`plugin.json` declares eleven switches: `EnableDTG` (the date-time group
-decorator) with `EnableDTGMilitary`, `EnableDTGMoniker` and `EnableDTGTimestamp`
-below it, and `EnableLocation` with `EnableLocationDDSigned`,
-`EnableLocationLatLon`, `EnableLocationUSMTF`, `EnableLocationGrid`,
-`EnableLocationUTM` and `EnableLocationMoniker`. Mattermost's settings schema has
-no nesting, so the grouping is by ordering and naming; the parent is enforced in
-code, in `Plugin.dtgFormats` and `Plugin.locationFormats`.
+`plugin.json` declares fifteen switches in **three `settings_schema.sections`**:
 
-**Ten default on. `EnableLocationUTM` defaults off, and is the only one.** The
+- **Date and time**: `EnableDTG` with `EnableDTGMilitary`, `EnableDTGTimestamp`
+  and `EnableDTGMoniker`.
+- **Coordinates**: `EnableLocation` with `EnableLocationDDSigned`,
+  `EnableLocationLatLon`, `EnableLocationUSMTF`, `EnableLocationMGRS`,
+  `EnableLocationUTM` and `EnableLocationMoniker`.
+- **Maps**: `EnableLocationMap` with `EnableLocationMapPanel`,
+  `EnableLocationMapInline` and `EnableLocationMapPage`.
+
+`model.PluginSettingsSchema` carries a `Sections` field
+(`PluginSettingsSection{Key, Title, Subtitle, Settings, Header, Footer}`), so
+this is a real grouping rather than one implied by ordering. It said the opposite
+here for a long time ("Mattermost's settings schema has no nesting"), which is
+worth recording because it is the kind of claim that outlives the version it was
+true of.
+
+**A section groups, it does not gate.** The parent is still enforced in code, in
+`Plugin.dtgFormats`, `Plugin.locationFormats` and `Plugin.locationMaps`, because
+nothing about a section title reaches the switches under it. The Maps section has
+**two** parents: `EnableLocationMap` and `EnableLocation`, since a map is only
+ever drawn for a coordinate this plugin decorated.
+
+`settings_schema.settings` is left empty and
+`TestEverySettingBelongsToANamedSection` keeps it that way, because Mattermost
+renders anything there above the first section heading, where it reads as a
+switch belonging to no feature. That test also insists every section carries a
+key (the server refuses one without) and a title. `loadSettings` in
+`configuration_settings_test.go` flattens the sections, which is what stops the
+move making every other test in that file iterate an empty slice and pass while
+checking nothing.
+
+**Fourteen default on. `EnableLocationUTM` defaults off, and is the only one.** The
 reason is a difference in kind rather than in degree: every other switch trades
 a false positive against a missed decoration, so its worst case is that
 something which was not a coordinate gets linked, or something which was does
@@ -1881,8 +2046,12 @@ because an off-by-default format is otherwise indistinguishable from a broken
 one: an admin pastes a UTM position, nothing happens, and the setting they would
 check is the one already sitting at its default.
 
-`EnableLocationGrid` is MGRS alone despite the generic name, which is kept so an
-install that had it on keeps MGRS on across the split.
+`EnableLocationMGRS` was `EnableLocationGrid`, whose generic name was kept so an
+install that had it on kept MGRS on across the MGRS/UTM split. Renamed once
+backwards compatibility stopped being a constraint: it sits directly above
+`EnableLocationUTM` in the Coordinates section and read as though it governed
+both. An upgrading install therefore gets the default rather than what it had
+set, which was the accepted cost.
 
 There is no separate "decorate at all" switch. With one decorator it only
 duplicated `EnableDTG`; a second decorator should bring its own switch rather
@@ -1895,11 +2064,20 @@ everything switched off contributes no patterns, so nothing matches and the post
 is returned unchanged, which is the same path as a message with no token in it.
 
 **A format switch governs decoration only.** `RenderPage` never consults the
-configuration, so a link already written into a message keeps working after its
-format is switched off. Turning one off stops new messages being decorated with
-it, and that is all. For the same reason the decorator stays registered even
-with everything off, rather than being left out of the registry: an unregistered
-type would 404 every link in the history.
+format configuration, so a link already written into a message keeps working
+after its format is switched off. Turning one off stops new messages being
+decorated with it, and that is all. For the same reason the decorator stays
+registered even with everything off, rather than being left out of the registry:
+an unregistered type would 404 every link in the history.
+
+**The map switches are the deliberate exception, and are read at render.** A
+format governs text already written permanently into a message, so turning one
+off may not break the history behind it; a map is drawn afresh every time
+somebody looks and is written into nothing, so turning one off has to reach
+links already out there or the switch would not mean what it says. `RenderPage`
+therefore consults `Decorator.Maps`, which is admin configuration rather than
+per-reader state and decides only whether a picture is drawn beside readings that
+are still a pure function of the query string. See Mapping, "Turning maps off".
 
 The moniker composes: `EnableDTGMoniker` only labels formats that are themselves
 on, so turning military formats off also stops `DTG: 091630ZAUG26`. A moniker

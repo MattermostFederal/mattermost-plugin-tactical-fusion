@@ -9,21 +9,54 @@ import (
 	"testing"
 )
 
+// setting is one switch as plugin.json declares it.
+type setting struct {
+	Key         string `json:"key"`
+	DisplayName string `json:"display_name"`
+	Type        string `json:"type"`
+	Default     any    `json:"default"`
+	HelpText    string `json:"help_text"`
+}
+
+// settingsSection is one group in the admin console.
+type settingsSection struct {
+	Key      string    `json:"key"`
+	Title    string    `json:"title"`
+	Subtitle string    `json:"subtitle"`
+	Settings []setting `json:"settings"`
+}
+
 // settingsSchema is the slice of plugin.json this plugin's admin console is
 // built from.
+//
+// Both Settings and Sections are parsed, and every switch lives in a section:
+// the flat list is kept in the struct only so the test below can insist it is
+// empty. A key left at the top level renders outside every group heading, above
+// the first one, which reads as a switch belonging to no feature.
 type settingsSchema struct {
 	SettingsSchema struct {
 		// Header is markdown shown above the settings. It is where the built-in
 		// documentation is advertised to admins; see help_docs_test.go.
-		Header   string `json:"header"`
-		Settings []struct {
-			Key         string `json:"key"`
-			DisplayName string `json:"display_name"`
-			Type        string `json:"type"`
-			Default     any    `json:"default"`
-			HelpText    string `json:"help_text"`
-		} `json:"settings"`
+		Header   string            `json:"header"`
+		Settings []setting         `json:"settings"`
+		Sections []settingsSection `json:"sections"`
 	} `json:"settings_schema"`
+}
+
+// allSettings is every switch, whichever section declares it.
+//
+// The tests below are about the switches rather than the arrangement, so they
+// take this and the grouping is asserted separately. Without it, moving the
+// settings into sections would have left every one of them iterating an empty
+// slice and passing while checking nothing.
+func (s settingsSchema) allSettings() []setting {
+	var all []setting
+	all = append(all, s.SettingsSchema.Settings...)
+	for _, section := range s.SettingsSchema.Sections {
+		all = append(all, section.Settings...)
+	}
+
+	return all
 }
 
 func loadSettings(t *testing.T) settingsSchema {
@@ -39,7 +72,7 @@ func loadSettings(t *testing.T) settingsSchema {
 	if err := json.Unmarshal(raw, &schema); err != nil {
 		t.Fatalf("plugin.json is not valid JSON: %v", err)
 	}
-	if len(schema.SettingsSchema.Settings) == 0 {
+	if len(schema.allSettings()) == 0 {
 		t.Fatal("plugin.json declares no settings")
 	}
 
@@ -55,7 +88,7 @@ func TestEverySettingBindsToAConfigurationField(t *testing.T) {
 		fields[strings.ToLower(field.Name)] = field
 	}
 
-	for _, setting := range loadSettings(t).SettingsSchema.Settings {
+	for _, setting := range loadSettings(t).allSettings() {
 		t.Run(setting.Key, func(t *testing.T) {
 			field, ok := fields[strings.ToLower(setting.Key)]
 			if !ok {
@@ -71,13 +104,74 @@ func TestEverySettingBindsToAConfigurationField(t *testing.T) {
 // The other direction: a field with no setting is a switch nobody can reach.
 func TestEveryConfigurationFieldHasASetting(t *testing.T) {
 	declared := map[string]bool{}
-	for _, setting := range loadSettings(t).SettingsSchema.Settings {
+	for _, setting := range loadSettings(t).allSettings() {
 		declared[strings.ToLower(setting.Key)] = true
 	}
 
 	for field := range reflect.TypeFor[configuration]().Fields() {
 		if !declared[strings.ToLower(field.Name)] {
 			t.Fatalf("configuration has %q but plugin.json declares no setting for it", field.Name)
+		}
+	}
+}
+
+// Every switch belongs to a section, and no section is anonymous.
+//
+// Mattermost renders settings_schema.settings above the first section heading,
+// so a key left there is a switch that appears to belong to no feature. That is
+// exactly the arrangement sections replaced, and it is the state the manifest
+// drifts back into one setting at a time if nothing says otherwise.
+//
+// A section with no key is refused by the server outright (PluginSettingsSection
+// .IsValid), which makes the whole plugin fail to load rather than merely look
+// wrong. A section with no title renders as an unlabelled group, which is worse
+// than no grouping at all.
+func TestEverySettingBelongsToANamedSection(t *testing.T) {
+	schema := loadSettings(t).SettingsSchema
+
+	for _, setting := range schema.Settings {
+		t.Errorf("%q sits outside every section, so it renders above the first heading "+
+			"with nothing saying what it governs", setting.Key)
+	}
+
+	if len(schema.Sections) == 0 {
+		t.Fatal("plugin.json declares no sections")
+	}
+
+	keys := map[string]bool{}
+	for _, section := range schema.Sections {
+		if section.Key == "" {
+			t.Error("a section declares no key, which Mattermost refuses at load time")
+			continue
+		}
+		if keys[section.Key] {
+			t.Errorf("two sections share the key %q", section.Key)
+		}
+		keys[section.Key] = true
+
+		if section.Title == "" {
+			t.Errorf("section %q declares no title, so its switches group under nothing", section.Key)
+		}
+		if len(section.Settings) == 0 {
+			t.Errorf("section %q declares no settings", section.Key)
+		}
+	}
+
+	// And no setting key appears twice, in one section or across two.
+	//
+	// Nothing else catches it: allSettings appends, the binding tests collapse
+	// into maps, and Go silently disambiguates duplicate t.Run names. A repeated
+	// key renders two switches bound to one configuration field, so flipping one
+	// appears not to stick, which is the same admin-facing silence the binding
+	// tests exist to prevent.
+	seen := map[string]string{}
+	for _, section := range schema.Sections {
+		for _, setting := range section.Settings {
+			if where, dup := seen[setting.Key]; dup {
+				t.Errorf("setting %q is declared in both the %q and %q sections",
+					setting.Key, where, section.Key)
+			}
+			seen[setting.Key] = section.Key
 		}
 	}
 }
@@ -108,7 +202,7 @@ var defaultsOff = map[string]string{
 func TestEverySwitchDeclaresTheIntendedDefault(t *testing.T) {
 	seen := map[string]bool{}
 
-	for _, setting := range loadSettings(t).SettingsSchema.Settings {
+	for _, setting := range loadSettings(t).allSettings() {
 		t.Run(setting.Key, func(t *testing.T) {
 			if setting.Type != "bool" {
 				return
@@ -154,7 +248,7 @@ func TestEverySwitchDeclaresTheIntendedDefault(t *testing.T) {
 // the one already sitting at its default. The help text is the only thing
 // standing between that and a bug report.
 func TestASwitchThatShipsOffSaysWhyInItsHelpText(t *testing.T) {
-	for _, setting := range loadSettings(t).SettingsSchema.Settings {
+	for _, setting := range loadSettings(t).allSettings() {
 		if _, off := defaultsOff[setting.Key]; !off {
 			continue
 		}

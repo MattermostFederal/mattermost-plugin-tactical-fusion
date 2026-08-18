@@ -3,6 +3,7 @@ import React, {useState} from 'react';
 import Customize from './Customize';
 import {_resetForTesting as resetEditing} from './editing';
 
+import {_resetForTesting as resetFeaturesStore} from '../../features/store';
 import {_resetForTesting as resetPreferencesStore} from '../../preferences/store';
 
 /**
@@ -15,6 +16,7 @@ const CustomizeHarness: React.FC = () => {
     useState(() => {
         resetEditing();
         resetPreferencesStore();
+        resetFeaturesStore();
         return null;
     });
 

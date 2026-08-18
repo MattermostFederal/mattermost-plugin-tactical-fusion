@@ -157,3 +157,55 @@ test.describe('when the reader has hidden it', () => {
         await expect(component.getByTestId('location-inline')).toBeVisible();
     });
 });
+
+/*
+ * The admin's switch and the reader's own do the same thing here and are checked
+ * in the same place, so the map costs no conversion request per coordinate in
+ * the rendered window either way. Mattermost renders on the order of thirty
+ * posts at a time, which is what makes that worth being exact about.
+ */
+test.describe('when the admin has turned the inline map off', () => {
+    test('draws no map and asks for no conversion', async ({mount, page}) => {
+        await serveMapAssets(page);
+        await stubPreferencesRoute(page);
+
+        const component = await mount(
+            <LocationInlineHarness
+                inView={true}
+                features={{mapInline: false}}
+            />);
+
+        await expect(component.getByTestId('location-inline')).toHaveCount(0);
+        await expect(component.getByTestId('conversions')).toHaveText('0');
+    });
+
+    // The three surfaces are independent, so the channel map survives the panel
+    // and the page being off.
+    test('is unaffected by the other surfaces being off', async ({mount, page}) => {
+        await serveMapAssets(page);
+        await stubPreferencesRoute(page);
+
+        const component = await mount(
+            <LocationInlineHarness
+                inView={true}
+                features={{mapPanel: false, mapPage: false}}
+            />);
+
+        await expect(component.getByTestId('location-inline')).toBeVisible();
+    });
+
+    // "Open larger" points at /map, which answers 404 with its own switch off.
+    test('offers no Open larger when the map page is off', async ({mount, page}) => {
+        await serveMapAssets(page);
+        await stubPreferencesRoute(page);
+
+        const component = await mount(
+            <LocationInlineHarness
+                inView={true}
+                features={{mapPage: false}}
+            />);
+
+        await expect(component.getByTestId('location-inline')).toBeVisible();
+        await expect(component.getByText('Open larger')).toHaveCount(0);
+    });
+});

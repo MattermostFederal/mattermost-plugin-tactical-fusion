@@ -40,7 +40,7 @@ type configuration struct {
 	// posture of mattermost-plugin-aocanywhere, which decorates a coordinate
 	// only when the author labeled it. That is a supported configuration.
 	//
-	// EnableLocationGrid and EnableLocationUTM are separate for a different
+	// EnableLocationMGRS and EnableLocationUTM are separate for a different
 	// reason again: MGRS and UTM are the only grammars whose position is
 	// computed rather than read off the token, so turning both off removes
 	// every row this plugin derives from a hand-written projection rather than
@@ -58,9 +58,30 @@ type configuration struct {
 	EnableLocationDDSigned bool
 	EnableLocationLatLon   bool
 	EnableLocationUSMTF    bool
-	EnableLocationGrid     bool
+	EnableLocationMGRS     bool
 	EnableLocationUTM      bool
 	EnableLocationMoniker  bool
+
+	// EnableLocationMap is the switch for drawing a coordinate on a map, and
+	// the three below select which surfaces draw one. They are ANDed with
+	// EnableLocation as well as with each other, because a map only ever
+	// appears behind a coordinate this plugin decorated.
+	//
+	// Unlike a format switch these are read at render rather than only at
+	// decoration: a map is drawn live every time somebody looks, so turning one
+	// off has to reach links already written into messages. See the Maps
+	// documentation in server/decorators/location.
+	//
+	// EnableLocationMapInline is the one with a cost beyond bytes on the wire.
+	// Drawing under a post means stamping it with a custom Type, and
+	// Elasticsearch and OpenSearch build an allow list of `default` and
+	// `slack_attachment`, so such a post is indexed and then never matches:
+	// it is absent from search and from Recent Mentions. Turning it off leaves
+	// those posts ordinary and gets all of that back.
+	EnableLocationMap       bool
+	EnableLocationMapPanel  bool
+	EnableLocationMapInline bool
+	EnableLocationMapPage   bool
 }
 
 func (c *configuration) Clone() *configuration {
@@ -79,6 +100,21 @@ func (p *Plugin) getConfiguration() *configuration {
 	return p.configuration
 }
 
+// configurationLoaded reports whether the settings have ever been read.
+//
+// getConfiguration deliberately substitutes a zero value for a nil one, so every
+// caller that only wants to decorate can treat "not loaded" as "everything off"
+// and carry on. That is the safe reading where the answer is discarded straight
+// away, and the wrong one where it is handed to a client that will cache it: an
+// unloaded configuration would then be reported as an admin decision. This is
+// how the two are told apart.
+func (p *Plugin) configurationLoaded() bool {
+	p.configurationLock.RLock()
+	defer p.configurationLock.RUnlock()
+
+	return p.configuration != nil
+}
+
 func (p *Plugin) setConfiguration(configuration *configuration) {
 	p.configurationLock.Lock()
 	defer p.configurationLock.Unlock()
@@ -87,7 +123,7 @@ func (p *Plugin) setConfiguration(configuration *configuration) {
 		// Boilerplate from the plugin starter template, for a configuration with
 		// no fields at all: re-setting one is harmless because there is nothing
 		// to change. Unreachable here and expected to stay uncovered, since
-		// configuration has four fields.
+		// configuration has fifteen fields.
 		if reflect.ValueOf(*configuration).NumField() == 0 {
 			return
 		}

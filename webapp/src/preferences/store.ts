@@ -53,7 +53,7 @@ let inflight: Promise<void> | null = null;
  * that ever refreshes it. Shortening it would buy freshness a reader cannot
  * perceive at the cost of a request per panel open.
  */
-const CACHE_TTL_MS = 30 * 60 * 1000;
+export const CACHE_TTL_MS = 30 * 60 * 1000;
 
 /** When the current blob was read, or null when there is nothing cached. */
 let loadedAt: number | null = null;
@@ -319,6 +319,3 @@ export function _resetForTesting(): void { // eslint-disable-line no-underscore-
 export function _setClockForTesting(clock: () => number): void { // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
     now = clock;
 }
-
-/** @internal exported for tests */
-export const CACHE_TTL_MS_FOR_TESTING = CACHE_TTL_MS;

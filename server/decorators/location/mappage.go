@@ -29,6 +29,9 @@ h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0
 // A pure function of its query string, exactly like /decorate, and behind the
 // same session gate. It validates through validateParams, the same gate the
 // readings page uses, so a link one refuses cannot be rendered by the other.
+//
+// It reads no map configuration of its own: this page IS the map, so reaching it
+// at all means ServeHTTP found the surface switched on and refused it otherwise.
 func RenderMapPage(w http.ResponseWriter, params url.Values) {
 	page, ok := validateParams(params)
 	if !ok {
@@ -41,7 +44,7 @@ func RenderMapPage(w http.ResponseWriter, params url.Values) {
 		Title:      mapPageTitle,
 		Theme:      decorators.ThemeFromParams(params),
 		StyleCSS:   pageStyles + mapPageStyles,
-		BodyHTML:   renderRoot(page, pageModeMap),
+		BodyHTML:   renderRoot(page, pageModeMap, Maps{Page: true}),
 		ScriptSrc:  pageAppFromRoot,
 		Capability: decorators.PageMapping,
 	})

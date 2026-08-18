@@ -46,6 +46,7 @@ function start(): void {
                     payload={data.payload}
                     conversion={data.conversion}
                     hidden={[]}
+                    maps={data.maps}
                     footer={<LinkButton href={docsUrl()}>{'Documentation'}</LinkButton>}
                 />
             )}

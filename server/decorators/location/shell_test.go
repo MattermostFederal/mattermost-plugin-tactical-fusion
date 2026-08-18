@@ -89,13 +89,55 @@ func TestShellIsServedForPolarPositions(t *testing.T) {
 	}
 }
 
+// The shell names the surfaces that may draw a map, and always names them.
+//
+// Written even when the list is empty, because a page cannot ask
+// /api/v1/features and so has only this to go on. An absent attribute has to
+// mean "this shell predates the attribute", which the bundle reads as every
+// surface on; if "off" were also spelled as absence the two would be the same
+// string and a maps-off install would keep drawing.
+func TestShellNamesTheMapSurfaces(t *testing.T) {
+	page := pageData{loc: mustParse(t, "3510N07901W")}
+
+	for _, tc := range []struct {
+		name string
+		maps Maps
+		want string
+	}{
+		{"everything on", AllMaps, `data-maps="panel,page"`},
+		{"the page off", Maps{Panel: true}, `data-maps="panel"`},
+		{"the panel off", Maps{Page: true}, `data-maps="page"`},
+		{"everything off", Maps{}, `data-maps=""`},
+
+		// Inline is never on the wire here: no page has posts in it, so a page
+		// reading one would be reading a claim about a surface it does not have.
+		{"inline alone says nothing", Maps{Inline: true}, `data-maps=""`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if root := renderRoot(page, pageModeLocation, tc.maps); !strings.Contains(root, tc.want) {
+				t.Fatalf("shell does not carry %s: %s", tc.want, root)
+			}
+		})
+	}
+}
+
+// The map page always says its own surface is on, because reaching it means
+// ServeHTTP already found it so and refused the request otherwise.
+func TestMapPageShellNamesItsOwnSurface(t *testing.T) {
+	page := pageData{loc: mustParse(t, "3510N07901W")}
+
+	if root := renderRoot(page, pageModeMap, Maps{Page: true}); !strings.Contains(root, `data-maps="page"`) {
+		t.Fatalf("the map page shell does not name its own surface: %s", root)
+	}
+}
+
 // The author's own text is the one value here that came from a message, and
 // this page declares PageMapping, which admits same-origin script. Escaping is
 // the only thing between the two.
 func TestShellEscapesTheAuthorsText(t *testing.T) {
 	page := pageData{loc: mustParse(t, "3510N07901W"), raw: `" onload="alert(1)`}
 
-	root := renderRoot(page, pageModeLocation)
+	root := renderRoot(page, pageModeLocation, AllMaps)
 
 	if strings.Contains(root, `onload="`) {
 		t.Fatalf("the author's text broke out of its attribute: %s", root)

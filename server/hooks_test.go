@@ -198,9 +198,14 @@ func newTestPlugin(t *testing.T, siteURL string, enabled bool) *Plugin {
 		EnableLocationDDSigned: true,
 		EnableLocationLatLon:   true,
 		EnableLocationUSMTF:    true,
-		EnableLocationGrid:     true,
+		EnableLocationMGRS:     true,
 		EnableLocationUTM:      true,
 		EnableLocationMoniker:  true,
+
+		EnableLocationMap:       true,
+		EnableLocationMapPanel:  true,
+		EnableLocationMapInline: enabled,
+		EnableLocationMapPage:   true,
 	})
 
 	registerDecoratorsForTest(t, p)
@@ -214,7 +219,7 @@ func registerDecoratorsForTest(t *testing.T, p *Plugin) {
 	t.Helper()
 	registry, err := decorators.NewDefaultRegistry(
 		&dtg.Decorator{Enabled: p.dtgFormats},
-		&location.Decorator{Enabled: p.locationFormats},
+		&location.Decorator{Enabled: p.locationFormats, Maps: p.locationMaps},
 	)
 	if err != nil {
 		t.Fatalf("failed to build the decorator registry: %v", err)
@@ -802,6 +807,57 @@ func TestDecoratePostCarriesTheAuthorsTextOnlyWhenItDiffers(t *testing.T) {
 	same := standaloneProps(t, p.decoratePost(&model.Post{Message: "34.0561N,118.2500W"}, hookRef))
 	if _, ok := same["r"]; ok {
 		t.Fatalf("props carry r = %v when it only repeats v", same["r"])
+	}
+}
+
+// With the inline map switched off the post is decorated and NOT stamped.
+//
+// The stamp is what costs the post its Elasticsearch and OpenSearch matches, so
+// skipping it is the substance of the switch rather than a tidy-up: leaving the
+// Type on and merely declining to draw would keep every one of those costs and
+// buy nothing. Post.Type also survives every edit once it is set, and there is
+// deliberately no MessageWillBeUpdated hook to clear one, so this is the only
+// moment the decision can be made.
+func TestDecoratePostDoesNotStampWhenTheInlineMapIsOff(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	config := p.getConfiguration().Clone()
+	config.EnableLocationMapInline = false
+	p.setConfiguration(config)
+
+	got := p.decoratePost(&model.Post{Message: "34.0561N,118.2500W"}, hookRef)
+	if got == nil {
+		t.Fatal("decoratePost left the post alone; the coordinate should still be decorated")
+	}
+
+	// The link is the point: turning the map off must not turn decoration off.
+	if !strings.Contains(got.Message, "/decorate/location?") {
+		t.Fatalf("the coordinate was not decorated: %q", got.Message)
+	}
+
+	if got.Type != "" {
+		t.Fatalf("Type = %q, want it left empty so the post stays searchable", got.Type)
+	}
+	if props := standaloneProps(t, got); props != nil {
+		t.Fatalf("props were stamped on a post nothing will render inline: %v", props)
+	}
+}
+
+// And the map parent takes the inline map with it, whatever the surface switch
+// under it says.
+func TestDecoratePostDoesNotStampWhenMapsAreOffEntirely(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	config := p.getConfiguration().Clone()
+	config.EnableLocationMap = false
+	p.setConfiguration(config)
+
+	got := p.decoratePost(&model.Post{Message: "34.0561N,118.2500W"}, hookRef)
+	if got == nil {
+		t.Fatal("decoratePost left the post alone; the coordinate should still be decorated")
+	}
+	if got.Type != "" {
+		t.Fatalf("Type = %q, want it left empty", got.Type)
 	}
 }
 

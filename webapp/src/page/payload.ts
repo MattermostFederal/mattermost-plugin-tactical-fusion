@@ -3,6 +3,8 @@ import type {LocationPayload} from '../decorators/location';
 import {asConversion} from '../decorators/location/convert';
 import type {ConversionState} from '../decorators/location/convert';
 import type {LocationFormat} from '../decorators/location/format';
+import {ALL_FEATURES} from '../features/types';
+import type {Features} from '../features/types';
 
 /**
  * What the server put in the shell.
@@ -17,6 +19,17 @@ export interface PageData {
     payload: LocationPayload;
     conversion: ConversionState;
     mode: 'location' | 'map';
+
+    /**
+     * Which map surfaces the admin has left on.
+     *
+     * Read out of the shell rather than fetched. A page is handed everything it
+     * needs in one document by design, and /api/v1/features needs a session this
+     * route does not require of anybody but the reader who already followed the
+     * link. One less request, and one less way for a page to disagree with the
+     * server that rendered it.
+     */
+    maps: Features;
 }
 
 /**
@@ -50,6 +63,36 @@ export function readPageData(root: HTMLElement): PageData | null {
         payload: payloadFor(format as LocationFormat, canonical, raw),
         conversion: conversionFrom(root.dataset.conversion),
         mode: root.dataset.mode === 'map' ? 'map' : 'location',
+        maps: mapsFrom(root.dataset.maps),
+    };
+}
+
+/**
+ * Which map surfaces the shell says are on.
+ *
+ * A closed set matched against a comma list, so a surface a later server knows
+ * about and this bundle does not is ignored rather than drawn. `inline` is never
+ * on the wire here: no page has posts in it, and reading one would be reading a
+ * claim about a surface that does not exist on this document.
+ *
+ * An ABSENT attribute means every surface, not none. A missing attribute is a
+ * shell this bundle cannot interpret rather than an admin decision, and the two
+ * have opposite right answers: the failure to draw a map somebody is paying for
+ * is silent, where drawing one is at worst a wasted fetch on a page the reader
+ * is already looking at. The server writes the attribute unconditionally,
+ * including empty, so "off" is always said out loud.
+ */
+function mapsFrom(value: string | undefined): Features {
+    if (value === undefined) {
+        return ALL_FEATURES;
+    }
+
+    const on = new Set(value.split(','));
+
+    return {
+        mapPanel: on.has('panel'),
+        mapPage: on.has('page'),
+        mapInline: false,
     };
 }
 

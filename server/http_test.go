@@ -286,6 +286,98 @@ func TestMapRouteServesTheMapToAReader(t *testing.T) {
 	}
 }
 
+// With the map page switched off the route is gone, carrying its own code.
+//
+// A 404 rather than a 403 or an empty shell: to a reader on this install the
+// address does not exist. Its own code rather than a shared one, because four
+// different things answer 404 on these routes and an operator reading a log has
+// only the code to tell "the admin turned this off" from "that link is broken".
+func TestMapRouteIsGoneWhenTheMapPageIsOff(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		off  func(*configuration)
+	}{
+		{"the page surface off", func(c *configuration) { c.EnableLocationMapPage = false }},
+		{"the map parent off", func(c *configuration) { c.EnableLocationMap = false }},
+		{"coordinates off entirely", func(c *configuration) { c.EnableLocation = false }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := newTestPlugin(t, "https://example.com", true)
+			config := p.getConfiguration().Clone()
+			tc.off(config)
+			p.setConfiguration(config)
+
+			req := withSession(httptest.NewRequest(http.MethodGet, "/map?f=mgrs&v=18SUJ2347806483", nil))
+			rec := httptest.NewRecorder()
+			p.ServeHTTP(&plugin.Context{}, rec, req)
+
+			if rec.Code != http.StatusNotFound {
+				t.Fatalf("status = %d, want 404 (%s)", rec.Code, rec.Body.String())
+			}
+			assertCode(t, rec.Body.String(), errcode.HTTPMapDisabled)
+		})
+	}
+}
+
+// And the readings page keeps working, which is the whole reason only /map is
+// refused: every reading is still there, and only the picture is gone.
+func TestReadingsPageSurvivesTheMapBeingOff(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	config := p.getConfiguration().Clone()
+	config.EnableLocationMap = false
+	p.setConfiguration(config)
+
+	req := withSession(httptest.NewRequest(http.MethodGet,
+		"/decorate/location?f=mgrs&v=18SUJ2347806483", nil))
+	rec := httptest.NewRecorder()
+	p.ServeHTTP(&plugin.Context{}, rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (%s)", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `data-maps=""`) {
+		t.Fatalf("the shell does not tell the bundle every map surface is off: %s", rec.Body.String())
+	}
+}
+
+// The panel surface, end to end from a configuration rather than from a
+// hand-built Maps value.
+//
+// EnableLocationMapPanel was set true in five test files and false in none, so
+// nothing ran the chain from the switch through locationMaps and Decorator.Maps
+// into the shell. It is also the switch whose reach is easiest to understate: it
+// governs the map above a table of readings wherever that table appears, which
+// includes this page and not only the sidebar.
+func TestReadingsPageFollowsThePanelSwitch(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		panel bool
+		want  string
+	}{
+		{"panel on", true, `data-maps="panel,page"`},
+		{"panel off", false, `data-maps="page"`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := newTestPlugin(t, "https://example.com", true)
+			config := p.getConfiguration().Clone()
+			config.EnableLocationMapPanel = tc.panel
+			p.setConfiguration(config)
+
+			req := withSession(httptest.NewRequest(http.MethodGet,
+				"/decorate/location?f=mgrs&v=18SUJ2347806483", nil))
+			rec := httptest.NewRecorder()
+			p.ServeHTTP(&plugin.Context{}, rec, req)
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, want 200 (%s)", rec.Code, rec.Body.String())
+			}
+			if !strings.Contains(rec.Body.String(), tc.want) {
+				t.Fatalf("the shell does not carry %s", tc.want)
+			}
+		})
+	}
+}
+
 func TestMapRouteRejectsANonGet(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 

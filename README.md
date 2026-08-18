@@ -107,8 +107,11 @@ Plugin Management**, then enable it.
 
 ## Admin settings
 
-Eleven switches in **System Console → Plugins → Tactical Fusion**. All on by
-default except `EnableLocationUTM`.
+Fifteen switches in **System Console → Plugins → Tactical Fusion**, in three
+sections. All on by default except `EnableLocationUTM`. Each section opens with
+its own parent switch, which gates everything below it.
+
+**Date and time**
 
 | Setting | Controls | Default |
 |---|---|---|
@@ -116,13 +119,44 @@ default except `EnableLocationUTM`.
 | `EnableDTGMilitary` | `091630ZAUG26` and friends | On |
 | `EnableDTGTimestamp` | `2026-08-09T16:30:00Z` | On |
 | `EnableDTGMoniker` | A `DTG:` label in front of a time | On |
+
+**Coordinates**
+
+| Setting | Controls | Default |
+|---|---|---|
 | `EnableLocation` | The coordinate feature, and the six below it | On |
 | `EnableLocationDDSigned` | `34.0561, -118.2500` | On |
 | `EnableLocationLatLon` | Hemisphere and degrees/minutes/seconds forms | On |
 | `EnableLocationUSMTF` | The fixed-width USMTF shapes | On |
-| `EnableLocationGrid` | MGRS, `18S UJ 23478 06483` | On |
+| `EnableLocationMGRS` | MGRS, `18S UJ 23478 06483` | On |
 | `EnableLocationUTM` | UTM, `33U 291000 5628000` | **Off** |
 | `EnableLocationMoniker` | USMTF field labels in front of a coordinate | On |
+
+**Maps**
+
+Gated on `EnableLocation` as well as on their own parent, since a map is only
+ever drawn for a coordinate the plugin decorated. Unlike every other switch here
+these are read at render, so turning one off reaches coordinates posted long ago.
+
+| Setting | Controls | Default |
+|---|---|---|
+| `EnableLocationMap` | Maps everywhere, and the three below it | On |
+| `EnableLocationMapPanel` | The map in the sidebar and the hover card | On |
+| `EnableLocationMapInline` | The map under a coordinate-only post | On |
+| `EnableLocationMapPage` | The full-window map page behind "Open larger" | On |
+
+With `EnableLocationMap` off, no client requests the basemap archive, its fonts
+or the map library, which together are the largest thing the plugin transfers.
+The file still ships in the bundle either way: Mattermost serves `public/` before
+the plugin sees the request, so the switch stops clients asking rather than
+making it unreachable.
+
+`EnableLocationMapInline` is the one that changes a stored post. Drawing a map
+under a message means marking that post with a custom type, and Elasticsearch and
+OpenSearch index a marked post but never match it, so it is missing from search
+and from Recent Mentions; link previews, embeds and auto-translation are dropped
+for it too. Postgres search is unaffected. Turning it off leaves those messages
+ordinary. Posts already marked keep their mark.
 
 **`EnableLocationUTM` is the only switch that ships off**, and the reason is a
 difference in kind. Every other switch trades a false positive against a missed
@@ -139,7 +173,7 @@ Two other combinations are worth calling out:
 - Leaving only `EnableLocationUSMTF` and `EnableLocationMoniker` on decorates a
   coordinate **only** where an author explicitly labeled it, which removes bare
   detection entirely.
-- `EnableLocationGrid` and `EnableLocationUTM` together are the switches that
+- `EnableLocationMGRS` and `EnableLocationUTM` together are the switches that
   remove every value the plugin calculates rather than reads, for a workspace
   that wants only what a message literally says.
 

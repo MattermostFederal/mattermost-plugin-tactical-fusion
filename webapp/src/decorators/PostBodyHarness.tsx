@@ -17,7 +17,15 @@ const Panel: React.FC<{payload: {value: string}}> = ({payload}) => (
     <div>{payload.value}</div>
 );
 
-type Kind = 'inline' | 'throwing' | 'none';
+/**
+ * `empty` is an Inline that is DECLARED and renders nothing, which is different
+ * from `none` (no Inline declared at all) and is the steady state of every post
+ * stamped before an admin turned the inline map off. Post.Type survives an edit
+ * and nothing un-stamps it, so those posts keep routing here forever.
+ */
+type Kind = 'inline' | 'throwing' | 'none' | 'empty';
+
+const EmptyInline: React.FC<{payload: {value: string}}> = () => null;
 
 function fixture(kind: Kind): Decorator<{value: string}> {
     let Inline: Decorator<{value: string}>['Inline'];
@@ -25,6 +33,8 @@ function fixture(kind: Kind): Decorator<{value: string}> {
         Inline = InlineView;
     } else if (kind === 'throwing') {
         Inline = Throwing;
+    } else if (kind === 'empty') {
+        Inline = EmptyInline;
     }
 
     return {
