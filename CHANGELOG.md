@@ -3,12 +3,6 @@
 ## 0.1.0 (2026-08-18)
 
 
-### ⚠ BREAKING CHANGES
-
-* URLs that previously rendered without a Mattermost login now redirect to one. The argument for the route being public was that the mobile app's in-app browser has no session, and that was never verified in either direction; it is still open, and it now decides whether a decorated link on mobile costs a sign-in before the page. The "Unverified before deployment" section of CLAUDE.md says so. Static assets under /plugins/<id>/public/** are served by Mattermost rather than by this plugin and are unaffected.
-* **release:** footer for the plugin id rename, and that is what drove it. Without bump-minor-pre-major a breaking footer takes an existing 0.x straight to 1.0.0; a plain feat: would have given 0.2.0. The fix is unchanged and still correct, but the reason given for it was not, so it is corrected everywhere it was stated.
-* the plugin id changes from com.mattermost.plugin-mission-context to com.mattermost.plugin-tactical-fusion. Mattermost keys a plugin's settings and KV data by id, so any existing dev install is orphaned rather than upgraded, and decorator links already written into messages point at the old /plugins/<id>/decorate path and will 404. Both are acceptable only because this has never shipped.
-
 ### Features
 
 * add the location decorator ([#6](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/6)) ([ea1c7b6](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/ea1c7b6e4c65360d278808520123ec42f1affa17))
