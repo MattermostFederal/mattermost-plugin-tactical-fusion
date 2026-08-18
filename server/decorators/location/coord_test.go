@@ -52,7 +52,11 @@ func TestConfidenceNeedsBothAxes(t *testing.T) {
 		{"only longitude does", NoConfidence, 7, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			l := Location{Lat: Axis{Conf: tc.lat}, Lon: Axis{Conf: tc.lon}}
+			// FormatVLATM because Confidence is gated on the format as well as
+			// on the digits: only the verified USMTF form states any, and a
+			// format that keeps no Axis has zero-valued ones, which read as a
+			// stated confidence of 0 rather than as none.
+			l := Location{Format: FormatVLATM, Lat: Axis{Conf: tc.lat}, Lon: Axis{Conf: tc.lon}}
 
 			lat, lon, ok := l.Confidence()
 			if ok != tc.want {

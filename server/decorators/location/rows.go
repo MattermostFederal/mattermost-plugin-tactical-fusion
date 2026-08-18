@@ -24,6 +24,9 @@ const (
 	RowDDM        RowID = "ddm"
 	RowUSMTF      RowID = "usmtf"
 	RowUTM        RowID = "utm"
+	RowGEOREF     RowID = "georef"
+	RowGARS       RowID = "gars"
+	RowPlusCode   RowID = "pluscode"
 	RowResolution RowID = "resolution"
 	RowConfidence RowID = "confidence"
 	RowDatum      RowID = "datum"
@@ -57,6 +60,9 @@ var Rows = []Row{
 	{RowMGRS, "MGRS", true},
 	{RowUSMTF, "USMTF", true},
 	{RowUTM, "UTM", true},
+	{RowGEOREF, "GEOREF", true},
+	{RowGARS, "GARS", true},
+	{RowPlusCode, "Plus Code", true},
 	{RowResolution, "Resolution", false},
 	{RowConfidence, "Confidence", false},
 	{RowDatum, "Datum", false},

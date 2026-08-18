@@ -78,6 +78,34 @@ func TestWebappGridPatternUsesTheRightClasses(t *testing.T) {
 	}
 }
 
+func TestWebappAreaAlphabetsMatch(t *testing.T) {
+	source := readWebappSource(t, "format.ts")
+
+	for _, tc := range []struct {
+		name string
+		want string
+	}{
+		{"GEOREF_ZONE", georefZoneBody},
+		{"GEOREF_BAND", georefBandBody},
+		{"GEOREF_UNIT", georefUnitBody},
+		{"GARS_LETTER", garsLetterBody},
+		{"OLC_CHAR", olcBody},
+	} {
+		m := regexp.MustCompile(`const ` + tc.name + ` = '\[([^\]]+)\]'`).FindStringSubmatch(source)
+		if m == nil {
+			t.Errorf("no `const %s = '[...]'` in the webapp's format.ts; if it was renamed, "+
+				"point this test at the new name rather than deleting it", tc.name)
+			continue
+		}
+
+		if m[1] != tc.want {
+			t.Errorf("the webapp's %s class is %q and this package's is %q.\n"+
+				"They must agree: a link this side issues and that side rejects opens the "+
+				"standalone page instead of the sidebar, silently.", tc.name, m[1], tc.want)
+		}
+	}
+}
+
 // And both grid patterns must be built FROM the shared class rather than
 // spelling a band class of their own, or widening BAND would fix nothing.
 func TestWebappGridPatternsUseTheSharedBandClass(t *testing.T) {
@@ -86,6 +114,46 @@ func TestWebappGridPatternsUseTheSharedBandClass(t *testing.T) {
 	for _, name := range []string{"mgrs", "utm"} {
 		if !regexp.MustCompile(name + `: new RegExp\(` + "`" + `\^\(\$\{ZONE\}\)\(\$\{BAND\}\)`).MatchString(source) {
 			t.Errorf("the webapp's %s pattern does not use ${BAND}", name)
+		}
+	}
+}
+
+func TestWebappAreaResolutionFixturesMatch(t *testing.T) {
+	source := readWebappSource(t, "format.spec.ts")
+
+	found := regexp.MustCompile(
+		`\['(georef|gars|pluscode)', '([^']*)', '([^']*)'\],`).FindAllStringSubmatch(source, -1)
+	if len(found) == 0 {
+		t.Fatal("no area fixtures parsed out of the webapp's format.spec.ts; if the table's " +
+			"shape changed, point this test at the new one rather than deleting it")
+	}
+
+	// The webapp table carries one extra row, the four-letter GEOREF quadrangle
+	// it must refuse, which has no Go counterpart because Parse declines it.
+	var comparable [][]string
+	for _, m := range found {
+		if m[3] != "" {
+			comparable = append(comparable, m)
+		}
+	}
+
+	if len(comparable) != len(areaFixtures) {
+		t.Fatalf("the webapp has %d area fixtures with a resolution and this package has %d",
+			len(comparable), len(areaFixtures))
+	}
+
+	for i, m := range comparable {
+		want := areaFixtures[i]
+
+		if got := Format(m[1]); got != want.format {
+			t.Errorf("area fixture %d is format %q in the webapp and %q here", i+1, got, want.format)
+		}
+		if m[2] != want.canonical {
+			t.Errorf("area fixture %d is %q in the webapp and %q here", i+1, m[2], want.canonical)
+		}
+		if m[3] != want.resolution {
+			t.Errorf("area fixture %d (%s): resolution is %q in the webapp and %q here",
+				i+1, want.canonical, m[3], want.resolution)
 		}
 	}
 }

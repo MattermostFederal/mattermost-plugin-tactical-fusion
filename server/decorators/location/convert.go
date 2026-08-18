@@ -10,7 +10,12 @@ type Conversion struct {
 	DMS     string `json:"dms"`
 	DDM     string `json:"ddm"`
 	USMTF   string `json:"usmtf"`
-	Region  string `json:"region"`
+
+	GEOREF   string `json:"georef"`
+	GARS     string `json:"gars"`
+	PlusCode string `json:"pluscode"`
+
+	Region string `json:"region"`
 
 	Lat float64 `json:"lat"`
 	Lon float64 `json:"lon"`
@@ -66,14 +71,17 @@ func Convert(f Format, canonical, raw string) (Conversion, bool) {
 	}
 
 	return Conversion{
-		MGRS:    loc.MGRSText(),
-		UTM:     loc.UTMText(),
-		Decimal: loc.DecimalText(),
-		DMS:     loc.DMSText(),
-		DDM:     loc.DDMText(),
-		USMTF:   loc.USMTFText(),
-		Region:  loc.RegionText(),
-		Lat:     lat,
-		Lon:     lon,
+		MGRS:     loc.MGRSText(),
+		UTM:      loc.UTMText(),
+		Decimal:  loc.DecimalText(),
+		DMS:      loc.DMSText(),
+		DDM:      loc.DDMText(),
+		USMTF:    loc.USMTFText(),
+		GEOREF:   loc.GEOREFText(),
+		GARS:     loc.GARSText(),
+		PlusCode: loc.PlusCodeText(),
+		Region:   loc.RegionText(),
+		Lat:      lat,
+		Lon:      lon,
 	}, true
 }

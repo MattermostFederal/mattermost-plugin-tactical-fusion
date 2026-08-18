@@ -8,11 +8,12 @@ import {
     ddmText,
     decimalText,
     dmsText,
-    gridResolutionText,
     gridText,
+    remoteResolutionText,
     resolutionText,
     usmtfText,
 } from './format';
+import type {LocationFormat} from './format';
 import LocationMap from './map/LocationMap';
 import {mapPageHref, viewFor} from './map/view';
 import {MAP_ID, isRowVisible, ROWS} from './rows';
@@ -224,12 +225,18 @@ const LocationReadings: React.FC<{
     const mgrs = format === 'mgrs' ? (gridText(format, canonical) || remote(conversion.data?.mgrs)) : remote(conversion.data?.mgrs);
     const utm = format === 'utm' ? (gridText(format, canonical) || remote(conversion.data?.utm)) : remote(conversion.data?.utm);
 
+    // A token that is itself an area reference already carries its own code, so
+    // that row never waits on the request and never degrades, exactly as the
+    // grid rows above do not.
+    const own = (id: LocationFormat, value: string | undefined): string =>
+        (format === id ? canonical : remote(value));
+
     const decimal = coord ? decimalText(coord) : remote(conversion.data?.decimal);
     const dms = coord ? dmsText(coord) : remote(conversion.data?.dms);
     const ddm = coord ? ddmText(coord) : remote(conversion.data?.ddm);
     const usmtf = coord ? usmtfText(coord) : remote(conversion.data?.usmtf);
 
-    const resolution = coord ? resolutionText(coord) : gridResolutionText(format, canonical);
+    const resolution = coord ? resolutionText(coord) : remoteResolutionText(format, canonical);
     const confidence = coord ? confidenceText(coord) : '';
 
     const vouched = vouchedText(conversion, raw, canonical);
@@ -250,6 +257,9 @@ const LocationReadings: React.FC<{
         ddm,
         usmtf,
         utm,
+        georef: own('georef', conversion.data?.georef),
+        gars: own('gars', conversion.data?.gars),
+        pluscode: own('pluscode', conversion.data?.pluscode),
         resolution,
         confidence,
         datum: 'WGS 84',

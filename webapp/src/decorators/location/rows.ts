@@ -18,6 +18,7 @@
  */
 export type RowID =
     'decimal' | 'dms' | 'ddm' | 'mgrs' | 'usmtf' | 'utm' |
+    'georef' | 'gars' | 'pluscode' |
     'resolution' | 'confidence' | 'datum' | 'raw' | 'canonical';
 
 export interface RowSpec {
@@ -49,6 +50,9 @@ export const ROWS: readonly RowSpec[] = [
     {id: 'mgrs', label: 'MGRS', copyable: true, hint: 'Military grid reference'},
     {id: 'usmtf', label: 'USMTF', copyable: true, hint: 'The fixed-width compact form'},
     {id: 'utm', label: 'UTM', copyable: true, hint: 'Zone, band, easting, northing'},
+    {id: 'georef', label: 'GEOREF', copyable: true, hint: 'World Geographic Reference System'},
+    {id: 'gars', label: 'GARS', copyable: true, hint: 'Global Area Reference System'},
+    {id: 'pluscode', label: 'Plus Code', copyable: true, hint: 'Open Location Code'},
     {id: 'resolution', label: 'Resolution', copyable: false, hint: 'How finely the original text was written'},
     {id: 'confidence', label: 'Confidence', copyable: false, hint: 'Only for a verified USMTF coordinate'},
     {id: 'datum', label: 'Datum', copyable: false, hint: 'Always WGS 84'},

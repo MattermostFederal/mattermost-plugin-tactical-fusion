@@ -85,6 +85,23 @@ var acceptedTokens = []struct {
 
 	{FormatUTM, "33U 291000 5628000", "33U2910005628000", 50.7660671, 12.0361164},
 	{FormatUTM, "33U2910005628000", "33U2910005628000", 50.7660671, 12.0361164},
+
+	{FormatGEOREF, "GJNJ5753", "GJNJ5753", 38.8916667, -77.0416667},
+	{FormatGEOREF, "gjnj5753", "GJNJ5753", 38.8916667, -77.0416667},
+	{FormatGEOREF, "GJNJ575337", "GJNJ575337", 38.5625, -77.0408333},
+	{FormatGEOREF, "GJNJ57533752", "GJNJ57533752", 38.6254167, -77.0410833},
+
+	{FormatGARS, "206LT", "206LT", 38.75, -77.25},
+	{FormatGARS, "206LT2", "206LT2", 38.875, -77.125},
+	{FormatGARS, "206LT26", "206LT26", 38.875, -77.0416667},
+	{FormatGARS, "006ag39", "006AG39", -86.9583333, -177.2916667},
+
+	{FormatPlusCode, "8FVC2222+22", "8FVC2222+22", 47.0000625, 8.0000625},
+	{FormatPlusCode, "8fvc2222+22", "8FVC2222+22", 47.0000625, 8.0000625},
+	{FormatPlusCode, "849VCWC8+R9", "849VCWC8+R9", 37.4220625, -122.0840625},
+	{FormatPlusCode, "849VCWC8+R9C", "849VCWC8+R9C", 37.4220625, -122.084109375},
+	{FormatPlusCode, "849VCWC8+", "849VCWC8+", 37.42125, -122.08375},
+	{FormatPlusCode, "849V0000+", "849V0000+", 37.5, -122.5},
 }
 
 func TestParseAcceptsAndCanonicalizes(t *testing.T) {
@@ -308,6 +325,29 @@ var rejectedTokens = []struct {
 	{"a northing with too few digits", FormatUTM, "33U 291000 628000"},
 	{"a northing past the pole", FormatUTM, "33U 291000 9999999"},
 	{"a band the northing cannot be in", FormatUTM, "33C 291000 5628000"},
+
+	{"an I in a GEOREF zone, which reads as a 1", FormatGEOREF, "IJNJ5753"},
+	{"a GEOREF band past M, which is past the pole", FormatGEOREF, "GNNJ5753"},
+	{"a GEOREF degree unit past Q, which is past the zone", FormatGEOREF, "GJRJ5753"},
+	{"GEOREF minutes past 59", FormatGEOREF, "GJNJ6053"},
+	{"GEOREF tenths past 599", FormatGEOREF, "GJNJ600533"},
+	{"an odd number of GEOREF digits", FormatGEOREF, "GJNJ57533"},
+	{"a bare GEOREF quadrangle, which is four letters and therefore a word", FormatGEOREF, "GJNJ"},
+
+	{"GARS band 0", FormatGARS, "000LT"},
+	{"GARS band past 720", FormatGARS, "721LT"},
+	{"GARS letters past the 360 bands that exist", FormatGARS, "206ZZ"},
+	{"a GARS quadrant past 4", FormatGARS, "206LT5"},
+	{"a GARS keypad cell of 0", FormatGARS, "206LT20"},
+
+	{"a Plus Code separator in the wrong place", FormatPlusCode, "849VCW+C8R9"},
+	{"a Plus Code with a letter outside the alphabet", FormatPlusCode, "849VCWA8+R9"},
+	{"a Plus Code of nine significant characters", FormatPlusCode, "849VCWC8+R"},
+	{"a Plus Code past fifteen characters", FormatPlusCode, "849VCWC8+R9CVWXQ2"},
+	{"a Plus Code whose latitude pair is off the top of the world", FormatPlusCode, "F49VCWC8+R9"},
+	{"a Plus Code padded with an odd number of zeroes", FormatPlusCode, "849VC000+"},
+	{"a padded Plus Code carrying detail after the separator", FormatPlusCode, "849V0000+R9"},
+	{"a short Plus Code", FormatPlusCode, "CWC8+R9"},
 }
 
 func TestParseDeclines(t *testing.T) {
@@ -324,10 +364,7 @@ func TestParseDeclines(t *testing.T) {
 // make it decorative and let a crafted link claim a notation its token was
 // never written in.
 func TestParseRejectsUnknownFormat(t *testing.T) {
-	// Two area-reference systems this build does not implement, so a link
-	// naming either has to be refused rather than fall through to a grammar
-	// that happens to parse its token.
-	for _, id := range []Format{"usng", "georef", "gars", "pluscode", ""} {
+	for _, id := range []Format{"usng", "olc", "mgrs2", ""} {
 		if _, ok := Parse(id, "34.0561,-118.2500"); ok {
 			t.Errorf("Parse accepted the unknown format id %q", id)
 		}

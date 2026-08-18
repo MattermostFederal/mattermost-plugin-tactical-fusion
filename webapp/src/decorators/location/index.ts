@@ -1,4 +1,4 @@
-import {isCanonical, isGridFormat, parseCanonical, LOCATION_FORMATS} from './format';
+import {isCanonical, isRemoteFormat, parseCanonical, LOCATION_FORMATS} from './format';
 import type {Coordinate, LocationFormat} from './format';
 import LocationHover from './LocationHover';
 import LocationInline from './LocationInline';
@@ -100,11 +100,11 @@ export function fromParams(params: URLSearchParams): LocationPayload | null {
         return null;
     }
 
-    // Null for a grid format, which is expected rather than a rejection: the
-    // shape check above is what vouched for the token, and a projection is not
-    // something this side of the plugin does.
+    // Null for the formats the server derives, which is expected rather than a
+    // rejection: the shape check above is what vouched for the token, and the
+    // position arrives from the conversion endpoint.
     const coord = parseCanonical(format, canonical);
-    if (!coord && !isGridFormat(format)) {
+    if (!coord && !isRemoteFormat(format)) {
         return null;
     }
 

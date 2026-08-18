@@ -59,6 +59,9 @@ var exampleFixedRows = []exampleRow{
 	{label: "USMTF", text: "3510N07901W", note: "degrees and whole minutes"},
 	{label: "MGRS", text: "18S UJ 23478 06483"},
 	{label: "UTM", text: "33U 291000 5628000", note: "off by default; an admin turns it on"},
+	{label: "GEOREF", text: "GEOREF:GJNJ5753", note: "the label is required, and longitude comes first"},
+	{label: "GARS", text: "GARS:206LT26", note: "the label is required; this one is a 5 minute cell"},
+	{label: "Plus Code", text: "849VCWC8+R9", note: "matched without a label"},
 }
 
 // examplesResponse posts a short live demonstration to the channel.

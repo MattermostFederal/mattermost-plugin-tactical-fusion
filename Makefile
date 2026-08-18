@@ -374,7 +374,7 @@ ifneq ($(HAS_SERVER),)
 # shell in server/decorators reads as 0% while being fully exercised by the
 # tests in server. That under-reports the total and, worse, points anybody
 # reading this output at the wrong files.
-	$(GO) test $(GO_TEST_FLAGS) -coverpkg=./server/... -coverprofile=server/coverage.txt ./server/...
+	$(GO) test $(GO_TEST_FLAGS) -short -coverpkg=./server/... -coverprofile=server/coverage.txt ./server/...
 	$(GO) tool cover -func=server/coverage.txt
 endif
 

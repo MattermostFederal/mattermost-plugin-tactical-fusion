@@ -200,6 +200,9 @@ func newTestPlugin(t *testing.T, siteURL string, enabled bool) *Plugin {
 		EnableLocationUSMTF:    true,
 		EnableLocationMGRS:     true,
 		EnableLocationUTM:      true,
+		EnableLocationGEOREF:   true,
+		EnableLocationGARS:     true,
+		EnableLocationPlusCode: true,
 		EnableLocationMoniker:  true,
 
 		EnableLocationMap:       true,

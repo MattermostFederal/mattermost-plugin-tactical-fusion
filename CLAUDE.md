@@ -521,8 +521,16 @@ implementation in `mattermost-plugin-aocanywhere` matches them and drops them.
 
 `dd` (signed decimal degrees), `ddh` (hemisphere letters), `dms` (which doubles
 as USMTF LATS, and with a fractional second as LATDS and DMPID), `ddm` (USMTF
-GEOK), the fixed-width `latd`, `latm` and `vlatm`, and the two projected
-grammars `mgrs` and `utm`.
+GEOK), the fixed-width `latd`, `latm` and `vlatm`, the two projected
+grammars `mgrs` and `utm`, and the three area-reference systems `georef`, `gars`
+and `pluscode`.
+
+**There is no `usng`.** The United States National Grid is MGRS on WGS 84,
+character for character, so a separate id would be a second grammar accepting
+the first one's tokens, and the format named on the page would become a guess
+about which of two identical readings the author meant. `USNG:` is a moniker in
+front of the grid grammar instead, which is what it actually is, and
+`TestUSNGLabelsAGridReference` pins that the label reaches `f=mgrs`.
 
 Every scanning pattern and every anchored validator is built from the same
 sub-expressions in `grammar.go`, so a change to what a token looks like cannot
@@ -632,6 +640,129 @@ that decorates today would silently stop.
 MGRS is unaffected by all of this: its band letter is followed by two more
 letters and could never be read as a hemisphere.
 
+### The area-reference systems
+
+`georef`, `gars` and `pluscode` name a **cell of the graticule** rather than a
+point, the way MGRS names a square, and the position reported for one is its
+center. They live in `area.go`, and what separates them from the grid grammars
+is that **none of them touches the ellipsoid**: they subdivide degrees, so
+decoding one is arithmetic and there is no projection, no zone exception and no
+polar gap. That last one is the whole reason they earn a row beside MGRS rather
+than instead of it. Past 84 north and 80 south the two grid rows are blank and
+these three are what is left, which
+`TestAreaRowsRenderWhereTheGridRowsCannot` pins.
+
+Their identity is held as the **code text**, in `Area`, which is the strongest
+form of the rule `Axis` and `Grid` follow: `canonical()` returns the stored
+string, so it cannot fail to reproduce itself and there is no reassembly step to
+get wrong. Upper-casing is the whole of the normalization, since none of the
+three admits internal spacing. `parseArea` validates by **decoding**, because
+the alphabets admit combinations that name nothing (just over a third of the
+GARS letter pairs are past the 360 bands that exist), and asking for the position is
+the same call every rendered row makes.
+
+**GEOREF is written longitude first.** That is the standard's own order and the
+opposite of every other grammar here. Getting it backwards is not a parse
+failure, it is a position in a different hemisphere, so
+`TestGEOREFIsLongitudeFirst` pins it against a worked example rather than
+against a round trip of itself.
+
+**GEOREF and GARS are label-only, and Plus Codes are not.** `GJNJ5753` is four
+letters and four digits and `006AG39` is seven alphanumerics; neither has
+anything in it a part number does not, so both sit in `labeledFormats` beside
+LATD. A Plus Code's alphabet is twenty characters with no vowel among them and
+its separator sits at a fixed position, which is a shape ordinary text mostly
+does not have.
+
+"Mostly" was measured, and the first measurement was a correction. The stated
+argument was that no word is eight characters of that alphabet, which is true
+and was not enough: over 100,000 generated `<identifier>+<build>` version
+strings, an any-case pattern rewrote two, about one in 50,000, and
+`44vc8qch+p86` is a well-formed code. So `olcBareExpr` is **upper case only**,
+exactly as `mgrsBareCompactExpr` is and for the same kind of reason, since the
+collision space is lower case. That leaves a residual of about one in 50,000 on
+*upper-case* build metadata, which
+`TestBarePlusCodesDoNotMatchOrdinaryRuns` asserts as a **loose bound** rather
+than as zero: both survivors are genuinely valid Plus Codes with nothing in them
+to tell from a real one, so it is a property of the notation, not of this code.
+The test keeps the lower-case corpora it was failing against rather than
+swapping them for ones that pass.
+
+Short Plus Codes (`CWC8+R9`) stay declined: resolving one needs a reference
+location this plugin does not have. **Padded** codes (`849V0000+`) are accepted,
+and that is not generosity: a padded code is the only way the notation writes
+anything coarser than a 275 m cell, and a whole-degree coordinate's derived row
+needs exactly that.
+
+A Plus Code's grid refinement is **five rows of latitude by four columns of
+longitude**, not the other way round, and getting that backwards is the defect
+this phase shipped and a review caught. It survived because both reference
+vectors to hand (`8FVC2222+22` and `849VCWC8+R9`) are ten characters and so
+never reach the grid section at all, and because the encoder and the decoder
+were transposed *consistently*, so every round-trip test passed while every
+code past ten characters named the wrong sub-cell. That is exactly what
+`geodesy_test.go` warns about: a round trip proves the inverse undoes the
+forward and says nothing about whether either is right. It is pinned now
+against the spec's own constants rather than against a vector,
+`FINAL_LAT_PRECISION` = 8000 x 5^5 = 25,000,000 and `FINAL_LNG_PRECISION` =
+8000 x 4^5 = 8,192,000, in
+`TestPlusCodeGridRefinementIsFiveRowsByFourColumns`.
+
+Because of that split, `areaResolutionDegrees` quotes the **larger** of the two
+extents rather than latitude specifically: past ten characters longitude is the
+coarser half, and below that the two are equal.
+
+**The encoders snap before they floor**, in `cellIndex` and `cellIndex64`, and
+that is the second defect this phase shipped and a review caught. A bare
+`math.Floor` puts a position that sits exactly ON a cell boundary in the
+previous cell, because the product lands an ulp low:
+`(35.166666666666664 + 90) * 60` is `7509.999999999999`, so 35 degrees 10
+minutes encoded as minute **09**. Whole minutes, whole seconds and round
+decimals are nearly everything this plugin decorates, so this was the common
+case rather than an edge of it: 1,855 m south on the GEOREF row, 9.3 km on the
+GARS row, and about a fifth of two-decimal coordinates on the Plus Code row.
+The same token's DMS and USMTF rows read `35°10'` while its GEOREF row read
+`5909`, on one page.
+
+`math.Round(x * 1e6) / 1e6` before the floor is what the Open Location Code
+reference does, and the snap is a millionth of a cell, far below the 0.9 of a
+cell `TestAreaEncodersTruncateRatherThanRound` asserts. The lesson is the same
+one `roundTo` records for the arm64 FMA: a float that is a hair off looks right
+until something reads the field back.
+
+Two fixtures pinned the **wrong** values through this, `GJLF5909` and
+`202LL46`. Re-derive an area fixture from the notation rather than re-recording
+it from the implementation, or a defect becomes its own expectation.
+
+The derived rows follow the same resolution rule everything else does, off a
+fixed ladder per notation (`georefLadder`, `garsLadder`, `olcLadder`) instead of
+a digit count, and compared **in degrees** rather than in meters, since these
+subdivide the graticule directly and routing through `degreeMeters` would put an
+approximation between a token and a row exactly as coarse as it.
+
+**The coarsest GEOREF row is not an input token.** A whole-degree coordinate
+renders `GJMF`, four letters and no digits, which `Parse` declines because four
+letters is a word. That is the same exception the 100 km MGRS square is and it
+holds for GEOREF alone: the coarsest GARS and Plus Code rows do read back.
+`TestAreaRowsAreTokensThisPackageAccepts` never generates a coordinate coarse
+enough to reach it, so `TestTheCoarsestGEOREFRowIsNotAnInputToken` pins the
+exception directly rather than leaving it to a corpus that happens not to look. All three
+encoders **truncate**, which is the same rule `mgrsAt` follows: a cell is chosen
+by containment and a distance by nearness. Each shifts into a non-negative frame
+before flooring, so truncation means containment on both sides of the equator
+and the prime meridian, and `cellIndex` clamps the pole and the antimeridian
+into the last cell rather than one past it, where every alphabet in the file
+would be indexed off its end.
+
+Unlike the other derived rows these three are served from the **conversion
+endpoint** rather than computed in the panel, and that is a judgment rather than
+a necessity. `format.ts` could render them; what it would need is an encoder and
+a decoder each, six pieces of arithmetic held to the Go ones by fixtures, to
+save a request the panel already makes unconditionally on every open. What the
+panel still computes locally is their **resolution**, from the length of the
+code alone, so that row is on screen at once and survives the request never
+landing.
+
 **Monikers are the USMTF field labels**, taken from the standard rather than
 invented, and unlike `DTG:` they are **not consumed**: `LATM:` is part of a
 structured line an author may be quoting verbatim, so a decorated USMTF line
@@ -721,6 +852,13 @@ the standalone page. The page renders correctly, so it looks like a routing
 choice rather than a rejected payload, and nothing is logged on either side. The
 only symptom is that clicking a coordinate opens a page instead of the sidebar.
 
+The area-reference systems widened that surface from one alphabet to five: the
+webapp needs `GEOREF_ZONE`, `GEOREF_BAND`, `GEOREF_UNIT`, `GARS_LETTER` and
+`OLC_CHAR` to validate a token's shape, and none of them is checkable by
+geometry the way a grid reference's letters are.
+`TestWebappAreaAlphabetsMatch` holds all five to the Go copies, in a table, so
+adding a sixth is one row rather than a new test.
+
 Two things guard it now. The webapp writes the band class **once**, as `BAND`,
 and builds both grid patterns from it, for the same reason `bandBody` is written
 once here. And `webapp_sync_test.go` reads `format.ts` and compares the band,
@@ -748,6 +886,18 @@ half's digits in that column alone, and a fixture pins exactly that.
 It never carries **confidence**. A verified token states how well its position is
 known, which is a property of the measurement rather than of the arithmetic, so
 a derived reading cannot inherit it; the token keeps its own Confidence row.
+
+**Which tokens have one at all is a whitelist**, `confidenceFormats`, and not a
+check on `Axis.Conf` alone. `NoConfidence` is -1 rather than the zero value, so
+a format that keeps no `Axis` has zero-valued ones that read as "the token
+stated confidence 0". Every MGRS and UTM link did: the standalone page carried a
+Confidence row on a notation with no such concept, while the panel showed none,
+because the webapp reaches that row through a `Coordinate` a grid token has
+none of. The two surfaces disagreed about the same link, and did it in the one
+place the paired fixtures do not reach. The list runs the safe way round, so a
+grammar added later and forgotten shows no confidence rather than claiming one,
+and `TestOnlyAVerifiedTokenReportsConfidence` drives it over the whole positive
+corpus rather than over the formats that had the bug.
 
 It is also the only derived row whose output is an input grammar, so it is held
 to something the others cannot be:
@@ -860,7 +1010,7 @@ position, and a wrong one. Copy buttons are absent over a placeholder.
 
 Every row carrying a value has a copy icon at its right edge, on the panel and
 on the page alike; the prose rows (resolution, datum, confidence) do not, since
-copying "about 11 m" gets you a sentence rather than a position. That is seven
+copying "about 11 m" gets you a sentence rather than a position. That is eleven
 controls, which is why they are icons: a column of "Copy MGRS", "Copy lat/lon",
 "Copy DMS" would be wider than the coordinates it sat beside.
 
@@ -1993,13 +2143,14 @@ to discover a limit it is not told.
 
 ## Admin settings
 
-`plugin.json` declares fifteen switches in **three `settings_schema.sections`**:
+`plugin.json` declares eighteen switches in **three `settings_schema.sections`**:
 
 - **Date and time**: `EnableDTG` with `EnableDTGMilitary`, `EnableDTGTimestamp`
   and `EnableDTGMoniker`.
 - **Coordinates**: `EnableLocation` with `EnableLocationDDSigned`,
   `EnableLocationLatLon`, `EnableLocationUSMTF`, `EnableLocationMGRS`,
-  `EnableLocationUTM` and `EnableLocationMoniker`.
+  `EnableLocationUTM`, `EnableLocationGEOREF`, `EnableLocationGARS`,
+  `EnableLocationPlusCode` and `EnableLocationMoniker`.
 - **Maps**: `EnableLocationMap` with `EnableLocationMapPanel`,
   `EnableLocationMapInline` and `EnableLocationMapPage`.
 
@@ -2014,18 +2165,21 @@ true of.
 `Plugin.dtgFormats`, `Plugin.locationFormats` and `Plugin.locationMaps`, because
 nothing about a section title reaches the switches under it. The Maps section has
 **two** parents: `EnableLocationMap` and `EnableLocation`, since a map is only
-ever drawn for a coordinate this plugin decorated.
+ever drawn for a coordinate this plugin decorated. GEOREF and GARS have a second
+parent of their own for a different reason: both are label-only, so both also
+need `EnableLocationMoniker`, which no section can express and which their help
+text therefore says in words.
 
 `settings_schema.settings` is left empty and
 `TestEverySettingBelongsToANamedSection` keeps it that way, because Mattermost
 renders anything there above the first section heading, where it reads as a
 switch belonging to no feature. That test also insists every section carries a
-key (the server refuses one without) and a title. `loadSettings` in
-`configuration_settings_test.go` flattens the sections, which is what stops the
-move making every other test in that file iterate an empty slice and pass while
-checking nothing.
+key (the server refuses one without) and a title, and that no setting key appears
+twice. `loadSettings` in `configuration_settings_test.go` flattens the sections,
+which is what stops the move making every other test in that file iterate an
+empty slice and pass while checking nothing.
 
-**Fourteen default on. `EnableLocationUTM` defaults off, and is the only one.** The
+**Seventeen default on. `EnableLocationUTM` defaults off, and is the only one.** The
 reason is a difference in kind rather than in degree: every other switch trades
 a false positive against a missed decoration, so its worst case is that
 something which was not a coordinate gets linked, or something which was does
@@ -2052,6 +2206,14 @@ backwards compatibility stopped being a constraint: it sits directly above
 `EnableLocationUTM` in the Coordinates section and read as though it governed
 both. An upgrading install therefore gets the default rather than what it had
 set, which was the accepted cost.
+
+`EnableLocationGEOREF` and `EnableLocationGARS` default on despite being the two
+weakest grammars in the package, and that is consistent rather than an
+oversight: both are label-only, so their worst case needs an author to have
+typed `GEOREF:` in front of something that was not a coordinate. They also
+depend on `EnableLocationMoniker`, which the manifest cannot express, so their
+help text says so in words and `TestAreaFormatsSwitchIndependently` pins the
+composition in both directions.
 
 There is no separate "decorate at all" switch. With one decorator it only
 duplicated `EnableDTG`; a second decorator should bring its own switch rather
@@ -2310,6 +2472,11 @@ time and none of them is loud, so `TestWebappRowCatalogMatches` holds the
 TypeScript half to the same ids, labels and order, the same way the band class
 is held.
 
+Tests that want "every row" must read the catalog rather than list it. The
+component test for hiding all of them listed eleven ids by hand, and when the
+three area-reference rows arrived it still hid eleven, still passed, and had
+quietly stopped meaning what its name said.
+
 **The stored value is the rows a reader HID, not the ones they kept**, and the
 direction is the whole design. Empty then means "all of them", so a reader who
 never chose is stored as nothing, which is what lets "Restore defaults" stay a
@@ -2551,12 +2718,15 @@ entry, the call site, and a row in `public/help/error-codes.html`.
 
 ## Coding conventions
 
-- Match the style of surrounding code, **except its commenting**. This codebase
-  was written with heavy explanatory comments and is no longer written that way:
-  do not add prose comments, and remove the ones you encounter in code you touch.
-  Compiler and tool directives (`//go:embed`, `//nolint`, `//go:build`,
+- **Do not comment the code.** Match the style of surrounding code in
+  everything except this: new and modified code carries no prose comments, and
+  the prose comments in code you touch get deleted. That overrides "match the
+  surrounding style", because much of this repository predates the rule and is
+  heavily commented, so matching it would keep reintroducing what is being
+  removed. Compiler and tool directives (`//go:embed`, `//nolint`, `//go:build`,
   `// Code generated ... DO NOT EDIT.`, `// #nosec`, `// eslint-disable-*`) are
-  syntax rather than prose and stay. See `~/CLAUDE.md` for the full rule.
+  syntax rather than prose and stay. See
+  [Where the rationale goes](#where-the-rationale-goes) below.
 - Carry meaning in names and tests instead. An invariant belongs in a test name
   (`TestRoundToNormalizesNegativeZero`); durable design rationale belongs in this
   file. Much of what is written here started as a comment.
@@ -2566,6 +2736,53 @@ entry, the call site, and a row in `public/help/error-codes.html`.
 - Keep the plugin minimal: avoid abstractions that are not needed by the code that exists today.
 - Server: follow Mattermost plugin API conventions. Use `p.API.LogError`/`LogWarn`/`LogInfo` for logging.
 - Webapp: prefer functional React components with hooks.
+
+### Where the rationale goes
+
+This file. That is not a demotion of the rationale, it is the point: nearly
+everything worth saying about this plugin is a decision spanning several files,
+and a paragraph above one function was never the right home for it. The
+measurement behind the bare Plus Code grammar touches `grammar.go`, a corpus
+sweep in `tagger_test.go` and an admin default; the confidence whitelist is a
+disagreement between a Go page and a TypeScript panel. None of those fits above
+a function.
+
+So when a comment would have recorded a **measurement**, a **defect that caused
+the current shape**, or a **contract a later change would silently break**, it
+goes in the matching section here instead, and it goes in before the comment
+comes out rather than after.
+
+Carry the rest in the code:
+
+- Name things so the intent reads. `allowedRate` rather than `allowed`;
+  `sizeMinutes` rather than `size`; `rowFromNorth` rather than `row`.
+- Give a magic number a named constant rather than a comment
+  (`finerThanTheFinestStep`, `olcSeparatorAt`, `boundarySlack`).
+- Put invariants in test names. `TestGEOREFIsLongitudeFirst` and
+  `TestAreaEncodersTruncateRatherThanRound` say what they protect; a comment
+  above them would only repeat it.
+- Extract a named function rather than heading a block with a comment.
+
+### Comments that stay
+
+These are syntax or tooling rather than prose, and removing them changes
+behavior:
+
+- Directives: `//go:embed`, `//go:generate`, `//nolint:...`, `//go:build`,
+  `// #nosec ...`, `// eslint-disable-*`, `// @ts-expect-error`.
+- `// Code generated ... DO NOT EDIT.` headers, and license headers.
+
+### Before deleting one
+
+A comment can be the only surviving record of something. Several in this
+repository are: the consumed-guard failure in `grammar.go`, the arm64 FMA
+defect behind `roundTo`, the Norway and Svalbard zone exceptions. **Move the
+content into this file first, then delete the comment.** If you are not sure a
+comment is load-bearing, say so and ask rather than dropping it quietly.
+
+The reverse also holds. Do not delete a comment in code you are not otherwise
+touching just because it is prose; that turns a small change into an unreviewable
+one.
 
 ## Build and test
 
@@ -2585,6 +2802,17 @@ entry, the call site, and a row in `public/help/error-codes.html`.
   `server/decorators` reads as 0% while being fully exercised from `server`,
   which under-reports the total and points a reader at the wrong files. The
   frontend one merges Playwright unit and component runs.
+
+  It also passes **`-short`**, which skips the generated corpus sweeps in
+  `server/decorators/location`. That target runs under `-race` *and* coverage
+  instrumentation, and together those pushed the sweeps past `go test`'s ten
+  minute default, so it failed outright rather than reporting a number. The
+  sweeps cost no product coverage, since every path they exercise is covered
+  many times over by the ordinary cases beside them, and what they measure is a
+  false-positive rate or the shape of a collision class rather than a code path.
+  They run in full under `make test`, which is what CI gates on. Anything else
+  slow enough to need this should get `testing.Short()` too rather than a
+  bigger timeout.
 
 The repo ships a Docker Compose stack, which is what `make deploy` targets:
 

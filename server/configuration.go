@@ -27,7 +27,7 @@ type configuration struct {
 	EnableDTGMoniker   bool
 	EnableDTGTimestamp bool
 
-	// EnableLocation is the switch for the coordinate decorator, and the six
+	// EnableLocation is the switch for the coordinate decorator, and the nine
 	// below select which of its grammars are matched. They behave exactly as
 	// the date-time group switches above do, including being false at zero.
 	//
@@ -54,12 +54,22 @@ type configuration struct {
 	// other switch trades a false positive against a missed decoration; this
 	// one trades it against a decoration that is confidently wrong. See the
 	// Formats.UTM documentation for the whole argument.
+	//
+	// EnableLocationGEOREF, EnableLocationGARS and EnableLocationPlusCode are
+	// the area-reference systems, which name a cell of the graticule rather
+	// than a point and need no projection to read. The first two are reachable
+	// behind a field label only, so they also need EnableLocationMoniker; that
+	// is not a nesting the manifest can express and is why their help text says
+	// so in words.
 	EnableLocation         bool
 	EnableLocationDDSigned bool
 	EnableLocationLatLon   bool
 	EnableLocationUSMTF    bool
 	EnableLocationMGRS     bool
 	EnableLocationUTM      bool
+	EnableLocationGEOREF   bool
+	EnableLocationGARS     bool
+	EnableLocationPlusCode bool
 	EnableLocationMoniker  bool
 
 	// EnableLocationMap is the switch for drawing a coordinate on a map, and

@@ -7,7 +7,7 @@ import {
     decimalText,
     dmsText,
     gridResolutionMeters,
-    gridResolutionText,
+    remoteResolutionText,
     gridText,
     isCanonical,
     parseCanonical,
@@ -260,6 +260,31 @@ test.describe('rounding carries into the next field', () => {
 
         expect(ddmText(justUnder34)).toBe('34°00\'N 118°12\'W');
     });
+
+
+    // DDM needs a Coordinate built by hand where USMTF does not, and the reason
+    // is the split those two rows sit on opposite sides of. USMTF is sized from
+    // the PAIR, so a mixed-precision token reaches its carry, which is what the
+    // tests above do. DDM is sized per AXIS, so each half renders at its own
+    // digit count and the minute field always carries two more decimal places
+    // than the value can fill: no token reaches 60.
+    //
+    // That makes it a guard rather than a path, and it is fired here the way Go
+    // fires its copy, by calling degDecimalMin directly in
+    // TestRoundingCarriesIntoTheNextField. Until now the Go copy was fired and
+    // the TypeScript one was fired by nothing, in a pair of renderers whose
+    // whole design is that they produce the same string.
+    test('a minute rounding to 60 carries into the degree', () => {
+        const coarse: Coordinate = {
+            lat: {decimal: 33.999999, confidence: null, digits: 1},
+            lon: {decimal: -117.999999, confidence: null, digits: 1},
+            format: 'ddh',
+            digits: 1,
+        };
+
+        // Without the carry this reads 33°60'N, which is not a place.
+        expect(ddmText(coarse)).toBe('34°00\'N 118°00\'W');
+    });
 });
 
 test.describe('confidence', () => {
@@ -351,13 +376,13 @@ test.describe('hardening', () => {
      * claimed from a grammar the page had just said it does not have.
      */
     test('only a grid format has a grid resolution', () => {
-        expect(gridResolutionText('mgrs', '18SUJ2347806483')).toBe('1 m grid, at center');
+        expect(remoteResolutionText('mgrs', '18SUJ2347806483')).toBe('1 m grid, at center');
         expect(gridResolutionMeters('mgrs', '18SUJ2347806483')).toBe(1);
 
         for (const name of ['dd', 'ddh', 'latm', 'someday']) {
             const other = name as LocationFormat;
 
-            expect(gridResolutionText(other, '18SUJ2347806483'), name).toBe('');
+            expect(remoteResolutionText(other, '18SUJ2347806483'), name).toBe('');
             expect(gridResolutionMeters(other, '18SUJ2347806483'), name).toBeNull();
         }
     });
@@ -459,7 +484,7 @@ test.describe('the grid formats', () => {
 
         for (const [format, canonical, grid, resolution] of cases) {
             expect(gridText(format, canonical), canonical).toBe(grid);
-            expect(gridResolutionText(format, canonical), canonical).toBe(resolution);
+            expect(remoteResolutionText(format, canonical), canonical).toBe(resolution);
         }
     });
 
@@ -473,7 +498,95 @@ test.describe('the grid formats', () => {
         ];
 
         for (const [canonical, resolution] of sizes) {
-            expect(gridResolutionText('mgrs', canonical), canonical).toBe(resolution);
+            expect(remoteResolutionText('mgrs', canonical), canonical).toBe(resolution);
+        }
+    });
+});
+
+test.describe('the area-reference formats', () => {
+    test('has no position without the server', () => {
+        expect(parseCanonical('georef', 'GJNJ5753')).toBeNull();
+        expect(parseCanonical('gars', '006AG39')).toBeNull();
+        expect(parseCanonical('pluscode', '849VCWC8+R9')).toBeNull();
+    });
+
+    test('still validates the canonical shape', () => {
+        const cases: Array<[LocationFormat, string]> = [
+            ['georef', 'GJNJ5753'],
+            ['georef', 'GJNJ575337'],
+            ['georef', 'GJNJ57533752'],
+            ['gars', '206LT'],
+            ['gars', '206LT2'],
+            ['gars', '006AG39'],
+            ['pluscode', '849VCWC8+R9'],
+            ['pluscode', '849VCWC8+R9C'],
+            ['pluscode', '849VCWC8+'],
+            ['pluscode', '849V0000+'],
+        ];
+
+        for (const [format, value] of cases) {
+            expect(isCanonical(format, value), value).toBe(true);
+        }
+    });
+
+    test('rejects a code the server would not have issued', () => {
+        const cases: Array<[string, LocationFormat, string]> = [
+            ['an I in a GEOREF zone', 'georef', 'IJNJ5753'],
+            ['a GEOREF band past M', 'georef', 'GNNJ5753'],
+            ['a GEOREF degree unit past Q', 'georef', 'GJRJ5753'],
+            ['an odd number of GEOREF digits', 'georef', 'GJNJ57533'],
+            ['a bare GEOREF quadrangle', 'georef', 'GJNJ'],
+            ['lower case, which the canonical form never is', 'georef', 'gjnj5753'],
+
+            ['an I in a GARS letter pair', 'gars', '206IT'],
+            ['too few GARS band digits', 'gars', '26LT'],
+            ['too many GARS digits', 'gars', '206LT263'],
+
+            // The numeric bounds the Go decoders enforce. The webapp used to
+            // take these on shape alone and accept a code the page then 400s
+            // on, which is the split TestWebappGridZoneIsBounded exists for.
+            ['GEOREF minutes past 59', 'georef', 'GJNJ6053'],
+            ['GEOREF tenths past 599', 'georef', 'GJNJ600533'],
+            ['GARS band 000', 'gars', '000AA'],
+            ['GARS band past 720', 'gars', '721LT'],
+            ['a GARS quadrant of 0', 'gars', '206LT0'],
+            ['a GARS quadrant past 4', 'gars', '206LT5'],
+            ['a GARS keypad cell of 0', 'gars', '206LT20'],
+
+            ['a Plus Code separator in the wrong place', 'pluscode', '849VCW+C8R9'],
+            ['a letter outside the alphabet', 'pluscode', '849VCWA8+R9'],
+            ['nine significant characters', 'pluscode', '849VCWC8+R'],
+            ['past fifteen characters', 'pluscode', '849VCWC8+R9CVWXQ2'],
+            ['an odd number of padding zeroes', 'pluscode', '849VC000+'],
+            ['a short code', 'pluscode', 'CWC8+R9'],
+            ['lower case', 'pluscode', '849vcwc8+r9'],
+        ];
+
+        for (const [name, format, value] of cases) {
+            expect(isCanonical(format, value), name).toBe(false);
+        }
+    });
+
+    test('says how big every size of cell is', () => {
+        const cases: Array<[LocationFormat, string, string]> = [
+            ['georef', 'GJNJ', ''],
+            ['georef', 'GJNJ5753', '1.9 km cell, at center'],
+            ['georef', 'GJNJ575337', '186 m cell, at center'],
+            ['georef', 'GJNJ57533752', '19 m cell, at center'],
+
+            ['gars', '206LT', '55.7 km cell, at center'],
+            ['gars', '206LT2', '27.8 km cell, at center'],
+            ['gars', '206LT26', '9.3 km cell, at center'],
+
+            ['pluscode', '849V0000+', '111.3 km cell, at center'],
+            ['pluscode', '849VCW00+', '5.6 km cell, at center'],
+            ['pluscode', '849VCWC8+', '278 m cell, at center'],
+            ['pluscode', '849VCWC8+R9', '14 m cell, at center'],
+            ['pluscode', '849VCWC8+R9C', '3 m cell, at center'],
+        ];
+
+        for (const [format, canonical, resolution] of cases) {
+            expect(remoteResolutionText(format, canonical), canonical).toBe(resolution);
         }
     });
 });

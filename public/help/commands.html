@@ -89,7 +89,16 @@
         </p>
 
         <pre><code>Date/Time: `121411ZAUG26` &rarr; 121411ZAUG26 - 5 minutes out, so the countdown opens flagged as imminent
-MGRS: `18S UJ 23478 06483` &rarr; 18S UJ 23478 06483</code></pre>
+MGRS: `18S UJ 23478 06483` &rarr; 18S UJ 23478 06483
+GEOREF: `GEOREF:GJNJ5753` &rarr; GEOREF:GJNJ5753 - the label is required, and longitude comes first</code></pre>
+
+        <p>
+            The GEOREF row shows the other thing worth noticing: a coordinate field label is
+            <strong>kept</strong> rather than consumed, so only the token becomes a link and a
+            decorated USMTF line still reads as USMTF. <a href="formats.html#location-area">GEOREF
+            and GARS</a> are matched behind their labels only; a
+            <a href="formats.html#location-area">Plus Code</a> needs none.
+        </p>
 
         <p>
             The two date-time rows are generated from the moment you run it, one
@@ -174,7 +183,7 @@ MGRS: `18S UJ 23478 06483` &rarr; 18S UJ 23478 06483</code></pre>
         <table class="field-table">
             <tbody>
                 <tr><td>Live, from the moment you ran this</td><td>Date-time groups generated against the current clock, either side of the flash threshold and one in the past, so the countdown is actually moving.</td></tr>
-                <tr><td>One group per grammar</td><td>Military date-time groups, zone letters, RFC 3339 timestamps, the <code>DTG:</code> moniker, decimal degrees, degrees and minutes and seconds, the USMTF compact family, grid references, and UTM.</td></tr>
+                <tr><td>One group per grammar</td><td>Military date-time groups, zone letters, RFC 3339 timestamps, the <code>DTG:</code> moniker, decimal degrees, degrees and minutes and seconds, the USMTF compact family, grid references, UTM, and the area references (<a href="formats.html#location-area">GEOREF, GARS and Plus Codes</a>).</td></tr>
                 <tr><td>Drawn as a map in the channel</td><td>Which coordinate messages draw their <a href="panel.html#location-inline">map under the post</a> and which get the link alone: a message that is only a coordinate qualifies, with or without a field label, and anything else in the message does not.</td></tr>
                 <tr><td>In a sentence</td><td>Tokens surrounded by ordinary prose, two on one line, and two different decorators on one line.</td></tr>
                 <tr><td>Declined</td><td>The <a href="formats.html#declined">near misses</a>, in groups by what is wrong with them: impossible dates, no single instant, out of range, needs a label or spacing, and shapes where a false positive would rewrite the message.</td></tr>

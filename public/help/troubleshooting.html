@@ -131,6 +131,26 @@
                     <td>Space it out, or write <code>UTMO:</code> in front.</td>
                 </tr>
                 <tr>
+                    <td><code>GJNJ5753</code> did nothing, but <code>GEOREF:GJNJ5753</code> works</td>
+                    <td>GEOREF is matched behind its label and never bare. Four letters and four digits has nothing in it that a part number does not.</td>
+                    <td>Write <code>GEOREF:</code> in front. <a href="admin.html#enable-location-moniker"><code>EnableLocationMoniker</code></a> also has to be on, or the label is not read either.</td>
+                </tr>
+                <tr>
+                    <td><code>006AG39</code> did nothing, but <code>GARS:006AG39</code> works</td>
+                    <td>GARS is label-only too, and it is the weaker of the two: seven alphanumerics whose only structural check is that a third of the letter pairs name no band.</td>
+                    <td>Write <code>GARS:</code> in front, and check <a href="admin.html#enable-location-moniker"><code>EnableLocationMoniker</code></a> is on.</td>
+                </tr>
+                <tr>
+                    <td><code>849vcwc8+r9</code> did nothing, but <code>849VCWC8+R9</code> works</td>
+                    <td>A bare Plus Code has to be upper case. A lower-case run of that shape is what a version string with build metadata looks like, and roughly one in 50,000 of those is a well-formed code.</td>
+                    <td>Write it in upper case, which is how Plus Codes are normally written, or put <code>PLUSCODE:</code> or <code>OLC:</code> in front.</td>
+                </tr>
+                <tr>
+                    <td><code>CWC8+R9</code> did nothing</td>
+                    <td>That is a <strong>short</strong> Plus Code. It only means anything relative to a nearby place, which this plugin has no way of knowing.</td>
+                    <td>Use the full code, <code>849VCWC8+R9</code>. Google Maps shows the full form beside the short one.</td>
+                </tr>
+                <tr>
                     <td>A UTM position did nothing, but MGRS and lat/lon work</td>
                     <td><strong>UTM is off by default</strong>, and is the only format that is. Its band letter is ambiguous, so a wrong reading is a confidently misplaced position rather than a missed decoration.</td>
                     <td>An admin turns on <a href="admin.html#enable-location-utm"><code>EnableLocationUTM</code></a> in the System Console. Read that section first: it explains when the default is the right one for your workspace.</td>
@@ -146,9 +166,9 @@
                     <td>Check the letters against the zone. <code>check</code> will confirm.</td>
                 </tr>
                 <tr>
-                    <td>A polar coordinate has no grid rows</td>
+                    <td>A polar coordinate has no MGRS or UTM row</td>
                     <td>Above 84&deg; north and below 80&deg; south there is no UTM grid. That is Universal Polar Stereographic, a different system this plugin does not implement.</td>
-                    <td>Nothing to do. The coordinate is still decorated and still shows latitude and longitude.</td>
+                    <td>Nothing to do, and less is missing than it looks. The coordinate is still decorated, still shows latitude and longitude, and still shows its <a href="formats.html#location-area">GEOREF, GARS and Plus Code</a> rows: those three subdivide the graticule rather than a projected grid, so they have no polar gap and are what remains at those latitudes.</td>
                 </tr>
                 <tr>
                     <td>One coordinate in a list linked and the others did not</td>

@@ -100,20 +100,35 @@ func TestConvertKeepsAPolarCoordinate(t *testing.T) {
 }
 
 // Every accepted token converts to something the panel can put on screen.
-func TestConvertFillsTheGridRowsEverywhereThereIsAGrid(t *testing.T) {
+func TestConvertFillsEveryRowThatHasAnAnswer(t *testing.T) {
 	for _, tc := range acceptedTokens {
 		conversion, ok := Convert(tc.format, tc.canonical, "")
 		if !ok {
 			t.Fatalf("Convert refused %q", tc.canonical)
 		}
 
-		// The corpus is all mid-latitude, so every row should be populated.
-		if conversion.MGRS == "" || conversion.UTM == "" {
-			t.Errorf("%q converted with an empty grid row: mgrs=%q utm=%q",
-				tc.canonical, conversion.MGRS, conversion.UTM)
+		loc, ok := Parse(tc.format, tc.canonical)
+		if !ok {
+			t.Fatalf("Parse refused %q", tc.canonical)
 		}
+		lat, _, ok := loc.Point()
+		if !ok {
+			t.Fatalf("Point() failed for %q", tc.canonical)
+		}
+
+		if lat > -80 && lat < 84 {
+			if conversion.MGRS == "" || conversion.UTM == "" {
+				t.Errorf("%q converted with an empty grid row: mgrs=%q utm=%q",
+					tc.canonical, conversion.MGRS, conversion.UTM)
+			}
+		}
+
 		if conversion.DMS == "" || conversion.DDM == "" {
 			t.Errorf("%q converted with an empty sexagesimal row", tc.canonical)
+		}
+		if conversion.GEOREF == "" || conversion.GARS == "" || conversion.PlusCode == "" {
+			t.Errorf("%q converted with an empty area row: georef=%q gars=%q pluscode=%q",
+				tc.canonical, conversion.GEOREF, conversion.GARS, conversion.PlusCode)
 		}
 	}
 }
