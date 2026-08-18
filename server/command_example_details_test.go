@@ -16,6 +16,7 @@ import (
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 )
 
 // detailMessageFor is the part of the output covering one decorator.
@@ -339,8 +340,8 @@ func TestForcePageParamIsIgnoredByThePage(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 
 	withFlag := httptest.NewRecorder()
-	p.ServeHTTP(&plugin.Context{}, withFlag, httptest.NewRequest(http.MethodGet,
-		"/decorate/dtg?t=1786293000000&dtg=091630ZAUG26&z=Z&a=&"+decorators.ForcePageParam+"=1", nil))
+	p.ServeHTTP(&plugin.Context{}, withFlag, withSession(httptest.NewRequest(http.MethodGet,
+		"/decorate/dtg?t=1786293000000&dtg=091630ZAUG26&z=Z&a=&"+decorators.ForcePageParam+"=1", nil)))
 
 	if withFlag.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200 with the force-page flag present", withFlag.Code)
@@ -589,5 +590,119 @@ func TestDetailsSurviveTheMessageHook(t *testing.T) {
 		if again := p.decoratePost(&model.Post{Message: message}, hookRef); again != nil {
 			t.Fatalf("the hook rewrote post %d:\n%s", i+1, again.Message)
 		}
+	}
+}
+
+// Every row in the inline group does what it claims, in both directions.
+//
+// Scoped to that group because it is the only one making the claim: most single
+// coordinates elsewhere in the list would also draw a map, and marking each of
+// them would turn an incidental property into thirty claims nobody reads. The
+// second loop is what keeps that scoping honest, by refusing the flag anywhere
+// the test does not check it.
+//
+// Checked through decoratePost, the function that actually stamps a post,
+// rather than by re-reading the rule out of the tagger: a row saying "posting
+// this draws a map" should fail if anything on that path stops stamping.
+func TestEveryInlineDetailDrawsWhatItClaims(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	claims := 0
+	for _, group := range locationDetailGroups {
+		if group.heading != inlineDetailHeading {
+			continue
+		}
+
+		for _, example := range group.examples {
+			t.Run(example.text, func(t *testing.T) {
+				got := p.decoratePost(&model.Post{Message: example.text}, hookRef)
+
+				stamped := got != nil && got.Type != ""
+				if stamped != example.inline {
+					t.Fatalf("posting %q on its own stamps=%v, the row claims inline=%v",
+						example.text, stamped, example.inline)
+				}
+			})
+
+			if example.inline {
+				claims++
+			}
+		}
+	}
+
+	if claims == 0 {
+		t.Fatalf("no row under %q claims an inline rendering, so this asserts nothing",
+			inlineDetailHeading)
+	}
+
+	for _, typ := range detailSetOrder {
+		for _, group := range detailSets[typ].groups {
+			if group.heading == inlineDetailHeading {
+				continue
+			}
+			for _, example := range group.examples {
+				if example.inline {
+					t.Errorf("%q under %q sets inline, which nothing checks outside %q",
+						example.text, group.heading, inlineDetailHeading)
+				}
+			}
+		}
+	}
+}
+
+// The group exists, is reachable in the posted output, and says which way round
+// each of its rows goes.
+func TestDetailsExplainTheInlineMap(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	text := detailMessageFor(t, p, location.Type)
+
+	if !strings.Contains(text, inlineDetailHeading) {
+		t.Fatalf("the posted coordinates examples carry no %q group", inlineDetailHeading)
+	}
+
+	var drawn, notDrawn int
+	for _, group := range locationDetailGroups {
+		if group.heading != inlineDetailHeading {
+			continue
+		}
+		for _, example := range group.examples {
+			if _, found := detailRowFor(text, example); !found {
+				t.Fatalf("typed text for %q is missing from the output", example.text)
+			}
+			if example.inline {
+				drawn++
+			} else {
+				notDrawn++
+			}
+		}
+	}
+
+	// Both halves, or the group teaches a rule without showing its edge.
+	if drawn == 0 || notDrawn == 0 {
+		t.Fatalf("the %q group has %d drawn and %d not; it needs both to be a distinction",
+			inlineDetailHeading, drawn, notDrawn)
+	}
+}
+
+// capitalize raises a set name for its heading, and an empty name has no first
+// byte to raise. Every set has a name, so only a direct call reaches the guard.
+func TestCapitalize(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"a lower-case name", "coordinates", "Coordinates"},
+		{"one already raised", "Coordinates", "Coordinates"},
+		{"a single letter", "c", "C"},
+		{"a name that starts with a digit", "3d", "3d"},
+		{"empty", "", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := capitalize(tc.in); got != tc.want {
+				t.Fatalf("capitalize(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
 	}
 }

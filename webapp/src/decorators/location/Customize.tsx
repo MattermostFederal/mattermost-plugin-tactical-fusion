@@ -1,9 +1,10 @@
 import React, {useEffect, useState} from 'react';
 
-import {ROWS} from './rows';
-import type {RowID} from './rows';
+import {INLINE_ID, MAP_ID, ROWS} from './rows';
+import type {HideableID} from './rows';
 
 import LinkButton from '../../components/LinkButton';
+import {useFeatures} from '../../features/store';
 import {resetPreferencesSection, savePreferencesSection, usePreferences} from '../../preferences/store';
 
 const styles: Record<string, React.CSSProperties> = {
@@ -77,8 +78,9 @@ interface Props {
  */
 const Customize: React.FC<Props> = ({onClose}) => {
     const {preferences, loading, error: loadError} = usePreferences();
+    const {features} = useFeatures();
 
-    const [hidden, setHidden] = useState<RowID[]>(() => [...preferences.location.hiddenRows]);
+    const [hidden, setHidden] = useState<HideableID[]>(() => [...preferences.location.hiddenRows]);
     const [busy, setBusy] = useState(false);
     const [status, setStatus] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -107,7 +109,7 @@ const Customize: React.FC<Props> = ({onClose}) => {
         setHidden([...preferences.location.hiddenRows]);
     }, [preferences.location.hiddenRows, touched]);
 
-    const toggle = (id: RowID) => {
+    const toggle = (id: HideableID) => {
         setStatus(null);
         setError(null);
         setTouched(true);
@@ -152,7 +154,27 @@ const Customize: React.FC<Props> = ({onClose}) => {
         }
     };
 
-    const shown = ROWS.length - hidden.length;
+    // A surface the admin has switched off is not offered, because a tickbox
+    // that changes nothing a reader can see is worse than an absent one: the
+    // reader unticks it, saves, and nothing happens.
+    //
+    // What is STORED is left alone either way. A reader's hidden list keeps ids
+    // this editor is not showing, so a switch turned off and back on returns
+    // them to the choice they had made rather than to the default. That is the
+    // same forgiveness asRowIDs already applies to a retired row.
+    const offersPanel = features.mapPanel;
+    const offersInline = features.mapInline;
+
+    // Counted over what this editor actually offers, not over ROWS alone. The
+    // map is hideable and is not a row, so subtracting the hidden list from
+    // ROWS.length went negative once everything was hidden and silenced the
+    // warning in exactly the case it exists for.
+    const offered: HideableID[] = [
+        ...(offersPanel ? [MAP_ID] as HideableID[] : []),
+        ...(offersInline ? [INLINE_ID] as HideableID[] : []),
+        ...ROWS.map((row) => row.id),
+    ];
+    const shown = offered.filter((id) => !hidden.includes(id)).length;
 
     return (
         <div style={styles.root}>
@@ -179,6 +201,36 @@ const Customize: React.FC<Props> = ({onClose}) => {
                     role='group'
                     aria-labelledby='tf-location-rows-legend'
                 >
+                    {offersPanel && (
+                        <label style={styles.row}>
+                            <input
+                                type='checkbox'
+                                checked={!hidden.includes(MAP_ID)}
+                                disabled={busy || loading}
+                                onChange={() => toggle(MAP_ID)}
+                            />
+                            <span style={styles.label}>
+                                {'Map'}
+                                <span style={styles.rowHint}>{'A small world map showing where the coordinate is'}</span>
+                            </span>
+                        </label>
+                    )}
+                    {offersInline && (
+                        <label style={styles.row}>
+                            <input
+                                type='checkbox'
+                                checked={!hidden.includes(INLINE_ID)}
+                                disabled={busy || loading}
+                                onChange={() => toggle(INLINE_ID)}
+                            />
+                            <span style={styles.label}>
+                                {'Map under the post'}
+                                <span style={styles.rowHint}>
+                                    {'Drawn in the channel when a message is only a coordinate'}
+                                </span>
+                            </span>
+                        </label>
+                    )}
                     {ROWS.map((row) => (
                         <label
                             key={row.id}
@@ -212,8 +264,8 @@ const Customize: React.FC<Props> = ({onClose}) => {
                         'bottom. That is allowed, and this link is how you get back.' : ''}
                 </p>
                 <p style={styles.hint}>
-                    {'This applies to the sidebar only. The page a link opens outside Mattermost ' +
-                        'has no reader to ask, so it always shows every row.'}
+                    {'These apply inside Mattermost. The page a link opens outside it has no ' +
+                        'reader to ask, so it always shows every row.'}
                 </p>
             </div>
 

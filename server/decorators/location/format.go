@@ -154,59 +154,6 @@ func clampPlaces(places float64) int {
 	return int(places)
 }
 
-// ResolutionText is the human reading of how finely the token was written.
-//
-// Deliberately "about", not "accurate to". A phone emitting six decimals is not
-// claiming 0.1 m of accuracy, and a row headed "precision" invites exactly that
-// misreading. "about" hedges; the row label already supplies the noun.
-func (l Location) ResolutionText() string {
-	meters := l.resolutionMeters()
-
-	switch l.Format {
-	case FormatMGRS:
-		// A grid reference is a square and the position reported for it is the
-		// center, which the row has to say: read as a corner, a 10 km reference
-		// puts a reader 7 km from where the grid points.
-		return humanMeters(meters) + " grid, at center"
-	case FormatUTM:
-		// Exact rather than hedged, unlike the forms above: a UTM easting is
-		// written to the meter and means it.
-		return "1 m"
-
-	case FormatGEOREF, FormatGARS, FormatPlusCode:
-		return humanMeters(meters) + " cell, at center"
-	}
-
-	// Below a centimeter the figure rounds to "0 m" at any sane width, which
-	// reads as a claim of infinite precision rather than as the very fine
-	// number it is. An eight-decimal token really does reach this.
-	if meters < 0.01 {
-		return "finer than 0.01 m"
-	}
-
-	return "about " + humanMeters(meters)
-}
-
-func humanMeters(m float64) string {
-	switch {
-	case m >= 1000:
-		return trimZeroes(strconv.FormatFloat(m/1000, 'f', 1, 64)) + " km"
-	case m >= 1:
-		return strconv.FormatFloat(m, 'f', 0, 64) + " m"
-	default:
-		// ResolutionText refuses anything below a centimeter before it reaches
-		// here, so two decimals is always enough to say something.
-		return trimZeroes(strconv.FormatFloat(m, 'f', 2, 64)) + " m"
-	}
-}
-
-func trimZeroes(s string) string {
-	if !strings.Contains(s, ".") {
-		return s
-	}
-	return strings.TrimSuffix(strings.TrimRight(s, "0"), ".")
-}
-
 // DecimalText renders the pair as decimal degrees with hemisphere letters, at
 // the token's own resolution.
 //
@@ -350,6 +297,81 @@ func usmtfAxis(v float64, resolution float64, degWidth int, pos, neg string) str
 		return fmt.Sprintf("%0*d%02d%0*.*f%s",
 			degWidth, deg, minutes, fieldWidth(places), places, seconds, hemi)
 	}
+}
+
+// The renderers below are the Go half of the paired fixtures.
+//
+// No page reaches them: every surface renders through format.ts since the Go
+// page renderer went. They stay because renderFixtures and areaFixtures are the
+// same inputs and the same expected strings as the table in format.spec.ts, and
+// that pairing is what keeps the two implementations honest. Deleting them
+// would leave the TypeScript side asserting against nothing.
+
+// ResolutionText is the human reading of how finely the token was written.
+//
+// Deliberately "about", not "accurate to". A phone emitting six decimals is not
+// claiming 0.1 m of accuracy, and a row headed "precision" invites exactly that
+// misreading. "about" hedges; the row label already supplies the noun.
+func (l Location) ResolutionText() string {
+	meters := l.resolutionMeters()
+
+	switch l.Format {
+	case FormatMGRS:
+		// A grid reference is a square and the position reported for it is the
+		// center, which the row has to say: read as a corner, a 10 km reference
+		// puts a reader 7 km from where the grid points.
+		return humanMeters(meters) + " grid, at center"
+	case FormatUTM:
+		// Exact rather than hedged, unlike the forms above: a UTM easting is
+		// written to the meter and means it.
+		return "1 m"
+
+	case FormatGEOREF, FormatGARS, FormatPlusCode:
+		return humanMeters(meters) + " cell, at center"
+	}
+
+	// Below a centimeter the figure rounds to "0 m" at any sane width, which
+	// reads as a claim of infinite precision rather than as the very fine
+	// number it is. An eight-decimal token really does reach this.
+	if meters < 0.01 {
+		return "finer than 0.01 m"
+	}
+
+	return "about " + humanMeters(meters)
+}
+
+func humanMeters(m float64) string {
+	switch {
+	case m >= 1000:
+		return trimZeroes(strconv.FormatFloat(m/1000, 'f', 1, 64)) + " km"
+	case m >= 1:
+		return strconv.FormatFloat(m, 'f', 0, 64) + " m"
+	default:
+		// ResolutionText refuses anything below a centimeter before it reaches
+		// here, so two decimals is always enough to say something.
+		return trimZeroes(strconv.FormatFloat(m, 'f', 2, 64)) + " m"
+	}
+}
+
+func trimZeroes(s string) string {
+	if !strings.Contains(s, ".") {
+		return s
+	}
+	return strings.TrimSuffix(strings.TrimRight(s, "0"), ".")
+}
+
+// ConfidenceText describes the USMTF verified digits, or "" when the token
+// carried none.
+//
+// Kept separate from the resolution: how well a position is known and how
+// finely it was written are different facts, and folding one into the other
+// would claim something the token does not say.
+func (l Location) ConfidenceText() string {
+	lat, lon, ok := l.Confidence()
+	if !ok {
+		return ""
+	}
+	return fmt.Sprintf("stated confidence %d (latitude), %d (longitude)", lat, lon)
 }
 
 // MGRSText is the military grid reference for this location, at the token's own
@@ -600,18 +622,4 @@ func (l Location) areaText(f Format, encode func(lat, lon, resolution float64) s
 	}
 
 	return encode(lat, lon, l.resolutionDegrees())
-}
-
-// ConfidenceText describes the USMTF verified digits, or "" when the token
-// carried none.
-//
-// Kept separate from the resolution: how well a position is known and how
-// finely it was written are different facts, and folding one into the other
-// would claim something the token does not say.
-func (l Location) ConfidenceText() string {
-	lat, lon, ok := l.Confidence()
-	if !ok {
-		return ""
-	}
-	return fmt.Sprintf("stated confidence %d (latitude), %d (longitude)", lat, lon)
 }

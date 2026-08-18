@@ -5,6 +5,9 @@ import {parseCanonical} from './format';
 import type {LocationFormat} from './format';
 import LocationPanel from './LocationPanel';
 
+import {featuresReply, isFeaturesRequest, setStubbedFeatures} from '../../features/stub_fetch';
+import type {Features} from '../../features/types';
+
 import type {LocationPayload} from './index';
 
 /**
@@ -32,6 +35,9 @@ const FIRST: Conversion = {
     georef: 'EJBE45000336',
     gars: '124LJ47',
     pluscode: '85633Q42+C2R',
+    region: 'United States of America (Natural Earth 110m)',
+    lat: 34.0561,
+    lon: -118.25,
 };
 
 /**
@@ -49,6 +55,9 @@ const SECOND: Conversion = {
     georef: 'GJNJ57885337',
     gars: '206LT26',
     pluscode: '87C4VXQ7+RV44',
+    region: 'United States of America (Natural Earth 110m)',
+    lat: 38.8895,
+    lon: -77.0353,
 };
 
 let settle: (() => void) | null = null;
@@ -77,9 +86,25 @@ let lastRequest = '';
  * stale-frame test could pass for the wrong reason: one fixture for two
  * coordinates cannot tell a stale row from a fresh one.
  */
+const OCEAN: Conversion = {
+    mgrs: '25P CN 00000 00000',
+    utm: '25P 500000E 3319000N',
+    decimal: '30.0000° N, 40.0000° W',
+    dms: '30\u00b000\'00.0"N 40\u00b000\'00.0"W',
+    ddm: '30\u00b000.000\'N 40\u00b000.000\'W',
+    usmtf: '300000.0N0400000.0W',
+    georef: 'KJFA00000000',
+    gars: '281LA37',
+    pluscode: '89222222+222',
+    region: '',
+    lat: 30,
+    lon: -40,
+};
+
 const ANSWERS: Record<string, Conversion> = {
     '34.0561,-118.2500': FIRST,
     '18SUJ2347806483': SECOND,
+    '30.0000,-40.0000': OCEAN,
 };
 
 /*
@@ -93,16 +118,36 @@ let hiddenRows: string[] = [];
 
 window.fetch = ((input: RequestInfo | URL, init?: RequestInit) =>
     new Promise((resolve, rejectRequest) => {
-        // The preferences request answers straight away. Only the CONVERSION is
-        // deferred, because what these tests are about is what the panel shows
-        // while that one is in the air, and a settings read left hanging would
-        // just leave every row on its default forever.
+        // The preferences and features requests answer straight away. Only the
+        // CONVERSION is deferred, because what these tests are about is what the
+        // panel shows while that one is in the air, and a settings read left
+        // hanging would just leave every row on its default forever.
+        if (isFeaturesRequest(String(input))) {
+            resolve(featuresReply());
+            return;
+        }
+
         if (String(input).includes('/preferences')) {
             resolve({
                 ok: true,
                 status: 200,
                 json: () => Promise.resolve({location: {hidden_rows: hiddenRows}}),
             } as Response);
+            return;
+        }
+
+        // Anything that is not a conversion is refused rather than deferred.
+        //
+        // The map fetches the basemap archive through the same `fetch`, and it
+        // reaches here AFTER the conversion does, because the map is not mounted
+        // until the features answer lands. Letting it fall into the branch below
+        // overwrote `settle` with the archive's resolver, so "answer the
+        // conversion" settled the wrong request and every row stayed on
+        // `converting…`. The archive is not served in a component test either
+        // way, so refusing it changes nothing except which promise the button
+        // holds.
+        if (!String(input).includes('/api/v1/convert')) {
+            resolve({ok: false, status: 404, json: () => Promise.resolve({})} as Response);
             return;
         }
 
@@ -144,6 +189,9 @@ interface Props {
 
     /** Rows the stubbed reader has hidden. */
     hidden?: string[];
+
+    /** Map surfaces the stubbed admin has left on. Every one, by default. */
+    features?: Partial<Features>;
 }
 
 /**
@@ -221,9 +269,11 @@ const LocationPanelHarness: React.FC<Props> = ({
     raw,
     outcome: requested = 'ok',
     hidden = [],
+    features = {},
 }) => {
     outcome = requested;
     hiddenRows = hidden;
+    setStubbedFeatures(features);
 
     // The sidebar keeps the panel mounted across a change of selection, so the
     // harness has to change the payload rather than remount. This button is

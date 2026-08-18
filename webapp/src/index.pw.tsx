@@ -42,7 +42,7 @@ test('registers the sidebar before the header button', async ({mount, page}) => 
 
     const result = await recorded(page);
 
-    expect(result.order).toEqual(['rhs', 'tooltip', 'header']);
+    expect(result.order).toEqual(['rhs', 'tooltip', 'post-type', 'header']);
 });
 
 // One registration for the whole plugin: a decorator gets a hover by declaring
@@ -54,6 +54,18 @@ test('registers the tooltip exactly once', async ({mount, page}) => {
 
     expect(result.tooltipComponentName).toBe('DecoratorTooltip');
     expect(result.called?.filter((name) => name === 'registerLinkTooltipComponent')).toHaveLength(1);
+});
+
+// One registration per declared post type, and only for a decorator that has an
+// inline view to put in it. DTG declares neither, so a lone date-time group
+// stays an ordinary post.
+test('registers a post body for every decorator that declares one', async ({mount, page}) => {
+    await mount(<IndexHarness/>);
+
+    const result = await recorded(page);
+
+    expect(result.postTypes).toEqual(['custom_tf_location']);
+    expect(result.postBodyComponentNames).toEqual(['DecoratorPostBody']);
 });
 
 test('wires the channel header button', async ({mount, page}) => {
@@ -148,7 +160,8 @@ test('uninitialize gives back every registry component', async ({mount, page}) =
 
     await page.getByTestId('uninitialize').click();
 
-    await expect(page.getByTestId('unregistered')).toHaveText('rhs-id,tooltip-id,header-id');
+    await expect(page.getByTestId('unregistered')).toHaveText(
+        'rhs-id,tooltip-id,post-type-id-custom_tf_location,header-id');
 });
 
 // Calling it twice must be a no-op rather than running every disposer again.

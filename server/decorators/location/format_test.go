@@ -215,9 +215,6 @@ func TestGridRenderingMatchesTheSharedFixtures(t *testing.T) {
 			if got := gridText(loc.Grid); got != tc.grid {
 				t.Errorf("gridText() = %q, want %q", got, tc.grid)
 			}
-			if got := loc.ResolutionText(); got != tc.resolution {
-				t.Errorf("ResolutionText() = %q, want %q", got, tc.resolution)
-			}
 			if got := loc.DecimalText(); got != tc.decimal {
 				t.Errorf("DecimalText() = %q, want %q", got, tc.decimal)
 			}
@@ -317,9 +314,6 @@ func TestRenderingMatchesTheSharedFixtures(t *testing.T) {
 			if got := loc.USMTFText(); got != tc.usmtf {
 				t.Errorf("USMTFText() = %q, want %q", got, tc.usmtf)
 			}
-			if got := loc.ResolutionText(); got != tc.resolution {
-				t.Errorf("ResolutionText() = %q, want %q", got, tc.resolution)
-			}
 		})
 	}
 }
@@ -367,24 +361,6 @@ func TestOnlyAVerifiedTokenReportsConfidence(t *testing.T) {
 			t.Errorf("Confidence() reported = %v for %s %q, want %v",
 				got, tc.format, tc.token, want)
 		}
-
-		if got := loc.ConfidenceText(); (got != "") != want {
-			t.Errorf("ConfidenceText() = %q for %s %q", got, tc.format, tc.token)
-		}
-	}
-}
-
-func TestConfidenceIsSeparateFromResolution(t *testing.T) {
-	loc, ok := Parse(FormatVLATM, "3510N9-07901W7")
-	if !ok {
-		t.Fatal("Parse rejected a valid token")
-	}
-
-	if got := loc.ResolutionText(); got != "about 1.9 km" {
-		t.Errorf("ResolutionText() = %q, want the LATM resolution", got)
-	}
-	if got := loc.ConfidenceText(); got != "stated confidence 9 (latitude), 7 (longitude)" {
-		t.Errorf("ConfidenceText() = %q", got)
 	}
 }
 
@@ -565,7 +541,6 @@ func TestOversizedFractionDoesNotHangFormatting(t *testing.T) {
 		_ = loc.DecimalText()
 		_ = loc.DMSText()
 		_ = loc.DDMText()
-		_ = loc.ResolutionText()
 	}()
 
 	select {
@@ -732,9 +707,9 @@ func TestUSMTFRowNeverClaimsConfidence(t *testing.T) {
 		t.Fatalf("USMTFText() = %q, want the plain shape with no confidence digits", got)
 	}
 
-	// The claim is still on screen, in the row that owns it.
-	if loc.ConfidenceText() == "" {
-		t.Error("the confidence row lost the digits the token carried")
+	// The claim is still carried, in the fields the Confidence row renders from.
+	if loc.Lat.Conf == NoConfidence && loc.Lon.Conf == NoConfidence {
+		t.Error("the parsed token lost the confidence digits it carried")
 	}
 }
 

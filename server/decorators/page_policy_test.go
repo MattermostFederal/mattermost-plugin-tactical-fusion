@@ -133,3 +133,94 @@ func TestStyleCSSCarryingMarkupIsDropped(t *testing.T) {
 		t.Fatal("WritePage() emitted markup from StyleCSS, want it dropped")
 	}
 }
+
+// The two policies, side by side, so the difference between them is something a
+// reader can see rather than reconstruct from a builder.
+//
+// PageStatic is what a page that only echoes text gets, and it is the default
+// precisely because it gives nothing back. PageMapping is the one exception,
+// and every directive in it is there for MapLibre: a real script file, a worker
+// beside it, a fetch for the basemap and a canvas that draws through data: and
+// blob: images. Widening either one should be a visible diff here.
+func TestPageCapabilityDecidesTheWholePolicy(t *testing.T) {
+	cases := []struct {
+		name string
+		page decorators.Page
+		want string
+	}{
+		{
+			name: "static, no script",
+			page: decorators.Page{},
+			want: "default-src 'none'; style-src 'unsafe-inline'; script-src 'none'; " +
+				"base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+		},
+		{
+			name: "mapping",
+			page: decorators.Page{Capability: decorators.PageMapping},
+			want: "default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; " +
+				"worker-src 'self'; img-src data:; connect-src 'self'; " +
+				"base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			decorators.WritePage(rec, c.page)
+
+			if got := rec.Header().Get("Content-Security-Policy"); got != c.want {
+				t.Errorf("policy =\n  %s\nwant\n  %s", got, c.want)
+			}
+		})
+	}
+}
+
+// A mapping page that also carries an inline script keeps the digest beside
+// 'self'. The two say different things: 'self' is permission to load MapLibre
+// out of the bundle, the digest still names the only inline program that may
+// run, and an escaping mistake has to survive the second one.
+func TestMappingPageStillPinsItsInlineScript(t *testing.T) {
+	rec := httptest.NewRecorder()
+	decorators.WritePage(rec, decorators.Page{
+		ScriptJS:   "console.log(1);",
+		Capability: decorators.PageMapping,
+	})
+
+	sum := sha256.Sum256([]byte("console.log(1);"))
+	want := "script-src 'self' 'sha256-" + base64.StdEncoding.EncodeToString(sum[:]) + "'"
+
+	if got := rec.Header().Get("Content-Security-Policy"); !strings.Contains(got, want) {
+		t.Errorf("policy = %q, want it to contain %q", got, want)
+	}
+}
+
+// A page that does not declare PageMapping cannot load a script, whatever it
+// puts in the field: its own policy names no source to load one from, so
+// emitting the tag would produce a page that is broken rather than obviously
+// wrong. An absolute URL is refused for a different reason: this renderer
+// cannot see the host it is serving, so same-origin is a claim nothing checked.
+func TestAScriptNeedsThePolicyThatAllowsIt(t *testing.T) {
+	cases := []struct {
+		name string
+		page decorators.Page
+		want bool
+	}{
+		{"static", decorators.Page{ScriptSrc: "./page.js"}, false},
+		{"mapping", decorators.Page{ScriptSrc: "./page.js", Capability: decorators.PageMapping}, true},
+		{"one level up", decorators.Page{ScriptSrc: "../page.js", Capability: decorators.PageMapping}, true},
+		{"absolute url", decorators.Page{ScriptSrc: "https://cdn.example/page.js", Capability: decorators.PageMapping}, false},
+		{"protocol relative", decorators.Page{ScriptSrc: "//cdn.example/page.js", Capability: decorators.PageMapping}, false},
+		{"root relative", decorators.Page{ScriptSrc: "/page.js", Capability: decorators.PageMapping}, false},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			decorators.WritePage(rec, c.page)
+
+			if got := strings.Contains(rec.Body.String(), `<script src=`); got != c.want {
+				t.Errorf("script emitted = %v, want %v", got, c.want)
+			}
+		})
+	}
+}

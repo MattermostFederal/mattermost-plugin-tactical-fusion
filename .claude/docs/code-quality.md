@@ -1,18 +1,21 @@
 # Code Quality Standards
 
 ## Code Comments Guidelines
-- **NEVER add migration/legacy comments**: No "functionality removed", "deprecated", "legacy"
-- **NEVER explain what was removed**: Just remove code cleanly
-- **NEVER add implementation detail comments**: No "// Reusing same struct"
-- **NEVER add obvious comments**: No "// Create variable X" - code should be self-explanatory
-- **NEVER add statistical comments**: No "// Channel with 1000 messages"
-- **NEVER add provenance comments**: No "COPIED from X", "Moved from Y"
+
+See `~/CLAUDE.md` -> "Code Comments" for the full rule. In short: **do not write
+prose comments, and remove the ones you encounter in code you touch.** Compiler
+and tool directives, generated-file headers, and license headers stay, because
+they are syntax rather than prose.
+
+This section previously listed the kinds of comment never to add. That taxonomy
+is gone because none of it is needed once no prose comment is added at all.
 
 ## Code Movement/Refactoring
 When moving or reorganizing code:
 - **ALWAYS COPY, NEVER RECREATE**: Copy exact implementation, don't retype
 - **Use Read tool first**: Get exact implementation before moving
-- **Preserve comments**: Copy existing non-violating comments
+- **Strip comments on the way**: Do not carry prose comments into the new
+  location. Keep directives and generated-file headers
 - **No provenance comments**: Don't add "COPIED from", "Moved from"
 - **Verify after move**: Check both old and new locations
 

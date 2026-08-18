@@ -131,6 +131,11 @@
                     <td><code>HTTPDecoratorUnknown</code> <span class="level">404</span></td>
                     <td><code>Not found.</code> The type is not one this build registers. A link from a newer version of the plugin, or a hand-edited URL.</td>
                 </tr>
+                <tr>
+                    <td><code>TF-12004</code></td>
+                    <td><code>HTTPMapDisabled</code> <span class="level">404</span></td>
+                    <td><code>Not found.</code> The full-window map page is switched off. See <a href="admin.html#enable-location-map-page"><code>EnableLocationMapPage</code></a>; the coordinate's own page still carries every reading.</td>
+                </tr>
             </tbody>
         </table>
 
@@ -146,7 +151,7 @@
                 <tr>
                     <td><code>TF-13000</code></td>
                     <td><code>APINotAuthorized</code> <span class="level">401</span></td>
-                    <td><code>Not authorized.</code> The request carried no Mattermost session. Unlike the decorator route, this one is never public.</td>
+                    <td><code>Not authorized.</code> The request carried no Mattermost session. The decorator and map pages need one too, but they redirect to the sign-in page instead of answering this, because a person can sign in and carry on where a script cannot.</td>
                 </tr>
                 <tr>
                     <td><code>TF-13001</code></td>
@@ -186,7 +191,7 @@
                 <tr>
                     <td><code>TF-13008</code></td>
                     <td><code>APIConvertInvalid</code> <span class="level">400</span></td>
-                    <td><code>That is not a coordinate this plugin issued.</code> The coordinate conversion endpoint was given a format and token that do not name a coordinate. It runs exactly the checks the public coordinate page runs, so a link that renders there converts here and one that does not fails in both places. Seen in the sidebar as "Not a coordinate", which almost always means a link was edited by hand.</td>
+                    <td><code>That is not a coordinate this plugin issued.</code> The coordinate conversion endpoint was given a format and token that do not name a coordinate. It runs exactly the checks the coordinate page runs, so a link that renders there converts here and one that does not fails in both places. Seen in the sidebar as "Not a coordinate", which almost always means a link was edited by hand.</td>
                 </tr>
             </tbody>
         </table>
@@ -326,7 +331,7 @@
                 <tr>
                     <td><code>TF-17001</code></td>
                     <td><code>LocationPageParamsInvalid</code> <span class="level">400</span></td>
-                    <td><code>That link is missing or has an invalid coordinate.</code> The query string carries no usable coordinate, or the coordinate does not reproduce itself, or the copy of the author's own text does not match the coordinate it is attached to. Any one of those means the link was not written by this plugin. See <a href="troubleshooting.html#invalid-link">the troubleshooting entry</a>.</td>
+                    <td><code>That link is missing or has an invalid coordinate.</code> The query string carries no usable coordinate, or the coordinate does not reproduce itself, or the copy of the author's own text does not match the coordinate it is attached to. Any one of those means the link was not written by this plugin. The map page shares this code and refuses the same links, but words it <code>That is not a coordinate this plugin issued.</code>, so both wordings are the same failure and the same check. See <a href="troubleshooting.html#invalid-link">the troubleshooting entry</a>.</td>
                 </tr>
             </tbody>
         </table>

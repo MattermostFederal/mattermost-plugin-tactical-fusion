@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -146,16 +147,54 @@ type Decorator interface {
 
 	// RenderPage writes the standalone page for these params.
 	//
-	// The /decorate/* route is PUBLIC. Params arrive from an untrusted URL and
-	// must be re-validated here before anything is echoed.
+	// Params arrive from a URL anybody can write and must be re-validated here
+	// before anything is echoed. ServeHTTP requires a session to reach this, but
+	// a session says who is asking and nothing about what they asked for.
 	//
 	// A decorator page must be a pure function of its query string: no post,
-	// channel, user, team or config lookup, and it must never read or trust the
-	// Mattermost-User-Id header. A decorator needing workspace data must not use
-	// this route; it needs its own authenticated one.
+	// channel, user, team or config lookup, and it is handed no reader. That is
+	// what keeps a page renderable from a test with a url.Values and nothing
+	// else, and what keeps a route served with a cache lifetime from growing a
+	// per-reader answer. A decorator needing workspace data needs its own route
+	// under /api/v1.
 	//
 	// RenderPage owns its own Cache-Control header. The shell defaults to
 	// no-store, so a decorator carrying anything non-public can simply say
 	// nothing.
 	RenderPage(w http.ResponseWriter, params url.Values)
+}
+
+type PostRenderer interface {
+	PostType() string
+}
+
+const (
+	PostTypePrefix   = "custom_"
+	PostTypeMaxLen   = 26
+	PostPropsKey     = "tactical_fusion"
+	PostPropsVersion = 1
+)
+
+func StandalonePostType(d Decorator) string {
+	renderer, ok := d.(PostRenderer)
+	if !ok {
+		return ""
+	}
+
+	postType := renderer.PostType()
+	if !strings.HasPrefix(postType, PostTypePrefix) || len(postType) > PostTypeMaxLen {
+		return ""
+	}
+	return postType
+}
+
+func StandalonePostProps(r Result) map[string]any {
+	props := map[string]any{
+		"version": PostPropsVersion,
+		"type":    r.Type,
+	}
+	for key := range r.Params {
+		props[key] = r.Params.Get(key)
+	}
+	return props
 }

@@ -39,7 +39,7 @@ type Page struct {
 	// A page that supplies one is served under script-src 'sha256-...', pinned
 	// to the digest of exactly this text, rather than under 'unsafe-inline'.
 	// That distinction is the point rather than fastidiousness: these pages echo
-	// author text from a message, on a public route whose query string anybody
+	// author text from a message, on a route whose query string anybody
 	// can write, so the property worth keeping is that an escaping mistake
 	// stays inert. Under 'unsafe-inline' an injected <script> runs; under a
 	// hash it does not match the digest and is blocked.
@@ -47,7 +47,22 @@ type Page struct {
 	// It is emitted without escaping, so like StyleCSS it must be a constant in
 	// the decorator's own source and must never carry anything from a request.
 	ScriptJS string
+
+	// ScriptSrc is a same-origin script for the page to load, or "", written
+	// relative to the page's own route. Emitted only under PageMapping.
+	ScriptSrc string
+
+	// Capability is how much of default-src 'none' this page gives back. The
+	// zero value gives back nothing. See CLAUDE.md, "The page content policy".
+	Capability PageCapability
 }
+
+type PageCapability int
+
+const (
+	PageStatic PageCapability = iota
+	PageMapping
+)
 
 // styleCSS returns the decorator's extra rules, or nothing when they are
 // unusable.
@@ -62,19 +77,48 @@ func (p Page) styleCSS() string {
 	return p.StyleCSS
 }
 
-// scriptPolicy is the script-src directive for this page.
-//
-// A page with script is pinned to that script's digest, so the directive names
-// the one program allowed to run and nothing else can be added to the page by
-// any means.
 func (p Page) scriptPolicy() string {
+	sources := ""
+	if p.Capability == PageMapping {
+		sources = " 'self'"
+	}
+
 	js := p.scriptJS()
 	if js == "" {
-		return "script-src 'none'"
+		if sources == "" {
+			return "script-src 'none'"
+		}
+		return "script-src" + sources
 	}
 
 	sum := sha256.Sum256([]byte(js))
-	return "script-src 'sha256-" + base64.StdEncoding.EncodeToString(sum[:]) + "'"
+	return "script-src" + sources + " 'sha256-" + base64.StdEncoding.EncodeToString(sum[:]) + "'"
+}
+
+func (p Page) contentPolicy() string {
+	directives := []string{
+		"default-src 'none'",
+		"style-src 'unsafe-inline'",
+		p.scriptPolicy(),
+	}
+
+	// style-src keeps only 'unsafe-inline': MapLibre's stylesheet arrives through
+	// style-loader as an injected <style>, and nothing emits a <link>. img-src
+	// keeps only data:, which is the zoom control's glyphs; the map draws through
+	// WebGL, not <img>, and the style has no sprite, no glyphs and no raster
+	// source. Every source not listed here is one less exfiltration channel on a
+	// route that echoes author text.
+	if p.Capability == PageMapping {
+		directives = append(directives,
+			"worker-src 'self'",
+			"img-src data:",
+			"connect-src 'self'")
+	}
+
+	directives = append(directives,
+		"base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'")
+
+	return strings.Join(directives, "; ")
 }
 
 // scriptJS returns the page's script, or nothing when it is unusable.
@@ -91,13 +135,29 @@ func (p Page) scriptJS() string {
 	return p.ScriptJS
 }
 
-// scriptTag is the script element, or nothing at all.
 func (p Page) scriptTag() string {
-	js := p.scriptJS()
-	if js == "" {
+	out := ""
+
+	if src := p.scriptSrc(); src != "" {
+		out += `<script src="` + html.EscapeString(src) + `" defer></script>`
+	}
+
+	if js := p.scriptJS(); js != "" {
+		out += "<script>" + js + "</script>"
+	}
+
+	return out
+}
+
+func (p Page) scriptSrc() string {
+	src := p.ScriptSrc
+	if src == "" || p.Capability != PageMapping {
 		return ""
 	}
-	return "<script>" + js + "</script>"
+	if !strings.HasPrefix(src, "./") && !strings.HasPrefix(src, "../") {
+		return ""
+	}
+	return src
 }
 
 // themeAttribute renders the theme as a root attribute, or nothing at all.
@@ -218,7 +278,7 @@ func setPageHeaders(w http.ResponseWriter, p Page) {
 	h := w.Header()
 	h.Set("Content-Type", "text/html; charset=utf-8")
 
-	// This route is public and echoes values from an untrusted query string.
+	// This route echoes values from an untrusted query string.
 	// Escaping is the real defense, but a restrictive policy means a mistake in
 	// it cannot become script execution or an exfiltration channel. Inline
 	// styles are allowed because the shell carries its own and loads nothing
@@ -233,9 +293,7 @@ func setPageHeaders(w http.ResponseWriter, p Page) {
 	// anybody can write, so what has to survive an escaping mistake is that
 	// injected markup cannot execute. A hash keeps that; 'unsafe-inline' would
 	// hand it back.
-	h.Set("Content-Security-Policy",
-		"default-src 'none'; style-src 'unsafe-inline'; "+p.scriptPolicy()+
-			"; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+	h.Set("Content-Security-Policy", p.contentPolicy())
 	h.Set("Referrer-Policy", "no-referrer")
 
 	if h.Get("Cache-Control") == "" {

@@ -11,11 +11,11 @@ import (
 // apiPath is the route prefix for the authenticated JSON API, relative to the
 // plugin's own base path.
 //
-// Deliberately a sibling of decoratePath rather than a branch inside it. The
-// two have opposite security postures: /decorate is public and reads no
-// workspace data, while everything under here is per-reader and refuses a
-// request without a session. Keeping them apart means neither can inherit the
-// other's rules by accident.
+// Deliberately a sibling of decoratePath rather than a branch inside it. Both
+// require a session now, but they answer a missing one differently, and
+// everything under here reads per-reader state while a decorator page reads
+// none. Keeping them apart means neither can inherit the other's rules by
+// accident.
 const apiPath = "/api/v1"
 
 // The resources this API has.
@@ -31,26 +31,47 @@ const (
 	// its position.
 	//
 	// Authenticated, like everything under here, even though it reads no
-	// workspace data and could in principle sit beside the public page. That is
-	// deliberate: the public route exists because clients without a session
-	// have no other way to see a decorator, and nothing else should be added to
-	// it. A caller with no session and a coordinate to convert is not a reader
-	// of this workspace.
+	// workspace data. A caller with no session and a coordinate to convert is
+	// not a reader of this workspace.
 	convertPath = apiPath + "/convert"
+
+	// featuresPath is which optional surfaces the admin has left on.
+	//
+	// The only channel from plugin configuration to the webapp. Mattermost hands
+	// plugin settings to system admins alone, so a reader's browser has no other
+	// way to learn that maps are off, and drawing one anyway would pull the
+	// basemap archive on exactly the installs the switch exists for.
+	//
+	// It answers per surface rather than per setting, so the parent AND stays in
+	// Go beside locationFormats and the webapp cannot come to a different
+	// conclusion from the same switches. Nothing secret is on it: it says which
+	// features are on, never how anything is configured.
+	featuresPath = apiPath + "/features"
 )
+
+// featuresResponse is what a reader's browser is told about this install.
+//
+// Held to webapp/src/features/types.ts by TestWebappFeatureShapeMatches, on
+// names, types and order, for the reason the Conversion shape is: a TypeScript
+// field that silently reads undefined is a map that silently stops drawing.
+type featuresResponse struct {
+	MapPanel  bool `json:"map_panel"`
+	MapInline bool `json:"map_inline"`
+	MapPage   bool `json:"map_page"`
+}
 
 // maxPreferencesBody caps a submitted blob. The largest legitimate one is a few
 // hundred bytes, so this is only here to keep a hostile client from making the
 // decoder do unbounded work.
 const maxPreferencesBody = 8 * 1024
 
-// serveAPI handles the authenticated routes.
+// serveAPI handles the JSON API routes.
 //
-// Mattermost sets Mattermost-User-Id itself and strips any copy a client tries
-// to send, so an empty value here means there is no session, and a non-empty
-// one is trustworthy. This is the only place in the plugin that reads it.
+// It refuses a request without a session rather than redirecting it, unlike the
+// page routes: these callers are fetch, and they want a status they can branch
+// on, not a login page to render into a table cell.
 func (p *Plugin) serveAPI(w http.ResponseWriter, r *http.Request) {
-	userID := r.Header.Get("Mattermost-User-Id")
+	userID := sessionUserID(r)
 	if userID == "" {
 		writeAPIError(w, http.StatusUnauthorized,
 			errcode.WithCode(errcode.APINotAuthorized, "Not authorized."))
@@ -59,6 +80,11 @@ func (p *Plugin) serveAPI(w http.ResponseWriter, r *http.Request) {
 
 	if r.URL.Path == convertPath {
 		p.serveConvert(w, r)
+		return
+	}
+
+	if r.URL.Path == featuresPath {
+		p.serveFeatures(w, r)
 		return
 	}
 
@@ -110,7 +136,7 @@ func (p *Plugin) serveConvert(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query()
 
-	// All three parameters, so this applies exactly the checks the public page
+	// All three parameters, so this applies exactly the checks the page
 	// applies. A conversion that accepted a link the page rejects would let the
 	// sidebar render a coordinate the page refuses to.
 	conversion, ok := location.Convert(
@@ -127,6 +153,47 @@ func (p *Plugin) serveConvert(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "private, max-age=300")
 
 	writeAPIJSON(w, http.StatusOK, conversion)
+}
+
+// serveFeatures answers which optional surfaces this install has left on.
+//
+// no-store, like preferences and unlike convert: an admin can change this at any
+// moment, and a coordinate's conversion is true forever where this is only true
+// now. The webapp's own cache is what stops a channel full of links asking
+// repeatedly; a shared cache in between would leave a reader on an answer no
+// reload could correct.
+func (p *Plugin) serveFeatures(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeAPIError(w, http.StatusMethodNotAllowed,
+			errcode.WithCode(errcode.APIMethodNotAllowed, "Method not allowed."))
+		return
+	}
+
+	// An unloaded configuration is every switch false, which here is
+	// indistinguishable from an admin turning everything off, and the client
+	// stamps its cache on a 200 and keeps the answer for half an hour. So this
+	// says "not ready" rather than answering, the way the preferences route does:
+	// the store treats a non-2xx as a failure, which degrades to every surface on
+	// WITHOUT stamping the clock, so the next panel to open asks again.
+	//
+	// Not only a startup race. OnConfigurationChange returns before
+	// setConfiguration when LoadPluginConfiguration fails, so the configuration
+	// stays nil until a later change succeeds.
+	if !p.configurationLoaded() {
+		writeAPIError(w, http.StatusServiceUnavailable,
+			errcode.WithCode(errcode.APINotReady, "Not ready."))
+		return
+	}
+
+	maps := p.locationMaps()
+
+	w.Header().Set("Cache-Control", "no-store")
+
+	writeAPIJSON(w, http.StatusOK, featuresResponse{
+		MapPanel:  maps.Panel,
+		MapInline: maps.Inline,
+		MapPage:   maps.Page,
+	})
 }
 
 func (p *Plugin) handleGetPreferences(w http.ResponseWriter, userID string) {

@@ -1,3 +1,5 @@
+import {THEME_PARAM} from './registry';
+
 export type Theme = 'light' | 'dark';
 
 /**
@@ -68,4 +70,34 @@ export function detectTheme(): Theme | null {
     }
 
     return null;
+}
+
+/**
+ * Adds the reader's current theme to a link headed for a standalone page.
+ *
+ * A page is a separate document and cannot read the webapp's CSS variables, so
+ * it is told which way to paint itself. The result stays root-relative: an
+ * absolute URL here would defeat the point of never storing a host.
+ *
+ * Returns the href unchanged when the theme cannot be determined, leaving the
+ * page to fall back to the operating system preference.
+ *
+ * It lives here rather than in the click handler because the pages need it too.
+ * The handler covers every /decorate link, but /map is deliberately outside that
+ * prefix, so the links pointing at it carry the parameter themselves; and the
+ * page bundle, which has no click handler at all, uses this for its way back.
+ */
+export function withTheme(href: string): string {
+    const theme = detectTheme();
+    if (!theme) {
+        return href;
+    }
+
+    try {
+        const url = new URL(href, window.location.origin);
+        url.searchParams.set(THEME_PARAM, theme);
+        return url.pathname + url.search;
+    } catch {
+        return href;
+    }
 }

@@ -75,6 +75,11 @@ const (
 	// plugin has registered.
 	HTTPDecoratorUnknown = 12003
 
+	// HTTPMapDisabled is returned for /map when the admin has turned the
+	// full-window map page off. A 404 rather than a 403, because to a reader the
+	// route does not exist on this install.
+	HTTPMapDisabled = 12004
+
 	// server/api.go (13000-13999)
 
 	// APINotAuthorized is returned when a request to the authenticated API
@@ -221,6 +226,7 @@ var AllCodes = []int{
 	HTTPDecoratePathInvalid,
 	HTTPDecoratorsNotReady,
 	HTTPDecoratorUnknown,
+	HTTPMapDisabled,
 
 	APINotAuthorized,
 	APINotFound,

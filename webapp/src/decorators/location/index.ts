@@ -1,5 +1,7 @@
 import {isCanonical, isRemoteFormat, parseCanonical, LOCATION_FORMATS} from './format';
 import type {Coordinate, LocationFormat} from './format';
+import LocationHover from './LocationHover';
+import LocationInline from './LocationInline';
 import LocationPanel from './LocationPanel';
 import LocationTitle, {PANEL_TITLE} from './LocationTitle';
 
@@ -139,16 +141,19 @@ const decorator: Decorator<LocationPayload> = {
     Panel: LocationPanel,
     Title: LocationTitle,
 
-    // Still no Hover, and the reason has changed rather than gone away.
+    // The hover exists now, and what unblocked it was the conversion cache in
+    // convert.ts rather than a change of mind about the bar. A hover fires on
+    // pointer movement, so an uncached conversion would have put a request
+    // behind every link a cursor crossed in a busy channel; cached by token, a
+    // coordinate costs one whatever a cursor does.
     //
-    // The thing worth a glance is the grid reference, and the projection for it
-    // now exists, but only on the server. A hover fires on pointer movement
-    // rather than on a click, so wiring one to the conversion endpoint would
-    // put a request behind every link a reader's cursor crosses in a busy
-    // channel. That wants the shared module cache `preferences/store.ts` has,
-    // which is a piece of work in its own right and not one this phase claimed.
-    // A hover that merely restated the token under the cursor would fail the
-    // bar the framework sets, so there is none until it can show the grid.
+    // What it shows is the map and nothing else, which is the same bar the DTG
+    // hover meets with the countdown: a glance at a coordinate is asking where,
+    // and every reading is one click away in the panel.
+    Hover: LocationHover,
+
+    postType: 'custom_tf_location',
+    Inline: LocationInline,
 };
 
 export default decorator;

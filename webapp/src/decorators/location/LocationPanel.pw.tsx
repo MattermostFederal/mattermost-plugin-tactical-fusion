@@ -1,9 +1,17 @@
 import React from 'react';
 
 import LocationPanelHarness from './LocationPanelHarness';
-import {ROWS} from './rows';
+import {MAP_ID, ROWS} from './rows';
 
 import {expect, test} from '../../../playwright/ct-coverage';
+
+/*
+ * Built from the catalog rather than written out. The literal it replaced had
+ * gone stale twice over: it was missing the Region row and the map, so a test
+ * named "every row being hidden" was hiding eleven of thirteen things and still
+ * passing.
+ */
+const EVERYTHING_HIDEABLE = [MAP_ID, ...ROWS.map((row) => row.id)];
 
 /*
  * The panel is split by where a value can be worked out, not by format, and
@@ -310,9 +318,11 @@ test('shows each reading once, with no lead line repeating the table', async ({m
     // holding the author's own spelling, which happens to be identical here.
     await expect(component.getByText('18S UJ 23478 06483')).toHaveCount(2);
 
-    // Nothing above the table at all.
+    // One table, and the note still closes the panel. What sits above the table
+    // is the map and nothing else: the lead line this guards against was a bare
+    // repeat of the grid reference, which would make the count above 3.
     await expect(component.locator('table')).toHaveCount(1);
-    await expect(component.locator('div > p').first()).toContainText('Positions are WGS 84');
+    await expect(component.getByText('Positions are WGS 84', {exact: false})).toBeVisible();
 });
 
 // The USMTF row is the only derived reading a person pastes into another
@@ -347,6 +357,43 @@ test('takes USMTF from the server for a grid link', async ({mount}) => {
     await expect(component.getByRole('button', {name: 'Copy USMTF'})).toBeVisible();
 });
 
+test.describe('when the admin has turned maps off', () => {
+    // Every reading stays. The switch is about the picture and the bytes behind
+    // it, not about what the plugin knows, so a panel with no map is the same
+    // table it always was.
+    test('drops the map and keeps every reading', async ({mount}) => {
+        const component = await mount(<LocationPanelHarness features={{mapPanel: false}}/>);
+        await component.getByRole('button', {name: 'answer the conversion'}).click();
+
+        // Through the map's own note, which this harness always has: the
+        // basemap archive is not served in a component test, so a mounted map
+        // reports that it could not load. Its absence therefore means no map
+        // was mounted at all rather than one that merely failed to paint.
+        await expect(component.getByTestId('map-note')).toHaveCount(0);
+
+        await expect(component.getByText('34.0561° N, 118.2500° W')).toBeVisible();
+        await expect(component.getByRole('button', {name: 'Copy MGRS'})).toBeVisible();
+    });
+
+    // "Open larger" points at /map, which answers 404 when its own switch is
+    // off, so the link has to go with it rather than becoming a dead end.
+    test('offers no way to open a page that is not served', async ({mount}) => {
+        const component = await mount(<LocationPanelHarness features={{mapPage: false}}/>);
+        await component.getByRole('button', {name: 'answer the conversion'}).click();
+
+        await expect(component.getByText('Open larger')).toHaveCount(0);
+    });
+
+    // The two switches are independent, so the panel map survives the page
+    // being off. It is the caption under the frame that goes.
+    test('keeps the panel map when only the page is off', async ({mount}) => {
+        const component = await mount(<LocationPanelHarness features={{mapPage: false}}/>);
+        await component.getByRole('button', {name: 'answer the conversion'}).click();
+
+        await expect(component.getByTestId('map-note')).toBeAttached();
+    });
+});
+
 test.describe('customizing the view', () => {
     // The rows a reader hid are gone, and the rest are untouched.
     test('leaves out the rows the reader hid', async ({mount}) => {
@@ -366,7 +413,9 @@ test.describe('customizing the view', () => {
     // what makes it recoverable: the way back is the Customize link itself.
     test('survives every row being hidden', async ({mount}) => {
         const component = await mount(
-            <LocationPanelHarness hidden={ROWS.map((row) => row.id)}/>);
+            <LocationPanelHarness
+                hidden={EVERYTHING_HIDEABLE}
+            />);
 
         await component.getByRole('button', {name: 'answer the conversion'}).click();
 
@@ -417,5 +466,150 @@ test.describe('customizing the view', () => {
 
         await expect(component.getByText('Rows to show')).toHaveCount(0);
         await expect(component.getByText('18SUJ2347806483')).toBeVisible();
+    });
+});
+
+/*
+ * The country is still computed and still travels in the conversion, because
+ * the map speaks it in its accessible label. What it no longer is, is a row.
+ *
+ * Asserted after the conversion lands rather than before, since before it the
+ * row would be absent either way and the test would pass against a build that
+ * still had one.
+ */
+test('names no Region row, even once the conversion lands', async ({mount}) => {
+    const component = await mount(<LocationPanelHarness/>);
+
+    await component.getByRole('button', {name: 'answer the conversion'}).click();
+
+    await expect(component.getByText('11S LT 8463 6908').first()).toBeVisible();
+    await expect(component.getByText('Region')).toHaveCount(0);
+    await expect(
+        component.getByText('United States of America (Natural Earth 110m)'),
+    ).toHaveCount(0);
+});
+
+/*
+ * The map is hideable and is not a row, so its id travels through a separate
+ * union. If the read path ever narrows back to isRowID, `asRowIDs` drops 'map'
+ * silently: the reader unticks Map, saves, and it is back after a reload with
+ * nothing logged on either side. This drives the id through the stubbed
+ * preferences endpoint, so it is a round trip rather than a write.
+ */
+test('a reader who hid the map gets the table and no map', async ({mount}) => {
+    const component = await mount(<LocationPanelHarness hidden={['map']}/>);
+
+    await component.getByRole('button', {name: 'answer the conversion'}).click();
+
+    await expect(component.getByText('11S LT 8463 6908').first()).toBeVisible();
+
+    // "Open larger" is the map's marker here, and now its only one: the caption
+    // beside it named the basemap until that credit was dropped.
+    await expect(component.getByText('Open larger')).toHaveCount(0);
+});
+
+test('the map is shown when the reader has hidden nothing', async ({mount}) => {
+    const component = await mount(<LocationPanelHarness/>);
+
+    await expect(component.getByText('Open larger')).toBeVisible();
+});
+
+// A grid token has no position until the conversion lands, and if it never
+// lands the frame would otherwise sit blank with nothing saying why.
+test('a position that never arrives says so rather than leaving an empty frame', async ({mount}) => {
+    const component = await mount(
+        <LocationPanelHarness
+            format='mgrs'
+            canonical='11SLT84636908'
+            outcome='fail'
+        />);
+
+    await component.getByRole('button', {name: 'answer the conversion'}).click();
+
+    // Twice, deliberately: the visible placeholder and the screen-reader label,
+    // because role='img' on a MapLibre container would hide the canvas's own.
+    await expect(
+        component.getByText('The position for this coordinate is unavailable.'),
+    ).toHaveCount(2);
+    await expect(
+        component.getByText('The position for this coordinate is unavailable.').first(),
+    ).toBeVisible();
+});
+
+/*
+ * The map is created once and moved thereafter, so a change of selection no
+ * longer rebuilds it. That makes a stale pin possible in a way it was not when
+ * the whole map was thrown away: clicking a grid coordinate while an earlier one
+ * is drawn must clear the marker rather than leave the previous position on
+ * screen beside the new one's readings.
+ */
+test('changing selection to a grid token clears the previous pin', async ({mount}) => {
+    const component = await mount(<LocationPanelHarness/>);
+    await component.getByRole('button', {name: 'answer the conversion'}).click();
+    await expect(component.getByText('34.0561° N, 118.2500° W').first()).toBeVisible();
+
+    await component.getByRole('button', {name: 'select the second coordinate'}).click();
+
+    // The second coordinate's readings, not the first's.
+    await expect(component.getByText('34.0561° N, 118.2500° W')).toHaveCount(0);
+});
+
+/*
+ * Grammar drift, which is the failure this repository has already shipped once:
+ * the band class was widened in Go and the webapp kept the older narrower one,
+ * so a UTM link the server had just issued failed this side's check.
+ *
+ * `gridText` returns "" for a token that does not match this side's copy of the
+ * canonical shapes, which is the same condition that makes `fromParams` fall
+ * back. Without the fallback to the server's own answer, the one row the reader
+ * opened the link for would be the row that disappeared.
+ */
+test.describe('a grid token this build cannot spell', () => {
+    test('takes its grid row from the server rather than dropping it', async ({mount}) => {
+        const component = await mount(
+            <LocationPanelHarness
+                format='mgrs'
+                canonical='18Q323478E4306483N'
+            />,
+        );
+
+        await component.getByRole('button', {name: 'answer the conversion'}).click();
+
+        await expect(component.getByText('11S LT 8463 6908')).toBeVisible();
+    });
+
+    test('and the UTM row with it', async ({mount}) => {
+        const component = await mount(
+            <LocationPanelHarness
+                format='utm'
+                canonical='18Q323478E4306483N'
+            />,
+        );
+
+        await component.getByRole('button', {name: 'answer the conversion'}).click();
+
+        await expect(component.getByText('11S 384640E 3769080N')).toBeVisible();
+    });
+
+    /*
+     * Until the answer lands there is nothing to show, and a placeholder is the
+     * honest thing rather than a zero.
+     *
+     * Scoped to the MGRS row. Every derived row reads "converting…" for a token
+     * with no local coordinate, so `.first()` would be satisfied by any of them
+     * and would pass even if the grid row rendered blank, which is the defect
+     * this whole block exists for.
+     */
+    test('says so while the answer is still in the air', async ({mount}) => {
+        const component = await mount(
+            <LocationPanelHarness
+                format='mgrs'
+                canonical='18Q323478E4306483N'
+            />,
+        );
+
+        const mgrsRow = component.locator('tr', {has: component.page().getByText('MGRS', {exact: true})});
+
+        await expect(mgrsRow.getByText('converting…')).toBeVisible();
     });
 });

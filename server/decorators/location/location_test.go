@@ -1,6 +1,7 @@
 package location
 
 import (
+	"html"
 	"net/http/httptest"
 	"net/url"
 	"strings"
@@ -85,13 +86,14 @@ func TestEveryAcceptedTokenRendersItsOwnPage(t *testing.T) {
 	}
 }
 
-// The page's one script is pinned by digest, never allowed by 'unsafe-inline'.
+// The page runs no inline script at all.
 //
-// This page echoes the author's own text from a message, on a public route
-// whose query string anybody can write, so the property that has to survive is
-// that an escaping mistake stays inert. A hash keeps it: injected markup does
-// not match the digest and is blocked, where 'unsafe-inline' would run it.
-func TestRenderPagePinsItsScriptByDigest(t *testing.T) {
+// It used to carry one, pinned by digest, because the copy controls were
+// hand-written here. The page renders the same React bundle the sidebar does
+// now, so there is nothing inline left to pin and the property is stronger for
+// it: 'unsafe-inline' is absent, so an escaping mistake in the author's own
+// text cannot become a running script however it is spelled.
+func TestRenderPageRunsNoInlineScript(t *testing.T) {
 	d := &Decorator{}
 	params := mustParams(t, d, "3510N07901W")
 
@@ -99,15 +101,16 @@ func TestRenderPagePinsItsScriptByDigest(t *testing.T) {
 	d.RenderPage(rec, params)
 
 	policy := rec.Header().Get("Content-Security-Policy")
-	if !strings.Contains(policy, "script-src 'sha256-") {
-		t.Fatalf("Content-Security-Policy = %q, want the copy script pinned by digest", policy)
-	}
-	if strings.Contains(policy, "script-src 'unsafe-inline'") {
+	if strings.Contains(policy, "script-src") && strings.Contains(policy, "script-src 'unsafe-inline'") {
 		t.Fatalf("Content-Security-Policy = %q, want no unsafe-inline: this page echoes author text", policy)
 	}
-	// And it is exactly one script, the one the policy names.
-	if n := strings.Count(rec.Body.String(), "<script"); n != 1 {
-		t.Fatalf("the page carries %d script elements, want exactly the copy script", n)
+
+	body := rec.Body.String()
+	if n := strings.Count(body, "<script>"); n != 0 {
+		t.Fatalf("the page carries %d inline scripts; everything it runs should come from the bundle", n)
+	}
+	if n := strings.Count(body, "<script "); n != 1 {
+		t.Fatalf("the page carries %d script elements, want exactly the page bundle", n)
 	}
 }
 
@@ -384,107 +387,18 @@ func TestOversizedValueIsRejectedBeforeMatching(t *testing.T) {
 	}
 }
 
-// The copy affordance is per row and sits beside the value it copies.
+// MGRS and UTM are separate switches, and each governs only its own grammar.
 //
-// Value rows get one; prose rows do not, because a reader pasting "about 11 m"
-// or "WGS 84" into another system has copied a sentence rather than a position.
-func TestPageOffersACopyControlPerValueRow(t *testing.T) {
-	d := &Decorator{}
-	rec := httptest.NewRecorder()
-	d.RenderPage(rec, mustParams(t, d, "3510N07901W"))
-	body := rec.Body.String()
-
-	for _, label := range []string{"MGRS", "Lat / lon", "DMS", "DDM", "UTM", "Original text"} {
-		if !strings.Contains(body, `aria-label="Copy `+label+`"`) {
-			t.Errorf("no copy control for the %q row", label)
-		}
-	}
-
-	for _, label := range []string{"Resolution", "Datum"} {
-		if strings.Contains(body, `aria-label="Copy `+label+`"`) {
-			t.Errorf("the %q row is prose and must not offer a copy control", label)
-		}
-	}
-
-	// The acknowledgement is announced, not only drawn.
-	if !strings.Contains(body, `role="status"`) {
-		t.Error("no live region for the copy acknowledgement")
-	}
-}
-
-// The script reads the value out of the row rather than being handed one.
+// This is the pin CLAUDE.md names for the one format that ships OFF. UTM is the
+// only grammar here that can decorate a real coordinate and point at the wrong
+// place, because its band letter is ambiguous, so an install has to be able to
+// have grid references without it. Deleted as collateral by the commit that
+// added the map, which left the highest-consequence setting in the package
+// unpinned in both directions while CLAUDE.md still advertised this test.
 //
-// That is what keeps a coordinate out of the script entirely: nothing is
-// interpolated, so there is no second escaping context to get wrong, and the
-// script stays a constant the policy can pin by digest.
-func TestPageCopyScriptCarriesNoCoordinate(t *testing.T) {
-	d := &Decorator{}
-	rec := httptest.NewRecorder()
-	d.RenderPage(rec, mustParams(t, d, "3510N07901W"))
-
-	body := rec.Body.String()
-	start := strings.Index(body, "<script>")
-	end := strings.Index(body, "</script>")
-	if start < 0 || end < start {
-		t.Fatal("no script element on the page")
-	}
-
-	if script := body[start:end]; strings.Contains(script, "3510N07901W") || strings.Contains(script, "35.17") {
-		t.Fatalf("the copy script carries a coordinate:\n%s", script)
-	}
-}
-
-// Without JavaScript, or on an origin with no clipboard, the buttons never
-// appear: the stylesheet hides them and only the script reveals them. A control
-// that cannot work should not be on screen, and every value stays selectable.
-func TestPageCopyControlsAreHiddenUntilTheScriptEnablesThem(t *testing.T) {
-	if !strings.Contains(pageStyles, ".loc-copy button { display: none; }") {
-		t.Error("copy buttons are not hidden by default")
-	}
-	if !strings.Contains(pageStyles, ".loc-can-copy .loc-copy button {") {
-		t.Error("nothing reveals the copy buttons")
-	}
-	if !strings.Contains(copyScript, "navigator.clipboard") ||
-		!strings.Contains(copyScript, "loc-can-copy") {
-		t.Error("the script does not gate the buttons on clipboard support")
-	}
-}
-
-// The page says each reading once, and matches the panel in doing so.
-//
-// There used to be a lead line above the table repeating the grid reference,
-// three lines above the labeled row that already carried it with a copy button
-// beside it. The page and the panel are two implementations of the same layout
-// in two languages, so a change to one that misses the other is the standing
-// failure mode here; this is the page half, and
-// LocationPanel.pw.tsx's "shows each reading once" is the other.
-func TestRenderPageHasNoLeadLineAboveTheTable(t *testing.T) {
-	d := &Decorator{}
-	params := mustParams(t, d, "18S UJ 23478 06483")
-
-	rec := httptest.NewRecorder()
-	d.RenderPage(rec, params)
-
-	body := rec.Body.String()
-
-	// The reference appears in its own row and in the row carrying the author's
-	// spelling, which here is the same string. A third would be the lead back.
-	if got := strings.Count(body, "18S UJ 23478 06483"); got != 2 {
-		t.Errorf("the grid reference appears %d times, want 2 (its row, and the author's text)", got)
-	}
-
-	// The class the lead was written with belongs to the DTG page now.
-	if strings.Contains(body, `class="described"`) {
-		t.Error("the location page still writes a lead line above its table")
-	}
-}
-
-// MGRS and UTM are separate switches, and each one governs only itself.
-//
-// They used to share one, and splitting them is the whole point of UTM shipping
-// disabled: an install that wants grid references without the ambiguous band
-// letter has to be able to have exactly that. A split that leaked in either
-// direction would give it neither.
+// Both tokens are driven under all four states, which is what makes the name
+// true: the surviving test parsed an MGRS token only, so it said nothing about
+// UTM being off, UTM working with MGRS off, or neither being on.
 func TestMGRSAndUTMSwitchIndependently(t *testing.T) {
 	cases := []struct {
 		name          string
@@ -589,6 +503,10 @@ func TestAreaFormatsSwitchIndependently(t *testing.T) {
 // from the position rather than from the text, so an install that never wants a
 // GARS code matched still gets a GARS reading for every coordinate it does
 // match, and turning the switch off stays as cheap as it is meant to be.
+//
+// Read out of the conversion the shell carries rather than out of a rendered
+// table: every surface renders from format.ts now, so the page is a shell and
+// the derived readings travel in data-conversion.
 func TestAreaFormatsSwitchedOffStillRenderTheirRows(t *testing.T) {
 	d := &Decorator{Enabled: func() Formats { return Formats{MGRS: true} }}
 
@@ -604,16 +522,14 @@ func TestAreaFormatsSwitchedOffStillRenderTheirRows(t *testing.T) {
 		t.Fatalf("RenderPage() status = %d, want 200", rec.Code)
 	}
 
-	for _, row := range []struct{ label, value string }{
-		{"GEOREF", "GJNJ57885337"},
-		{"GARS", "206LT26"},
-		{"Plus Code", "87C4VXQ7+RV44"},
+	for _, row := range []struct{ field, value string }{
+		{"georef", "GJNJ57885337"},
+		{"gars", "206LT26"},
+		{"pluscode", "87C4VXQ7+RV44"},
 	} {
-		if !strings.Contains(rec.Body.String(), "<th>"+row.label+"</th>") {
-			t.Errorf("the page has no %s row", row.label)
-		}
-		if !strings.Contains(rec.Body.String(), row.value) {
-			t.Errorf("the %s row has no value in it, want %q", row.label, row.value)
+		want := html.EscapeString(`"` + row.field + `":"` + row.value + `"`)
+		if !strings.Contains(rec.Body.String(), want) {
+			t.Errorf("the page carries no %s reading", row.field)
 		}
 	}
 }
@@ -651,12 +567,46 @@ func TestUTMSwitchedOffStillRendersTheUTMRow(t *testing.T) {
 			if rec.Code != 200 {
 				t.Fatalf("RenderPage() status = %d, want 200", rec.Code)
 			}
-			if !strings.Contains(rec.Body.String(), "<th>UTM</th>") {
-				t.Error("the page has no UTM row")
-			}
-			if !strings.Contains(rec.Body.String(), "18S 323478E 4306483N") {
-				t.Error("the UTM row has no value in it")
+			// The row is derived from the position rather than matched in the
+			// text, so switching the grammar off costs no row. It reaches the
+			// page in the conversion the shell carries.
+			if !strings.Contains(rec.Body.String(), html.EscapeString(`"utm":"18S 323478E 4306483N"`)) {
+				t.Errorf("the page carries no UTM reading: %s", rec.Body.String())
 			}
 		})
+	}
+}
+
+// A decorator that draws no inline map declares no post type.
+//
+// Answering "" here rather than gating in the hook is what keeps the stamp from
+// being written at all, and the stamp is the expensive half: Elasticsearch and
+// OpenSearch index a custom_* post and then never match it, and Post.Type
+// survives every edit once set, with no MessageWillBeUpdated hook to clear one.
+func TestPostTypeIsEmptyWhenTheInlineMapIsOff(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		maps Maps
+		want string
+	}{
+		{"every surface on", AllMaps, PostType},
+		{"inline alone on", Maps{Inline: true}, PostType},
+		{"inline off", Maps{Panel: true, Page: true}, ""},
+		{"every surface off", Maps{}, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			d := &Decorator{Maps: func() Maps { return tc.maps }}
+			if got := d.PostType(); got != tc.want {
+				t.Fatalf("PostType() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// A nil selector means every surface, the way a nil Enabled means every format,
+// so nothing that builds a bare Decorator has to know this switch exists.
+func TestPostTypeDefaultsToOnWithNoSelector(t *testing.T) {
+	if got := (&Decorator{}).PostType(); got != PostType {
+		t.Fatalf("PostType() = %q, want %q", got, PostType)
 	}
 }

@@ -1,6 +1,6 @@
 import {expect, test} from '@playwright/test';
 
-import {fromParams} from './index';
+import decorator, {fromParams} from './index';
 
 function params(entries: Record<string, string>): URLSearchParams {
     return new URLSearchParams(entries);
@@ -171,6 +171,23 @@ test.describe('grid links the server issues', () => {
             expect(fromParams(params({f: 'utm', v: `18${band}3234784306483`})), band).toBeNull();
         }
     });
+});
+
+/*
+ * The hover exists, and it is the map.
+ *
+ * This decorator carried no Hover for a long time and the reason was recorded
+ * rather than forgotten: a hover fires on pointer movement, so an uncached
+ * conversion would have put a request behind every coordinate a cursor crossed.
+ * What unblocked it is the cache in convert.ts, which `the conversion cache` in
+ * convert.spec.ts holds to one request per token.
+ *
+ * Asserted here because the framework reads `Hover` off the decorator and
+ * renders nothing at all when it is absent: dropping it would cost every hover
+ * card in the product with no error anywhere.
+ */
+test('declares a hover', () => {
+    expect(decorator.Hover).toBeTruthy();
 });
 
 test.describe('area-reference links the server issues', () => {

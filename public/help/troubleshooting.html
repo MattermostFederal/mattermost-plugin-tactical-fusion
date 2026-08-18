@@ -252,6 +252,13 @@
             than a copy.
         </p>
 
+        <p>
+            The map page refuses the same links under the same code, worded
+            <code>That is not a coordinate this plugin issued.</code> Despite matching the
+            wording of <a href="#not-a-coordinate">TF-13008</a> it is this failure, not
+            that one: check the code rather than the sentence.
+        </p>
+
         <h2 id="not-a-coordinate">The sidebar says "Not a coordinate"</h2>
 
         <p>
@@ -274,13 +281,156 @@
             intact and usually clears on reopening.
         </p>
 
+        <h2 id="sign-in">Clicking a link asks me to sign in</h2>
+
+        <p>
+            Expected. The pages a decorated link opens outside the sidebar, both the
+            readings page and the map page behind <em>Open larger</em>, require a
+            Mattermost session. Without one you are sent to the sign-in page carrying the
+            link you clicked, so signing in takes you on to the coordinate rather than
+            dropping you at the home screen.
+        </p>
+
+        <p>
+            The usual cause is a session that expired while the tab sat open, or a link
+            opened in a browser you are not signed in to. Nothing is lost either way. If
+            you are asked on <strong>every</strong> click while Mattermost itself stays
+            signed in, that is worth reporting: it points at cookies not reaching the
+            plugin's own routes rather than at the link.
+        </p>
+
+        <h2 id="page-not-sidebar">Clicking a coordinate opens a page instead of the sidebar</h2>
+
+        <p>
+            Clicking a decorator link is meant to open the right-hand sidebar without the
+            browser navigating anywhere. Landing on a full page instead means the webapp
+            did not recognise the link as one of its own and stood aside, letting the
+            browser follow it.
+        </p>
+
+        <p>
+            Everything on that page is correct, so nothing is wrong with the coordinate,
+            and it is easy to mistake for a deliberate choice. It is not. It usually means
+            the server and the webapp bundle are from different builds, so
+            <strong>reload the page first</strong>: a browser holding a cached bundle from
+            before an upgrade is the common cause. If a reload does not fix it, report it
+            with the link and the plugin version, since nothing is logged on either side.
+        </p>
+
+        <h2 id="no-map">The map is missing, or will not load</h2>
+
+        <p>
+            The map is drawn in your browser, so it can fail in ways the readings cannot.
+            <strong>Every reading in the table renders regardless</strong>: the coordinate
+            and its conversions are worked out on the server. The one thing that goes with
+            the map is the
+            <a href="panel.html#location-region">country</a>, which the map speaks and
+            nothing else does.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">Check the switch before anything below.</p>
+            <p>
+                A map that is missing everywhere, with no message where it should be and
+                no tick box for it under <em>Customize your view</em>, is not a failure:
+                it is <a href="admin.html#map-switches">switched off for the workspace</a>.
+                Nothing is logged and nothing says so in the panel, because to a reader on
+                such an install the plugin simply does not draw maps. The rows below are
+                for a map that is <em>trying</em> to draw and cannot.
+            </p>
+        </div>
+
+        <table>
+            <thead>
+                <tr><th>What it says</th><th>Cause</th><th>Fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>This browser cannot draw the map.</code></td>
+                    <td>The browser has no WebGL2. Usual on a hardened or virtualised desktop where hardware acceleration is off or WebGL is disabled by policy, and in some remote-desktop sessions.</td>
+                    <td>Nothing you can do in the plugin. Enabling hardware acceleration, or WebGL, is a browser or desktop policy decision.</td>
+                </tr>
+                <tr>
+                    <td><code>The map could not be loaded.</code></td>
+                    <td>The bundled basemap did not arrive, or what arrived was not a basemap. Either it is missing from the deployed bundle, or something between the browser and the plugin is not serving it correctly.</td>
+                    <td>See below.</td>
+                </tr>
+                <tr>
+                    <td>Stuck on <code>Loading map&hellip;</code></td>
+                    <td>Ordinary while the map library and the basemap arrive. The first coordinate of a session is the slowest, because it fetches the library.</td>
+                    <td>Wait, then reload. If it never clears, report it.</td>
+                </tr>
+                <tr>
+                    <td><code>The position for this coordinate is unavailable.</code></td>
+                    <td>Nothing is wrong with the map. Either the conversion did not arrive for a grid reference, which has no latitude and longitude until the server works one out, or the position is a polar one outside the grid entirely. Rather than guess at a pin, the map says so.</td>
+                    <td>For a conversion that did not arrive, reopen the coordinate. Every reading the link carries by itself stays on screen either way. See <a href="panel.html#location-degrades">when the conversion does not arrive</a>.</td>
+                </tr>
+                <tr>
+                    <td><code>This position is too far north for the map.</code><br><code>This position is too far south for the map.</code></td>
+                    <td>Expected, and not a failure. The projection the map uses runs out at about 85 degrees north and south, so a coordinate beyond that is left off rather than pinned up to 550 km from where it actually is.</td>
+                    <td>None. The coordinate is fine and every reading renders. See <a href="panel.html#location-map">the map</a>.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>
+            <code>The map could not be loaded.</code> is deliberately distinct from a blank
+            or half-drawn map: rather than draw an empty sea, the plugin checks the basemap
+            on arrival and says so when it is unusable. Two causes are worth checking in
+            order.
+        </p>
+
+        <ul>
+            <li>
+                <strong>The basemap is not in the bundle.</strong> Open
+                <code>/plugins/com.mattermost.plugin-tactical-fusion/public/map/world.pmtiles</code>
+                on your own server. A 404 means the plugin was built without it; rebuild
+                and redeploy. This is the likelier cause on a plugin built from source.
+            </li>
+            <li>
+                <strong>The basemap is served, but not in pieces.</strong> The map reads
+                the file in ranges rather than downloading it whole, so a proxy, a CDN or a
+                storage backend that ignores HTTP range requests breaks it while making the
+                file itself look perfectly healthy. If the URL above downloads a large file
+                successfully but the map still refuses, this is the cause, and the fix is in
+                front of Mattermost rather than in the plugin.
+            </li>
+        </ul>
+
+        <p>
+            A momentary network failure is treated differently on purpose: it is not
+            remembered, so simply opening another coordinate retries. A cause from the list
+            above is remembered for the rest of the session, so that a broken deploy does
+            not have every panel you open asking for the same file again.
+        </p>
+
+        <h2 id="dark-map">The map is dark, but my Mattermost is light</h2>
+
+        <p>
+            Expected, and the same on all three surfaces: the sidebar, the hover card and
+            both standalone pages. <strong>The map is drawn dark whichever theme you are
+            using.</strong> Everything around it, the table, the note, the links and the
+            page itself, still follows your theme, which is what makes the difference
+            noticeable enough to look like a theme that failed to apply.
+        </p>
+
+        <p>
+            It is a deliberate choice rather than a defect. The dark palette carries the
+            land and water edge better at the size a sidebar gives it, and it keeps the pin
+            and the square around it from competing with the readings beside them. There is
+            no setting for it, in the System Console or under
+            <a href="panel.html#location-customize">Customize your view</a>. If the map is
+            unwanted in a light theme, hiding it is the only lever, and it is
+            <a href="panel.html#location-map">yours to pull per person</a>.
+        </p>
+
         <h2 id="wrong-timezones">The panel and the standalone page show different timezones</h2>
 
         <p>
             Expected if you have <a href="panel.html#customize">customised your view</a>.
-            The standalone page is served without a Mattermost session, so it has no
-            reader to ask and always shows the built-in defaults. There is no fix; it is
-            inherent to a page that has to work for a client with no login.
+            The standalone page is rendered from the link alone and does not ask who is
+            reading it, so it always shows the built-in defaults. It requires a login, but
+            it does not consult your settings. There is no fix for this today.
         </p>
 
         <h2 id="wrong-order">Two timezone rows swapped places</h2>

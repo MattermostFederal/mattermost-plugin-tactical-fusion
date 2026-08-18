@@ -607,3 +607,81 @@ func TestUTMAxisLettersAreAccepted(t *testing.T) {
 		})
 	}
 }
+
+// decimalDegrees refuses either half independently.
+//
+// Only reachable directly: the scanning pattern bounds the digit counts before
+// this is called, so no message can present it with 99 degrees of latitude. The
+// range check is what makes the bound a property of the parser rather than of
+// the pattern, which is the bug this package deliberately does not inherit from
+// mattermost-plugin-aocanywhere, where "9999N99999W" parses to latitude 99.98.
+func TestDecimalDegreesRefusesEitherHalfOutOfRange(t *testing.T) {
+	for _, tc := range []struct {
+		name                             string
+		latHemi, latDeg, lonHemi, lonDeg string
+		want                             bool
+	}{
+		{"both in range", "N", "34", "W", "118", true},
+		{"latitude past the pole", "N", "99", "W", "118", false},
+		{"longitude past the antimeridian", "N", "34", "W", "999", false},
+		{"both out of range", "N", "99", "W", "999", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, ok := decimalDegrees(tc.latHemi, tc.latDeg, "0561", tc.lonHemi, tc.lonDeg, "2500")
+			if ok != tc.want {
+				t.Fatalf("decimalDegrees(%s%s, %s%s) ok = %v, want %v",
+					tc.latDeg, tc.latHemi, tc.lonDeg, tc.lonHemi, ok, tc.want)
+			}
+		})
+	}
+}
+
+// upperByte guards an empty capture rather than indexing it.
+//
+// Every caller passes a mandatory one-character group, so this is unreachable
+// from a message today. It runs inside MessageWillBePosted, where an index
+// panic is one grammar edit away from stopping somebody posting.
+func TestUpperByteGuardsAnEmptyCapture(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   string
+		want byte
+	}{
+		{"a lower-case letter is raised", "n", 'N'},
+		{"an upper-case one is left alone", "N", 'N'},
+		{"an empty capture yields no byte rather than panicking", "", 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := upperByte(tc.in); got != tc.want {
+				t.Fatalf("upperByte(%q) = %d, want %d", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
+// The pattern offers one digit, so the range check is what makes 0..9 true of
+// the type rather than only of the caller.
+func TestConfidenceDigitBoundsWhatItAccepts(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   string
+		want int8
+	}{
+		{"the lowest digit", "0", 0},
+		{"the highest", "9", 9},
+		{"past the highest", "10", NoConfidence},
+		{"not a number at all", "x", NoConfidence},
+
+		// atoi reads an absent capture as zero rather than as a failure, so an
+		// empty string here is the digit 0 and not "no digit". Every caller
+		// passes a group that matched, so nothing reaches this today; it is
+		// recorded because the two readings are easy to confuse.
+		{"an empty capture reads as the digit zero", "", 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := confidenceDigit(tc.in); got != tc.want {
+				t.Fatalf("confidenceDigit(%q) = %d, want %d", tc.in, got, tc.want)
+			}
+		})
+	}
+}

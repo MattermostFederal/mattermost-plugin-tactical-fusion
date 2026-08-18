@@ -97,6 +97,17 @@ export function decoratePathPrefix(): string {
 }
 
 /**
+ * The class on the hover card's chrome.
+ *
+ * Written once here rather than in Tooltip.tsx, because the element that carries
+ * it and the stylesheet that hides it when it is empty live in two files, and a
+ * class name agreed between them by inspection is one that drifts silently: the
+ * card would simply stop hiding itself, with nothing logged and nothing to see
+ * except an empty box beside a link.
+ */
+export const HOVER_CARD_CLASS = 'tactical-fusion-hover-card';
+
+/**
  * Pulls the decorator type and params out of a link's href.
  *
  * Shared so everything that reacts to a decorator link, the click handler and

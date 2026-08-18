@@ -1,14 +1,17 @@
 import {expect, test} from '@playwright/test';
 
 import {
+    axisResolutionDegrees,
     confidenceText,
     ddmText,
     decimalText,
     dmsText,
+    gridResolutionMeters,
     remoteResolutionText,
     gridText,
     isCanonical,
     parseCanonical,
+    resolutionDegrees,
     resolutionText,
     usmtfText,
 } from './format';
@@ -162,7 +165,7 @@ test.describe('rendering at the token resolution', () => {
     });
 
     // "0 m" would read as infinite precision. An eight-decimal token reaches
-    // this, and the wording must match the Go page.
+    // this.
     test('does not claim zero meters for a very fine token', () => {
         expect(resolutionText(parse('dd', '34.12345678,-118.12345678'))).toBe('finer than 0.01 m');
         expect(resolutionText(parse('dms', '340322.1234N1181500.1234W'))).toBe('finer than 0.01 m');
@@ -184,10 +187,10 @@ test.describe('rendering at the token resolution', () => {
     // not an edge case, it is what an ordinary phone emits, and it lands at
     // 0.11 m squarely in the gap.
     //
-    // The same three rows are pinned in TestResolutionTextBelowAMeter in
-    // server/decorators/location/format_test.go. Change one and change the
-    // other: this pair of tables is the only thing keeping the panel and the
-    // server-rendered page saying the same words about the same link.
+    // This is now the only implementation. Go rendered resolution too while the
+    // page was server-rendered, and the twin of this table lived in
+    // TestResolutionTextBelowAMeter; every surface renders from here now, so
+    // these three rows are the whole guard rather than half of a pair.
     test('names the rungs below a meter', () => {
         const cases: Array<[string, string]> = [
             ['34.05611N,118.25000W', 'about 1 m'],
@@ -234,6 +237,28 @@ test.describe('rounding carries into the next field', () => {
     // digits and never reaches 60 at all.
     test('an axis rendered at its own resolution does not carry', () => {
         expect(usmtfText(parse('ddh', '33.999999N,118.250000W'))).toBe('335959.996N1181500.000W');
+    });
+
+    /*
+     * The decimal-minutes carry is a float-drift guard rather than a case a
+     * token reaches: with d fractional digits the largest minute a token can
+     * state is 60 - 60x10^-d, which is always further from 60 than the rounding
+     * step at that resolution. What can reach it is a value that is not exactly
+     * the decimal it came from, which is the same class of defect that made
+     * degMinSec render a negative zero on arm64.
+     *
+     * So it is driven from a Coordinate directly. Without the carry this prints
+     * 33 degrees 60 minutes, which is not a coordinate.
+     */
+    test('a value drifting under a degree does not print sixty minutes', () => {
+        const justUnder34: Coordinate = {
+            lat: {decimal: 34 - (Number.EPSILON * 34), digits: 1, confidence: null},
+            lon: {decimal: -118.2, digits: 1, confidence: null},
+            format: 'dd',
+            digits: 1,
+        };
+
+        expect(ddmText(justUnder34)).toBe('34°00\'N 118°12\'W');
     });
 
     // DDM needs a Coordinate built by hand where USMTF does not, and the reason
@@ -313,6 +338,66 @@ test.describe('hardening', () => {
         expect(decimalText(parse('ddh', '0.0000S,32.5000E'))).toBe('0.0000° S, 32.5000° E');
         expect(decimalText(parse('ddh', '12.0000N,0.0000W'))).toBe('12.0000° N, 0.0000° W');
         expect(dmsText(parse('ddh', '0.0000S,32.5000E'))).toContain('S');
+    });
+
+    /*
+     * A format this file has no case for. The grammar is Go-only and this side
+     * keeps a copy of the canonical shapes, so the pair can drift; the answer
+     * has to be a refusal rather than a throw, because a link the panel cannot
+     * read falls through to the standalone page and a throw would take the
+     * whole panel with it.
+     */
+    test('a format this build has no grammar for is refused, not thrown on', () => {
+        // Every id, not one hand-picked miss. This asserted a universal claim
+        // against a single own-property miss, which is the same shape as the
+        // fixtures-chosen-to-satisfy-the-claim defect CLAUDE.md records against
+        // TestUSMTFRowIsATokenThisPackageAccepts. The prototype keys are the
+        // ones that mattered: `CANONICAL['toString']` resolves up the chain to a
+        // function, which is truthy and has no `.exec`, so `?.` sails through
+        // and the call throws.
+        for (const name of ['someday', 'toString', 'constructor', 'valueOf', '__proto__']) {
+            const unknown = name as LocationFormat;
+
+            expect(isCanonical(unknown, '34.0000,-118.2500'), name).toBe(false);
+            expect(parseCanonical(unknown, '34.0000,-118.2500'), name).toBeNull();
+            expect(gridText(unknown, '18SUJ2347806483'), name).toBe('');
+        }
+    });
+
+    /*
+     * A grid resolution belongs to a grid grammar, and to no other.
+     *
+     * gridResolutionMeters read the MGRS pattern for EVERY non-UTM id, which was
+     * unreachable while the page refused an unknown format and went live the
+     * moment it began degrading instead. A token whose format this build does
+     * not know, whose canonical happens to match the MGRS shape, was rendered as
+     * "1 m grid, at center" with a 1 m cell drawn around it: a resolution
+     * claimed from a grammar the page had just said it does not have.
+     */
+    test('only a grid format has a grid resolution', () => {
+        expect(remoteResolutionText('mgrs', '18SUJ2347806483')).toBe('1 m grid, at center');
+        expect(gridResolutionMeters('mgrs', '18SUJ2347806483')).toBe(1);
+
+        for (const name of ['dd', 'ddh', 'latm', 'someday']) {
+            const other = name as LocationFormat;
+
+            expect(remoteResolutionText(other, '18SUJ2347806483'), name).toBe('');
+            expect(gridResolutionMeters(other, '18SUJ2347806483'), name).toBeNull();
+        }
+    });
+
+    // The same fall-through on the rendering side. A degree is the coarsest
+    // thing any grammar here states, so it is the honest default.
+    test('a format with no stated resolution is read as whole degrees', () => {
+        const unknown: Coordinate = {
+            lat: {decimal: 34.0561, digits: 4, confidence: null},
+            lon: {decimal: -118.25, digits: 4, confidence: null},
+            format: 'someday' as LocationFormat,
+            digits: 4,
+        };
+
+        expect(resolutionDegrees(unknown)).toBe(1);
+        expect(axisResolutionDegrees(unknown, unknown.lat)).toBe(1);
     });
 });
 

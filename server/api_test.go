@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -80,15 +81,28 @@ func TestPreferencesRequireASession(t *testing.T) {
 	}
 }
 
-// The sibling route stays public. A regression here would either lock the
-// mobile app out of the decorator page or open this API to anonymous callers.
-func TestDecoratePageStaysPublic(t *testing.T) {
+// Both routes require a session and answer a missing one differently. The API
+// refuses, because its callers are fetch and want a status; the page redirects,
+// because its caller is a person who can sign in and carry on.
+//
+// Asserted together, because the thing worth pinning is the difference: a
+// regression that made the page 401 would be silent in a browser, and one that
+// made the API redirect would put a login document through JSON.parse.
+func TestTheTwoRoutesRefuseAnAnonymousCallerDifferently(t *testing.T) {
 	p, _ := newAPIPlugin(t)
 
-	rec := call(p, http.MethodGet,
+	page := call(p, http.MethodGet,
 		"/decorate/dtg?t=1786293000000&dtg=091630ZAUG26&z=Z&a=", "", "")
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200 without a session", rec.Code)
+	if page.Code != http.StatusFound {
+		t.Fatalf("page status = %d, want 302 without a session", page.Code)
+	}
+
+	api := call(p, http.MethodGet, convertPath+"?f=mgrs&v=18SUJ2347806483", "", "")
+	if api.Code != http.StatusUnauthorized {
+		t.Fatalf("api status = %d, want 401 without a session", api.Code)
+	}
+	if got := api.Header().Get("Location"); got != "" {
+		t.Fatalf("the API redirected to %q; it must answer a status", got)
 	}
 }
 
@@ -467,15 +481,27 @@ func TestConvertReturnsEveryDerivedReading(t *testing.T) {
 		GEOREF:   "GJNJ57885337",
 		GARS:     "206LT26",
 		PlusCode: "87C4VXQ7+RV44",
+		Region:   "United States of America (Natural Earth 110m)",
+		Lat:      got.Lat,
+		Lon:      got.Lon,
 	}
 	if got != want {
 		t.Fatalf("conversion =\n%+v\nwant\n%+v", got, want)
 	}
 
+	// The position is compared separately, and to a tolerance. Pinning a
+	// seventeen-digit float in a golden struct breaks on any change to the
+	// projection that is far smaller than the resolution the token carries.
+	const wantLat, wantLon = 38.889502, -77.035295
+	if math.Abs(got.Lat-wantLat) > 1e-5 || math.Abs(got.Lon-wantLon) > 1e-5 {
+		t.Errorf("position = %v, %v, want %v, %v within 1e-5", got.Lat, got.Lon, wantLat, wantLon)
+	}
+
 	// Every field named, so a renamed JSON tag fails here rather than silently
 	// leaving a row blank in the panel.
 	for _, field := range []string{
-		"mgrs", "utm", "decimal", "dms", "ddm", "usmtf", "georef", "gars", "pluscode",
+		"mgrs", "utm", "decimal", "dms", "ddm", "usmtf",
+		"georef", "gars", "pluscode", "region", "lat", "lon",
 	} {
 		if !strings.Contains(rec.Body.String(), `"`+field+`":`) {
 			t.Errorf("body has no %q field: %s", field, rec.Body.String())
@@ -604,7 +630,9 @@ func assertBothRoutes(t *testing.T, p *Plugin, f, v, raw string, want int) {
 	if raw != "" {
 		params.Set("r", raw)
 	}
-	page := call(p, http.MethodGet, decoratePath+"/location?"+params.Encode(), "", "")
+	// With a session, or every page here answers 302 and the comparison is
+	// between two routes that never reached their validation.
+	page := call(p, http.MethodGet, decoratePath+"/location?"+params.Encode(), testUserID, "")
 
 	if api.Code != want || page.Code != want {
 		t.Fatalf("endpoint = %d and page = %d, want both %d\n  endpoint: %s\n  page carried %d bytes",

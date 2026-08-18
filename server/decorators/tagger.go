@@ -170,6 +170,12 @@ type candidate struct {
 	label string
 }
 
+type Result struct {
+	SoleToken bool
+	Type      string
+	Params    url.Values
+}
+
 // Decorate returns the message with every recognized token replaced by a
 // markdown link. It returns the input unchanged when nothing matches, so
 // callers can compare identity to decide whether anything happened.
@@ -188,14 +194,19 @@ type candidate struct {
 // findProtectedRanges is the whole safety story, so anything it fails to
 // recognize is a corruption bug. Widen it with a test per construct.
 func (t *Tagger) Decorate(message string, ref time.Time) string {
+	decorated, _ := t.DecorateWithResult(message, ref)
+	return decorated
+}
+
+func (t *Tagger) DecorateWithResult(message string, ref time.Time) (string, Result) {
 	if message == "" || t.Registry == nil {
-		return message
+		return message, Result{}
 	}
 
 	protected := findProtectedRanges(message)
 	candidates := t.findCandidates(message, ref, protected)
 	if len(candidates) == 0 {
-		return message
+		return message, Result{}
 	}
 
 	// Defensive, and expected to stay uncovered: resolveOverlaps always accepts
@@ -203,11 +214,30 @@ func (t *Tagger) Decorate(message string, ref time.Time) string {
 	// means an empty input, which the check above already returned on.
 	accepted := resolveOverlaps(candidates)
 	if len(accepted) == 0 {
-		return message
+		return message, Result{}
 	}
 
-	return t.applyReplacements(message, accepted)
+	result := soleTokenResult(message, accepted)
+
+	return t.applyReplacements(message, accepted), result
 }
+
+func soleTokenResult(message string, accepted []candidate) Result {
+	if len(accepted) != 1 {
+		return Result{}
+	}
+
+	only := accepted[0]
+	start := len(message) - len(strings.TrimLeft(message, tokenSurroundingSpace))
+	end := len(strings.TrimRight(message, tokenSurroundingSpace))
+	if only.match.start != start || only.match.end != end {
+		return Result{}
+	}
+
+	return Result{SoleToken: true, Type: only.typ, Params: only.params}
+}
+
+const tokenSurroundingSpace = " \t\r\n\v\f"
 
 // findProtectedRanges collects every span whose interior must be left exactly
 // as the author wrote it: code, links, and URLs.

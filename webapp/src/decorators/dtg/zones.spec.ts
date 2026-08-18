@@ -295,3 +295,69 @@ test('the picker is ordered by offset and free of duplicates', () => {
 test('the picker is the browser list, not the fallback', () => {
     expect(availableZones(summer).length).toBeGreaterThan(DEFAULT_ZONE_IDS.length);
 });
+
+/*
+ * The picker's list, when the browser will not supply one.
+ *
+ * `Intl.supportedValuesOf` is the browser's own IANA list and the only honest
+ * source, since offering a zone this browser cannot format would produce a row
+ * of blanks. Where it is absent or refuses, the editor still has to work: a
+ * picker showing nothing is a reader who cannot change their settings.
+ */
+test.describe('availableZones without a browser list', () => {
+    /*
+     * The DESCRIPTOR, not the value. Assigning the function back leaves it
+     * enumerable where it was not, so `Object.keys(Intl)` goes from [] to
+     * ['supportedValuesOf'] for the rest of the worker process, which outlives
+     * this file.
+     */
+    const real = Object.getOwnPropertyDescriptor(Intl, 'supportedValuesOf');
+
+    test.afterEach(() => {
+        if (real) {
+            Object.defineProperty(Intl, 'supportedValuesOf', real);
+        }
+    });
+
+    test('the restore puts the property back as it found it', () => {
+        expect(Object.keys(Intl)).not.toContain('supportedValuesOf');
+    });
+
+    function expectFallback(): void {
+        const zones = availableZones(summer);
+
+        expect(zones).toHaveLength(MILITARY_BASES.length);
+        expect(new Set(zones.map((zone) => zone.iana))).
+            toEqual(new Set(MILITARY_BASES.map((base) => base.iana)));
+    }
+
+    test('falls back to the bases when the engine has no list', () => {
+        delete (Intl as {supportedValuesOf?: unknown}).supportedValuesOf;
+
+        expectFallback();
+    });
+
+    test('falls back to the bases when the engine returns an empty list', () => {
+        (Intl as {supportedValuesOf?: unknown}).supportedValuesOf = () => [];
+
+        expectFallback();
+    });
+
+    test('falls back to the bases when the engine throws', () => {
+        (Intl as {supportedValuesOf?: unknown}).supportedValuesOf = () => {
+            throw new RangeError('timeZone is not a supported key');
+        };
+
+        expectFallback();
+    });
+
+    // The fallback is a real list rather than a placeholder, so it is ordered
+    // west to east like every other zone list in the plugin.
+    test('the fallback is ordered west to east like any other', () => {
+        (Intl as {supportedValuesOf?: unknown}).supportedValuesOf = () => [];
+
+        const offsets = availableZones(summer).map((zone) => zoneOffsetMinutes(zone.iana, summer));
+
+        expect(offsets).toEqual([...offsets].sort((a, b) => (a ?? 0) - (b ?? 0)));
+    });
+});

@@ -29,6 +29,7 @@ within a few business days.
 | Static analysis (CodeQL, Go + JS/TS) | `make codeql-analyze` | `security.yml`, `release.yml` | — |
 | CodeQL finding gate | `make security-gate` | `security.yml`, `release.yml` | Fails on **error-level** findings |
 | Malware scan of artifacts (ClamAV) | `make virus-scan` | `release.yml` | Fails on infected files |
+| Bundled map data and font licence | `make bundle` | `pr.yml`, `release.yml` | Fails on a missing or malformed archive, or fonts without their notice |
 | Detached GPG signature | `make release-sign` | `release.yml` | Skipped if no key configured |
 | SHA256 checksum | `make release-checksum` | `release.yml` | — |
 
@@ -96,6 +97,53 @@ ignore:
 
 Keep suppressions specific (pin the CVE and package) and time-box them where you
 can — re-check on the next dependency bump rather than suppressing forever.
+
+**Neither case covers the map's dependencies.** `maplibre-gl`, `pmtiles` and its
+transitive `fflate` all ship and all run in the reader's browser, so an advisory
+against any of them has no legitimate suppression and the answer is to upgrade or
+pin. If `pmtiles` ever becomes unfixable, the recorded way out is to replace it:
+the archive is generated in a deliberately boring shape (spec v3, clustered, tile
+type MVT) that a from-scratch reader can decode.
+
+It no longer carries a single root directory. Extending the basemap to z8 spilled
+it into leaf directories, which no flag prevents and which avoiding would mean
+capping zoom, so a fallback reader now needs a second directory level and a cold
+tile lookup can take two range requests. `TestArchiveIsClustered` and
+`TestArchiveIsTheShapeTheReaderAssumes` assert what still holds.
+
+## The bundled map data
+
+`public/map/` ships two things the security pipeline treats differently from
+code.
+
+**`world.pmtiles`** is the basemap, built by `make map-tiles` from Natural Earth,
+which is public domain. It is committed, so a change to it is a change in the
+history rather than something a build produces unseen. It is **binary**, though,
+so review means checking that the diff was expected and that it came from
+`make map-tiles` over the pinned sources, not reading it. `make bundle` refuses
+to assemble a bundle where it is missing or is not a PMTiles archive. That second check is not fussiness: a
+truncated copy, an LFS pointer or an HTML error page saved over it all leave a
+file of plausible size that fails only at runtime, in the reader's browser.
+
+**`public/map/fonts/`** holds SDF glyph ranges generated from Noto Sans. These
+carry a licence obligation rather than a vulnerability: SIL OFL 1.1 requires its
+notice to travel with the font software, and ranges generated from a TTF are a
+Modified Version of it. `make bundle` refuses to ship them without
+`LICENSE.txt`. Noto declares no Reserved Font Name, which is what permits the
+generated ranges to keep the `NotoSans-Regular` name.
+
+Two limits worth stating plainly:
+
+- **`public/` is served without authentication.** Mattermost serves the whole
+  directory at `/plugins/<id>/public/**`, so the basemap and the fonts are
+  retrievable by anyone who can reach the server. That is acceptable for what is
+  there now, all of it public-domain or openly licensed reference data, and it is
+  the constraint to weigh before putting anything else in that directory.
+- **A hand-modified bundle is not the signed artifact.** `make release` runs
+  `clamscan` over `dist/` and then signs and checksums it. An archive swapped
+  into an already-built bundle is scanned by neither and matches neither the
+  published `.sig` nor the `.sha256`. Rebuild from source with
+  `make map-tiles && make dist` and re-sign locally instead.
 
 ## Signing releases (optional)
 

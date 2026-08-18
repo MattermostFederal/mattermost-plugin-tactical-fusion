@@ -64,4 +64,8 @@ export interface Decorator<T> {
      * decorator that omits this simply has no hover.
      */
     Hover?: React.ComponentType<{payload: T}>;
+
+    postType?: string;
+
+    Inline?: React.ComponentType<{payload: T}>;
 }

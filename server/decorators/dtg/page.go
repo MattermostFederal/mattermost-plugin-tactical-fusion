@@ -145,9 +145,10 @@ func assumedNote(assumed string) string {
 // and the threshold in countdownScript below, or the sidebar and this page
 // would disagree about whether the same DTG is imminent.
 //
-// This page has no reader to ask: it is served without a session, so it always
-// uses the default even when the reader has chosen a different threshold in the
-// sidebar. See the reader preferences section of CLAUDE.md.
+// This page does not ask its reader: the renderer is handed a query string and
+// no user, so it always uses the default even when the reader has chosen a
+// different threshold in the sidebar. See the reader preferences section of
+// CLAUDE.md.
 const urgentWithin = 30 * time.Minute
 
 // isUrgent reports whether an instant is close enough to call for attention.

@@ -17,6 +17,9 @@ export GOBIN ?= $(PWD)/bin
 # You can include assets this directory into the bundle. This can be e.g. used to include profile pictures.
 ASSETS_DIR ?= assets
 
+# Pinned so an archive rebuilt later is rebuilt by the same tiler.
+TIPPECANOE_VERSION ?= 2.78.0
+
 # Verify environment, and define PLUGIN_ID, PLUGIN_VERSION, HAS_SERVER and HAS_WEBAPP as needed.
 include build/setup.mk
 
@@ -147,6 +150,47 @@ manifest-check:
 apply:
 	./build/bin/manifest apply
 
+## Rebuilds the vector basemap archive from Natural Earth.
+##
+## Runs tippecanoe in a container, so the toolchain is pinned rather than
+## whatever a developer happens to have, and is a prerequisite of NOTHING: it is
+## never reached by `make test` and never runs in CI. Commit the result.
+.PHONY: map-tiles
+map-tiles:
+	docker build --build-arg TIPPECANOE_VERSION=$(TIPPECANOE_VERSION) \
+		-t tf-maptiles:$(TIPPECANOE_VERSION) build/maptiles/
+	docker run --rm -v "$(PWD)":/work tf-maptiles:$(TIPPECANOE_VERSION) build/maptiles/build.sh
+
+## Downloads the 50m and 10m Natural Earth sources the finer tiers need and
+## verifies them against build/maptiles/sources.lock. The 110m tier needs no
+## download: those files are already committed for the country lookup.
+.PHONY: map-sources
+map-sources:
+	./build/maptiles/fetch-sources.sh
+
+## Regenerates the bundled basemap from the Natural Earth source in build/mapdata/source.
+## The outputs are committed, so a clean checkout builds and an air-gapped `go test` runs
+## without this target. Run it only when the source or the generator changes.
+.PHONY: map-data
+map-data:
+	$(GO) run ./build/mapdata
+
+## Fails when the committed country polygons are not what the committed source produces
+## through the current generator. Idempotence is the wrong check: a generator edited without
+## regenerating is perfectly idempotent and fully drifted.
+.PHONY: map-data-check
+map-data-check: map-data
+	@# Named individually rather than by directory: mapdata.go sits beside admin.go
+	@# and is hand-written, and watching the whole directory reported an ordinary
+	@# edit to the decoder as stale map data and told the reader to run a generator
+	@# that would not fix it.
+	@#
+	@# The basemap archive is deliberately absent from this list. It is built by
+	@# make map-tiles, which needs a container and a toolchain, and this target is a
+	@# prerequisite of make test.
+	@git diff --exit-code -- server/decorators/location/mapdata/admin.go \
+		|| (echo "map data is stale: run 'make map-data' and commit the result" && exit 1)
+
 ## Builds the server, if it exists, for all supported architectures, unless MM_SERVICESETTINGS_ENABLEDEVELOPER is set.
 .PHONY: server
 server:
@@ -193,6 +237,46 @@ ifneq ($(wildcard $(ASSETS_DIR)/.),)
 endif
 ifneq ($(HAS_PUBLIC),)
 	cp -r public dist/$(PLUGIN_ID)/
+	@# The map ships as three things that fail separately and all fail quietly,
+	@# which is why they are checked here, where the bundle is actually
+	@# assembled, rather than by a test against the working tree.
+	@#
+	@# `cp -r public` copies whatever is on disk with no exclusion, and neither
+	@# `make clean` nor `make nuke` touches public/, so what ships is whatever a
+	@# developer last left there.
+	@if [ ! -f "dist/$(PLUGIN_ID)/public/map/world.pmtiles" ]; then \
+		echo "ERROR: the bundle is missing public/map/world.pmtiles."; \
+		echo "Every map surface draws from it. Run 'make map-tiles'."; \
+		exit 1; \
+	fi
+	@# An LFS pointer, a truncated copy, or an HTML error page saved over the
+	@# archive all leave a file of plausible size that MapLibre cannot read. The
+	@# magic bytes are the cheapest thing that tells them apart.
+	@if [ "$$(head -c 7 dist/$(PLUGIN_ID)/public/map/world.pmtiles)" != "PMTiles" ]; then \
+		echo "ERROR: public/map/world.pmtiles is not a PMTiles archive."; \
+		echo "Check it is not an LFS pointer or a truncated copy."; \
+		exit 1; \
+	fi
+	@# The style names these by URL. Without them the country labels have no
+	@# typeface to be drawn in, and the only symptom is a map that quietly
+	@# stopped naming anything.
+	@# Every range, not just the first: a missing 256-511 costs every accented
+	@# name and nothing else would fail.
+	@for r in 0-255 256-511 512-767 7680-7935 8192-8447; do \
+		if [ ! -f "dist/$(PLUGIN_ID)/public/map/fonts/NotoSans-Regular/$$r.pbf" ]; then \
+			echo "ERROR: the bundle is missing glyph range $$r under public/map/fonts."; \
+			echo "The map's labels need them. Run 'make map-tiles'."; \
+			exit 1; \
+		fi; \
+	done
+	@# SIL OFL 1.1 requires the notice to travel with the font software, and SDF
+	@# ranges generated from a TTF are a Modified Version of it. Shipping the
+	@# fonts without this file is a licence violation, not an untidy bundle.
+	@if [ ! -f "dist/$(PLUGIN_ID)/public/map/fonts/LICENSE.txt" ]; then \
+		echo "ERROR: the glyph ranges ship without public/map/fonts/LICENSE.txt."; \
+		echo "SIL OFL 1.1 requires the notice to travel with them."; \
+		exit 1; \
+	fi
 endif
 ifneq ($(HAS_SERVER),)
 	mkdir -p dist/$(PLUGIN_ID)/server
@@ -201,6 +285,24 @@ endif
 ifneq ($(HAS_WEBAPP),)
 	mkdir -p dist/$(PLUGIN_ID)/webapp
 	cp -r webapp/dist dist/$(PLUGIN_ID)/webapp/
+	@# The standalone pages are rendered by webpack's second bundle. Without it
+	@# the pages serve their shell and render nothing at all.
+	@if [ ! -f "dist/$(PLUGIN_ID)/public/app/page.js" ]; then \
+		echo "ERROR: the bundle is missing public/app/page.js."; \
+		echo "The standalone pages render nothing without it. Run 'make dist'."; \
+		exit 1; \
+	fi
+	@# MapLibre's worker is a module that imports ./maplibre-gl-shared.mjs by that
+	@# literal name. Shipping the worker without it is silent: the worker 404s,
+	@# the style never finishes, and the map sits on "Loading map..." with no
+	@# error. Neither the type checker nor any test sees this, so it is checked
+	@# here, where the bundle is actually assembled.
+	@if ls dist/$(PLUGIN_ID)/webapp/dist/maplibre-gl-worker.*.mjs >/dev/null 2>&1 && \
+		[ ! -f dist/$(PLUGIN_ID)/webapp/dist/maplibre-gl-shared.mjs ]; then \
+		echo "ERROR: the MapLibre worker ships without maplibre-gl-shared.mjs beside it."; \
+		echo "The worker imports it by a fixed relative name and will 404 at runtime."; \
+		exit 1; \
+	fi
 endif
 ifeq ($(shell uname),Darwin)
 	cd dist && tar --disable-copyfile -cvzf $(BUNDLE_NAME) $(PLUGIN_ID)
@@ -245,7 +347,7 @@ endif
 
 ## Runs any lints and unit tests defined for the server and webapp, if they exist.
 .PHONY: test
-test: apply webapp/node_modules install-go-tools
+test: map-data-check apply webapp/node_modules install-go-tools
 ifneq ($(HAS_SERVER),)
 	$(GOBIN)/gotestsum -- -v ./...
 endif

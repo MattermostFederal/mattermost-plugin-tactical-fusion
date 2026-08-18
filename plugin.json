@@ -21,104 +21,154 @@
     "settings_schema": {
         "header": "Recognize mission-relevant context in messages and enrich it in place. [View the full documentation](/plugins/com.mattermost.plugin-tactical-fusion/public/help/help.html) for the formats, the sidebar panel, and troubleshooting.",
         "footer": "",
-        "settings": [
+        "settings": [],
+        "sections": [
             {
-                "key": "EnableDTG",
-                "display_name": "Decorate date-time groups",
-                "type": "bool",
-                "default": true,
-                "help_text": "Recognize times in messages and rewrite them as links that open a Date/Time panel. The formats below are matched individually and all apply while this is on."
+                "key": "datetime",
+                "title": "Date and time",
+                "subtitle": "The first switch governs this section. The formats below it are matched individually and all apply while it is on.",
+                "settings": [
+                    {
+                        "key": "EnableDTG",
+                        "display_name": "Decorate date-time groups",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Recognize times in messages and rewrite them as links that open a Date/Time panel."
+                    },
+                    {
+                        "key": "EnableDTGMilitary",
+                        "display_name": "Format: military date-time group",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Matches 091630ZAUG26, 091630ZAUG2026 and the short form 091630Z. Only applies while \"Decorate date-time groups\" is on. Turning a format off stops new messages being decorated with it; links already in existing messages keep working."
+                    },
+                    {
+                        "key": "EnableDTGTimestamp",
+                        "display_name": "Format: RFC 3339 timestamp",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Matches 2026-08-09T16:30:00Z and 2026-08-09T20:30:00+04:00. Only applies while \"Decorate date-time groups\" is on. Turning a format off stops new messages being decorated with it; links already in existing messages keep working."
+                    },
+                    {
+                        "key": "EnableDTGMoniker",
+                        "display_name": "Format: labeled date-time group",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Matches a time introduced by the \"DTG:\" label, as some military formats write it, and drops the label from the link. Only labels the formats that are themselves on. Only applies while \"Decorate date-time groups\" is on. Turning a format off stops new messages being decorated with it; links already in existing messages keep working."
+                    }
+                ]
             },
             {
-                "key": "EnableDTGMilitary",
-                "display_name": "Format: military date-time group",
-                "type": "bool",
-                "default": true,
-                "help_text": "Matches 091630ZAUG26, 091630ZAUG2026 and the short form 091630Z. Only applies while \"Decorate date-time groups\" is on. Turning a format off stops new messages being decorated with it; links already in existing messages keep working."
+                "key": "coordinates",
+                "title": "Coordinates",
+                "subtitle": "The first switch governs this section. The formats below it are matched individually and all apply while it is on. Positions are always WGS 84; a coordinate carrying another datum is left alone rather than reinterpreted.",
+                "settings": [
+                    {
+                        "key": "EnableLocation",
+                        "display_name": "Decorate coordinates",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Recognize geographic coordinates in messages and rewrite them as links that open a Location panel."
+                    },
+                    {
+                        "key": "EnableLocationDDSigned",
+                        "display_name": "Format: decimal degrees, signed",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Matches 34.0561, -118.2500. Requires a comma and at least four decimal places on both values, which is what separates a coordinate from an ordinary pair of numbers; 34.05, -118.25 is deliberately left alone. This is the widest-reaching format, so turn this one off first if ordinary numbers in your channels are being linked. Only applies while \"Decorate coordinates\" is on."
+                    },
+                    {
+                        "key": "EnableLocationLatLon",
+                        "display_name": "Format: latitude and longitude with hemisphere letters",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Matches 34.0561 N, 118.2500 W, 34°03'22\"N 118°15'00\"W and 34°03.366'N 118°15.000'W. Hemisphere letters are required, and a decimal point is required on the plain decimal form so that \"Load 12 N, 5 W\" is not read as a position. Only applies while \"Decorate coordinates\" is on."
+                    },
+                    {
+                        "key": "EnableLocationUSMTF",
+                        "display_name": "Format: USMTF compact coordinates",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Matches the fixed-width shapes used in ATO and USMTF traffic: 3510N07901W (LATM), 400948N1221400W (LATS), 331000.0N1183000.0W (LATDS and DMPID) and 3510N9-07901W7 (verified). The shortest shape, 35N079W (LATD), is only matched behind a field label. Only applies while \"Decorate coordinates\" is on."
+                    },
+                    {
+                        "key": "EnableLocationMGRS",
+                        "display_name": "Format: military grid reference (MGRS)",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Matches grid references written with spaces, such as 18S UJ 23478 06483, and run together in upper case at 100 m or finer, as 18SUJ2347806483. Lower case run together is not matched, because that is what a short git commit hash looks like, and neither is anything coarser, because a shorter run is what a part number looks like; both are still matched behind an MGRS: label. A grid reference is validated against the letter scheme of the zone it names, so a square that does not exist is left alone. Only applies while \"Decorate coordinates\" is on. A form that only ever matches behind its label, such as a lower-case or coarse run-together reference, also needs Format: labeled coordinate to be on."
+                    },
+                    {
+                        "key": "EnableLocationUTM",
+                        "display_name": "Format: UTM (off by default: the band letter is ambiguous)",
+                        "type": "bool",
+                        "default": false,
+                        "help_text": "OFF BY DEFAULT, AND THE ONLY FORMAT THAT IS. A UTM token is ambiguous in a way no other coordinate here is. The letter after the zone number is read as a latitude band, following MGRS, so 11S 384640E 3769080N is band S and resolves to 34 north. Somebody using the civilian convention writes the same characters to mean \"zone 11, southern hemisphere\", which is 56 south: the same text, two readings, 90 degrees of latitude apart, and nothing in it says which was meant. The northing must land inside the band its letter names, which declines about nine in ten positions written the civilian way, but not all of them. Every other format here risks decorating something that was not a coordinate; this one risks decorating a real coordinate and pointing at the wrong place. Turn it on if your workspace writes UTM the military way, which is the common case for MGRS-speaking users. Matches 33U 291000 5628000 spaced, with optional axis letters as in 11S 384640E 3769080N; run together it is matched only behind a UTMO: or UTMT: label, since after the zone and band it is thirteen bare digits. Only applies while \"Decorate coordinates\" is on. A form that only ever matches behind its label, such as a lower-case or coarse run-together reference, also needs Format: labeled coordinate to be on."
+                    },
+                    {
+                        "key": "EnableLocationGEOREF",
+                        "display_name": "Format: GEOREF (label only)",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Matches a World Geographic Reference System code such as GEOREF:GJPJ3718, and the finer GEOREF:GJPJ371183 and GEOREF:GJPJ37110183. GEOREF is written longitude first, and a code names a cell rather than a point, so the position shown for one is its center. This format is matched behind a GEOREF: label only, never bare: four letters and four digits has nothing in it a part number does not, so a bare pattern would rewrite ordinary text. It therefore also needs Format: labeled coordinate to be on. Only applies while \"Decorate coordinates\" is on."
+                    },
+                    {
+                        "key": "EnableLocationGARS",
+                        "display_name": "Format: GARS (label only)",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Matches a Global Area Reference System code such as GARS:006AG, GARS:006AG3 and GARS:006AG39, which are cells of 30, 15 and 5 minutes. The position shown for one is the center of its cell. This format is matched behind a GARS: label only, never bare: seven alphanumerics whose only structural check is that just over a third of the letter pairs name no band is not enough to tell a coordinate from a part number. It therefore also needs Format: labeled coordinate to be on. Only applies while \"Decorate coordinates\" is on."
+                    },
+                    {
+                        "key": "EnableLocationPlusCode",
+                        "display_name": "Format: Plus Code",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Matches a full Open Location Code such as 849VCWC8+R9, including the longer 849VCWC8+R9C and the padded, coarser 849V0000+. Unlike GEOREF and GARS this one is matched without a label, because its twenty-character alphabet contains no vowels and the separator sits at a fixed position, so an eight-character run of it is not a word. Unlabeled it is matched in upper case only, because a lower-case run of that shape is what a version string with build metadata looks like, and roughly one in 50,000 of those is a well-formed code; lower case is still matched behind a PLUSCODE: or OLC: label. Short codes such as CWC8+R9 are left alone: resolving one needs a nearby reference location this plugin does not have. A code names a cell, and the position shown for one is its center. Turn this off if your channels carry identifiers shaped like ABCDEFGH+IJ. Only applies while \"Decorate coordinates\" is on."
+                    },
+                    {
+                        "key": "EnableLocationMoniker",
+                        "display_name": "Format: labeled coordinate",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Matches a coordinate introduced by a field label such as LATM:, LATS:, DMPID:, GEOK:, MGRS:, UTMO: or UTMT:. The label is kept in the message rather than consumed, so a decorated line still reads as USMTF. Only labels the formats that are themselves on, and a label vouches for nothing: the coordinate behind it still has to be one. Only applies while \"Decorate coordinates\" is on."
+                    }
+                ]
             },
             {
-                "key": "EnableDTGMoniker",
-                "display_name": "Format: labeled date-time group",
-                "type": "bool",
-                "default": true,
-                "help_text": "Matches a time introduced by the \"DTG:\" label, as some military formats write it, and drops the label from the link. Only labels the formats that are themselves on. Only applies while \"Decorate date-time groups\" is on. Turning a format off stops new messages being decorated with it; links already in existing messages keep working."
-            },
-            {
-                "key": "EnableDTGTimestamp",
-                "display_name": "Format: RFC 3339 timestamp",
-                "type": "bool",
-                "default": true,
-                "help_text": "Matches 2026-08-09T16:30:00Z and 2026-08-09T20:30:00+04:00. Only applies while \"Decorate date-time groups\" is on. Turning a format off stops new messages being decorated with it; links already in existing messages keep working."
-            },
-            {
-                "key": "EnableLocation",
-                "display_name": "Decorate coordinates",
-                "type": "bool",
-                "default": true,
-                "help_text": "Recognize geographic coordinates in messages and rewrite them as links that open a Location panel. The formats below are matched individually and all apply while this is on. Positions are always WGS 84; a coordinate carrying another datum is left alone rather than reinterpreted."
-            },
-            {
-                "key": "EnableLocationDDSigned",
-                "display_name": "Format: decimal degrees, signed",
-                "type": "bool",
-                "default": true,
-                "help_text": "Matches 34.0561, -118.2500. Requires a comma and at least four decimal places on both values, which is what separates a coordinate from an ordinary pair of numbers; 34.05, -118.25 is deliberately left alone. This is the widest-reaching format, so turn this one off first if ordinary numbers in your channels are being linked. Only applies while \"Decorate coordinates\" is on."
-            },
-            {
-                "key": "EnableLocationLatLon",
-                "display_name": "Format: latitude and longitude with hemisphere letters",
-                "type": "bool",
-                "default": true,
-                "help_text": "Matches 34.0561 N, 118.2500 W, 34°03'22\"N 118°15'00\"W and 34°03.366'N 118°15.000'W. Hemisphere letters are required, and a decimal point is required on the plain decimal form so that \"Load 12 N, 5 W\" is not read as a position. Only applies while \"Decorate coordinates\" is on."
-            },
-            {
-                "key": "EnableLocationUSMTF",
-                "display_name": "Format: USMTF compact coordinates",
-                "type": "bool",
-                "default": true,
-                "help_text": "Matches the fixed-width shapes used in ATO and USMTF traffic: 3510N07901W (LATM), 400948N1221400W (LATS), 331000.0N1183000.0W (LATDS and DMPID) and 3510N9-07901W7 (verified). The shortest shape, 35N079W (LATD), is only matched behind a field label. Only applies while \"Decorate coordinates\" is on."
-            },
-            {
-                "key": "EnableLocationGrid",
-                "display_name": "Format: military grid reference (MGRS)",
-                "type": "bool",
-                "default": true,
-                "help_text": "Matches grid references written with spaces, such as 18S UJ 23478 06483, and run together in upper case at 100 m or finer, as 18SUJ2347806483. Lower case run together is not matched, because that is what a short git commit hash looks like, and neither is anything coarser, because a shorter run is what a part number looks like; both are still matched behind an MGRS: label. A grid reference is validated against the letter scheme of the zone it names, so a square that does not exist is left alone. Only applies while \"Decorate coordinates\" is on. A form that only ever matches behind its label, such as a lower-case or coarse run-together reference, also needs Format: labeled coordinate to be on."
-            },
-            {
-                "key": "EnableLocationUTM",
-                "display_name": "Format: UTM (off by default: the band letter is ambiguous)",
-                "type": "bool",
-                "default": false,
-                "help_text": "OFF BY DEFAULT, AND THE ONLY FORMAT THAT IS. A UTM token is ambiguous in a way no other coordinate here is. The letter after the zone number is read as a latitude band, following MGRS, so 11S 384640E 3769080N is band S and resolves to 34 north. Somebody using the civilian convention writes the same characters to mean \"zone 11, southern hemisphere\", which is 56 south: the same text, two readings, 90 degrees of latitude apart, and nothing in it says which was meant. The northing must land inside the band its letter names, which declines about nine in ten positions written the civilian way, but not all of them. Every other format here risks decorating something that was not a coordinate; this one risks decorating a real coordinate and pointing at the wrong place. Turn it on if your workspace writes UTM the military way, which is the common case for MGRS-speaking users. Matches 33U 291000 5628000 spaced, with optional axis letters as in 11S 384640E 3769080N; run together it is matched only behind a UTMO: or UTMT: label, since after the zone and band it is thirteen bare digits. Only applies while \"Decorate coordinates\" is on. A form that only ever matches behind its label, such as a lower-case or coarse run-together reference, also needs Format: labeled coordinate to be on."
-            },
-            {
-                "key": "EnableLocationGEOREF",
-                "display_name": "Format: GEOREF (label only)",
-                "type": "bool",
-                "default": true,
-                "help_text": "Matches a World Geographic Reference System code such as GEOREF:GJPJ3718, and the finer GEOREF:GJPJ371183 and GEOREF:GJPJ37110183. GEOREF is written longitude first, and a code names a cell rather than a point, so the position shown for one is its center. This format is matched behind a GEOREF: label only, never bare: four letters and four digits has nothing in it a part number does not, so a bare pattern would rewrite ordinary text. It therefore also needs Format: labeled coordinate to be on. Only applies while \"Decorate coordinates\" is on."
-            },
-            {
-                "key": "EnableLocationGARS",
-                "display_name": "Format: GARS (label only)",
-                "type": "bool",
-                "default": true,
-                "help_text": "Matches a Global Area Reference System code such as GARS:006AG, GARS:006AG3 and GARS:006AG39, which are cells of 30, 15 and 5 minutes. The position shown for one is the center of its cell. This format is matched behind a GARS: label only, never bare: seven alphanumerics whose only structural check is that just over a third of the letter pairs name no band is not enough to tell a coordinate from a part number. It therefore also needs Format: labeled coordinate to be on. Only applies while \"Decorate coordinates\" is on."
-            },
-            {
-                "key": "EnableLocationPlusCode",
-                "display_name": "Format: Plus Code",
-                "type": "bool",
-                "default": true,
-                "help_text": "Matches a full Open Location Code such as 849VCWC8+R9, including the longer 849VCWC8+R9C and the padded, coarser 849V0000+. Unlike GEOREF and GARS this one is matched without a label, because its twenty-character alphabet contains no vowels and the separator sits at a fixed position, so an eight-character run of it is not a word. Unlabeled it is matched in upper case only, because a lower-case run of that shape is what a version string with build metadata looks like, and roughly one in 50,000 of those is a well-formed code; lower case is still matched behind a PLUSCODE: or OLC: label. Short codes such as CWC8+R9 are left alone: resolving one needs a nearby reference location this plugin does not have. A code names a cell, and the position shown for one is its center. Turn this off if your channels carry identifiers shaped like ABCDEFGH+IJ. Only applies while \"Decorate coordinates\" is on."
-            },
-            {
-                "key": "EnableLocationMoniker",
-                "display_name": "Format: labeled coordinate",
-                "type": "bool",
-                "default": true,
-                "help_text": "Matches a coordinate introduced by a field label such as LATM:, LATS:, DMPID:, GEOK:, MGRS:, USNG:, UTMO:, UTMT:, GEOREF:, GARS: or PLUSCODE:. The label is kept in the message rather than consumed, so a decorated line still reads as USMTF. USNG: labels a grid reference, since the United States National Grid is MGRS on WGS 84 character for character. Only labels the formats that are themselves on, and a label vouches for nothing: the coordinate behind it still has to be one. Only applies while \"Decorate coordinates\" is on."
+                "key": "maps",
+                "title": "Maps",
+                "subtitle": "The first switch governs this section. The surfaces below it are drawn individually and all apply while it is on. Nothing here changes which coordinates are recognized.",
+                "settings": [
+                    {
+                        "key": "EnableLocationMap",
+                        "display_name": "Draw maps for coordinates",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Draw a map showing where a decorated coordinate is. The basemap ships inside this plugin, so no tile service is called and nothing is fetched from outside your own server. Turning this off draws no map on any surface and stops clients requesting the basemap archive, its fonts and the map library, which together are the largest thing this plugin transfers. Only applies while \"Decorate coordinates\" is on."
+                    },
+                    {
+                        "key": "EnableLocationMapPanel",
+                        "display_name": "Map in the sidebar and hover card",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Draw the map beside a table of readings, wherever that table appears: the Location panel in the right-hand sidebar, the card shown when a reader points at a coordinate link, and the coordinate's own standalone page. That card is the map and nothing else, so turning this off removes the card rather than leaving an empty one. Readers can also hide the sidebar map for themselves under \"Customize your view\". Only applies while \"Decorate coordinates\" and \"Draw maps for coordinates\" are on."
+                    },
+                    {
+                        "key": "EnableLocationMapInline",
+                        "display_name": "Map under a coordinate-only post",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Draw the map in the channel, under a message whose whole text is one coordinate. This is the one setting here that changes the message itself: a post drawn this way is marked with a custom type, and Elasticsearch and OpenSearch index such a post but never match it, so it is missing from search and from Recent Mentions. Link previews, image embeds and automatic translation are dropped for it as well. Turning this off leaves those posts as ordinary messages and restores all of that. Installs searching through Postgres are unaffected either way. Only applies while \"Decorate coordinates\" and \"Draw maps for coordinates\" are on."
+                    },
+                    {
+                        "key": "EnableLocationMapPage",
+                        "display_name": "Full-window map page",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Serve the standalone page that gives the whole window to one map, which is what \"Open larger\" opens and what a client without the webapp bundle follows a coordinate link to. Turning this off makes that address answer \"not found\"; every reading is still available on the coordinate's own page. Only applies while \"Decorate coordinates\" and \"Draw maps for coordinates\" are on."
+                    }
+                ]
             }
         ]
     }

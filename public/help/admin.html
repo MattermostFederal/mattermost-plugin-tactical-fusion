@@ -34,15 +34,17 @@
         </div>
 
         <h1>Admin Settings</h1>
-        <p class="tagline">System Console, Plugins, Tactical Fusion. Fourteen switches. Thirteen are on by default; <code>EnableLocationUTM</code> is the one that is not.</p>
+        <p class="tagline">System Console, Plugins, Tactical Fusion. Three sections and eighteen switches. Seventeen are on by default; <code>EnableLocationUTM</code> is the one that is not.</p>
 
         <h2>How the date-time group switches relate</h2>
 
         <p>
             <a href="#enable-dtg"><code>EnableDTG</code></a> is the parent. The three
             below it select individual formats and only apply while the parent is on.
-            Mattermost's settings schema has no nesting, so the grouping is expressed
-            through ordering and naming, and enforced in code.
+            The System Console groups them under a <strong>Date and time</strong>
+            heading, but a section only arranges switches on a page: the parent is
+            enforced in the plugin's own code, so turning it off stops every format
+            below it whatever those are set to.
         </p>
 
         <table>
@@ -90,6 +92,55 @@
                 working. That is almost always what you actually want.
             </p>
         </div>
+
+        <h3 id="map">The map has its own section</h3>
+
+        <p>
+            Opening a coordinate draws <a href="panel.html#location-map">a small world
+            map</a>, in the sidebar, on the hover card, under a coordinate-only post and
+            on the standalone pages. The <a href="#map-switches">Maps</a> section governs
+            all of it: one parent and one switch per surface, so an install can drop the
+            map entirely or keep it in some places and not others.
+        </p>
+
+        <p>
+            <strong>Off means nothing is fetched, not merely nothing is shown.</strong>
+            With <a href="#enable-location-map"><code>EnableLocationMap</code></a> off, a
+            reader's browser never asks for the basemap archive, the fonts on it or the
+            library that draws it. That is the largest transfer this plugin makes, which
+            is the main reason to turn it off.
+        </p>
+
+        <p>
+            <strong>Readers can still hide it for themselves</strong>, by unticking
+            <em>Map</em> or <em>Map under the post</em> under
+            <a href="panel.html#location-customize">Customize your view</a>. The two are
+            independent: your switch decides what is available, theirs decides what they
+            look at. A surface you have turned off is not offered to them at all, and
+            turning it back on returns each reader to whatever they had chosen. There is
+            no way to force a map on for somebody who has hidden it.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">The map reaches nothing outside your server.</p>
+            <p>
+                The basemap, the fonts on it and the library that draws it all ship inside
+                the plugin bundle and are served by your own Mattermost, at
+                <code>/plugins/com.mattermost.plugin-tactical-fusion/public/map/</code>.
+                There is no tile service, no map API and no key to configure, and an
+                air-gapped install needs nothing added. The one consequence worth knowing
+                is size: the basemap is the largest thing in the bundle by a wide margin,
+                so a server with a tightened upload limit may refuse the plugin archive
+                before it refuses anything else.
+            </p>
+        </div>
+
+        <p>
+            The country the map names in its accessible label is worked out the same way,
+            from outlines compiled into the plugin. It is
+            <a href="panel.html#location-region">a basemap lookup and not an authority on
+            borders</a>, which is worth reading before anyone treats it as one.
+        </p>
 
         <h2>The settings</h2>
 
@@ -166,10 +217,16 @@
 
         <p>
             <a href="#enable-location"><code>EnableLocation</code></a> is the parent, and
-            the six below it select individual grammars and the moniker. The structure is the same as
-            the date-time group block above, and for the same reason: the settings schema
-            has no nesting, so the grouping is expressed through ordering and naming and
-            enforced in code.
+            the six below it select individual grammars and the moniker. The structure is
+            the same as the date-time group block above, and so is the caveat: the
+            <strong>Coordinates</strong> heading groups them on the page, and the parent
+            is what actually gates them.
+        </p>
+
+        <p>
+            <code>EnableLocation</code> reaches further than its own section. Every switch
+            under <a href="#map-switches">Maps</a> is gated on it as well, because a map is
+            only ever drawn for a coordinate this plugin decorated.
         </p>
 
         <table>
@@ -181,7 +238,7 @@
                 <tr><td><a href="#enable-location-dd-signed"><code>EnableLocationDDSigned</code></a></td><td><code>34.0561, -118.2500</code></td><td>On</td></tr>
                 <tr><td><a href="#enable-location-lat-lon"><code>EnableLocationLatLon</code></a></td><td>Hemisphere-bearing latitude and longitude</td><td>On</td></tr>
                 <tr><td><a href="#enable-location-usmtf"><code>EnableLocationUSMTF</code></a></td><td>The fixed-width USMTF shapes</td><td>On</td></tr>
-                <tr><td><a href="#enable-location-grid"><code>EnableLocationGrid</code></a></td><td>Military grid references (MGRS)</td><td>On</td></tr>
+                <tr><td><a href="#enable-location-mgrs"><code>EnableLocationMGRS</code></a></td><td>Military grid references (MGRS)</td><td>On</td></tr>
                 <tr><td><a href="#enable-location-utm"><code>EnableLocationUTM</code></a></td><td>UTM, whose band letter is <a href="#enable-location-utm">ambiguous</a></td><td><strong>Off</strong></td></tr>
                 <tr><td><a href="#enable-location-georef"><code>EnableLocationGEOREF</code></a></td><td>GEOREF, behind its label only</td><td>On</td></tr>
                 <tr><td><a href="#enable-location-gars"><code>EnableLocationGARS</code></a></td><td>GARS, behind its label only</td><td>On</td></tr>
@@ -272,7 +329,7 @@
             resolving to a 111 km square is not something to detect on its own.
         </p>
 
-        <h3 id="enable-location-grid" data-setting="EnableLocationGrid">Format: military grid reference (MGRS) <code>EnableLocationGrid</code></h3>
+        <h3 id="enable-location-mgrs" data-setting="EnableLocationMGRS">Format: military grid reference (MGRS) <code>EnableLocationMGRS</code></h3>
 
         <table class="field-table">
             <tbody>
@@ -378,7 +435,7 @@
             <strong>row</strong> in the panel for every other coordinate that is decorated;
             this switch governs only whether a UTM token in a message becomes a link.
             Authors who want one linked can write it as a
-            <a href="#enable-location-grid">grid reference</a> instead, where the band letter
+            <a href="#enable-location-mgrs">grid reference</a> instead, where the band letter
             cannot be misread.
         </p>
 
@@ -507,7 +564,7 @@
         </table>
 
         <p>
-            <code>USNG:</code> labels a <a href="#enable-location-grid">grid reference</a>.
+            <code>USNG:</code> labels a <a href="#enable-location-mgrs">grid reference</a>.
             The United States National Grid is MGRS on WGS 84, character for character, so
             there is no separate format for it: a <code>USNG:</code> token is read, stored
             and rendered as MGRS.
@@ -527,6 +584,154 @@
             composes the same way the date-time group label does: it only labels formats
             that are themselves on, and a label vouches for nothing, so
             <code>LATM:9999N99999W</code> stays declined.
+        </p>
+
+        <h2 id="map-switches">How the map switches relate</h2>
+
+        <p>
+            <a href="#enable-location-map"><code>EnableLocationMap</code></a> is the
+            parent of the <strong>Maps</strong> section, and the three below it select
+            individual surfaces. Unlike the two sections above, this one has a parent
+            outside itself as well:
+            <a href="#enable-location"><code>EnableLocation</code></a> gates every switch
+            here, because a map is only ever drawn for a coordinate this plugin
+            decorated.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Setting</th><th>Governs</th><th>Default</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><a href="#enable-location-map"><code>EnableLocationMap</code></a></td><td>Maps as a whole, on every surface</td><td>On</td></tr>
+                <tr><td><a href="#enable-location-map-panel"><code>EnableLocationMapPanel</code></a></td><td>The sidebar panel and the hover card</td><td>On</td></tr>
+                <tr><td><a href="#enable-location-map-inline"><code>EnableLocationMapInline</code></a></td><td>The map under a coordinate-only post</td><td>On</td></tr>
+                <tr><td><a href="#enable-location-map-page"><code>EnableLocationMapPage</code></a></td><td>The full-window map page</td><td>On</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            These are the only switches in this plugin that are read at <em>render</em>
+            rather than only when a message is posted. A format switch governs text that
+            is already written permanently into a message, so turning one off cannot
+            change what a link already out there does. A map is drawn afresh each time
+            somebody looks, so turning one off reaches every coordinate, including the ones
+            posted last year, rather than only the ones posted next. A client that is
+            already open can lag the change by up to half an hour, which is how long it
+            keeps its copy of these settings; a reload applies it at once.
+        </p>
+
+        <h3 id="enable-location-map" data-setting="EnableLocationMap">Draw maps for coordinates <code>EnableLocationMap</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>No map is drawn anywhere, whatever the three switches below it say, and no client requests the basemap archive, its fonts or the map library. Every reading still renders.</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-location"><code>EnableLocation</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            The basemap ships inside the plugin and is served by your own Mattermost, so
+            turning this off is about weight rather than about reaching outside: it is the
+            largest transfer this plugin makes, and on a constrained or metered link that
+            is the reason to drop it.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">The file still ships either way.</p>
+            <p>
+                Mattermost serves the plugin's <code>public/</code> directory itself,
+                before the plugin sees the request, so this switch stops clients
+                <em>asking</em> for the basemap rather than making it unreachable. The
+                bundle is the same size on disk whichever way it is set, and anyone with a
+                session can still fetch the archive by its address.
+            </p>
+        </div>
+
+        <h3 id="enable-location-map-panel" data-setting="EnableLocationMapPanel">Map in the sidebar and hover card <code>EnableLocationMapPanel</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>Every table of readings opens with no map above it, in the sidebar and on the coordinate's standalone page alike, and pointing at a coordinate link shows no card at all.</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-location"><code>EnableLocation</code></a> and <a href="#enable-location-map"><code>EnableLocationMap</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            The hover card goes with the panel map rather than having a switch of its own,
+            because <a href="panel.html#location-hover">that card is the map and nothing
+            else</a>. With no picture in it there is nothing left to show, so the card is
+            suppressed instead of appearing empty. Clicking still opens the sidebar.
+        </p>
+
+        <p>
+            <strong>It reaches further than its name suggests.</strong> What it governs is
+            the map drawn above a table of readings, wherever that table appears, and that
+            includes the coordinate's own standalone page as well as the sidebar. The
+            setting below governs the separate full-window map page, which is a different
+            surface.
+        </p>
+
+        <h3 id="enable-location-map-inline" data-setting="EnableLocationMapInline">Map under a coordinate-only post <code>EnableLocationMapInline</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>A message whose whole text is one coordinate stays an ordinary post: the link is decorated as usual and no map is drawn beneath it.</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-location"><code>EnableLocation</code></a> and <a href="#enable-location-map"><code>EnableLocationMap</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            This is the one switch in the section that changes the stored post rather than
+            only what is drawn. To render a map under a message, the plugin marks that post
+            with a custom type as it is created, and a marked post carries real costs.
+        </p>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">Marked posts are missing from Elasticsearch and OpenSearch results.</p>
+            <p>
+                Those engines match on an allow list of ordinary and attachment posts, so
+                a marked post is indexed and then never matched: it will not appear in
+                search, nor in Recent Mentions. Link previews, image embeds and automatic
+                translation are dropped for it too. Installs that search through Postgres
+                are unaffected. Turning this off leaves those messages ordinary and gets
+                all of it back.
+            </p>
+        </div>
+
+        <p>
+            It applies from the moment you change it, but only to <strong>new</strong>
+            messages. A post already marked keeps its mark, because the mark survives
+            editing and this plugin deliberately never rewrites a message somebody has
+            edited. Such a post renders as the plain decorated link with no map, and stays
+            outside Elasticsearch results. There is no way to unmark one short of deleting
+            and reposting it.
+        </p>
+
+        <h3 id="enable-location-map-page" data-setting="EnableLocationMapPage">Full-window map page <code>EnableLocationMapPage</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>The map page answers "not found" and the <em>Open larger</em> link is not drawn. The coordinate's own page, with every reading on it, is unaffected.</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-location"><code>EnableLocation</code></a> and <a href="#enable-location-map"><code>EnableLocationMap</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            This is the page that gives the whole window to one picture, which
+            <em>Open larger</em> opens and which a client that does not run the webapp
+            follows a coordinate link to. It is the only route an admin switch removes
+            outright, and that is deliberate: the page <em>is</em> the map, so there is no
+            reduced version of it worth serving, where the readings page still has
+            everything but the picture.
         </p>
 
         <h2 id="tagged-only">Decorating only what an author labeled</h2>

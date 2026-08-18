@@ -1,2 +1,5 @@
 server/manifest.go linguist-generated=true
 webapp/src/manifest.ts linguist-generated=true
+
+*.pmtiles binary
+*.pbf binary

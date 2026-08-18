@@ -1,6 +1,25 @@
-import {all, decoratePathPrefix} from './registry';
+import {HOVER_CARD_CLASS, all, decoratePathPrefix} from './registry';
 
 const STYLE_ELEMENT_ID = 'tactical-fusion-decorator-styles';
+
+/**
+ * Hides the hover card's chrome when the decorator's Hover renders nothing.
+ *
+ * A Hover that returns null leaves the card's own padding, border and shadow
+ * floating beside the link with nothing inside them, because the framework has
+ * already built that box by the time the component decides. Nothing inline can
+ * express this: `:empty` is a selector, and every style in this plugin bar this
+ * sheet is an inline style attribute, which has no place to put one.
+ *
+ * That distinction is what lets a decorator answer "no card right now" at render
+ * rather than only by declining to declare a Hover at all, which is what the
+ * location card needs when an admin has turned maps off.
+ */
+const EMPTY_HOVER_RULE = [
+    `.${HOVER_CARD_CLASS}:empty {`,
+    '    display: none;',
+    '}',
+].join('\n');
 
 /** Escapes a value for use inside a CSS attribute selector string. */
 function cssEscape(value: string): string {
@@ -42,7 +61,7 @@ export function buildDecoratorStyles(): string {
         ].join('\n');
     });
 
-    return rules.join('\n\n');
+    return [...rules, EMPTY_HOVER_RULE].join('\n\n');
 }
 
 /**

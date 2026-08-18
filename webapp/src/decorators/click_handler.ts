@@ -1,6 +1,6 @@
-import {get, parseDecoratorHref, FORCE_PAGE_PARAM, PAGE_TARGET, THEME_PARAM} from './registry';
+import {get, parseDecoratorHref, FORCE_PAGE_PARAM, PAGE_TARGET} from './registry';
 import {openRhs, setSelection} from './selection';
-import {detectTheme} from './theme';
+import {withTheme} from './theme';
 
 /**
  * Routes a decorator link click to the RHS.
@@ -33,31 +33,6 @@ export function dispatchDecoratorClick(type: string, params: URLSearchParams): b
     setSelection({type, payload});
     openRhs();
     return true;
-}
-
-/**
- * Adds the reader's current theme to a decorator URL.
- *
- * The standalone page cannot read the webapp's CSS variables, so it is told
- * which way to paint itself. The result stays root-relative: an absolute URL
- * here would defeat the point of never storing a host.
- *
- * Returns the href unchanged when the theme cannot be determined, leaving the
- * page to fall back to the operating system preference.
- */
-export function withTheme(href: string): string {
-    const theme = detectTheme();
-    if (!theme) {
-        return href;
-    }
-
-    try {
-        const url = new URL(href, window.location.origin);
-        url.searchParams.set(THEME_PARAM, theme);
-        return url.pathname + url.search;
-    } catch {
-        return href;
-    }
 }
 
 /**
@@ -156,4 +131,16 @@ export function installDecoratorClickHandler(): () => void {
         document.removeEventListener('click', onClick, true);
         installed = false;
     };
+}
+
+/**
+ * Test hook, for the same reason `basemap.ts` and `maplibre.ts` have one.
+ *
+ * `installed` is module state with no other way back: a test whose assertion
+ * fails before it reaches its disposer leaves the flag set, and the next two
+ * tests then install nothing and fail for a reason that has nothing to do with
+ * them.
+ */
+export function _resetForTesting(): void { // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
+    installed = false;
 }

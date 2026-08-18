@@ -45,6 +45,14 @@
             are worth opening the sidebar for; a countdown is worth a glance.
         </p>
 
+        <p>
+            Point at a coordinate and you get the same card with a <strong>small map
+            only</strong>, showing where it is and the square it names. It is not
+            interactive: the controls and the wheel belong to the panel, which is one
+            click away and carries every reading. See
+            <a href="#location-hover">the hover card</a> for the whole of it.
+        </p>
+
         <h2 id="panel">Clicking a link</h2>
 
         <p>
@@ -94,18 +102,28 @@
         <h2 id="page">The standalone page</h2>
 
         <p>
-            Clients that do not run the plugin's web bundle, notably the mobile app, get
-            a server-rendered page instead of the sidebar. It shows the same countdown
-            and the same table.
+            Clients that do not run the plugin's web bundle, notably the mobile app, get a
+            page of their own instead of the sidebar. It shows the same countdown and the
+            same table, because for a coordinate it runs the same code the sidebar does:
+            the server validates the link and works out every reading, and the page draws
+            them.
+        </p>
+
+        <p>
+            <strong>It requires a Mattermost login.</strong> Opening one of these links
+            without a session takes you to the sign-in page first and then on to the
+            coordinate you clicked, so a session that expired while you were reading
+            costs you a sign-in rather than the link. The map page behind
+            <em>Open larger</em> works the same way.
         </p>
 
         <div class="alert alert-warning">
             <p class="alert-title">The standalone page always shows the built-in defaults.</p>
             <p>
-                It is served without a Mattermost session, so it has no reader to ask. If
-                you have <a href="#customize">customised your view</a>, the sidebar and
-                the page will disagree about the same date-time group. This is inherent
-                to serving a page that has to work without a login, not an oversight.
+                The page does not ask who is reading it, even though it now requires
+                a login: it is rendered from the link alone. If you have
+                <a href="#customize">customised your view</a>, the sidebar and the page
+                will disagree about the same date-time group.
             </p>
         </div>
 
@@ -117,21 +135,26 @@
 
         <p>
             Most of it is worked out from the link alone and is on screen the instant the
-            panel opens. Five rows are the exception and are fetched from the server: the
-            two grid rows, because a grid reference is a projection onto an ellipsoid and
-            that projection runs on the server, and the three area-reference rows, which
-            could be worked out here but are not worth a second implementation of each
-            notation to save a request the panel already makes. See
+            panel opens. What is fetched is the two grid rows, because a grid reference is
+            a projection onto an ellipsoid and that projection runs on the server; the
+            three area-reference rows, which could be worked out here but are not worth a
+            second implementation of each notation to save a request the panel already
+            makes; and, when the link is <em>itself</em> a grid reference, the three
+            angular rows as well, since a grid reference has no latitude and longitude
+            until something projects it. The <a href="#location-region">country</a> is
+            always fetched, because it is looked up against outlines the browser does not
+            have. See
             <a href="#location-degrades">what happens when the request does not arrive</a>,
             which is never a blank panel.
         </p>
 
         <table class="field-table">
             <tbody>
-                <tr><td>MGRS</td><td>The military grid reference, at the resolution the original text carried. First in the table, because for most readers of this plugin it is the reading that gets used. Nothing sits above the table: an earlier version repeated this reference on a line of its own, three lines above the row that already carried it.</td></tr>
+                <tr><td>As written</td><td>The author's own text, exactly as they typed it. It opens the table, so every reading below it is visibly derived from the line above.</td></tr>
                 <tr><td>Lat / lon</td><td>Decimal degrees with hemisphere letters.</td></tr>
                 <tr><td>DMS</td><td>Degrees, minutes and seconds.</td></tr>
                 <tr><td>DDM</td><td>Degrees and decimal minutes.</td></tr>
+                <tr><td>MGRS</td><td>The military grid reference, at the resolution the original text carried. It follows the three angular readings rather than opening the table, so the notations that read the same way sit together.</td></tr>
                 <tr><td>USMTF</td><td>The fixed-width compact form, for pasting into an ATO or a USMTF field. The shape follows the resolution: <code>35N079W</code> for a degrees-only coordinate, <code>3510N07901W</code> at whole minutes, <code>400948N1221400W</code> at whole seconds, and <code>331000.0N1183000.0W</code> finer than that. Sized from the <a href="#location-resolution">pair</a> rather than per axis, because it is one shape covering both halves. It never carries <a href="formats.html#location-usmtf">confidence digits</a>: those say how well a position is known, which a derived reading cannot claim.</td></tr>
                 <tr><td>UTM</td><td>Zone, band, easting and northing, rounded to the same resolution.</td></tr>
                 <tr><td>GEOREF</td><td>A <a href="formats.html#location-area">World Geographic Reference System</a> code, at the coarsest of its four widths that is no coarser than the original text. Written longitude first, which is that standard's own order.</td></tr>
@@ -140,10 +163,256 @@
                 <tr><td>Resolution</td><td>How finely the original text was written, in meters. For a grid reference, how big the square is.</td></tr>
                 <tr><td>Confidence</td><td>Only for a <a href="formats.html#location-usmtf">verified USMTF coordinate</a>, which states one.</td></tr>
                 <tr><td>Datum</td><td>Always WGS 84.</td></tr>
-                <tr><td>Original text</td><td>The author's own text, exactly as they typed it.</td></tr>
                 <tr><td>Normalized</td><td>The canonical form, shown only when it differs from what the author typed.</td></tr>
             </tbody>
         </table>
+
+        <h3 id="location-map">The map</h3>
+
+        <p>
+            The panel draws a small world map above the table, centred on the coordinate,
+            and <strong>Open larger</strong> beneath it opens a page that is nothing but
+            the map. The <a href="#page">standalone page</a> the mobile app opens draws the
+            same map above the same table. All three are the same map: drag to pan, scroll
+            to zoom, the <code>+</code> and <code>&minus;</code> buttons in the top right,
+            the arrow and <code>+</code> / <code>&minus;</code> keys once the map has
+            focus, and <strong>Reset view</strong>, top left, to return to the opening
+            centre and zoom. A distance scale sits in the bottom right corner, in metric
+            units, and the current zoom in the bottom left, written <code>z6.3</code>.
+            Rotating is deliberately not possible: a map that can be turned without a
+            compass on it is a map every bearing is read off wrongly.
+        </p>
+
+        <p>
+            The map page carries one line beneath the picture: the coordinate exactly as
+            the author wrote it, and <strong>All readings</strong>, which opens the full
+            table for the same coordinate. Both pages open in whichever theme, light or
+            dark, you are using in Mattermost.
+        </p>
+
+        <p>
+            <strong>The map itself is dark in both themes</strong>, so a light Mattermost
+            draws a dark map inside a light panel. That is deliberate rather than a theme
+            that failed to apply: the dark palette carries the land and water edge better
+            at this size, and it keeps the pin and the square from competing with the
+            table beside them. Everything around the map still follows your theme, and
+            there is no setting for this.
+        </p>
+
+        <p>
+            Everything the map needs is bundled with the plugin and served from your own
+            Mattermost, so it works with no network at all: no tile service, no map API,
+            nothing fetched from outside. This is the one part of the plugin designed
+            first for disconnected and air-gapped installs rather than adapted to them.
+        </p>
+
+        <p>
+            The map is the first thing <a href="#location-customize">Customize your
+            view</a> offers to hide, and unticking it there is also how you get it back.
+            Hiding it costs you the <a href="#location-region">country</a> as well, which
+            has nowhere else to appear.
+        </p>
+
+        <p>
+            Your administrator can switch maps off for the whole workspace, in which case
+            the panel opens straight onto the readings and no tick box for the map is
+            offered. Nothing is lost from the table, and nothing on this page changes
+            except that there is no picture. See
+            <a href="admin.html#map-switches">the map switches</a> for what that governs;
+            if a map you expect is missing everywhere, that is the setting to ask about.
+        </p>
+
+        <p>
+            You can keep zooming in past the point where the basemap runs out of detail,
+            because the square around the pin can be smaller than anything the basemap
+            draws and you should be able to see it. Past that point the coastlines and
+            roads are simply the same shapes drawn larger, so a coastline may sit up to
+            five kilometres from where it really is, while the pin and the square stay
+            exact. The basemap's own detail stops at zoom 9, and the map shows its
+            current zoom at the bottom left. <strong>Reset view</strong> takes you back.
+        </p>
+
+        <h3 id="location-inline">The map under a post</h3>
+
+        <p>
+            When a message is <strong>nothing but a coordinate</strong>, the map is drawn
+            straight into the channel underneath it, so you do not have to click anything
+            to see where it is. The coordinate still appears as the same link it always
+            was, and clicking it still opens the panel with every reading. A label in
+            front of it is fine: <code>MGRS: 18SUJ2347806483</code> on its own counts, and
+            so does a plain <code>34.0561N,118.2500W</code>. A coordinate with anything
+            else around it, such as <code>target at 34.0561N,118.2500W</code>, or a
+            message with two coordinates in it, gets the link on its own as before.
+        </p>
+
+        <p>
+            It is the same map as everywhere else, with the same controls, so the same
+            caution applies: the scroll wheel over it zooms the map rather than scrolling
+            the channel. Move the pointer off the map to scroll past. Maps are drawn only
+            while their post is on or near the screen and are put away again once you
+            scroll well past, which is what keeps a channel full of coordinates from
+            running your browser out of graphics contexts. The space they occupy is held
+            open either way, so nothing jumps around as you scroll.
+        </p>
+
+        <p>
+            <a href="#location-customize">Customize your view</a> has a separate tick box
+            for this one, <strong>Map under the post</strong>, so you can turn it off in
+            the channel and keep the map in the panel, or the other way round. In compact
+            message display it is not drawn at all, and your administrator can switch it
+            off for everybody with
+            <a href="admin.html#enable-location-map-inline"><code>EnableLocationMapInline</code></a>.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">Only new posts, and only in the web and desktop apps.</p>
+            <p>
+                Whether a message is only a coordinate is decided when it is posted, so
+                editing a message afterwards does not add the map, and editing one that
+                has it leaves the message showing its raw text until you post it again.
+                The mobile apps show the link as normal. On installs that search with
+                Elasticsearch or OpenSearch, be aware that posts drawn this way do not
+                come back in search results or Recent Mentions.
+            </p>
+        </div>
+
+        <div class="alert alert-info">
+            <p class="alert-title">The standalone page needs JavaScript.</p>
+            <p>
+                The sidebar, the <a href="#page">standalone page</a> and the map page all
+                run the same code, which is what keeps them from disagreeing about a
+                coordinate. The readings on the standalone page are worked out on the
+                server and delivered with the page, so nothing waits on a second request,
+                but the page draws nothing until its script has loaded.
+            </p>
+        </div>
+
+        <div class="alert alert-info">
+            <p class="alert-title">The map needs WebGL2.</p>
+            <p>
+                Drawing happens in the browser, which on a hardened or virtualised desktop
+                with WebGL disabled means no map. The panel and the page both say so in
+                place of the map, and <strong>every reading in the table still renders</strong>:
+                the coordinate and the conversions are worked out on the server
+                and do not depend on it. The country is the exception: it is
+                <a href="#location-region">named by the map itself</a>, so no map
+                means no country either.
+            </p>
+        </div>
+
+        <p>
+            The basemap is Natural Earth, drawn from vector tiles. It carries coastlines
+            and lakes, country and province boundaries, major roads and railways, rivers,
+            built-up areas, airfields, and the names of countries, towns and provinces.
+            Detail follows how far
+            in you are: the whole world is drawn at 1:110&nbsp;million, and as you zoom
+            the map moves to 1:50&nbsp;million and then 1:10&nbsp;million, so features
+            sharpen rather than going blurry.
+        </p>
+
+        <p>
+            A coordinate opens on its region rather than its continent, framing roughly
+            400&nbsp;kilometres across. Zoom out for orientation, or in as far as the map
+            will go. <strong>Reset view</strong> returns to the opening frame.
+        </p>
+
+        <p>
+            It is still <strong>not a navigation chart</strong>. Even at its finest it is
+            accurate to roughly five kilometres and it carries no streets, no buildings
+            and no terrain. It answers <em>which part
+            of the world is this</em>, and the square around the pin, not the coastline
+            under it, is what states how precisely the original text located anything.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">About the names on the map.</p>
+            <p>
+                Every country Natural Earth lists is named, including disputed
+                territories, because leaving one out would be a judgement this plugin does
+                not make. Country names give way to town names as you zoom in, and which
+                names appear at all is decided by the room available and by Natural
+                Earth's own ranking, so zooming changes what is written on the map. Names
+                are drawn in a bundled Latin typeface and taken from Natural Earth's
+                English field, so a place whose local name is in another script is shown
+                under its English name.
+            </p>
+        </div>
+
+        <h4>The square around the pin</h4>
+
+        <p>
+            A coordinate written to whole degrees is drawn with a large rectangle around
+            it, and one written to a metre with a rectangle so small it reads as the dot
+            alone until you zoom in. The rectangle is the area the
+            original text actually names, so a coarse coordinate looks coarse. Without it
+            <code>35N079W</code>, which names a square about 111 km across, would be
+            indistinguishable from a ten-figure grid reference that names a square one
+            metre across.
+        </p>
+
+        <p>
+            It is drawn at the size of the square, not twice it, and each half of the
+            coordinate uses its own resolution, so a position written finely in latitude
+            and coarsely in longitude is drawn as the tall thin rectangle it is. Nothing is
+            ever dropped for being small: a very fine coordinate simply draws a rectangle
+            below a pixel, which becomes visible as you zoom toward it, because a threshold
+            guessing on your behalf would answer a question you had not asked. The
+            <a href="#location-resolution">Resolution</a> row carries the figure either
+            way.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">It is not a range ring.</p>
+            <p>
+                The shape around the pin says how precisely the coordinate was written. It
+                is not a weapons envelope, not a communications range, not a search radius
+                and not a GPS accuracy estimate. It is drawn as a rectangle rather than a
+                circle partly for that reason, and partly because a grid reference names a
+                square.
+            </p>
+        </div>
+
+        <h4>Positions the map cannot show</h4>
+
+        <p>
+            The projection the map uses runs out at about 85 degrees north and south. A
+            coordinate beyond that is a perfectly good position and every reading still
+            renders, but the map is left out and a line says so rather than drawing a pin
+            up to 550 km from where the coordinate actually is. Coordinates either side of
+            the 180th meridian are drawn correctly, with land on both sides.
+        </p>
+
+        <h3 id="location-region">Naming the country</h3>
+
+        <p>
+            The country a position falls in is worked out on the server, by testing the
+            point against bundled country outlines. Those outlines are a separate copy of
+            the data from the one the map draws, kept at 1:110&nbsp;million whatever the
+            map is showing, which is why the value cites that scale even when you have
+            zoomed past it. It is not a row in the table: the map speaks it in its
+            accessible label and nowhere else. So it is there when the map is, and not
+            when it is not.
+        </p>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">This is a basemap lookup, not an authority on borders.</p>
+            <p>
+                It cites its source in the value itself, as
+                <code>United States of America (Natural Earth 110m)</code>, because that is
+                what it is: a point tested against a public-domain dataset whose borders are
+                generalised by roughly a kilometre. Near any border, and anywhere a border
+                is disputed, treat it as a hint about which part of the world you are
+                looking at and nothing more. It is not a determination of sovereignty and
+                must not be used as one.
+            </p>
+            <p>
+                Where the dataset gives more than one answer, the plugin does not choose
+                between them. It names the administering entity rather than a claimed
+                sovereign, and it is deliberately silent rather than approximate: a
+                position in no country at all, such as open ocean, omits the row rather
+                than naming the nearest land.
+            </p>
+        </div>
 
         <h3 id="location-resolution">Resolution is not accuracy</h3>
 
@@ -201,10 +470,10 @@
         <h3 id="location-degrades">When the conversion does not arrive</h3>
 
         <p>
-            The five fetched rows are the only ones at risk, and losing them costs only
-            them. The rest of the panel is computed from the link and is already on screen,
-            including the resolution of a grid or area token, which needs only the length of
-            the code and never the position.
+            Losing the <a href="#location-panel">fetched rows</a> costs those rows and
+            nothing else. Everything the link carries by itself is computed in the browser
+            and is already on screen, including the resolution of a grid or area token,
+            which needs only the length of the code and never the position.
         </p>
 
         <table class="field-table">
@@ -214,6 +483,16 @@
                 <tr><td>Server refused the link</td><td>The panel says <strong>Not a coordinate</strong> and shows nothing else.</td></tr>
             </tbody>
         </table>
+
+        <p>
+            For a <strong>grid reference</strong> the map goes with them, because a grid
+            reference has no latitude and longitude until the server works one out. Rather
+            than guess at a pin, the map is replaced by
+            <code>The position for this coordinate is unavailable.</code> and every reading
+            the link carries locally stays exactly where it is. For every other notation the
+            position comes from the link, so the map is unaffected and only the two grid
+            rows are lost.
+        </p>
 
         <p>
             That last case is a verdict rather than an outage, and the two are kept apart
@@ -226,14 +505,15 @@
             <a href="error-codes.html">code TF-13008</a>.
         </p>
 
-        <h3 id="location-as-written">Original text, and normalized</h3>
+        <h3 id="location-as-written">As written, and normalized</h3>
 
         <p>
-            The <em>Original text</em> row carries the author's own characters, including the
-            symbols and spacing they used. <em>Normalized</em> shows the canonical form the
-            link was validated against, and appears only when the two differ, which is why
-            it is usually absent for USMTF coordinates: those are already canonical as
-            typed.
+            The <em>As written</em> row opens the table and carries the author's own
+            characters, including the symbols and spacing they used, so every reading under
+            it is visibly derived from that one line. <em>Normalized</em> closes the table
+            with the canonical form the link was validated against, and appears only when
+            the two differ, which is why it is usually absent for USMTF coordinates: those
+            are already canonical as typed.
         </p>
 
         <p>
@@ -245,9 +525,29 @@
         <h3 id="location-customize">Customize your view</h3>
 
         <p>
-            The link below the table lets you choose which rows the panel shows. Every row
-            is on by default; untick the ones you never read and they are gone from every
-            coordinate you open. Stored per person, so it changes nothing for anybody else.
+            The link below the table lets you choose what the panel shows. Everything is on
+            by default; untick what you never read and it is gone from every coordinate you
+            open. Stored per person, so it changes nothing for anybody else.
+        </p>
+
+        <p>
+            The first entry is <strong>Map</strong>, which is not a row: it hides the
+            picture above the table and leaves every reading in place. It is the one entry
+            that takes something else with it, since the
+            <a href="#location-region">country</a> is spoken by the map and appears nowhere
+            else. Below it, <strong>Map under the post</strong> is the other one that is
+            not a row: it controls the
+            <a href="#location-inline">map drawn in the channel</a> and nothing in the
+            panel, so the two can be turned on and off independently. The rest are the
+            table's own rows, in the order the table lists them.
+        </p>
+
+        <p>
+            Either map entry is absent when your administrator has
+            <a href="admin.html#map-switches">switched that surface off</a>, because a tick
+            box that changes nothing you can see is worse than no tick box. Whatever you
+            had chosen is kept, so if the setting is turned back on your choice returns
+            with it rather than resetting.
         </p>
 
         <p>
@@ -267,11 +567,10 @@
         <div class="alert alert-info">
             <p class="alert-title">The standalone page always shows every row.</p>
             <p>
-                The <a href="#page">page a link opens</a> outside Mattermost is served
-                without a session, so it has no reader to ask. It and the sidebar can
-                therefore show the same coordinate differently, which is inherent to a
-                public route rather than an oversight. The same is true of the
-                <a href="#customize">DTG timezone table</a>.
+                The <a href="#page">page a link opens</a> outside the sidebar is
+                rendered from the link alone and does not ask who is reading it. It and
+                the sidebar can therefore show the same coordinate differently. The same
+                is true of the <a href="#customize">DTG timezone table</a>.
             </p>
         </div>
 
@@ -279,8 +578,8 @@
 
         <p>
             Every row carrying a <strong>value</strong> has a copy icon at its right edge:
-            the grid reference, latitude and longitude, DMS, DDM, USMTF, UTM, GEOREF, GARS,
-            the Plus Code, the original
+            the grid reference, latitude and longitude, DMS, DDM, USMTF, UTM, GEOREF,
+            GARS, the Plus Code, the author's
             text and the normalized form. The rows that carry prose rather than a value do not, since
             copying <em>about 11 m</em> or <em>WGS 84</em> gets you a sentence rather than a
             position.
@@ -303,22 +602,43 @@
         </p>
 
         <p>
-            There is no map button. A map link would send a grid reference to a third party,
-            which is an operational decision rather than a default, and this release does
-            not make it.
+            There is no button that opens the coordinate somewhere else. The
+            <a href="#location-map">map in the panel</a> is drawn from data bundled with
+            the plugin and served by your own Mattermost; a link out to a mapping service
+            would send a grid reference to a third party, which is an operational decision
+            rather than a default, and this release does not make it.
         </p>
 
-        <h3 id="location-hover">No hover card</h3>
+        <h3 id="location-hover">The hover card</h3>
 
         <p>
-            Pointing at a coordinate shows nothing, unlike
-            <a href="#hover">a date-time group</a>. The one thing a hover could usefully add
-            is the grid reference, and this version can now compute one, but only on the
-            server. A hover fires as the pointer crosses a link rather than on a click, so
-            wiring one up would put a request behind every coordinate a reader's cursor
-            passes over in a busy channel. A card that merely repeated the text already
-            under the cursor would earn nothing, so there is none until it can show the
-            grid without that cost.
+            Pointing at a coordinate shows a card carrying
+            <a href="#location-map">the map</a> and nothing else, in a fixed landscape
+            frame. A glance at a coordinate is asking <em>where</em>, and
+            every reading, every other notation and every copy icon is one click away in
+            the panel, so repeating any of them here would only make the glance slower.
+            That is the same bar <a href="#hover">the date-time group's card</a> is held
+            to, where the answer is the countdown alone.
+        </p>
+
+        <p>
+            It is the panel's own map, not a second one built for the card, so the two
+            cannot disagree about where a coordinate is. Everything that makes the panel's map
+            operable is switched off, because a card is dismissed by moving the pointer:
+            no zoom buttons or scale bar, no <em>Reset view</em>, no zoom readout, no
+            dragging, and <strong>the wheel is left alone</strong>, so scrolling the
+            channel with the pointer over a card scrolls the channel. To pan or zoom,
+            click through to the panel.
+        </p>
+
+        <p>
+            A grid reference has no position until the server projects it, so pointing at
+            one costs a request. Each distinct coordinate costs at most one, however many
+            times a cursor crosses it, and the click that follows a hover joins the
+            request the hover already made rather than issuing a second, which is why a
+            coordinate you pointed at opens with its grid rows already on screen. The card
+            says <code>Loading map&hellip;</code> until that lands, and reports the same
+            failures the panel does.
         </p>
 
         <h2 id="customize">Customize your view</h2>

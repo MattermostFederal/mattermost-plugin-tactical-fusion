@@ -183,7 +183,7 @@ func TestExamplesDropsRowsThatDoNotDecorate(t *testing.T) {
 		EnableLocationLatLon:   true,
 		EnableLocationDDSigned: true,
 		EnableLocationUSMTF:    true,
-		EnableLocationGrid:     true,
+		EnableLocationMGRS:     true,
 		EnableLocationUTM:      true,
 		EnableLocationMoniker:  true,
 	})

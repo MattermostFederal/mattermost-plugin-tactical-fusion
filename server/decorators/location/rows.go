@@ -3,7 +3,8 @@ package location
 // The rows a location is rendered as, in the order they are shown.
 //
 // One table rather than a sequence of calls, because three things have to agree
-// about what the rows are: the standalone page renders them, the panel renders
+// about what the rows are: the server validates a hidden row id against them,
+// the panel and the standalone pages render
 // them again in TypeScript, and a reader's stored view preferences name them.
 // A row that existed in two of those and not the third is the failure this
 // table exists to make impossible; `webapp_sync_test.go` holds the TypeScript
@@ -34,6 +35,12 @@ const (
 )
 
 // Row is one line of the rendered location.
+//
+// A catalog rather than a renderer. It carried a Value closure per row while the
+// page was rendered in Go; every surface renders from the webapp's format.ts
+// now, so what is left here is the contract three things have to agree on: the
+// ids a reader's hidden-row list names, the labels, and which rows are worth
+// copying. webapp_sync_test.go holds the TypeScript half to all three.
 type Row struct {
 	ID    RowID
 	Label string
@@ -42,41 +49,24 @@ type Row struct {
 	// reader pasting "about 11 m" or "WGS 84" into another system has copied a
 	// sentence, not a position.
 	Copyable bool
-
-	// Value renders the row, or "" for a row that does not apply.
-	//
-	// Empty means OMIT rather than "render a blank", and every conditional row
-	// is expressed that way: the grid rows are empty at the poles, where the
-	// notation is Universal Polar Stereographic and this package does not
-	// reach; Confidence is empty unless the token stated one; and Normalized is
-	// empty when it would only repeat the author's own text.
-	Value func(l Location, raw string) string
 }
 
 // Rows is every row, in render order.
 var Rows = []Row{
-	{RowMGRS, "MGRS", true, func(l Location, _ string) string { return l.MGRSText() }},
-	{RowDecimal, "Lat / lon", true, func(l Location, _ string) string { return l.DecimalText() }},
-	{RowDMS, "DMS", true, func(l Location, _ string) string { return l.DMSText() }},
-	{RowDDM, "DDM", true, func(l Location, _ string) string { return l.DDMText() }},
-	{RowUSMTF, "USMTF", true, func(l Location, _ string) string { return l.USMTFText() }},
-	{RowUTM, "UTM", true, func(l Location, _ string) string { return l.UTMText() }},
-	{RowGEOREF, "GEOREF", true, func(l Location, _ string) string { return l.GEOREFText() }},
-	{RowGARS, "GARS", true, func(l Location, _ string) string { return l.GARSText() }},
-	{RowPlusCode, "Plus Code", true, func(l Location, _ string) string { return l.PlusCodeText() }},
-	{RowResolution, "Resolution", false, func(l Location, _ string) string { return l.ResolutionText() }},
-	{RowConfidence, "Confidence", false, func(l Location, _ string) string { return l.ConfidenceText() }},
-	{RowDatum, "Datum", false, func(Location, string) string { return "WGS 84" }},
-	{RowRaw, "Original text", true, func(_ Location, raw string) string { return raw }},
-
-	// Only when it says something the row above did not. For the whole USMTF
-	// compact family the author's text already is the canonical form.
-	{RowCanonical, "Normalized", true, func(l Location, raw string) string {
-		if canonical := l.Canonical(); canonical != raw {
-			return canonical
-		}
-		return ""
-	}},
+	{RowRaw, "As written", true},
+	{RowDecimal, "Lat / lon", true},
+	{RowDMS, "DMS", true},
+	{RowDDM, "DDM", true},
+	{RowMGRS, "MGRS", true},
+	{RowUSMTF, "USMTF", true},
+	{RowUTM, "UTM", true},
+	{RowGEOREF, "GEOREF", true},
+	{RowGARS, "GARS", true},
+	{RowPlusCode, "Plus Code", true},
+	{RowResolution, "Resolution", false},
+	{RowConfidence, "Confidence", false},
+	{RowDatum, "Datum", false},
+	{RowCanonical, "Normalized", true},
 }
 
 // AllRowIDs is every row id.
@@ -100,5 +90,10 @@ var rowByID = func() map[RowID]bool {
 	return m
 }()
 
-// KnownRow reports whether an id names a row this build renders.
-func KnownRow(id RowID) bool { return rowByID[id] }
+const SectionMap RowID = "map"
+
+const SectionInline RowID = "inline"
+
+func KnownRow(id RowID) bool {
+	return rowByID[id] || id == SectionMap || id == SectionInline
+}

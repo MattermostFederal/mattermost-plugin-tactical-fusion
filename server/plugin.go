@@ -66,7 +66,9 @@ func (p *Plugin) dtgFormats() dtg.Formats {
 // locationFormats reports which coordinate grammars the admin has left on.
 //
 // Read fresh for every message, and the parent is enforced here rather than in
-// the manifest, because Mattermost's settings schema has no nesting.
+// the manifest. The manifest groups these into a section, which is a visual
+// arrangement and nothing more: a section title cannot gate the switches under
+// it, so the AND has to live in code either way.
 func (p *Plugin) locationFormats() location.Formats {
 	config := p.getConfiguration()
 	if !config.EnableLocation {
@@ -77,12 +79,36 @@ func (p *Plugin) locationFormats() location.Formats {
 		DDSigned: config.EnableLocationDDSigned,
 		LatLon:   config.EnableLocationLatLon,
 		USMTF:    config.EnableLocationUSMTF,
-		MGRS:     config.EnableLocationGrid,
+		MGRS:     config.EnableLocationMGRS,
 		UTM:      config.EnableLocationUTM,
 		GEOREF:   config.EnableLocationGEOREF,
 		GARS:     config.EnableLocationGARS,
 		PlusCode: config.EnableLocationPlusCode,
 		Moniker:  config.EnableLocationMoniker,
+	}
+}
+
+// locationMaps reports which surfaces the admin has left drawing a map.
+//
+// Two parents rather than one, because a map only ever appears behind a
+// coordinate this plugin decorated: turning coordinates off leaves nothing for a
+// map to be of.
+//
+// Read fresh for every render rather than every message, which is the one way
+// this differs from locationFormats and is the whole point of the switch. A
+// format governs text already written permanently into a message; a map is drawn
+// live each time somebody looks, so turning one off has to reach links already
+// out there.
+func (p *Plugin) locationMaps() location.Maps {
+	config := p.getConfiguration()
+	if !config.EnableLocation || !config.EnableLocationMap {
+		return location.Maps{}
+	}
+
+	return location.Maps{
+		Panel:  config.EnableLocationMapPanel,
+		Inline: config.EnableLocationMapInline,
+		Page:   config.EnableLocationMapPage,
 	}
 }
 
@@ -108,7 +134,7 @@ func (p *Plugin) OnActivate() error {
 	// Adding a decorator is one line here plus one directory.
 	registry, err := decorators.NewDefaultRegistry(
 		&dtg.Decorator{Enabled: p.dtgFormats},
-		&location.Decorator{Enabled: p.locationFormats},
+		&location.Decorator{Enabled: p.locationFormats, Maps: p.locationMaps},
 	)
 	// Expected to stay uncovered: Register only rejects a duplicate or empty
 	// type, and there is one decorator here with a constant one. It is what

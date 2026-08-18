@@ -198,12 +198,17 @@ func newTestPlugin(t *testing.T, siteURL string, enabled bool) *Plugin {
 		EnableLocationDDSigned: true,
 		EnableLocationLatLon:   true,
 		EnableLocationUSMTF:    true,
-		EnableLocationGrid:     true,
+		EnableLocationMGRS:     true,
 		EnableLocationUTM:      true,
 		EnableLocationGEOREF:   true,
 		EnableLocationGARS:     true,
 		EnableLocationPlusCode: true,
 		EnableLocationMoniker:  true,
+
+		EnableLocationMap:       true,
+		EnableLocationMapPanel:  true,
+		EnableLocationMapInline: enabled,
+		EnableLocationMapPage:   true,
 	})
 
 	registerDecoratorsForTest(t, p)
@@ -217,7 +222,7 @@ func registerDecoratorsForTest(t *testing.T, p *Plugin) {
 	t.Helper()
 	registry, err := decorators.NewDefaultRegistry(
 		&dtg.Decorator{Enabled: p.dtgFormats},
-		&location.Decorator{Enabled: p.locationFormats},
+		&location.Decorator{Enabled: p.locationFormats, Maps: p.locationMaps},
 	)
 	if err != nil {
 		t.Fatalf("failed to build the decorator registry: %v", err)
@@ -254,6 +259,45 @@ func TestDecoratePostCarriesSubpathButNeverHost(t *testing.T) {
 	}
 	if strings.Contains(got.Message, "example.com") || strings.Contains(got.Message, "https://") {
 		t.Fatalf("message = %q, want no scheme or host in a stored URL", got.Message)
+	}
+}
+
+// A subpath is normalized the way Mattermost normalizes it, not refused.
+//
+// These URLs are what makes the difference between hardening and a regression.
+// Mattermost derives its own subpath with path.Clean, so "https://host//mm" is
+// served at /mm: a typo'd but WORKING install. Refusing it outright wrote
+// root-relative links that 404 there, permanently, into stored post text that
+// correcting SiteURL afterwards cannot repair.
+//
+// The escaped forms are the off-origin half of the same rule. A browser folds
+// "\" to "/" and strips a tab, so both have to survive as %5C and %09 rather
+// than as characters a URL parser can turn into an authority.
+func TestDecoratePostNormalizesAnAwkwardSubpath(t *testing.T) {
+	cases := []struct {
+		name    string
+		siteURL string
+		want    string
+	}{
+		{"a doubled slash is cleaned, as Mattermost cleans it", "https://example.com//mm", "(/mm/plugins/"},
+		{"a dot segment is cleaned", "https://example.com/a/../mm", "(/mm/plugins/"},
+		{"a backslash cannot become an authority", "https://example.com/\\mm", "(/%5Cmm/plugins/"},
+		{"a tab cannot become an authority", "https://example.com/%09mm", "(/%09mm/plugins/"},
+		{"a space stays encoded, or the markdown link breaks", "https://example.com/my%20mm", "(/my%20mm/plugins/"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			p := newTestPlugin(t, tc.siteURL, true)
+
+			got := p.decoratePost(&model.Post{Message: "091630ZAUG26"}, hookRef)
+			if got == nil {
+				t.Fatal("decoratePost skipped; an awkward subpath is not a reason to skip")
+			}
+			if !strings.Contains(got.Message, tc.want) {
+				t.Fatalf("message = %q, want a link starting %q", got.Message, tc.want)
+			}
+		})
 	}
 }
 
@@ -639,8 +683,8 @@ func TestPagesStillRenderForADisabledFormat(t *testing.T) {
 	p := withFormats(t, configuration{EnableDTG: false})
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet,
-		"/decorate/dtg?t=1786293000000&dtg=091630ZAUG26&z=Z&a=", nil)
+	req := withSession(httptest.NewRequest(http.MethodGet,
+		"/decorate/dtg?t=1786293000000&dtg=091630ZAUG26&z=Z&a=", nil))
 
 	p.ServeHTTP(&plugin.Context{}, rec, req)
 
@@ -691,4 +735,212 @@ func TestReferenceTime(t *testing.T) {
 			}
 		}
 	})
+}
+
+// standaloneProps pulls this plugin's props off a post, or nil.
+func standaloneProps(t *testing.T, post *model.Post) map[string]any {
+	t.Helper()
+
+	if post == nil {
+		return nil
+	}
+	value, ok := post.GetProps()[decorators.PostPropsKey]
+	if !ok {
+		return nil
+	}
+	props, ok := value.(map[string]any)
+	if !ok {
+		t.Fatalf("props under %q are %T, want map[string]any", decorators.PostPropsKey, value)
+	}
+	return props
+}
+
+func TestDecoratePostStampsAMessageThatIsOnlyACoordinate(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		message string
+		wantF   string
+		wantV   string
+	}{
+		{"a bare coordinate", "34.0561N,118.2500W", "ddh", "34.0561N,118.2500W"},
+		{"a labeled grid reference", "MGRS: 18SUJ2347806483", "mgrs", "18SUJ2347806483"},
+		{"surrounding whitespace", "  34.0561N,118.2500W\n", "ddh", "34.0561N,118.2500W"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := newTestPlugin(t, "https://example.com", true)
+
+			got := p.decoratePost(&model.Post{Message: tc.message}, hookRef)
+			if got == nil {
+				t.Fatal("decoratePost left the post alone, want it decorated")
+			}
+			if got.Type != location.PostType {
+				t.Fatalf("Type = %q, want %q", got.Type, location.PostType)
+			}
+
+			props := standaloneProps(t, got)
+			if props == nil {
+				t.Fatal("no props were stamped on a standalone coordinate")
+			}
+			if props["type"] != location.Type {
+				t.Fatalf("props[type] = %v, want %q", props["type"], location.Type)
+			}
+			if props["f"] != tc.wantF {
+				t.Fatalf("props[f] = %v, want %q", props["f"], tc.wantF)
+			}
+			if props["v"] != tc.wantV {
+				t.Fatalf("props[v] = %v, want %q", props["v"], tc.wantV)
+			}
+			if props["version"] != decorators.PostPropsVersion {
+				t.Fatalf("props[version] = %v, want %d", props["version"], decorators.PostPropsVersion)
+			}
+		})
+	}
+}
+
+// The author's own spelling travels in the props exactly as it travels in the
+// URL, and is omitted when it would only repeat the canonical form.
+func TestDecoratePostCarriesTheAuthorsTextOnlyWhenItDiffers(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	differs := standaloneProps(t, p.decoratePost(&model.Post{Message: "34.0561N, 118.2500W"}, hookRef))
+	if differs["r"] != "34.0561N, 118.2500W" {
+		t.Fatalf("props[r] = %v, want the author's text", differs["r"])
+	}
+
+	same := standaloneProps(t, p.decoratePost(&model.Post{Message: "34.0561N,118.2500W"}, hookRef))
+	if _, ok := same["r"]; ok {
+		t.Fatalf("props carry r = %v when it only repeats v", same["r"])
+	}
+}
+
+// With the inline map switched off the post is decorated and NOT stamped.
+//
+// The stamp is what costs the post its Elasticsearch and OpenSearch matches, so
+// skipping it is the substance of the switch rather than a tidy-up: leaving the
+// Type on and merely declining to draw would keep every one of those costs and
+// buy nothing. Post.Type also survives every edit once it is set, and there is
+// deliberately no MessageWillBeUpdated hook to clear one, so this is the only
+// moment the decision can be made.
+func TestDecoratePostDoesNotStampWhenTheInlineMapIsOff(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	config := p.getConfiguration().Clone()
+	config.EnableLocationMapInline = false
+	p.setConfiguration(config)
+
+	got := p.decoratePost(&model.Post{Message: "34.0561N,118.2500W"}, hookRef)
+	if got == nil {
+		t.Fatal("decoratePost left the post alone; the coordinate should still be decorated")
+	}
+
+	// The link is the point: turning the map off must not turn decoration off.
+	if !strings.Contains(got.Message, "/decorate/location?") {
+		t.Fatalf("the coordinate was not decorated: %q", got.Message)
+	}
+
+	if got.Type != "" {
+		t.Fatalf("Type = %q, want it left empty so the post stays searchable", got.Type)
+	}
+	if props := standaloneProps(t, got); props != nil {
+		t.Fatalf("props were stamped on a post nothing will render inline: %v", props)
+	}
+}
+
+// And the map parent takes the inline map with it, whatever the surface switch
+// under it says.
+func TestDecoratePostDoesNotStampWhenMapsAreOffEntirely(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	config := p.getConfiguration().Clone()
+	config.EnableLocationMap = false
+	p.setConfiguration(config)
+
+	got := p.decoratePost(&model.Post{Message: "34.0561N,118.2500W"}, hookRef)
+	if got == nil {
+		t.Fatal("decoratePost left the post alone; the coordinate should still be decorated")
+	}
+	if got.Type != "" {
+		t.Fatalf("Type = %q, want it left empty", got.Type)
+	}
+}
+
+func TestDecoratePostDoesNotStampACoordinateInASentence(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	got := p.decoratePost(&model.Post{Message: "target at 34.0561N,118.2500W"}, hookRef)
+	if got == nil {
+		t.Fatal("decoratePost left the post alone, want it decorated")
+	}
+	if got.Type != "" {
+		t.Fatalf("Type = %q, want it left empty", got.Type)
+	}
+	if props := standaloneProps(t, got); props != nil {
+		t.Fatalf("props were stamped on a coordinate inside a sentence: %v", props)
+	}
+}
+
+func TestDecoratePostDoesNotStampTwoCoordinates(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	got := p.decoratePost(&model.Post{Message: "34.0561N,118.2500W 35.0000N,119.0000W"}, hookRef)
+	if got == nil {
+		t.Fatal("decoratePost left the post alone, want it decorated")
+	}
+	if got.Type != "" {
+		t.Fatalf("Type = %q, want it left empty", got.Type)
+	}
+}
+
+// DTG declares no PostType, so a lone date-time group stays an ordinary post.
+// Losing that is how every DTG post would silently acquire a custom type and,
+// with it, the Elasticsearch and translation costs the location one accepts.
+func TestDecoratePostDoesNotStampALoneDateTimeGroup(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	got := p.decoratePost(&model.Post{Message: "091630ZAUG26"}, hookRef)
+	if got == nil {
+		t.Fatal("decoratePost left the post alone, want it decorated")
+	}
+	if got.Type != "" {
+		t.Fatalf("Type = %q, want it left empty", got.Type)
+	}
+	if props := standaloneProps(t, got); props != nil {
+		t.Fatalf("props were stamped on a date-time group: %v", props)
+	}
+}
+
+// Another integration's custom type is real mission content. Clobbering it
+// would be the same mistake isSystemPost's narrow deny list exists to avoid.
+func TestDecoratePostKeepsAnotherIntegrationsCustomType(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	got := p.decoratePost(&model.Post{Message: "34.0561N,118.2500W", Type: "custom_something"}, hookRef)
+	if got == nil {
+		t.Fatal("decoratePost skipped a custom post type, want it decorated")
+	}
+	if got.Type != "custom_something" {
+		t.Fatalf("Type = %q, want it left as %q", got.Type, "custom_something")
+	}
+	if props := standaloneProps(t, got); props != nil {
+		t.Fatalf("props were stamped over another integration's post: %v", props)
+	}
+}
+
+// Clone carries whatever props arrived, and AddProp is what keeps them.
+func TestDecoratePostKeepsAnotherIntegrationsProps(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	post := &model.Post{Message: "34.0561N,118.2500W"}
+	post.AddProp("attachments", "theirs")
+
+	got := p.decoratePost(post, hookRef)
+	if got == nil {
+		t.Fatal("decoratePost left the post alone, want it decorated")
+	}
+	if got.GetProps()["attachments"] != "theirs" {
+		t.Fatalf("another integration's prop was lost: %v", got.GetProps())
+	}
+	if standaloneProps(t, got) == nil {
+		t.Fatal("our own props were not stamped alongside theirs")
+	}
 }

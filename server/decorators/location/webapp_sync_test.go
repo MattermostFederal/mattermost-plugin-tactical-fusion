@@ -10,6 +10,9 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location/mapdata"
 )
 
 // The webapp keeps its own copy of the canonical shapes, and this is the seam
@@ -167,6 +170,53 @@ func readWebappSource(t *testing.T, name string) string {
 	return string(raw)
 }
 
+// The format list is duplicated in the webapp, and it has to be the same set.
+//
+// This was the one cross-language list nothing compared, and its failure was the
+// quietest of the lot. `readPageData` refused a format id LOCATION_FORMATS did
+// not carry, and the standalone page, which is what the mobile app opens, then
+// rendered a wholly blank document: no rows, no note, nothing logged, while the
+// conversion the server had already computed sat unread in the shell. So adding
+// a tenth grammar in Go alone shipped blank pages with every test still green.
+//
+// The page degrades rather than blanking now, which is the real fix. This is the
+// other half: a build whose two halves disagree about what a format id is should
+// fail here, in Go, with the reason spelled out, rather than on somebody's phone.
+//
+// The ORDER is deliberately not compared. Nothing renders from this list, so
+// only membership carries meaning.
+func TestWebappFormatListMatches(t *testing.T) {
+	path := filepath.Join("..", "..", "..", "webapp", "src", "decorators", "location", "format.ts")
+	raw, err := os.ReadFile(path) // #nosec G304 -- fixed, repo-relative source path
+	if err != nil {
+		t.Fatalf("could not read %s: %v", path, err)
+	}
+
+	block := regexp.MustCompile(
+		`export const LOCATION_FORMATS: readonly LocationFormat\[\] = \[([^\]]*)\]`).
+		FindStringSubmatch(string(raw))
+	if block == nil {
+		t.Fatal("could not find LOCATION_FORMATS in format.ts")
+	}
+
+	var got []string
+	for _, m := range regexp.MustCompile(`'([a-z]+)'`).FindAllStringSubmatch(block[1], -1) {
+		got = append(got, m[1])
+	}
+
+	var want []string
+	for _, f := range AllFormatIDs {
+		want = append(want, string(f))
+	}
+
+	slices.Sort(got)
+	slices.Sort(want)
+
+	if !slices.Equal(got, want) {
+		t.Errorf("LOCATION_FORMATS = %v, AllFormatIDs = %v", got, want)
+	}
+}
+
 // The row catalog is duplicated in the webapp, and it has to be the same list
 // in the same order.
 //
@@ -296,26 +346,47 @@ func TestWebappConversionShapeMatches(t *testing.T) {
 	}
 
 	var webapp []string
-	for _, m := range regexp.MustCompile(`(?m)^\s+(\w+):\s*string;`).FindAllStringSubmatch(block[1], -1) {
-		webapp = append(webapp, m[1])
+	for _, m := range regexp.MustCompile(`(?m)^\s+(\w+):\s*(\w+);`).FindAllStringSubmatch(block[1], -1) {
+		webapp = append(webapp, m[1]+" "+m[2])
 	}
 
-	// The Go side, read from the struct tags rather than repeated by hand, so
-	// this cannot be satisfied by editing the test.
+	// Names AND types, not names alone. While every field was a string, name
+	// agreement implied type agreement; with numbers on the wire a TypeScript
+	// `lat: string` against a Go float64 type-checks, ships, and puts the pin
+	// at NaN.
 	var server []string
 	for field := range reflect.TypeFor[Conversion]().Fields() {
 		tag, ok := field.Tag.Lookup("json")
 		if !ok {
 			t.Fatalf("Conversion.%s has no json tag, so the webapp cannot read it", field.Name)
 		}
-		server = append(server, strings.Split(tag, ",")[0])
+		ts, ok := tsTypeFor(field.Type.Kind())
+		if !ok {
+			t.Fatalf("Conversion.%s is a %s, which this test does not know how to "+
+				"compare against TypeScript", field.Name, field.Type.Kind())
+		}
+		server = append(server, strings.Split(tag, ",")[0]+" "+ts)
 	}
 
 	if !slices.Equal(server, webapp) {
 		t.Errorf("the conversion payload is %v here and %v in the webapp.\n"+
-			"They must agree field for field and in order: a rename on either side is "+
-			"silent, and shows up as a permanently blank row in the sidebar.",
+			"They must agree field for field, type for type, and in order: a rename or a "+
+			"changed type on either side is silent, and shows up as a permanently blank "+
+			"row or a pin at NaN.",
 			server, webapp)
+	}
+}
+
+func tsTypeFor(k reflect.Kind) (string, bool) {
+	switch k {
+	case reflect.String:
+		return "string", true
+	case reflect.Float64, reflect.Float32:
+		return "number", true
+	case reflect.Bool:
+		return "boolean", true
+	default:
+		return "", false
 	}
 }
 
@@ -354,4 +425,176 @@ func TestWebappGridZoneIsBounded(t *testing.T) {
 			}
 		}
 	}
+}
+
+// The map's geometry constants live in two places, this package and span.ts,
+// and every surface draws from span.ts. Go keeps them only as the anchors these
+// are compared against, so a change on either side that does not reach the other
+// fails here rather than in a browser.
+func TestWebappMapConstantsMatch(t *testing.T) {
+	span := readWebappSource(t, "map/span.ts")
+
+	cases := []struct {
+		name   string
+		server float64
+	}{
+		{"MERCATOR_LIMIT", mapdata.MercatorLimit},
+		{"DEGREE_METERS", degreeMeters},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if webapp := tsConstant(t, span, "map/span.ts", c.name); webapp != c.server {
+				t.Errorf("%s is %v here and %v in the webapp", c.name, c.server, webapp)
+			}
+		})
+	}
+}
+
+// Reads a `const NAME = <number>;` out of either language.
+func tsConstant(t *testing.T, source, where, name string) float64 {
+	t.Helper()
+
+	m := regexp.MustCompile(`const ` + name + ` = ([0-9.]+);`).FindStringSubmatch(source)
+	if m == nil {
+		t.Fatalf("no `const %s` in %s; if it was renamed, point this test at the new "+
+			"name rather than deleting it", name, where)
+	}
+
+	v, err := strconv.ParseFloat(m[1], 64)
+	if err != nil {
+		t.Fatalf("%s = %q, which is not a number", name, m[1])
+	}
+
+	return v
+}
+
+// The map is hideable and is not a row, so it is carried by its own constant on
+// both sides. A rename is silent: the reader unticks Map, the server stores it,
+// and the webapp's forgiving read drops it again on the next load.
+func TestWebappMapSectionIDMatches(t *testing.T) {
+	source := readWebappSource(t, "map/../rows.ts")
+
+	m := regexp.MustCompile(`export const MAP_ID = '([a-z]+)';`).FindStringSubmatch(source)
+	if m == nil {
+		t.Fatal("no `export const MAP_ID` in rows.ts")
+	}
+	if m[1] != SectionMap {
+		t.Errorf("the map section is %q here and %q in the webapp", SectionMap, m[1])
+	}
+}
+
+// The map under a post is hideable, is not a row, and is a second thing a
+// rename would break silently in exactly the way the panel map's would.
+func TestWebappInlineSectionIDMatches(t *testing.T) {
+	source := readWebappSource(t, "map/../rows.ts")
+
+	m := regexp.MustCompile(`export const INLINE_ID = '([a-z]+)';`).FindStringSubmatch(source)
+	if m == nil {
+		t.Fatal("no `export const INLINE_ID` in rows.ts")
+	}
+	if m[1] != SectionInline {
+		t.Errorf("the inline section is %q here and %q in the webapp", SectionInline, m[1])
+	}
+}
+
+// The custom post type is a third cross-language string, and a mismatch is the
+// quietest kind: the server stamps a type this build's webapp registered
+// nothing for, Mattermost falls through to ordinary markdown, and the reader
+// simply never sees a map. Nothing is logged on either side.
+func TestWebappPostTypeMatches(t *testing.T) {
+	source := readWebappSource(t, "index.ts")
+
+	m := regexp.MustCompile(`postType: '([a-z_]+)',`).FindStringSubmatch(source)
+	if m == nil {
+		t.Fatal("no `postType:` in index.ts")
+	}
+	if m[1] != PostType {
+		t.Errorf("the post type is %q here and %q in the webapp", PostType, m[1])
+	}
+}
+
+// Posts.Type is VARCHAR(26). Post.IsValid checks the custom_ prefix and never
+// the length, so an over-long type is a database error at save time, which is
+// the author being unable to post at all.
+func TestPostTypeFitsTheColumn(t *testing.T) {
+	if len(PostType) > decorators.PostTypeMaxLen {
+		t.Fatalf("PostType %q is %d bytes, over the %d the column holds",
+			PostType, len(PostType), decorators.PostTypeMaxLen)
+	}
+	if decorators.StandalonePostType(&Decorator{}) != PostType {
+		t.Fatal("the framework refused this package's own post type")
+	}
+}
+
+// The shell attribute that tells a standalone page which map surfaces are on.
+//
+// The last cross-language seam in this package without a pin, and the one whose
+// drift is quietest. Both halves are checked because they fail in opposite
+// directions:
+//
+//   - Rename the ATTRIBUTE in Go and `root.dataset.maps` is undefined, which
+//     mapsFrom deliberately reads as every surface on. So both standalone pages
+//     keep drawing maps on an install that turned them off, which is the
+//     opposite of what the admin asked for and the one thing the switch
+//     promises.
+//   - Rename a TOKEN and that surface reads off, so the page stops drawing a map
+//     an admin left on.
+//
+// Neither is logged anywhere. Nothing else can catch this: the Go tests and the
+// TypeScript tests each pin their own copy of these strings, so renaming one
+// side together with its own test leaves both suites green.
+func TestWebappMapSurfaceAttributeMatches(t *testing.T) {
+	source := readPageSource(t, "payload.ts")
+
+	t.Run("attribute", func(t *testing.T) {
+		// dataset turns data-maps into .maps, which is the spelling to look for.
+		want := strings.TrimPrefix(MapSurfacesAttr, "data-")
+		if !regexp.MustCompile(`dataset\.` + want + `\b`).MatchString(source) {
+			t.Errorf("the webapp never reads %q (as dataset.%s); an attribute it does not "+
+				"read is absent, which it takes as every map surface being on",
+				MapSurfacesAttr, want)
+		}
+	})
+
+	for _, surface := range []string{SurfacePanel, SurfacePage} {
+		t.Run(surface, func(t *testing.T) {
+			if !strings.Contains(source, `has('`+surface+`')`) {
+				t.Errorf("the webapp never matches the %q surface; a token it does not "+
+					"recognise reads as that surface being off", surface)
+			}
+		})
+	}
+}
+
+// And the separator, since the tokens are joined into one attribute value.
+//
+// Joining with ", " instead of "," would leave every token after the first
+// unmatched, so the page would draw no map with nothing saying why. Neither
+// side's own tests would notice: Go asserts the string it just built and the
+// webapp asserts the string it wrote itself.
+func TestWebappMapSurfaceSeparatorMatches(t *testing.T) {
+	source := readPageSource(t, "payload.ts")
+
+	if !strings.Contains(source, `split('`+mapSurfaceSeparator+`')`) {
+		t.Errorf("the webapp does not split the surface list on %q", mapSurfaceSeparator)
+	}
+}
+
+// readPageSource reads a file from the page bundle's source.
+//
+// A sibling of readWebappSource, which is rooted at the location decorator's own
+// directory. The shell's reader lives in the page entry point instead, and
+// reaching it through that helper needed a "map/../.." prefix that said nothing
+// about where the file is.
+func readPageSource(t *testing.T, name string) string {
+	t.Helper()
+
+	path := filepath.Join("..", "..", "..", "webapp", "src", "page", name)
+	raw, err := os.ReadFile(path) // #nosec G304 -- fixed, repo-relative source path
+	if err != nil {
+		t.Fatalf("could not read %s: %v", path, err)
+	}
+
+	return string(raw)
 }

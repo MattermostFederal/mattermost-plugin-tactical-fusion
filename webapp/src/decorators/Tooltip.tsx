@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {get, parseDecoratorHref} from './registry';
+import {HOVER_CARD_CLASS, get, parseDecoratorHref} from './registry';
 
 /**
  * The card chrome, owned by the framework so every decorator's hover looks the
@@ -12,7 +12,11 @@ import {get, parseDecoratorHref} from './registry';
  */
 const style: React.CSSProperties = {
     padding: '10px 12px',
-    maxWidth: '280px',
+
+    // Wide enough for the location hover's map, which is the widest thing any
+    // decorator puts in here. A max rather than a width, so the DTG countdown
+    // still shrinks to the size of its own line.
+    maxWidth: '360px',
     background: 'var(--center-channel-bg, #ffffff)',
     color: 'var(--center-channel-color, #3f4350)',
     border: '1px solid rgba(var(--center-channel-color-rgb, 63, 67, 80), 0.16)',
@@ -57,9 +61,16 @@ export const DecoratorTooltip: React.FC<Props> = ({href, show}) => {
         return null;
     }
 
+    // The class is what lets the chrome disappear when the Hover renders
+    // nothing. Without it a decorator that declines a card at render, rather
+    // than by declaring no Hover at all, leaves this padding, border and shadow
+    // floating beside the link as an empty box. See EMPTY_HOVER_RULE.
     const {Hover} = decorator;
     return (
-        <div style={style}>
+        <div
+            className={HOVER_CARD_CLASS}
+            style={style}
+        >
             <Hover payload={payload}/>
         </div>
     );

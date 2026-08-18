@@ -122,7 +122,7 @@ func TestEverySettingIsDocumented(t *testing.T) {
 	}
 
 	declared := map[string]bool{}
-	for _, setting := range loadSettings(t).SettingsSchema.Settings {
+	for _, setting := range loadSettings(t).allSettings() {
 		declared[setting.Key] = true
 		if documented[setting.Key] == 0 {
 			t.Errorf("setting %s is declared in plugin.json but missing from admin.html", setting.Key)

@@ -1,7 +1,7 @@
 import {expect, test} from '@playwright/test';
 
 import {
-    CACHE_TTL_MS_FOR_TESTING,
+    CACHE_TTL_MS,
     getState,
     loadPreferences,
     resetPreferencesSection,
@@ -382,7 +382,7 @@ test.describe('the cache expires', () => {
         const calls = stubFetch(() => ({status: 200, body: savedBlob}));
 
         await loadPreferences();
-        clock += CACHE_TTL_MS_FOR_TESTING - 1;
+        clock += CACHE_TTL_MS - 1;
         await loadPreferences();
 
         expect(calls).toHaveLength(1);
@@ -394,14 +394,14 @@ test.describe('the cache expires', () => {
         const calls = stubFetch(() => ({status: 200, body: savedBlob}));
 
         await loadPreferences();
-        clock += CACHE_TTL_MS_FOR_TESTING;
+        clock += CACHE_TTL_MS;
         await loadPreferences();
 
         expect(calls.map((call) => call.method)).toEqual(['GET', 'GET']);
     });
 
     test('is thirty minutes', () => {
-        expect(CACHE_TTL_MS_FOR_TESTING).toBe(30 * 60 * 1000);
+        expect(CACHE_TTL_MS).toBe(30 * 60 * 1000);
     });
 
     // A save is a read of the server's own answer, so it restarts the clock
@@ -412,7 +412,7 @@ test.describe('the cache expires', () => {
         const calls = stubFetch(() => ({status: 200, body: savedBlob}));
 
         await loadPreferences();
-        clock += CACHE_TTL_MS_FOR_TESTING - 1;
+        clock += CACHE_TTL_MS - 1;
 
         await savePreferencesSection('dtg', {zones: [{iana: 'UTC'}], urgentWithinMinutes: 0});
         const afterSave = calls.length;
@@ -443,7 +443,7 @@ test.describe('the cache expires', () => {
         expect(getState().preferences.dtg.urgentWithinMinutes).toBe(15);
 
         fail = true;
-        clock += CACHE_TTL_MS_FOR_TESTING;
+        clock += CACHE_TTL_MS;
         await loadPreferences();
 
         // The reason is reported, and the settings are still theirs.

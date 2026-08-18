@@ -1,7 +1,7 @@
 import {expect, test} from '@playwright/test';
 import manifest from 'manifest';
 
-import {register, _resetForTesting} from './registry';
+import {HOVER_CARD_CLASS, register, _resetForTesting} from './registry';
 import {buildDecoratorStyles} from './styles';
 import type {Decorator} from './types';
 
@@ -57,6 +57,30 @@ test('selectors are anchored with a trailing question mark', () => {
     expect(buildDecoratorStyles()).toContain('decorate/dtg?"]');
 });
 
-test('an empty registry produces no rules', () => {
-    expect(buildDecoratorStyles()).toBe('');
+// No decorators means no per-decorator chip rules. The sheet is not empty even
+// then, because the hover-card rule below is the framework's own rather than any
+// decorator's, and a decorator registered later needs it already in place.
+test('an empty registry produces no per-decorator rules', () => {
+    const css = buildDecoratorStyles();
+
+    expect(css).not.toContain('/decorate/');
+    expect(css).toBe(`.${HOVER_CARD_CLASS}:empty {\n    display: none;\n}`);
+});
+
+/*
+ * The rule that lets a decorator decline a card at render rather than only by
+ * declaring no Hover at all.
+ *
+ * It cannot be an inline style: `:empty` is a selector, and every other style in
+ * this plugin is an inline style attribute with nowhere to put one. So the sheet
+ * is the only place it can live, and the class it names has to be the one
+ * Tooltip.tsx puts on the element.
+ */
+test('hides a hover card that renders nothing', () => {
+    register(fixture('alpha', '#111111'));
+
+    const css = buildDecoratorStyles();
+
+    expect(css).toContain(`.${HOVER_CARD_CLASS}:empty`);
+    expect(css).toContain('display: none;');
 });
