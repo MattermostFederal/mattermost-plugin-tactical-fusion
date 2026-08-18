@@ -11,7 +11,27 @@
 # Each ignore SHOULD include a `reason` string so reviewers understand why the
 # finding was suppressed.
 
-ignore: []
+ignore:
+  # GO-2026-5932 is not a defect with a fixed version. It says
+  # golang.org/x/crypto/openpgp is unsafe by design, unmaintained, and should
+  # not be used, so no bump can clear it: 0.54.0 and 0.55.0 both report it, and
+  # every future version will too.
+  #
+  # openpgp is not in this plugin's build graph at all. `go list -deps
+  # ./server/...` finds it nowhere; x/crypto is pulled in only for scrypt, by
+  # mattermost/server/public/model. So the package named by the advisory is
+  # never compiled into server/dist/plugin-*, which is the unreachable
+  # transitive case this file exists for.
+  #
+  # Re-check if anything here ever imports openpgp directly, or if Mattermost's
+  # model package stops needing x/crypto. Both would make this stale rather than
+  # merely unnecessary.
+  - vulnerability: GO-2026-5932
+    package:
+      name: golang.org/x/crypto
+      type: go-module
+    reason: "x/crypto/openpgp is unreachable: not in the build graph, x/crypto is present only for scrypt via mattermost/server/public/model"
+
   # Example:
   # - vulnerability: GHSA-xxxx-yyyy-zzzz
   #   package:
