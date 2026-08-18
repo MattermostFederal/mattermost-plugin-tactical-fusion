@@ -261,7 +261,6 @@ test.describe('rounding carries into the next field', () => {
         expect(ddmText(justUnder34)).toBe('34°00\'N 118°12\'W');
     });
 
-
     // DDM needs a Coordinate built by hand where USMTF does not, and the reason
     // is the split those two rows sit on opposite sides of. USMTF is sized from
     // the PAIR, so a mixed-precision token reaches its carry, which is what the

@@ -6,6 +6,7 @@ import type {PageData} from './payload';
 import {expect, test} from '../../playwright/ct-coverage';
 import {parseCanonical} from '../decorators/location/format';
 import LocationReadings from '../decorators/location/LocationReadings';
+import {ROWS} from '../decorators/location/rows';
 import {ALL_FEATURES} from '../features/types';
 
 /*
@@ -87,9 +88,17 @@ test('a page shows every row, because it has no reader to ask', async ({mount}) 
         />,
     );
 
-    // Every row the token and the conversion between them can fill: no
-    // Confidence, because this token states none.
-    await expect(component.getByRole('row')).toHaveCount(10);
+    // Counted off the catalog rather than written out. The literal it replaced
+    // said 10, went stale the moment the area references were added, and still
+    // passed as an assertion about "every row" while naming three fewer than
+    // there were.
+    //
+    // Confidence is the one row this fixture cannot fill, and correctly: only a
+    // verified USMTF token states any. Normalized does render, since this
+    // token's author text and its canonical form differ.
+    const expected = ROWS.filter((row) => row.id !== 'confidence').length;
+
+    await expect(component.getByRole('row')).toHaveCount(expected);
 });
 
 test('a failed conversion degrades rather than blanking the page', async ({mount}) => {

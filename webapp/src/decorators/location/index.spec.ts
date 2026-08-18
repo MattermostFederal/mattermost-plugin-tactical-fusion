@@ -190,7 +190,6 @@ test('declares a hover', () => {
     expect(decorator.Hover).toBeTruthy();
 });
 
-
 test.describe('area-reference links the server issues', () => {
     test('accepts every shape at every resolution', () => {
         const cases: Array<[string, string]> = [
