@@ -86,6 +86,20 @@ type configuration struct {
 	// this.
 	EnableAirport bool
 
+	// EnableAirportTable governs whether a message that is nothing but an
+	// airfield code is expanded with a markdown table of the field's details.
+	//
+	// Separate from EnableAirport because it rewrites much more of what the
+	// author wrote. The table goes into the STORED message, so it is in every
+	// export, an author editing the post sees the markdown, and the values are
+	// frozen at the moment of posting: the database ships with the plugin, so a
+	// table written today keeps today's elevation after an upgrade corrects it.
+	//
+	// Turning it off stops new messages being expanded. It cannot un-expand the
+	// ones already posted, for the same reason no decoration is ever undone:
+	// the text is what the author's message now says.
+	EnableAirportTable bool
+
 	// EnableLocationMap is the switch for drawing a coordinate on a map, and
 	// the three below select which surfaces draw one. They are ANDed with
 	// EnableLocation as well as with each other, because a map only ever

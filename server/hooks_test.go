@@ -211,7 +211,8 @@ func newTestPlugin(t *testing.T, siteURL string, enabled bool) *Plugin {
 		EnableLocationMapInline: enabled,
 		EnableLocationMapPage:   true,
 
-		EnableAirport: enabled,
+		EnableAirport:      enabled,
+		EnableAirportTable: enabled,
 	})
 
 	registerDecoratorsForTest(t, p)
@@ -946,5 +947,191 @@ func TestDecoratePostKeepsAnotherIntegrationsProps(t *testing.T) {
 	}
 	if standaloneProps(t, got) == nil {
 		t.Fatal("our own props were not stamped alongside theirs")
+	}
+}
+
+// A message that is nothing but an airfield code carries the field's details as
+// a markdown table, written into the message rather than rendered from a custom
+// post type.
+func TestDecoratePostExpandsAnAirfieldOnlyMessage(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	got := p.decoratePost(&model.Post{Message: "ICAO:KIND"}, hookRef)
+	if got == nil {
+		t.Fatal("decoratePost left the post alone, want it decorated")
+	}
+
+	for _, want := range []string{
+		"| Airfield | [Indianapolis International Airport](/plugins/",
+		"/decorate/airport?v=KIND) |",
+		"|:--|:--|",
+		"| Code | KIND |",
+		"| Place | Indianapolis, IN, US |",
+		"| Elevation | 797 ft |",
+	} {
+		if !strings.Contains(got.Message, want) {
+			t.Errorf("missing %q in:\n%s", want, got.Message)
+		}
+	}
+
+	// An ordinary post. The whole reason for writing the table into the message
+	// rather than rendering it from a post type is that the post keeps its
+	// Elasticsearch and OpenSearch matches, its embeds and its translation.
+	if got.Type != "" {
+		t.Errorf("Type = %q, want an ordinary post", got.Type)
+	}
+	if props := standaloneProps(t, got); props != nil {
+		t.Errorf("props were stamped on an airfield message: %v", props)
+	}
+}
+
+// A USMTF set line ends "//". The author wrote it, so it travels with the token
+// it belonged to rather than being dropped when the table replaces the line.
+func TestDecoratePostKeepsTheSetTerminatorInTheCodeRow(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	got := p.decoratePost(&model.Post{Message: "DEPLOC:KIND//"}, hookRef)
+	if got == nil {
+		t.Fatal("decoratePost left the post alone, want it decorated")
+	}
+
+	if !strings.Contains(got.Message, "| Code | KIND// |") {
+		t.Errorf("the set terminator was lost:\n%s", got.Message)
+	}
+
+	// One destination in the message, on the name. The old shape repeated it on
+	// a line above the table.
+	if n := strings.Count(got.Message, "/decorate/airport?v=KIND"); n != 1 {
+		t.Errorf("the destination appears %d times, want once:\n%s", n, got.Message)
+	}
+}
+
+func TestDecoratePostDoesNotExpandAnAirfieldCodeInASentence(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	got := p.decoratePost(&model.Post{Message: "divert to ICAO:KIND if the weather holds"}, hookRef)
+	if got == nil {
+		t.Fatal("decoratePost left the post alone, want it decorated")
+	}
+	if strings.Contains(got.Message, "| Airfield |") {
+		t.Errorf("a code inside a sentence was expanded:\n%s", got.Message)
+	}
+}
+
+// The switch stops the expansion being written. It cannot un-write one, which
+// is why turning it off leaves the link and nothing else on NEW messages only.
+func TestDecoratePostDoesNotExpandWhenTheTableIsOff(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	config := p.getConfiguration().Clone()
+	config.EnableAirportTable = false
+	p.setConfiguration(config)
+
+	got := p.decoratePost(&model.Post{Message: "ICAO:KIND"}, hookRef)
+	if got == nil {
+		t.Fatal("decoratePost left the post alone; the code should still be decorated")
+	}
+	if !strings.Contains(got.Message, "/decorate/airport?v=KIND") {
+		t.Fatalf("the airfield code was not linked: %q", got.Message)
+	}
+	if strings.Contains(got.Message, "| Airfield |") {
+		t.Errorf("a table was written with the switch off:\n%s", got.Message)
+	}
+}
+
+// A lone coordinate still uses the post type, so the two mechanisms coexist
+// rather than one having replaced the other.
+func TestDecoratePostStillStampsALoneCoordinate(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	got := p.decoratePost(&model.Post{Message: "34.0561N,118.2500W"}, hookRef)
+	if got == nil {
+		t.Fatal("decoratePost left the post alone, want it decorated")
+	}
+	if got.Type != location.PostType {
+		t.Errorf("Type = %q, want %q", got.Type, location.PostType)
+	}
+	if strings.Contains(got.Message, "|:--|:--|") {
+		t.Errorf("a coordinate was expanded with a table:\n%s", got.Message)
+	}
+}
+
+// Whitespace around the token is allowed by SoleToken, and none of it may reach
+// the Code row. Trail comes from the span the pattern matched, whose end is
+// already the trimmed end, so this is a property of where the value comes from
+// rather than of a trim.
+func TestDecoratePostKeepsWhitespaceOutOfTheExpansion(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	// No leading tab here: a tab-indented line is an indented code block, which
+	// findProtectedRanges correctly refuses to decorate at all. A trailing one
+	// is ordinary whitespace.
+	for _, message := range []string{"  ICAO:KIND  ", "\nICAO:KIND\n", "ICAO:KIND\r\n", "DEPLOC:KIND//\t"} {
+		t.Run(message, func(t *testing.T) {
+			got := p.decoratePost(&model.Post{Message: message}, hookRef)
+			if got == nil {
+				t.Fatal("decoratePost left the post alone, want it decorated")
+			}
+
+			want := "| Code | KIND |"
+			if strings.Contains(message, "//") {
+				want = "| Code | KIND// |"
+			}
+			if !strings.Contains(got.Message, want) {
+				t.Errorf("want %q in:\n%q", want, got.Message)
+			}
+			if strings.ContainsAny(got.Message, "\r") {
+				t.Errorf("a carriage return reached the stored message: %q", got.Message)
+			}
+		})
+	}
+}
+
+// Two codes is not one token, so neither is expanded. The symmetric negative to
+// the coordinate case, which has had one since the inline map landed.
+func TestDecoratePostDoesNotExpandTwoAirfieldCodes(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	got := p.decoratePost(&model.Post{Message: "DEPLOC:KIND ARRLOC:KLAX"}, hookRef)
+	if got == nil {
+		t.Fatal("decoratePost left the post alone, want both codes decorated")
+	}
+	if strings.Contains(got.Message, "|:--|:--|") {
+		t.Errorf("two codes were expanded:\n%s", got.Message)
+	}
+}
+
+// An expansion replaces the message, so the post must NOT also be stamped: the
+// stamp says the webapp owns the body and renders it from the message's sole
+// decorator link, which an expanded message no longer is. The reader would get
+// the raw markdown as literal text on a post its type had also dropped from the
+// search index.
+func TestAnExpandedPostIsNeverAlsoStamped(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	got := p.decoratePost(&model.Post{Message: "ICAO:KIND"}, hookRef)
+	if got == nil {
+		t.Fatal("decoratePost left the post alone, want it expanded")
+	}
+	if !strings.Contains(got.Message, "|:--|:--|") {
+		t.Fatalf("the message was not expanded:\n%s", got.Message)
+	}
+	if got.Type != "" {
+		t.Errorf("Type = %q, want an expanded post left ordinary", got.Type)
+	}
+}
+
+// Re-posting a stored table must not expand again or nest a link. It lands in
+// exports, so it will be pasted back.
+func TestAnExpandedMessageIsNotExpandedAgain(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	first := p.decoratePost(&model.Post{Message: "ICAO:KIND"}, hookRef)
+	if first == nil {
+		t.Fatal("decoratePost left the post alone, want it expanded")
+	}
+
+	if again := p.decoratePost(&model.Post{Message: first.Message}, hookRef); again != nil {
+		t.Errorf("the stored table was rewritten again:\n%s", again.Message)
 	}
 }

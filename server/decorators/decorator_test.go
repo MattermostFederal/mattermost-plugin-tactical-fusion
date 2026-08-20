@@ -1,6 +1,7 @@
 package decorators_test
 
 import (
+	"net/url"
 	"testing"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
@@ -123,4 +124,39 @@ func TestStandalonePostTypeIsEmptyForADecoratorThatDeclaresNone(t *testing.T) {
 
 type plainDecorator struct {
 	decorators.Decorator
+}
+
+// A decorator that does not implement MessageExpander is left alone, which is
+// what keeps adding one from reaching the others.
+func TestStandaloneExpansionIsEmptyForADecoratorThatDeclaresNone(t *testing.T) {
+	if got := decorators.StandaloneExpansion(&plainDecorator{}, "/href", "", url.Values{}); got != "" {
+		t.Errorf("StandaloneExpansion() = %q, want empty", got)
+	}
+}
+
+// And a nil decorator, which is what Registry.Get answers for a type it does
+// not hold. A type assertion on a nil interface is false rather than a panic,
+// and this is on the path that must never stop somebody posting.
+func TestStandaloneExpansionIsEmptyForANilDecorator(t *testing.T) {
+	if got := decorators.StandaloneExpansion(nil, "/href", "", url.Values{}); got != "" {
+		t.Errorf("StandaloneExpansion(nil) = %q, want empty", got)
+	}
+}
+
+// The positive path, so the dispatch itself is pinned rather than only its
+// refusals.
+func TestStandaloneExpansionReachesADecoratorThatDeclaresOne(t *testing.T) {
+	got := decorators.StandaloneExpansion(&expanderDecorator{}, "/href", "//", url.Values{"v": {"KIND"}})
+
+	if want := "/href|//|KIND"; got != want {
+		t.Errorf("StandaloneExpansion() = %q, want %q", got, want)
+	}
+}
+
+type expanderDecorator struct {
+	decorators.Decorator
+}
+
+func (e *expanderDecorator) ExpandMessage(href, trail string, params url.Values) string {
+	return href + "|" + trail + "|" + params.Get("v")
 }

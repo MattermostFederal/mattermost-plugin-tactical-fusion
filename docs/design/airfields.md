@@ -456,3 +456,163 @@ to be the code that was asked for, which is the check every other entry point
 already made: the Go scan pattern, `Parse`, the page, the API and `fromParams`.
 A mismatch is `failed` rather than `rejected`, so it is not cached and the next
 open asks again.
+
+## The airfield under a code-only message
+
+When a posted message is nothing but an airfield code, the message itself is
+rewritten to carry the field's details as a markdown table under the author's
+own line:
+
+```
+| Airfield | [Indianapolis International Airport](/plugins/<id>/decorate/airport?v=KIND) |
+|:--|:--|
+| Code | KIND |
+| Place | Indianapolis, IN, US |
+| Type | Large Airport |
+| Elevation | 797 ft |
+| IATA | IND |
+```
+
+**A markdown table in the stored message, not a custom post type.** The
+coordinate decorator does the opposite: it stamps `Post.Type` and the webapp
+draws a map. The two mechanisms now coexist, and the difference is where the
+result lives.
+
+What writing it into the message buys:
+
+- The post stays **ordinary**, so it keeps its Elasticsearch and OpenSearch
+  matches, its Recent Mentions, its link previews and its auto-translation. A
+  custom type loses all of those, since both search backends allowlist
+  `type: default` rather than skipping a `system_` denylist. That is the single
+  largest cost of the inline map, and this feature does not pay it.
+- It renders on **every client**, including the mobile app and anything else
+  that never runs the webapp bundle, where a post-type component draws nothing.
+- It survives uninstall as plain text rather than as a post nothing can render.
+
+What it costs, and both are permanent:
+
+- **The rewrite is much larger than a link.** An author who types `ICAO:KIND`
+  has eight lines of markdown in their stored message. They see all of it when
+  they edit the post, and it is in every export. They can also change or delete
+  it, which a post-type body does not allow.
+- **The values are frozen at post time.** The database ships with the plugin, so
+  a table written today keeps today's elevation after an upgrade corrects it.
+  The panel, which looks up on every open, is where a reader gets the current
+  answer.
+
+**The link is the airfield's name**, and the table is the whole message rather
+than a block under the author's line. That relabels the link, which this
+decorator refused to do for as long as the stored message was only a link: the
+sibling plugin writes `Name (IDENT)` and the argument against it was that a name
+changes between builds and this hook rewrites stored text. The table concedes
+that already, since the name is in the message either way, and one destination
+on the name beats the same destination twice.
+
+**What is not conceded is the author's own token, which is the Code row.**
+Without it the string the author typed appears nowhere in the message and
+searching for the code stops finding the post, which is the property this whole
+approach was chosen for. The `//` a USMTF set line ends with travels with it,
+in that same row, rather than being dropped: the author wrote it.
+
+### `MessageExpander`, and why it is a second interface
+
+`decorators.MessageExpander` is optional and type asserted, the same shape
+`PostRenderer` takes, so adding it reached no other decorator. `decoratePost`
+asks for the expansion **after** decorating and measures the result against
+`safePostRunes`; an expansion that would not fit falls back to the plain
+decorated message rather than costing the author the decoration as well.
+
+**Nothing parses the decorated message back apart**, and an earlier version did.
+`Result` carries `Trail`, the span the pattern matched past the one it rewrote,
+because `soleTokenResult` has both spans in hand and was discarding them; the
+destination comes from `Tagger.URLFor`, which is exported for exactly this kind
+of caller. That deleted a `splitLink` helper along with its coupling to
+`labelEscaper` and to how `buildURL` encodes a destination, and it fixed a bug
+for free: the helper recovered the trail by slicing after the link, so it also
+picked up the message's trailing whitespace and rendered `KIND ` in the Code
+row. `match.end` is already the trimmed end, so `Trail` cannot carry any.
+
+Recording the claim that helper made, because it was wrong and is the kind of
+thing that gets repeated: it said `buildURL` percent-encodes parens so the last
+`)` must be the link's own. `buildURL` encodes parens in the **query**;
+`EscapedPath` leaves them in a **subpath**, so a paren really can appear in a
+destination. The helper still worked, for a different reason: nothing follows
+the link but the optional `//`.
+
+### The message is expanded or stamped, never both
+
+`decoratePost` calls `stampStandalonePost` only when the message came through
+unexpanded. The two optional interfaces are siblings and a decorator
+implementing both is the obvious next step, so this cannot be left to the
+convention that none does: a stamp says the webapp owns the body and renders it
+from the message's sole decorator link, and an expanded message is not one, so
+`DecoratorPostBody` would fall through and print the raw table as literal text
+on a post its custom type had also dropped from the search index. Silent,
+permanent, and one `if` away.
+
+### The whitelist is the first layer, escaping is the last
+
+`parseAirfields` refuses any field carrying a rune outside an explicit
+whitelist, and any `www.` or `://` sequence. Measured against all 19,012 rows
+rather than guessed, so a refreshed database carrying something new fails at
+init and in every test.
+
+It is in `parseAirfields` rather than in `build/airportdata` deliberately: the
+generator is not a prerequisite of `make test`, so a check there would not run
+where it matters and a hand-edited CSV would bypass it entirely.
+
+**Escaping alone cannot be the defence here, which is the whole argument for
+the whitelist.** `@here` in an airfield name is the case: backslash-escaping it
+does suppress the rendered mention, but Mattermost's mention scan reads the RAW
+message text and treats a backslash as a separator, so the notification fires
+anyway, from a message whose author typed four letters. Emoji and hashtags have
+the same shape. This is the rule the location decorator already states for its
+`r` parameter: an explicit whitelist, never a blacklist, with escaping as a
+later layer rather than the first.
+
+*Unverified, and worth confirming on a running server before it is relied on:
+the mention behaviour above is read from Mattermost's source, not observed.*
+
+### The escaping is new, and it is not hypothetical
+
+Airfield names come from a crowd-sourced third party and reach **markdown** for
+the first time here. Every other surface renders them as escaped HTML or as a
+React text node, neither of which markdown is. A pipe would end the cell and
+shift every value after it into the wrong column; the emphasis, code and link
+characters would be read as formatting.
+
+The shipped file already carries **19 names using a backtick where an
+apostrophe belongs**, and two with brackets. It carries no pipe today, and a
+refreshed database is exactly the event this guards against. `mdCell` escapes
+the backslash first, then the pipe, backtick, asterisk, underscore, brackets,
+angle brackets and tilde, and flattens any stray carriage return or newline to a
+space.
+
+`TestEveryAirfieldTableIsWellFormed` renders all 19,012 and requires every row
+to carry exactly three unescaped pipes, which is the property a broken cell
+actually violates.
+
+**`TestEveryAirfieldTableIsWellFormed` is a shape check and not escaping
+coverage**, and saying so is the point: the shipped file carries none of the
+characters `mdCell` escapes, so reducing `mdCell` to the identity function left
+that test green. It was described as the strong guard and was not one.
+`TestTheShippedDatabaseCarriesNothingTheTableCannotEscape` now asserts the
+invariant that silence rests on, and the escaper is pinned by a unit test that
+compares the whole output rather than a substring.
+
+**The escaping is tested on `mdCell`, not on the rendered table**, and that
+separation was arrived at by getting it wrong twice. The table legitimately
+writes unescaped pipes as its cell separators and unescaped brackets as its one
+link, so asking whether the rendered table contains a raw `[` answers the wrong
+question and fails on correct output. Asking whether it contains the substring
+`| Heliport` answers a different wrong question, since `\| Heliport` contains it
+too. What the table is held to is the row shape, plus the name appearing
+escaped inside the link label, where an unescaped bracket would end the label
+early and break the link.
+
+### `EnableAirportTable`
+
+One more switch, ANDed with `EnableAirport`. It governs decoration, like every
+format switch, so turning it off stops new messages being expanded and cannot
+un-expand the ones already posted. That is the same rule every decoration
+follows: the text is what the author's message now says.

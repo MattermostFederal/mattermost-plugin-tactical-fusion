@@ -191,6 +191,41 @@ func StandalonePostType(d Decorator) string {
 	return postType
 }
 
+// MessageExpander is implemented by a decorator that wants to rewrite a message
+// which is nothing but one of its tokens into something fuller.
+//
+// Optional, and type asserted rather than added to Decorator, the same shape
+// PostRenderer takes. A decorator that does not implement it is untouched.
+//
+// The difference from PostRenderer is where the result lives. A post type is
+// rendered by the webapp on every view and costs the post its Elasticsearch and
+// OpenSearch matches; an expansion is written into the STORED message once, so
+// it survives uninstall, renders on every client including the ones that never
+// run the webapp bundle, and is frozen at the moment it was written.
+type MessageExpander interface {
+	// ExpandMessage returns the message to store in place of one that is
+	// nothing but this decorator's token, or "" to leave it as it is.
+	//
+	// It is handed the link's destination and whatever the pattern matched past
+	// the span it rewrote, rather than the rendered message, so an expansion
+	// never has to parse this package's own output back apart.
+	//
+	// It runs inline on the post path, so it must be cheap and must not panic,
+	// the same contract Parse carries.
+	ExpandMessage(href, trail string, params url.Values) string
+}
+
+// StandaloneExpansion asks a decorator what it wants a lone-token message to
+// say, and answers "" for one that does not implement MessageExpander.
+func StandaloneExpansion(d Decorator, href, trail string, params url.Values) string {
+	expander, ok := d.(MessageExpander)
+	if !ok {
+		return ""
+	}
+
+	return expander.ExpandMessage(href, trail, params)
+}
+
 func StandalonePostProps(r Result) map[string]any {
 	props := map[string]any{
 		"version": PostPropsVersion,

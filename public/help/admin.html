@@ -734,7 +734,7 @@
             everything but the picture.
         </p>
 
-        <h2 id="airfield-switches">The airfield switch</h2>
+        <h2 id="airfield-switches">The airfield switches</h2>
 
         <h3 id="enable-airport" data-setting="EnableAirport">Decorate airfield codes <code>EnableAirport</code></h3>
 
@@ -798,6 +798,45 @@
         </p>
 
         <h2>Checking the current behavior</h2>
+
+        <h3 id="enable-airport-table" data-setting="EnableAirportTable">Show the airfield details under a code-only message <code>EnableAirportTable</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>New messages that are nothing but an airfield code get the link alone. Messages already posted keep the table they were given.</td></tr>
+                <tr><td>Requires</td><td><code>EnableAirport</code></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            When a message contains nothing but one airfield code, it is replaced with a
+            small table of the field's details: its name, the code the author typed, where
+            it is, what kind of field it is, its elevation and its IATA code. The name is
+            the link that opens the panel, which is where the map and the coordinate
+            readings are. The code the author typed stays in the table, so searching for
+            it still finds the message.
+        </p>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">The table is written into the message itself.</p>
+            <p>
+                It is ordinary markdown in the stored message, not something drawn on top
+                of it. That is deliberate, and it is what makes the message render the
+                same way everywhere, including on mobile and in any client that does not
+                run this plugin's web code, and what keeps the post searchable and
+                exportable like any other.
+            </p>
+            <p>
+                It also means the table is <strong>permanent and fixed</strong>. An author
+                who edits the post sees the markdown and can change or delete it. The
+                values are those the database held when the message was posted: if a later
+                version of the plugin corrects an elevation, messages already posted keep
+                the old one. Turning this setting off stops new messages being expanded
+                and does not remove the tables already written.
+            </p>
+        </div>
 
         <p>
             <a href="commands.html#example-details"><code>/tactical-fusion example-details</code></a>

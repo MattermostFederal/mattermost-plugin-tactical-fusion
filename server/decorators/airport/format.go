@@ -53,13 +53,23 @@ type Details struct {
 // Describe is the one lookup-and-render both the page and the API go through.
 // A conversion that accepted an airfield the page refuses, or the other way
 // round, would be two doors with different locks on them.
-func Describe(ident string) (Details, bool) {
+// DescribeFields is the airfield's own fields and nothing derived.
+//
+// Separate from Describe because Describe also runs position(), which projects
+// the coordinate and looks the country up in the compiled-in polygons. Callers
+// on the post path want the fields alone, and Parse's contract says that path
+// must be cheap.
+func DescribeFields(ident string) (Details, bool) {
 	a, ok := Lookup(ident)
 	if !ok {
 		return Details{}, false
 	}
 
-	d := Details{
+	return fieldsOf(a), true
+}
+
+func fieldsOf(a Airport) Details {
+	return Details{
 		Ident:     a.Ident,
 		Name:      a.Name,
 		Type:      typeText(a.Type),
@@ -67,7 +77,15 @@ func Describe(ident string) (Details, bool) {
 		Elevation: elevationText(a),
 		IATA:      a.IATA,
 	}
+}
 
+func Describe(ident string) (Details, bool) {
+	a, ok := Lookup(ident)
+	if !ok {
+		return Details{}, false
+	}
+
+	d := fieldsOf(a)
 	d.Format = string(location.FormatDD)
 	d.Token, d.Region, d.HasPosition = position(a)
 

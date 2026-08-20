@@ -365,3 +365,14 @@ func TestThePageCarriesNoScript(t *testing.T) {
 		t.Fatal("the page carries a script")
 	}
 }
+
+// A tab-indented line is an indented code block, and the tagger protects its
+// interior. Worth pinning here because the airfield grammar is the one whose
+// tokens are short enough to sit alone on such a line.
+func TestATabIndentedCodeLineIsNotDecorated(t *testing.T) {
+	for _, message := range []string{"\tICAO:KIND", "    ICAO:KIND"} {
+		if decorated(t, message) {
+			t.Errorf("an indented code line was decorated: %q", decorate(t, message))
+		}
+	}
+}

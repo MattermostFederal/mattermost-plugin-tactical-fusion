@@ -108,7 +108,19 @@ func (p *Plugin) decoratePost(post *model.Post, ref time.Time) (result *model.Po
 		return nil
 	}
 
-	if utf8.RuneCountInString(decorated) > safePostRunes {
+	message := decorated
+	if found.SoleToken {
+		// Asked for AFTER the decoration and measured with it, so an expansion
+		// that would not fit falls back to the link rather than costing the
+		// author the decoration as well.
+		expanded := decorators.StandaloneExpansion(
+			p.decorators.Get(found.Type), tagger.URLFor(found.Type, found.Params), found.Trail, found.Params)
+		if expanded != "" && utf8.RuneCountInString(expanded) <= safePostRunes {
+			message = expanded
+		}
+	}
+
+	if utf8.RuneCountInString(message) > safePostRunes {
 		// A 12-character DTG becomes roughly 120 once linked, so a message that
 		// is visibly well under the limit can cross it here. Rejecting the post
 		// would show the author an opaque "too long" error for text they can
@@ -124,8 +136,20 @@ func (p *Plugin) decoratePost(post *model.Post, ref time.Time) (result *model.Po
 	}
 
 	updated := post.Clone()
-	updated.Message = decorated
-	stampStandalonePost(updated, p.decorators, found)
+	updated.Message = message
+
+	// Only one of the two ever applies. A stamp says the webapp owns the body
+	// and renders it from the message's sole decorator link; an expansion has
+	// just replaced that message with something else, so the body component
+	// would fall through and render the raw markdown as literal text, on a post
+	// that its custom type has also dropped from the search index.
+	//
+	// Nothing forces the two optional interfaces apart today beyond no
+	// decorator implementing both, which is a convention rather than a rule.
+	if message == decorated {
+		stampStandalonePost(updated, p.decorators, found)
+	}
+
 	return updated
 }
 

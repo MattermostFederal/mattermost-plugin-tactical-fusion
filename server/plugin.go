@@ -94,7 +94,15 @@ func (p *Plugin) locationFormats() location.Formats {
 // Read fresh for every message, like the two above, so a change in the admin
 // console takes effect without a restart.
 func (p *Plugin) airportFormats() airport.Formats {
-	return airport.Formats{Airfield: p.getConfiguration().EnableAirport}
+	config := p.getConfiguration()
+
+	return airport.Formats{
+		Airfield: config.EnableAirport,
+
+		// ANDed with the parent, the way locationMaps is: a message is only
+		// ever expanded for an airfield code this plugin decorated.
+		Table: config.EnableAirport && config.EnableAirportTable,
+	}
 }
 
 // locationMaps reports which surfaces the admin has left drawing a map.

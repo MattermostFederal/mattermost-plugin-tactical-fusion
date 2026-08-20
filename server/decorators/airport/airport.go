@@ -29,10 +29,19 @@ const ParamValue = "v"
 // history.
 type Formats struct {
 	Airfield bool
+
+	// Table governs whether a message that is nothing but an airfield code is
+	// expanded with the field's details, and nothing else.
+	//
+	// Separate from Airfield because it is a much larger rewrite of what the
+	// author wrote: the table is written into the STORED message, so it lands
+	// in exports, an author editing the post sees all of it, and the values are
+	// frozen at the moment of posting rather than looked up on each view.
+	Table bool
 }
 
 // AllFormats is what a decorator with no selector matches.
-var AllFormats = Formats{Airfield: true}
+var AllFormats = Formats{Airfield: true, Table: true}
 
 type Decorator struct {
 	// Enabled is read fresh for every message so an admin toggle takes effect
@@ -49,6 +58,34 @@ func (d *Decorator) formats() Formats {
 		return AllFormats
 	}
 	return d.Enabled()
+}
+
+// ExpandMessage adds the airfield's details under a message that is nothing but
+// its code, as a markdown table.
+//
+// A table written into the message rather than a custom post type rendered by
+// the webapp. That keeps the post an ordinary one: it stays in the
+// Elasticsearch and OpenSearch indexes, keeps its link previews and its
+// translation, and renders on every client rather than only the ones running
+// the webapp bundle.
+//
+// The cost is that it is permanent and frozen. The table replaces the author's
+// line rather than sitting under it, so the airfield's name carries the link
+// and the author's own token survives in the Code row, terminator and all.
+func (d *Decorator) ExpandMessage(href, trail string, params url.Values) string {
+	if !d.formats().Table || href == "" {
+		return ""
+	}
+
+	// Fields only. Describe also projects the coordinate and looks the country
+	// up in the polygons, and the table reads none of that: this runs inline on
+	// the post path, where Parse's contract is that the work is cheap.
+	fields, ok := DescribeFields(params.Get(ParamValue))
+	if !ok {
+		return ""
+	}
+
+	return airfieldTable(href, trail, fields)
 }
 
 var scanPattern = regexp.MustCompile(scanExpr)

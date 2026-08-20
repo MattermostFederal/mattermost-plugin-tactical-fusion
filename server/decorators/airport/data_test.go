@@ -271,3 +271,46 @@ func TestPositionReportsNoPositionRatherThanAZeroOneWhenLocationRefuses(t *testi
 		t.Errorf("refused with token %q and region %q, want both empty", token, region)
 	}
 }
+
+// The whitelist is the first layer, and it exists for what output escaping
+// cannot reach. "@here" is the case: backslash-escaping it suppresses the
+// rendered link, but Mattermost's mention scan reads the raw message and treats
+// a backslash as a separator, so the notification fires from a message whose
+// author typed four letters.
+func TestTheTextWhitelistRefusesWhatEscapingCannotFix(t *testing.T) {
+	for _, field := range []string{
+		"Ramstein AB @here Ops",
+		"Cape Town :fire: Intl",
+		"Kandahar #RWY09",
+		"see www.example.com",
+		"a | b",
+		`a \ b`,
+		"a\nb",
+		"a\rb",
+		"a<b>c",
+		"a~b",
+		"a*b",
+	} {
+		if validText(field) {
+			t.Errorf("validText(%q) = true, want it refused", field)
+		}
+	}
+}
+
+func TestTheTextWhitelistAcceptsWhatTheDatabaseUses(t *testing.T) {
+	for _, field := range []string{
+		"Cameri Air Base [MIL]",
+		"Hotel Sant`anna Heliport",
+		"São Tomé & Príncipe",
+		`Warren "Bud" Woods Palmer Municipal Airport`,
+		"Cam+Motor Airport",
+		"Bill & Hillary Clinton National Airport/Adams Field",
+		"Zhukovsky–Ramenskoye",
+		"large_airport",
+		"US-IN",
+	} {
+		if !validText(field) {
+			t.Errorf("validText(%q) = false, want it accepted", field)
+		}
+	}
+}

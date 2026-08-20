@@ -704,6 +704,35 @@
             place is plain text rather than a link to a view that would refuse it.
         </p>
 
+        <h3 id="airfield-table">The airfield details under a post</h3>
+
+        <p>
+            When a message is <strong>nothing but an airfield code</strong>, the plugin
+            replaces it with a small table of the field's details: its name, the code you
+            typed, where it is, what kind of field it is, its elevation and its IATA code.
+            The <strong>name is the link</strong> that opens this panel, which is where
+            the map and every coordinate reading are. A message with anything else around
+            the code, such as <code>divert to ICAO:KIND if the weather holds</code>, gets
+            the link on its own instead. A line ending <code>//</code>, as a USMTF set
+            line does, still counts, and the terminator stays with the code.
+        </p>
+
+        <p>
+            <strong>The table is part of the message.</strong> It is written in when you
+            post, not drawn on top afterwards, so it looks the same on every client
+            including mobile, it is included when messages are exported, and you can edit
+            or delete it like any other text in your own post. The details are the ones
+            the database held at the moment you posted: a later version of the plugin
+            that corrects an elevation does not change messages already sent.
+        </p>
+
+        <p>
+            Your administrator can switch it off for everybody with
+            <a href="admin.html#enable-airport-table"><code>EnableAirportTable</code></a>.
+            Airfield codes still become links; only the table goes, and only on messages
+            posted after the change.
+        </p>
+
         <h2 id="customize">Customize your view</h2>
 
         <p>
