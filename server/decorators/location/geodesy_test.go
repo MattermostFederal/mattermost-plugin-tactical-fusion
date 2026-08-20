@@ -741,3 +741,45 @@ func TestProjectionAgreesWithAnIndependentSeries(t *testing.T) {
 
 	t.Logf("worst disagreement with an independent series: %.6f m at %s", worst, worstAt)
 }
+
+func TestBandHelpersRefuseWhatIsNotABand(t *testing.T) {
+	if b, ok := bandFor(-81); ok {
+		t.Errorf("bandFor(-81) = %q, want a refusal below the band table", b)
+	}
+	for _, letter := range []byte{'I', 'O', 'A', 'Y', '0'} {
+		if south, north, ok := bandLatitudes(letter); ok {
+			t.Errorf("bandLatitudes(%q) = %v, %v, want a refusal", letter, south, north)
+		}
+		if withinBand(letter, 0, 0) {
+			t.Errorf("withinBand(%q, 0, 0) accepted a letter that names no band", letter)
+		}
+	}
+}
+
+func TestZoneForRefusesALongitudeOffTheGraticule(t *testing.T) {
+	for _, lon := range []float64{-180.1, 180, 360} {
+		if zone, ok := zoneFor(0, lon); ok {
+			t.Errorf("zoneFor(0, %v) = %d, want a refusal", lon, zone)
+		}
+	}
+}
+
+func TestProjectUTMRefusesALatitudeTheGridDoesNotCover(t *testing.T) {
+	for _, lat := range []float64{-81, 85, 90} {
+		if p, ok := projectUTM(lat, 0); ok {
+			t.Errorf("projectUTM(%v, 0) = %v, want a refusal", lat, p)
+		}
+	}
+}
+
+func TestUnprojectUTMRefusesANonFinitePosition(t *testing.T) {
+	for name, easting := range map[string]float64{
+		"not a number": math.NaN(),
+		"infinite":     math.Inf(1),
+		"far off grid": 1e9,
+	} {
+		if lat, lon, ok := unprojectUTM(utmPoint{Zone: 31, Band: 'U', Easting: easting, Northing: 5000000}); ok {
+			t.Errorf("%s easting unprojected to %v, %v, want a refusal", name, lat, lon)
+		}
+	}
+}

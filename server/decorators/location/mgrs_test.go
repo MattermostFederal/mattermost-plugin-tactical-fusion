@@ -172,3 +172,48 @@ func TestSquareMetersClampsDigitsToASquareItCanName(t *testing.T) {
 		})
 	}
 }
+
+func TestZoneNearRefusesAPositionOffTheGrid(t *testing.T) {
+	for _, lat := range []float64{85, -81} {
+		if zoneNear(31, lat, 3) {
+			t.Errorf("zoneNear(31, %v, 3) accepted a position UTM does not cover", lat)
+		}
+	}
+}
+
+func TestGridSquareForRefusesANorthingBelowTheFalseOrigin(t *testing.T) {
+	if col, row, ok := gridSquareFor(utmPoint{Zone: 31, Band: 'U', Easting: 500000, Northing: -100000}); ok {
+		t.Errorf("gridSquareFor with a negative northing = %q%q, want a refusal", col, row)
+	}
+}
+
+func TestUTMTokensAreCheckedAgainstTheZoneTheyName(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		grid Grid
+	}{
+		{
+			name: "an easting naming no 100 km column",
+			grid: Grid{Format: FormatUTM, Zone: 31, Band: 'P', Easting: 0, Northing: 1100000},
+		},
+		{
+			name: "numbers hundreds of kilometers from the zone",
+			grid: Grid{Format: FormatUTM, Zone: 31, Band: 'X', Easting: 100000, Northing: 8500000},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if p, ok := gridPoint(tc.grid); ok {
+				t.Errorf("gridPoint = %v, want a refusal", p)
+			}
+		})
+	}
+}
+
+func TestAGridSquareNeedsADigitCountTheNotationHas(t *testing.T) {
+	for _, digits := range []int{0, -1, maxGridDigits + 1} {
+		grid := Grid{Format: FormatMGRS, Zone: 18, Band: 'S', Col: 'U', Row: 'J', Digits: digits}
+		if p, ok := mgrsGridPoint(grid); ok {
+			t.Errorf("mgrsGridPoint with %d digits = %v, want a refusal", digits, p)
+		}
+	}
+}

@@ -361,6 +361,10 @@ func TestOnlyAVerifiedTokenReportsConfidence(t *testing.T) {
 			t.Errorf("Confidence() reported = %v for %s %q, want %v",
 				got, tc.format, tc.token, want)
 		}
+		if got := loc.ConfidenceText() != ""; got != want {
+			t.Errorf("ConfidenceText() rendered = %v for %s %q, want %v",
+				got, tc.format, tc.token, want)
+		}
 	}
 }
 
@@ -747,5 +751,85 @@ func TestUSMTFShapeFollowsResolution(t *testing.T) {
 				t.Fatalf("USMTFText() = %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestGridResolutionsSayWhichSquareTheyMean(t *testing.T) {
+	for _, tc := range []struct {
+		format Format
+		token  string
+		want   string
+	}{
+		{FormatMGRS, "18SUJ2347806483", "1 m grid, at center"},
+		{FormatMGRS, "18SUJ2306", "1 km grid, at center"},
+		{FormatUTM, "18S3234784306483", "1 m"},
+	} {
+		loc, ok := Parse(tc.format, tc.token)
+		if !ok {
+			t.Fatalf("Parse(%s, %q) rejected its own canonical form", tc.format, tc.token)
+		}
+		if got := loc.ResolutionText(); got != tc.want {
+			t.Errorf("ResolutionText() for %q = %q, want %q", tc.token, got, tc.want)
+		}
+	}
+}
+
+func TestTrimZeroesLeavesAWholeNumberAlone(t *testing.T) {
+	for raw, want := range map[string]string{
+		"12":     "12",
+		"12.50":  "12.5",
+		"12.00":  "12",
+		"0.10":   "0.1",
+		"1200.0": "1200",
+	} {
+		if got := trimZeroes(raw); got != want {
+			t.Errorf("trimZeroes(%q) = %q, want %q", raw, got, want)
+		}
+	}
+}
+
+func TestConfidenceTextMatchesTheWebappWording(t *testing.T) {
+	loc, ok := Parse(FormatVLATM, "3510N9-07901W7")
+	if !ok {
+		t.Fatal("Parse rejected a verified token")
+	}
+
+	const want = "stated confidence 9 (latitude), 7 (longitude)"
+	if got := loc.ConfidenceText(); got != want {
+		t.Errorf("ConfidenceText() = %q, want %q", got, want)
+	}
+}
+
+func TestAnUndecodableAreaRendersNoRowRatherThanAWrongOne(t *testing.T) {
+	loc := Location{
+		Format: FormatPlusCode,
+		Area:   Area{Format: FormatPlusCode, Code: "8FVC2222+22A"},
+	}
+
+	if _, _, ok := loc.Point(); ok {
+		t.Fatal("the area decoded, so this no longer exercises the refusal")
+	}
+
+	for name, got := range map[string]string{
+		"MGRS":   loc.MGRSText(),
+		"UTM":    loc.UTMText(),
+		"GEOREF": loc.GEOREFText(),
+		"GARS":   loc.GARSText(),
+		"Region": loc.RegionText(),
+	} {
+		if got != "" {
+			t.Errorf("%s rendered %q for a position that cannot be derived, want empty", name, got)
+		}
+	}
+}
+
+func TestAnUnknownFormatRendersNothingAndClaimsNoResolution(t *testing.T) {
+	loc := Location{Format: Format("not-a-format")}
+
+	if got := loc.canonicalString(); got != "" {
+		t.Errorf("canonicalString() = %q, want empty", got)
+	}
+	if got := loc.resolutionAt(4); got != 1 {
+		t.Errorf("resolutionAt(4) = %v, want the whole-degree fallback of 1", got)
 	}
 }
