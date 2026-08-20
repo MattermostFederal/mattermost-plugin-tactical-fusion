@@ -3,7 +3,8 @@ package location
 import (
 	"regexp"
 	"strings"
-	"unicode"
+
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 )
 
 // The token sub-expressions.
@@ -330,46 +331,10 @@ func bareScanExpr(f Format) string {
 	return `(?:` + strings.Join(exprs, `|`) + `)`
 }
 
-// boundaryOK is the guard every location grammar uses.
-//
-// It is a function rather than part of the expression on purpose. A pattern
-// that consumed its own guard characters would break the next match, because
-// the regexp scan returns non-overlapping matches: the first token would eat
-// the space the second one needed as its leading guard, and the second would go
-// silently undecorated. Two grids on one line is the most ordinary input this
-// feature has.
-//
-// Rejecting "." and "," on the trailing side costs a decoration when a
-// coordinate ends a sentence with no following space. That is deliberate: at
-// the point this runs, "-118.2500." and the middle of "-118.2500..-118.2600"
-// are the same thing. A missed decoration is a feature gap and rewriting a
-// range is corruption, so the trade goes this way.
+// boundaryOK is the guard every location grammar uses. The rule, and the two
+// defects behind its shape, live on decorators.BoundaryOK: the guard is shared
+// with the airfield grammar and a second copy of it here would be a second
+// thing to get wrong.
 func boundaryOK(before, after rune) bool {
-	return !badNeighbor(before) && !badNeighbor(after)
-}
-
-func badNeighbor(r rune) bool {
-	if r == 0 {
-		// The start or end of the message, which is always a clean edge.
-		return false
-	}
-
-	switch r {
-	case '.', ',', '-', '+', '/', ':':
-		return true
-
-	case '_':
-		// Underscore binds an identifier exactly as a letter or a digit does,
-		// and those are rejected below for that reason.
-		//
-		// This was missing, and its absence made the guard strictly weaker than
-		// the `\b` it exists to replace: Go's `\b` counts `_` as a word
-		// character, which is why the DTG decorator, still using word
-		// boundaries, never had the problem. So `snapshot_3510N07901W_v2` was
-		// rewritten in place while `FOO_091630ZAUG26_BAR` was correctly left
-		// alone, in the same message.
-		return true
-	}
-
-	return unicode.IsDigit(r) || unicode.IsLetter(r)
+	return decorators.BoundaryOK(before, after)
 }

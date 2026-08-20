@@ -77,10 +77,13 @@ type Pattern struct {
 	// the default, rewrites the whole match.
 	//
 	// The two differ only for a pattern that deliberately matches more than it
-	// links. A DTG moniker wants the default, so "DTG: 091630ZAUG26" becomes a
-	// link reading "091630ZAUG26" with the label consumed. A location moniker
-	// wants ReplaceGroup, because "LATM:" is part of a structured line the
-	// author may be quoting verbatim and deleting it would change the record.
+	// rewrites. Every moniker here wants the label consumed, so the DTG and
+	// location monikers take the default and the whole match becomes the link.
+	//
+	// The airfield pattern is the one that needs this: it matches the "//" a
+	// USMTF set line ends with, so that the boundary guard can look past it,
+	// but that terminator has to stay in the message. Its ReplaceGroup names
+	// the label and the ident together, leaving the "//" outside the rewrite.
 	//
 	// The whole match is still what protected ranges are tested against, so a
 	// moniker inside a code span protects the token behind it. Only the

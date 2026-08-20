@@ -499,10 +499,11 @@
         </p>
 
         <p>
-            Unlike the <a href="#moniker"><code>DTG:</code> label</a>, a coordinate label
-            is <strong>kept in the message</strong> rather than consumed. It is part of a
-            structured line the author may be quoting verbatim, so a decorated USMTF line
-            still reads as USMTF:
+            Like the <a href="#moniker"><code>DTG:</code> label</a>, a coordinate label is
+            <strong>consumed</strong>: the label and the token together become the link, so
+            <code>LATM:3510N07901W</code> is stored as a link reading
+            <code>3510N07901W</code>. The label said what kind of thing followed, and once
+            the thing is a link that says so itself the label is repeating it:
         </p>
 
         <p>
@@ -510,7 +511,9 @@
             <code>MGRS:18SUJ2347806483</code> inside a path such as
             <code>logs/MGRS:18SUJ2347806483</code> is left alone. That means a USMTF line
             quoted with slash delimiters does not decorate; a genuine one ends
-            <code>//</code> and was already left alone for the same reason.
+            <code>//</code> and is left alone for the same reason. That is also what bounds
+            the cost of consuming the label: the lines most likely to be quoted verbatim as
+            a structured record are exactly the ones that never decorate.
         </p>
 
         <pre><code>LATM:2130N15730W</code></pre>
@@ -642,14 +645,9 @@
                     <td>Universal Polar Stereographic, above 84&deg; north or below 80&deg; south. A different system, not implemented.</td>
                 </tr>
                 <tr>
-                    <td>GARS, GEOREF, Plus Codes</td>
-                    <td><code>006AG39</code>, <code>849VCWC8+R9</code></td>
-                    <td>Not implemented in this version.</td>
-                </tr>
-                <tr>
                     <td>Airfield codes</td>
                     <td><code>ICAO:KJFK</code></td>
-                    <td>Names a facility whose position has to be looked up rather than computed, so it is not a coordinate. Out of scope for this decorator.</td>
+                    <td>Names a facility whose position has to be looked up rather than computed, so it is not read as a coordinate. It is recognized by the <a href="#airfield">airfield decorator</a> instead, which looks it up.</td>
                 </tr>
                 <tr>
                     <td>Bearing and range</td>
@@ -664,6 +662,97 @@
             <p>
                 <a href="commands.html#check"><code>/tactical-fusion check &lt;your text&gt;</code></a>
                 runs the real matcher against it and tells you, without posting anything.
+            </p>
+        </div>
+
+        <h2 id="airfield">Airfield codes</h2>
+
+        <p>
+            An ICAO airfield code is four letters naming a facility, so unlike every
+            coordinate on this page its position is <strong>looked up rather than
+            computed</strong>. The plugin carries an airfield database and resolves the
+            code against it, then derives every coordinate reading from the position it
+            finds.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>What is recognized</th><th>Example</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Behind a USMTF field label</td>
+                    <td><code>ICAO:KIND</code></td>
+                    <td>The four labels that introduce an airfield code in USMTF: <code>ICAO:</code>, <code>LOC:</code>, <code>DEPLOC:</code> and <code>ARRLOC:</code>.</td>
+                </tr>
+                <tr>
+                    <td>A space before the colon</td>
+                    <td><code>ICAO :KIND</code></td>
+                    <td>Spaces and tabs <em>before</em> the colon are optional. Nothing may follow it: see <a href="#airfield-declined">the declined list</a>. A line break is not allowed either, so a label at the end of a line never claims the next line's first word.</td>
+                </tr>
+                <tr>
+                    <td>Ending a USMTF set line</td>
+                    <td><code>DEPLOC:KIND//</code></td>
+                    <td>The trailing <code>//</code> is left in the message and kept out of the link.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3 id="airfield-declined">Airfield codes deliberately declined</h3>
+
+        <table>
+            <thead>
+                <tr><th>What is not linked</th><th>Example</th><th>Why</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Anything after the colon</td>
+                    <td><code>LOC: FAST</code></td>
+                    <td>The code must be written directly against the colon, which a genuine USMTF field is. A space would let the label reach the next word of an ordinary sentence, and military traffic is often written in capitals: <code>LOC: FAST TURNAROUND ON THE RAMP</code> would otherwise rewrite <code>FAST</code> into a link to Somerset East Airport, permanently. Write <code>LOC:FAST</code> when you mean the airfield.</td>
+                </tr>
+                <tr>
+                    <td>A code with no label</td>
+                    <td><code>KIND</code></td>
+                    <td>Four letters is what ordinary words are made of. 343 codes in the database are English dictionary words, including <code>FACT</code> (Cape Town International) and <code>FAST</code> (Somerset East), and <code>USCG</code> is an airfield in Russia. Linking bare codes would rewrite ordinary sentences into links pointing at the wrong side of the world.</td>
+                </tr>
+                <tr>
+                    <td>A lower-case label</td>
+                    <td><code>icao:kind</code></td>
+                    <td>Same reason. A line like <code>loc: fast turnaround on the ramp</code> would otherwise be rewritten. USMTF field labels are upper case.</td>
+                </tr>
+                <tr>
+                    <td>A code the database does not hold</td>
+                    <td><code>ICAO:QZQZ</code></td>
+                    <td>The code is validated by looking it up, not by its shape, so four letters on their own vouch for nothing.</td>
+                </tr>
+                <tr>
+                    <td><code>ZZZZ</code></td>
+                    <td><code>DEPLOC:ZZZZ</code></td>
+                    <td>In a flight plan this means "aerodrome not listed", with the real field named in remarks. It is a real airfield upstream, and linking it would name a specific island airfield where the message means "see remarks", so it is deliberately not in the database.</td>
+                </tr>
+                <tr>
+                    <td>IATA codes</td>
+                    <td><code>IND</code></td>
+                    <td>Three letters, and not implemented in this version. The IATA code is shown in the panel for an airfield that has one.</td>
+                </tr>
+                <tr>
+                    <td>A label inside a path</td>
+                    <td><code>logs/ICAO:KIND</code></td>
+                    <td>A label with a path character in front of it is not a field label, and rewriting the middle of a path is exactly what the plugin's boundary rules exist to prevent.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-note">
+            <p class="alert-title">The position is a reference point</p>
+            <p>
+                The airfield database gives one position per field, quoted to four
+                decimal places, which is about 11 metres. It is a reference point for
+                the field rather than a surveyed location of the tower, the threshold or
+                any particular part of it. The panel names the database it came from for
+                that reason. The panel draws the position as a map and links to the
+                <a href="panel.html#location-panel">coordinate panel</a> for the readings
+                rather than reprinting them.
             </p>
         </div>
 

@@ -579,10 +579,10 @@
         </p>
 
         <p>
-            Unlike the <code>DTG:</code> label, a coordinate label is <strong>kept</strong>
-            rather than consumed, so a decorated USMTF line still reads as USMTF. This one
-            composes the same way the date-time group label does: it only labels formats
-            that are themselves on, and a label vouches for nothing, so
+            Like the <code>DTG:</code> label, a coordinate label is
+            <strong>consumed</strong>: the label and the token together become the link.
+            This one composes the same way the date-time group label does: it only labels
+            formats that are themselves on, and a label vouches for nothing, so
             <code>LATM:9999N99999W</code> stays declined.
         </p>
 
@@ -732,6 +732,54 @@
             outright, and that is deliberate: the page <em>is</em> the map, so there is no
             reduced version of it worth serving, where the readings page still has
             everything but the picture.
+        </p>
+
+        <h2 id="airfield-switches">The airfield switch</h2>
+
+        <h3 id="enable-airport" data-setting="EnableAirport">Decorate airfield codes <code>EnableAirport</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>New messages stop having airfield codes linked. Links already written keep working, and the airfield panel and page keep answering.</td></tr>
+                <tr><td>Requires</td><td>Nothing</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Recognizes an ICAO airfield code written behind one of the four USMTF field
+            labels that introduce one: <code>ICAO:</code>, <code>LOC:</code>,
+            <code>DEPLOC:</code> and <code>ARRLOC:</code>. The panel names the airfield,
+            where it is, its elevation and its IATA code, and derives every coordinate
+            reading from the position in the built-in database.
+        </p>
+
+        <p>
+            <strong>There is one switch rather than a family of them</strong>, unlike
+            coordinates. A code is only ever recognized behind a label, so there is no
+            second grammar to turn off separately, and a "labels only" switch would just
+            be this one under another name.
+        </p>
+
+        <p>
+            <strong>The label is required, and it must be upper case.</strong> That is not
+            strictness for its own sake. An airfield code is four letters, which is what
+            ordinary words are made of: 343 of the codes in the database are English
+            dictionary words, including <code>FACT</code> (Cape Town International) and
+            <code>FAST</code> (Somerset East). <code>USCG</code> is an airfield in Russia
+            and <code>LIMA</code> is one in Italy. Matching four bare letters would rewrite
+            ordinary sentences into links pointing at the wrong side of the world, and
+            matching a lower-case label would do the same to a line like
+            <code>loc: fast turnaround on the ramp</code>.
+        </p>
+
+        <p>
+            The airfield's position comes from a database compiled into the plugin, so
+            nothing is fetched and this works on an air-gapped install. The panel names its
+            source beside the airfield, because the position is a lookup rather than
+            something computed from what the author typed. Refreshing that database is a
+            plugin upgrade.
         </p>
 
         <h2 id="tagged-only">Decorating only what an author labeled</h2>

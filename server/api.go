@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
@@ -47,7 +48,71 @@ const (
 	// conclusion from the same switches. Nothing secret is on it: it says which
 	// features are on, never how anything is configured.
 	featuresPath = apiPath + "/features"
+
+	// airportPath answers with one airfield and every reading of its position.
+	//
+	// It exists because the airfield database is compiled into the Go binary
+	// and there is no way to carry a name to the browser through the link: the
+	// link's stored text has to stay the author's own token.
+	airportPath = apiPath + "/airport"
 )
+
+// airportResponse is what the airfield endpoint answers.
+//
+// A discriminated shape rather than a flat record. An ident this build does not
+// hold carries no airfield and no coordinate at all, rather than zero values a
+// reader would take for real: 0,0 is a position like any other, and this plugin
+// deliberately does not inherit the truthiness check that drops it.
+//
+// It carries the coordinate as an (f, v) PAIR rather than as readings. An
+// airfield surface names the field and links to the coordinate, because the
+// location decorator already renders that position eleven ways with a map and
+// the reader's own row choices; a second table here would say the same thing
+// worse and then drift from it.
+//
+// Held to webapp/src/decorators/airport/types.ts by TestWebappAirportShapeMatches.
+type airportResponse struct {
+	Found      bool               `json:"found"`
+	Ident      string             `json:"ident"`
+	Airport    *airportDetails    `json:"airport,omitempty"`
+	Coordinate *airportCoordinate `json:"coordinate,omitempty"`
+}
+
+// airportCoordinate is the location decorator's own link identity.
+//
+// Built in Go rather than in the webapp because the two languages disagree
+// about formatting a float in the last digit, and a token that differs by one
+// digit is refused by the very page it points at.
+type airportCoordinate struct {
+	Format string `json:"format"`
+	Value  string `json:"value"`
+
+	// Region reaches the map's accessible label and nothing else. It is the
+	// only place the country reaches a reader who is not looking at the map.
+	Region string `json:"region"`
+}
+
+// airportDetails is the airfield itself, already rendered.
+//
+// Strings, for the reason Conversion is strings: the rendering rules live in Go
+// and a second implementation of them in TypeScript is a second thing to get
+// wrong. Elevation is a string for the same reason and is empty when the
+// database states none, which is a different thing from sea level.
+//
+// It carries no citation for the airfield data. OurAirports is public domain,
+// so nothing has to travel with the value, and the same judgment was already
+// made for the Natural Earth basemap credit. The provenance is recorded where
+// somebody would go looking for it, in server/decorators/airport/data/README.md
+// and the help pages. The REGION's own citation is a different thing and stays:
+// that says where a border lookup came from, and it is what keeps it from
+// reading as a determination.
+type airportDetails struct {
+	Name      string `json:"name"`
+	Type      string `json:"type"`
+	Place     string `json:"place"`
+	Elevation string `json:"elevation"`
+	IATA      string `json:"iata"`
+}
 
 // featuresResponse is what a reader's browser is told about this install.
 //
@@ -85,6 +150,11 @@ func (p *Plugin) serveAPI(w http.ResponseWriter, r *http.Request) {
 
 	if r.URL.Path == featuresPath {
 		p.serveFeatures(w, r)
+		return
+	}
+
+	if r.URL.Path == airportPath {
+		p.serveAirport(w, r)
 		return
 	}
 
@@ -194,6 +264,67 @@ func (p *Plugin) serveFeatures(w http.ResponseWriter, r *http.Request) {
 		MapInline: maps.Inline,
 		MapPage:   maps.Page,
 	})
+}
+
+// serveAirport answers with one airfield and every reading of its position.
+//
+// It goes through airport.Describe, the same function the public page uses, so
+// a lookup that the panel renders is one the page renders too.
+//
+// It does NOT consult EnableAirport. A format switch governs decoration only,
+// so a link written while the decorator was on must keep resolving after it is
+// turned off, exactly as a coordinate link does.
+//
+// No configurationLoaded gate either, unlike /features: that answer is stamped
+// into a client cache and kept for half an hour, where this one is discarded.
+func (p *Plugin) serveAirport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeAPIError(w, http.StatusMethodNotAllowed,
+			errcode.WithCode(errcode.APIMethodNotAllowed, "Method not allowed."))
+		return
+	}
+
+	// The shape check, before anything echoes the value back. An ident this
+	// build does not hold is a different answer entirely, below.
+	ident := r.URL.Query().Get("v")
+	if !airport.MatchesIdentShape(ident) {
+		writeAPIError(w, http.StatusBadRequest,
+			errcode.WithCode(errcode.APIAirportInvalid, "That is not an airfield code this plugin issued."))
+		return
+	}
+
+	// Constant for the life of a build, and private because the URL and the
+	// body both name a place somebody looked up. The five minutes is not about
+	// the answer changing; it bounds how long a browser keeps one across a
+	// plugin upgrade.
+	w.Header().Set("Cache-Control", "private, max-age=300")
+
+	details, found := airport.Describe(ident)
+	if !found {
+		writeAPIJSON(w, http.StatusOK, airportResponse{Found: false, Ident: ident})
+		return
+	}
+
+	body := airportResponse{
+		Found: true,
+		Ident: details.Ident,
+		Airport: &airportDetails{
+			Name:      details.Name,
+			Type:      details.Type,
+			Place:     details.Place,
+			Elevation: details.Elevation,
+			IATA:      details.IATA,
+		},
+	}
+	if details.HasPosition {
+		body.Coordinate = &airportCoordinate{
+			Format: details.Format,
+			Value:  details.Token,
+			Region: details.Region,
+		}
+	}
+
+	writeAPIJSON(w, http.StatusOK, body)
 }
 
 func (p *Plugin) handleGetPreferences(w http.ResponseWriter, userID string) {

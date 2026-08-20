@@ -16,6 +16,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/plugin"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 )
@@ -209,6 +210,8 @@ func newTestPlugin(t *testing.T, siteURL string, enabled bool) *Plugin {
 		EnableLocationMapPanel:  true,
 		EnableLocationMapInline: enabled,
 		EnableLocationMapPage:   true,
+
+		EnableAirport: enabled,
 	})
 
 	registerDecoratorsForTest(t, p)
@@ -223,6 +226,7 @@ func registerDecoratorsForTest(t *testing.T, p *Plugin) {
 	registry, err := decorators.NewDefaultRegistry(
 		&dtg.Decorator{Enabled: p.dtgFormats},
 		&location.Decorator{Enabled: p.locationFormats, Maps: p.locationMaps},
+		&airport.Decorator{Enabled: p.airportFormats},
 	)
 	if err != nil {
 		t.Fatalf("failed to build the decorator registry: %v", err)

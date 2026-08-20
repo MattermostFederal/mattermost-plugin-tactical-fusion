@@ -119,6 +119,13 @@ const (
 	// renders there converts here and one that does not fails in both places.
 	APIConvertInvalid = 13008
 
+	// APIAirportInvalid is returned when the airfield endpoint is given
+	// something that is not a well-formed ICAO ident. An ident this build
+	// simply does not hold is not this: that answers 200 saying so, exactly as
+	// the page does, because a refreshed database must not turn every link
+	// naming a retired code into a permanent failure.
+	APIAirportInvalid = 13009
+
 	// server/preferences.go (14000-14999)
 
 	// PreferencesZoneNameTooLong rejects a row label longer than the cap.
@@ -209,6 +216,11 @@ const (
 	// reproduce itself, or whose "r" parameter is not something this plugin
 	// would have written.
 	LocationPageParamsInvalid = 17001
+
+	// AirportPageInvalid is returned by the airfield page for a link whose "v"
+	// parameter is not four upper-case letters. An ident this build does not
+	// hold renders at 200 with a note instead.
+	AirportPageInvalid = 17002
 )
 
 // AllCodes lists every code declared above. TestAllCodesComplete enforces that
@@ -237,6 +249,7 @@ var AllCodes = []int{
 	APIPreferencesSaveFailed,
 	APIPreferencesClearFailed,
 	APIConvertInvalid,
+	APIAirportInvalid,
 
 	PreferencesZoneNameTooLong,
 	PreferencesZoneNameControlCharacters,
@@ -260,4 +273,5 @@ var AllCodes = []int{
 
 	DTGPageParamsInvalid,
 	LocationPageParamsInvalid,
+	AirportPageInvalid,
 }

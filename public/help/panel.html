@@ -53,6 +53,13 @@
             <a href="#location-hover">the hover card</a> for the whole of it.
         </p>
 
+        <p>
+            Point at an <a href="formats.html#airfield">airfield code</a> and the card
+            <strong>names the airfield</strong> and where it is, and shows nothing else.
+            A four-letter code says nothing at all on its own, so naming it is exactly
+            what a glance is asking; the readings are one click away.
+        </p>
+
         <h2 id="panel">Clicking a link</h2>
 
         <p>
@@ -639,6 +646,62 @@
             coordinate you pointed at opens with its grid rows already on screen. The card
             says <code>Loading map&hellip;</code> until that lands, and reports the same
             failures the panel does.
+        </p>
+
+        <h2 id="airfield-panel">The airfield panel</h2>
+
+        <p>
+            Clicking an <a href="formats.html#airfield">airfield code</a> opens a panel
+            naming the field, where it is, its type, its elevation and its IATA code.
+            Each value has a copy button, exactly as the coordinate panel does.
+        </p>
+
+        <p>
+            <strong>Under the details is a map of the airfield.</strong> It is the same
+            map the coordinate panel draws, with the same controls, the same
+            <em>Reset view</em> and the same <em>Open larger</em>, because it is the same
+            component rather than a second one.
+        </p>
+
+        <p>
+            <strong>The readings are one link away, not on this panel.</strong>
+            The <em>Place</em> value is a link: following it switches the sidebar to the
+            <a href="#location-panel">coordinate panel</a> for the airfield's position,
+            which is where the eleven notations, the copy buttons and your own row
+            choices already live. Reprinting them here would be a second table saying the
+            same thing, and the two would drift. The place still has its own copy button,
+            since copying it is a different thing from following it.
+        </p>
+
+        <p>
+            The map honours <a href="admin.html#enable-location-map-panel">the same
+            switch</a> the coordinate panel's map does, since it is a map in the sidebar
+            like any other. With it off the airfield still renders in full and the
+            readings link still works; only the picture is gone. The standalone airfield
+            page draws no map at all and links to the coordinate page instead, because it
+            deliberately runs no JavaScript.
+        </p>
+
+        <p>
+            <strong>Everything on it comes from the server.</strong> The airfield
+            database is compiled into the plugin rather than sent to the browser, so the
+            panel is briefly empty while the lookup runs, and it says which of three
+            things happened if there is nothing to show: the code is not in this build's
+            database, the link was edited by hand and carries no valid code, or the
+            server could not be reached. Those are three different problems and the panel
+            never reports one as another.
+        </p>
+
+        <p>
+            The position is a <strong>reference point for the field</strong> quoted to
+            about 11 metres, not a survey of any particular part of it. Where the
+            airfield data comes from is on the
+            <a href="formats.html#airfield">formats page</a>.
+        </p>
+
+        <p>
+            An airfield whose database entry has no usable position gets no map, and its
+            place is plain text rather than a link to a view that would refuse it.
         </p>
 
         <h2 id="customize">Customize your view</h2>
