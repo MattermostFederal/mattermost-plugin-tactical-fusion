@@ -87,15 +87,39 @@ function endpoint(format: LocationFormat, canonical: string, raw: string): strin
     return `${pluginBaseUrl()}/api/v1/convert?${query.toString()}`;
 }
 
+/**
+ * The bound on a request that never answers.
+ *
+ * A stalled fetch never rejects, so without this `inflight` is never cleared
+ * and every later caller for the same token joins one pending promise: the
+ * hover starts the request, the click that follows joins it, and the grid rows
+ * read `converting…` for the life of the tab with a reload the only way back.
+ * The same ten seconds `features/store.ts`, `basemap.ts` and `loadMapLibre`
+ * put on theirs.
+ *
+ * Aborting turns the stall into a rejection, which `load` already degrades to
+ * `failed` and `remembered` already refuses to cache.
+ */
+let fetchTimeoutMs = 10000;
+
 async function fetchConversion(
     format: LocationFormat, canonical: string, raw: string): Promise<Conversion> {
-    const response = await fetch(endpoint(format, canonical, raw), {
-        credentials: 'same-origin',
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), fetchTimeoutMs);
 
-        // Mattermost accepts session-cookie authentication only for requests
-        // that could not have been a cross-site form post.
-        headers: {'X-Requested-With': 'XMLHttpRequest'},
-    });
+    let response: Response;
+    try {
+        response = await fetch(endpoint(format, canonical, raw), {
+            credentials: 'same-origin',
+            signal: controller.signal,
+
+            // Mattermost accepts session-cookie authentication only for
+            // requests that could not have been a cross-site form post.
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+        });
+    } finally {
+        clearTimeout(timer);
+    }
 
     if (response.status === 400) {
         throw new RejectedError('not a coordinate this plugin issued');
@@ -337,4 +361,10 @@ export function _requestForTesting( // eslint-disable-line no-underscore-dangle,
 export function _resetConversionsForTesting(): void { // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
     answers.clear();
     inflight.clear();
+    fetchTimeoutMs = 10000;
+}
+
+/** @internal shortens the hang timeout, so the test for it does not wait ten seconds. */
+export function _setFetchTimeoutForTesting(ms: number): void { // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
+    fetchTimeoutMs = ms;
 }
