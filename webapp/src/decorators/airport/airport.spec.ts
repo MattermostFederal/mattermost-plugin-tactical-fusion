@@ -202,6 +202,34 @@ test('a hung request is abandoned rather than pinning the code', async () => {
     }
 });
 
+/*
+ * Headers can arrive and the BODY still stall, and fetch resolves on the
+ * headers. A bound that stops at the fetch therefore leaves the body read
+ * unguarded, which is the same permanent-stall defect one step further down:
+ * inflight is never cleared and every later caller for that code joins the
+ * dead promise for the life of the tab.
+ */
+test('a stalled response body is abandoned too', async () => {
+    reset();
+    setFetchTimeout(20);
+
+    const real = globalThis.fetch;
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => ({
+        status: 200,
+        ok: true,
+        json: () => new Promise((_resolve, rejectIt) => {
+            init?.signal?.addEventListener('abort', () => rejectIt(new Error('aborted')));
+        }),
+    })) as unknown as typeof globalThis.fetch;
+
+    try {
+        expect((await request('KIND')).status).toBe('failed');
+    } finally {
+        globalThis.fetch = real;
+        reset();
+    }
+});
+
 test.describe('the airfield cache', () => {
     test.beforeEach(() => reset());
     test.afterEach(() => reset());

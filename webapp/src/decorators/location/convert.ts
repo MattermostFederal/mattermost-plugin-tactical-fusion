@@ -107,9 +107,13 @@ async function fetchConversion(
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), fetchTimeoutMs);
 
-    let response: Response;
+    // The body read is INSIDE the bound. fetch resolves when the headers
+    // arrive, so clearing the timer there leaves a server that sends headers
+    // and then stalls the body unbounded, which is the same defect one step
+    // further down: inflight is never cleared and every later caller for the
+    // token joins the dead promise.
     try {
-        response = await fetch(endpoint(format, canonical, raw), {
+        const response = await fetch(endpoint(format, canonical, raw), {
             credentials: 'same-origin',
             signal: controller.signal,
 
@@ -117,18 +121,18 @@ async function fetchConversion(
             // requests that could not have been a cross-site form post.
             headers: {'X-Requested-With': 'XMLHttpRequest'},
         });
+
+        if (response.status === 400) {
+            throw new RejectedError('not a coordinate this plugin issued');
+        }
+        if (!response.ok) {
+            throw new Error(`The server returned ${response.status}.`);
+        }
+
+        return asConversion(await response.json());
     } finally {
         clearTimeout(timer);
     }
-
-    if (response.status === 400) {
-        throw new RejectedError('not a coordinate this plugin issued');
-    }
-    if (!response.ok) {
-        throw new Error(`The server returned ${response.status}.`);
-    }
-
-    return asConversion(await response.json());
 }
 
 /**

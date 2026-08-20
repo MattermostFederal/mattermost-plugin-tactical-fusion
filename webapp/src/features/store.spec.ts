@@ -207,6 +207,26 @@ test('a hung read is abandoned rather than pinning every surface off', async () 
     expect(calls()).toBe(1);
 });
 
+// Headers arrive, the body stalls. fetch resolves on the headers, so a bound
+// that stops there leaves this store unguarded in the one direction it must
+// never fail: every map off, indistinguishable from an admin decision.
+test('a stalled response body is abandoned too', async () => {
+    _setFetchTimeoutForTesting(20);
+
+    stubFetch((init) => Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => new Promise((_resolve, rejectIt) => {
+            init?.signal?.addEventListener('abort', () => rejectIt(new Error('aborted')));
+        }),
+    } as unknown as Response));
+
+    await loadFeatures();
+
+    expect(getState().features.mapPanel).toBe(true);
+    expect(getState().error).not.toBeNull();
+});
+
 // A failed read must not stamp the clock, or one bad minute leaves a reader on
 // the fallback for half an hour with a reload the only way back.
 test('retries immediately after a failure rather than caching it', async () => {

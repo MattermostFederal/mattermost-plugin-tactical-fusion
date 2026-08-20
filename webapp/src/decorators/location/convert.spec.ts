@@ -200,6 +200,29 @@ test.describe('the conversion cache', () => {
         }
     });
 
+    // Headers arrive, the body stalls. fetch resolves on the headers, so a
+    // bound that stops there leaves this unguarded.
+    test('abandons a stalled response body too', async () => {
+        resetConversions();
+        setFetchTimeout(20);
+
+        const real = globalThis.fetch;
+        globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => ({
+            status: 200,
+            ok: true,
+            json: () => new Promise((_resolve, rejectIt) => {
+                init?.signal?.addEventListener('abort', () => rejectIt(new Error('aborted')));
+            }),
+        })) as unknown as typeof globalThis.fetch;
+
+        try {
+            expect((await requestForTesting('dd', '34.0561,-118.2500', '')).status).toBe('failed');
+        } finally {
+            globalThis.fetch = real;
+            resetConversions();
+        }
+    });
+
     /*
      * An outage is never remembered, and this is the important one.
      *

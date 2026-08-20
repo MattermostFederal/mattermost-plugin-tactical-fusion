@@ -131,9 +131,13 @@ async function fetchAirport(ident: string): Promise<AirportResponse> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), fetchTimeoutMs);
 
-    let response: Response;
+    // The body read is INSIDE the bound, not after it. fetch resolves when the
+    // headers arrive, so clearing the timer there leaves a server that sends
+    // headers and then stalls the body unbounded, which is the whole defect
+    // this exists to close: inflight is never cleared and every later caller
+    // joins the dead promise for the life of the tab.
     try {
-        response = await fetch(endpoint(ident), {
+        const response = await fetch(endpoint(ident), {
             credentials: 'same-origin',
             signal: controller.signal,
 
@@ -141,27 +145,28 @@ async function fetchAirport(ident: string): Promise<AirportResponse> {
             // requests that could not have been a cross-site form post.
             headers: {'X-Requested-With': 'XMLHttpRequest'},
         });
+
+        if (response.status === 400) {
+            throw new RejectedError('not an airfield code this plugin issued');
+        }
+        if (!response.ok) {
+            throw new Error(`The server returned ${response.status}.`);
+        }
+
+        const answer = asAirport(await response.json());
+
+        // The answer has to be about the code that was asked for. Without this
+        // a proxy or a stale route can put one airfield's details under
+        // another's code, and the panel and the hover would disagree about the
+        // same link.
+        if (answer.ident !== ident) {
+            throw new Error('The server answered about a different airfield.');
+        }
+
+        return answer;
     } finally {
         clearTimeout(timer);
     }
-
-    if (response.status === 400) {
-        throw new RejectedError('not an airfield code this plugin issued');
-    }
-    if (!response.ok) {
-        throw new Error(`The server returned ${response.status}.`);
-    }
-
-    const answer = asAirport(await response.json());
-
-    // The answer has to be about the code that was asked for. Without this a
-    // proxy or a stale route can put one airfield's details under another's
-    // code, and the panel and the hover would disagree about the same link.
-    if (answer.ident !== ident) {
-        throw new Error('The server answered about a different airfield.');
-    }
-
-    return answer;
 }
 
 /*

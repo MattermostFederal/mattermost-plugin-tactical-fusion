@@ -160,6 +160,19 @@ on pointer movement rather than on a click, so wiring one to `/api/v1/convert`
 would have put a request behind every coordinate a cursor crossed in a busy
 channel. What unblocked it is the module cache in `convert.ts`.
 
+**The request is bounded at ten seconds, and the bound covers the BODY.** That
+second half is the part that was wrong three times over: `fetch` resolves when
+the response HEADERS arrive, so a `clearTimeout` placed straight after it leaves
+`await response.json()` unguarded, and a server that sends headers and then
+stalls the body reopens the exact defect the bound exists to close. The
+`finally` therefore wraps the body read as well, which also means an abort part
+way through the body correctly rejects rather than being ignored.
+
+`features/store.ts` had it this way first, `convert.ts` was written from it and
+`airport.ts` from that, so one misplaced line propagated to three files before a
+review caught it. `basemap.ts` is the one that always had it right: its
+`finally` wraps `await response.arrayBuffer()`.
+
 **The request is bounded at ten seconds.** A stalled fetch never rejects, so
 without the bound `inflight` is never cleared and every later caller for the
 same token joins one pending promise: the hover starts the request, the click
