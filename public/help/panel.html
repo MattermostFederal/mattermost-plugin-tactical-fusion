@@ -653,7 +653,11 @@
         <p>
             Clicking an <a href="formats.html#airfield">airfield code</a> opens a panel
             naming the field, where it is, its type, its elevation and its IATA code.
-            Each value has a copy button, exactly as the coordinate panel does.
+            Each value you would paste somewhere has a copy button, exactly as the
+            coordinate panel does. <strong>Type</strong> does not: copying
+            <code>Large Airport</code> gets you a category rather than a value, which is
+            the same rule that leaves the coordinate panel's resolution and datum rows
+            without one.
         </p>
 
         <p>
@@ -707,8 +711,8 @@
         <h3 id="airfield-table">The airfield details under a post</h3>
 
         <p>
-            When a message is <strong>nothing but an airfield code</strong>, the plugin
-            replaces it with a small table of the field's details: its name, the code you
+            When a message is <strong>nothing but one labeled airfield reference</strong>,
+            such as <code>ICAO:KIND</code>, the plugin replaces it with a small table of the field's details: its name, the code you
             typed, where it is, what kind of field it is, its elevation and its IATA code.
             The <strong>name is the link</strong> that opens this panel, which is where
             the map and every coordinate reading are. A message with anything else around

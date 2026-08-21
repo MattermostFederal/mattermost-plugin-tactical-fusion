@@ -184,10 +184,10 @@
                     },
                     {
                         "key": "EnableAirportTable",
-                        "display_name": "Show the airfield details under a code-only message",
+                        "display_name": "Show the airfield details under a labeled code on its own",
                         "type": "bool",
                         "default": true,
-                        "help_text": "When a message is nothing but an airfield code, add a table of the field's details under it: its name, where it is, what kind of field it is, its elevation and its IATA code. The table is written into the message itself, so it appears on every client, is included when messages are exported, and is what the author sees if they edit the post. The values are fixed when the message is posted and are not updated when a later plugin version corrects the database. Turning this off stops new messages being expanded; messages already posted keep their table. Only applies while \"Decorate airfield codes\" is on."
+                        "help_text": "When a message is nothing but one labeled airfield reference, such as \"ICAO:KIND\" or \"DEPLOC:KIND//\", add a table of the field's details under it: its name, where it is, what kind of field it is, its elevation and its IATA code. The table is written into the message itself, so it appears on every client, is included when messages are exported, and is what the author sees if they edit the post. The values are fixed when the message is posted and are not updated when a later plugin version corrects the database. Turning this off stops new messages being expanded; messages already posted keep their table. Only applies while \"Decorate airfield codes\" is on."
                     }
                 ]
             }

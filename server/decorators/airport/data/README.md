@@ -28,7 +28,7 @@ a border lookup reading as a determination.
 
 ## How it is produced
 
-```
+```sh
 go run ./build/airportdata [path/to/upstream/airport-codes.csv]
 ```
 

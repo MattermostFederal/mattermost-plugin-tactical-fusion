@@ -127,7 +127,7 @@ want. `PageMapping` is the only other one, and it exists for one thing: the map
 pages run MapLibre, which is a real script file with a worker beside it, fetches
 the basemap, and draws through a canvas.
 
-```
+```text
 PageStatic   default-src 'none'; style-src 'unsafe-inline'; script-src 'none'|'sha256-...'
 PageMapping  ... plus 'self' on script-src,
              worker-src 'self'; img-src data:; connect-src 'self'

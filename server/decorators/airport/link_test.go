@@ -29,6 +29,14 @@ func TestEveryAirfieldTokenIsAcceptedByLocation(t *testing.T) {
 	bad := 0
 	for ident := range airfields {
 		d, _ := Describe(ident)
+
+		// A record with no usable position offers no link at all, which
+		// api.go and the page both gate on. Converting its empty token would
+		// count a row the product handles correctly as a dead link.
+		if !d.HasPosition {
+			continue
+		}
+
 		if _, ok := location.Convert(location.Format(d.Format), d.Token, ""); !ok {
 			if bad < 3 {
 				t.Errorf("%s: %q is not a coordinate", ident, d.Token)
@@ -36,5 +44,10 @@ func TestEveryAirfieldTokenIsAcceptedByLocation(t *testing.T) {
 			bad++
 		}
 	}
-	t.Logf("%d airfields, %d with a dead link", Count(), bad)
+
+	// The count as well as the samples: reporting three of eight thousand
+	// understates the blast radius of what is one permanently dead link each.
+	if bad > 0 {
+		t.Errorf("%d of %d airfields have a dead link", bad, Count())
+	}
 }

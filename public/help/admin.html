@@ -799,7 +799,7 @@
 
         <h2>Checking the current behavior</h2>
 
-        <h3 id="enable-airport-table" data-setting="EnableAirportTable">Show the airfield details under a code-only message <code>EnableAirportTable</code></h3>
+        <h3 id="enable-airport-table" data-setting="EnableAirportTable">Show the airfield details under a labeled code on its own <code>EnableAirportTable</code></h3>
 
         <table class="field-table">
             <tbody>
@@ -811,8 +811,9 @@
         </table>
 
         <p>
-            When a message contains nothing but one airfield code, it is replaced with a
-            small table of the field's details: its name, the code the author typed, where
+            When a message contains nothing but one <em>labeled</em> airfield reference,
+            such as <code>ICAO:KIND</code> or a set line ending <code>DEPLOC:KIND//</code>,
+            it is replaced with a small table of the field's details: its name, the code the author typed, where
             it is, what kind of field it is, its elevation and its IATA code. The name is
             the link that opens the panel, which is where the map and the coordinate
             readings are. The code the author typed stays in the table, so searching for

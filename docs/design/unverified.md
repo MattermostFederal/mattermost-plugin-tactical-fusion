@@ -2,8 +2,6 @@
 
 > Design rationale for Tactical Fusion. See [CLAUDE.md](../../CLAUDE.md) for the rules that govern day-to-day work; this file records the measurements, the defects that produced the current shape, and the contracts a later change would silently break.
 
-### Unverified before deployment
-
 Two prerequisites from the implementation plan need a running server and have
 **not** been checked:
 

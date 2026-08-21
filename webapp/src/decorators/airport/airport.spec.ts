@@ -89,9 +89,14 @@ test('refuses a found airfield with a missing field', () => {
 // A name that happens to exist on Object.prototype must read as absent rather
 // than inherited. This repo has been bitten by exactly that once already.
 test('refuses a field inherited from the prototype chain', () => {
-    const airport = Object.create({toString: 'inherited'}) as Record<string, unknown>;
+    // The inherited key has to be one of the fields asDetails CHECKS, or the
+    // test passes for the wrong reason: with toString on the prototype it
+    // throws because the own `name` is missing, which a plain typeof check
+    // would also do, so it never discriminates inherited from own.
+    const airport = Object.create({name: 'inherited'}) as Record<string, unknown>;
     Object.assign(airport, {...DETAILS});
     delete airport.name;
+
     expect(() => asAirport({found: true, ident: 'KIND', airport})).toThrow();
 });
 

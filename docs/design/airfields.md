@@ -231,7 +231,7 @@ other reserved code, is not upstream at all.
 ```go
 token := strconv.FormatFloat(a.Lat, 'f', 4, 64) + "," + strconv.FormatFloat(a.Lon, 'f', 4, 64)
 if _, ok := location.Convert(location.FormatDD, token, ""); !ok { ... }
-```
+```text
 
 `Details` carries `Format` and `Token`, the location decorator's own `(f, v)`
 pair, and **not** a `Conversion`. That is what every surface links with.
@@ -463,7 +463,7 @@ When a posted message is nothing but an airfield code, the message itself is
 rewritten to carry the field's details as a markdown table under the author's
 own line:
 
-```
+```text
 | Airfield | [Indianapolis International Airport](/plugins/<id>/decorate/airport?v=KIND) |
 |:--|:--|
 | Code | KIND |

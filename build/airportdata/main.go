@@ -206,6 +206,14 @@ func axis(raw string, limit float64) (string, error) {
 	if value == 0 {
 		value = 0
 	}
+
+	// Before the range check, because every comparison against NaN is false:
+	// math.Abs(NaN) > limit does not fire, so ParseFloat accepting "NaN" would
+	// write one into the shipped file, where it parses back cleanly and is only
+	// refused much later when the coordinate will not convert.
+	if math.IsNaN(value) || math.IsInf(value, 0) {
+		return "", fmt.Errorf("axis %q is not a finite number", raw)
+	}
 	if math.Abs(value) > limit {
 		return "", fmt.Errorf("axis %v is outside %v", value, limit)
 	}
