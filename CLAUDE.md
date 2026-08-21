@@ -68,7 +68,7 @@ there rather than here or in a comment.
 | [`docs/design/airfields.md`](docs/design/airfields.md) | The label-only ICAO grammar, the embedded database, `/api/v1/airport`, the page and panel |
 | [`docs/design/mapping.md`](docs/design/mapping.md) | The vector basemap, `PageStatic` vs `PageMapping`, the page bundle, zoom numbers, the country lookup, `Conversion`, the map page, the panel map, turning maps off, the map under a post |
 | [`docs/design/preferences.md`](docs/design/preferences.md) | The KV store, both caches, the location hover, the location rows, the zone picker and ordering |
-| [`docs/design/admin-settings.md`](docs/design/admin-settings.md) | The eighteen switches, the three sections, why `EnableLocationUTM` ships off |
+| [`docs/design/admin-settings.md`](docs/design/admin-settings.md) | The twenty switches, the four sections, why `EnableLocationUTM` ships off |
 | [`docs/design/help-and-errors.md`](docs/design/help-and-errors.md) | `public/help/` and the `TF-NNNN` catalog |
 | [`docs/design/unverified.md`](docs/design/unverified.md) | Claims that need a running server or a phone and have never been checked |
 
