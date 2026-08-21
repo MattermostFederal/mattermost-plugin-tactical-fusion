@@ -333,9 +333,22 @@ func buildPatterns(formats Formats) []decorators.Pattern {
 	// inside it, so it wins on length anyway; putting it first makes that
 	// explicit rather than incidental.
 	//
-	// Unlike the DTG moniker, the label is NOT consumed: ReplaceGroup links
-	// only the token and leaves "LATM:" in the message, because that label is
-	// part of a structured line the author may be quoting verbatim.
+	// The label IS consumed, the way the DTG moniker's is: the whole match is
+	// rewritten, so "LATM:3510N07901W" becomes a link reading "3510N07901W".
+	//
+	// It was kept for a long time, on the argument that "LATM:" is part of a
+	// structured line an author may be quoting verbatim. The cost of consuming
+	// it is exactly that, is real, and is accepted: a labeled coordinate loses
+	// its field label from the STORED message, permanently, because this hook
+	// rewrites what was written rather than how it is displayed.
+	//
+	// What softens it is that a genuine USMTF set line ends "//", and the
+	// trailing side of monikerBoundaryOK declines those already, so the lines
+	// most likely to be quoted verbatim never decorated in the first place.
+	//
+	// No ReplaceGroup, so the whole match is the span. Value still returns
+	// submatch 1, which is the token, so the link reads the token and Parse is
+	// handed the token exactly as before.
 	if formats.Moniker {
 		for _, f := range labeledFormats(formats) {
 			// Spaces and tabs around the colon, never \s.
@@ -349,9 +362,8 @@ func buildPatterns(formats Formats) []decorators.Pattern {
 			// sub-expressions follow with sp, and the same separator dtg.go
 			// already uses.
 			patterns = append(patterns, decorators.Pattern{
-				Regexp:       regexp.MustCompile(monikerExpr + `[ \t]*:[ \t]*(` + scanExpr(f) + `)`),
-				ReplaceGroup: 1,
-				Boundary:     monikerBoundaryOK,
+				Regexp:   regexp.MustCompile(monikerExpr + `[ \t]*:[ \t]*(` + scanExpr(f) + `)`),
+				Boundary: monikerBoundaryOK,
 			})
 		}
 	}

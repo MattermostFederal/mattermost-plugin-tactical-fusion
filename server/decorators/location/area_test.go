@@ -641,3 +641,11 @@ func TestPaddedPlusCodesAreTheCoarseOnes(t *testing.T) {
 		})
 	}
 }
+
+func TestAPlusCodeGridCharacterOutsideTheAlphabetRefuses(t *testing.T) {
+	for _, code := range []string{"8FVC2222+22A", "8FVC2222+22E", "8FVC2222+22ZZI"} {
+		if cell, ok := decodeArea(Area{Format: FormatPlusCode, Code: code}); ok {
+			t.Errorf("decodeArea(%q) = %v, want a refusal", code, cell)
+		}
+	}
+}

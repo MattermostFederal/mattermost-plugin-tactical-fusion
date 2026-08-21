@@ -202,3 +202,31 @@ func TestOnPluginClusterEventBeforeActivation(t *testing.T) {
 		Data: []byte(testUserID),
 	})
 }
+
+func TestDecorationIsOffBeforeActivationBuildsTheRegistry(t *testing.T) {
+	p, _ := newActivationPlugin(t)
+
+	if p.decorationEnabled() {
+		t.Error("decoration reported on with no registry, which no branch may treat as usable")
+	}
+
+	p.setConfiguration(&configuration{EnableDTG: true, EnableDTGMilitary: true})
+	if err := p.OnActivate(); err != nil {
+		t.Fatalf("OnActivate returned an error: %v", err)
+	}
+	if !p.decorationEnabled() {
+		t.Error("decoration reported off after activation with a format switched on")
+	}
+}
+
+func TestDecorationIsOffWithEveryFormatSwitchedOff(t *testing.T) {
+	p, _ := newActivationPlugin(t)
+	p.setConfiguration(&configuration{})
+
+	if err := p.OnActivate(); err != nil {
+		t.Fatalf("OnActivate returned an error: %v", err)
+	}
+	if p.decorationEnabled() {
+		t.Error("decoration reported on while every decorator contributes no patterns")
+	}
+}

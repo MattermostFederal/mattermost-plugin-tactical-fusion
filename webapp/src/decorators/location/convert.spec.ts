@@ -4,6 +4,7 @@ import {
     asConversion,
     _requestForTesting as requestForTesting,
     _resetConversionsForTesting as resetConversions,
+    _setFetchTimeoutForTesting as setFetchTimeout,
 } from './convert';
 
 /*
@@ -150,6 +151,75 @@ test.describe('the conversion cache', () => {
             expect(stub.calls()).toBe(2);
         } finally {
             stub.restore();
+        }
+    });
+
+    /*
+     * A request that HANGS is abandoned rather than pinning the token forever.
+     *
+     * A stalled fetch never rejects, so without the timeout `inflight` is never
+     * cleared: the hover starts the request, the click that follows joins the
+     * same pending promise, and every grid row for that coordinate reads
+     * `converting…` for the life of the tab with a reload the only way back.
+     * The rows the panel computes locally are still on screen, which is what
+     * makes this less severe here than on the airfield panel and no less
+     * permanent.
+     */
+    test('abandons a hung request rather than pinning the token', async () => {
+        resetConversions();
+        setFetchTimeout(20);
+
+        const real = globalThis.fetch;
+        let calls = 0;
+
+        // Never settles on its own, so the abort signal is the only thing that
+        // can end it. The stub has to honour the signal the way fetch does, or
+        // this tests a slow reply rather than the timeout.
+        globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+            calls++;
+            return new Promise<Response>((_resolve, rejectIt) => {
+                init?.signal?.addEventListener('abort', () => rejectIt(new Error('aborted')));
+            });
+        }) as typeof globalThis.fetch;
+
+        try {
+            expect((await requestForTesting('dd', '34.0561,-118.2500', '')).status).toBe('failed');
+
+            // And the token is not pinned: the next caller issues a fresh
+            // request rather than joining the abandoned one.
+            globalThis.fetch = (async () => {
+                calls++;
+                return {status: 200, ok: true, json: async () => VALID} as unknown as Response;
+            }) as typeof globalThis.fetch;
+
+            expect((await requestForTesting('dd', '34.0561,-118.2500', '')).status).toBe('ready');
+            expect(calls).toBe(2);
+        } finally {
+            globalThis.fetch = real;
+            resetConversions();
+        }
+    });
+
+    // Headers arrive, the body stalls. fetch resolves on the headers, so a
+    // bound that stops there leaves this unguarded.
+    test('abandons a stalled response body too', async () => {
+        resetConversions();
+        setFetchTimeout(20);
+
+        const real = globalThis.fetch;
+        globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => ({
+            status: 200,
+            ok: true,
+            json: () => new Promise((_resolve, rejectIt) => {
+                init?.signal?.addEventListener('abort', () => rejectIt(new Error('aborted')));
+            }),
+        })) as unknown as typeof globalThis.fetch;
+
+        try {
+            expect((await requestForTesting('dd', '34.0561,-118.2500', '')).status).toBe('failed');
+        } finally {
+            globalThis.fetch = real;
+            resetConversions();
         }
     });
 

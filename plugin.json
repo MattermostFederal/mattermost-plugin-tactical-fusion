@@ -169,6 +169,27 @@
                         "help_text": "Serve the standalone page that gives the whole window to one map, which is what \"Open larger\" opens and what a client without the webapp bundle follows a coordinate link to. Turning this off makes that address answer \"not found\"; every reading is still available on the coordinate's own page. Only applies while \"Decorate coordinates\" and \"Draw maps for coordinates\" are on."
                     }
                 ]
+            },
+            {
+                "key": "airfields",
+                "title": "Airfields",
+                "subtitle": "Recognize ICAO airfield codes written behind a USMTF field label, and show the airfield and its position.",
+                "settings": [
+                    {
+                        "key": "EnableAirport",
+                        "display_name": "Decorate airfield codes",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Recognize an ICAO airfield code written behind ICAO:, LOC:, DEPLOC: or ARRLOC: and rewrite it as a link that opens an Airfield panel. A code is only recognized behind one of those labels, in upper case: four letters on their own are indistinguishable from ordinary words, and many airfield codes are ordinary words. Turning this off stops new messages being decorated; links already written keep working."
+                    },
+                    {
+                        "key": "EnableAirportTable",
+                        "display_name": "Show the airfield details under a labeled code on its own",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "When a message is nothing but one labeled airfield reference, such as \"ICAO:KIND\" or \"DEPLOC:KIND//\", add a table of the field's details under it: its name, where it is, what kind of field it is, its elevation and its IATA code. The table is written into the message itself, so it appears on every client, is included when messages are exported, and is what the author sees if they edit the post. The values are fixed when the message is posted and are not updated when a later plugin version corrects the database. Turning this off stops new messages being expanded; messages already posted keep their table. Only applies while \"Decorate airfield codes\" is on."
+                    }
+                ]
             }
         ]
     }

@@ -62,6 +62,7 @@ var exampleFixedRows = []exampleRow{
 	{label: "GEOREF", text: "GEOREF:GJNJ5753", note: "the label is required, and longitude comes first"},
 	{label: "GARS", text: "GARS:206LT26", note: "the label is required; this one is a 5 minute cell"},
 	{label: "Plus Code", text: "849VCWC8+R9", note: "matched without a label"},
+	{label: "Airfield", text: "ICAO:KIND", note: "the label is required, in upper case"},
 }
 
 // examplesResponse posts a short live demonstration to the channel.

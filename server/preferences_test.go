@@ -479,3 +479,39 @@ func TestCloneCopiesTheHiddenRows(t *testing.T) {
 		t.Fatalf("the original was modified through its clone: %v", original.Location.HiddenRows)
 	}
 }
+
+func TestValidZoneIDRefusesAShapeBeforeItResolvesAnything(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		zone string
+	}{
+		{"empty", ""},
+		{"not an identifier", "Europe/Berlin; DROP"},
+		{"longer than any identifier", strings.Repeat("a", maxZoneIDLength+1)},
+		{"the server's own zone", "Local"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			shapeErr := validZoneShape(tc.zone)
+			if shapeErr == nil {
+				t.Fatalf("validZoneShape(%q) accepted it, so this no longer exercises the shape gate", tc.zone)
+			}
+
+			err := validZoneID(tc.zone)
+			if err == nil {
+				t.Fatalf("validZoneID(%q) accepted it", tc.zone)
+			}
+			if err.Error() != shapeErr.Error() {
+				t.Errorf("validZoneID returned %q, want the shape error %q", err, shapeErr)
+			}
+		})
+	}
+}
+
+func TestValidZoneIDRefusesAZoneTheServerCannotResolve(t *testing.T) {
+	if err := validZoneID("Mars/Olympus"); err == nil {
+		t.Fatal("an unresolvable zone was accepted")
+	}
+	if err := validZoneID("Europe/Berlin"); err != nil {
+		t.Fatalf("a real zone was refused: %v", err)
+	}
+}

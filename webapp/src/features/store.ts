@@ -104,25 +104,29 @@ async function request(): Promise<Features> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), fetchTimeoutMs);
 
-    let response: Response;
+    // The body read is INSIDE the bound. fetch resolves when the headers
+    // arrive, so clearing the timer there leaves a server that sends headers
+    // and then stalls the body unbounded, and this store fails CLOSED: every
+    // map off, on every surface, indistinguishable from an admin having
+    // switched them off.
     try {
-        response = await fetch(endpoint(), {
+        const response = await fetch(endpoint(), {
             method: 'GET',
             credentials: 'same-origin',
             signal: controller.signal,
             headers: {'X-Requested-With': 'XMLHttpRequest'},
         });
+
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+            const detail = (payload as {message?: string} | null)?.message;
+            throw new Error(detail || `The server returned ${response.status}.`);
+        }
+
+        return fromWire(payload);
     } finally {
         clearTimeout(timer);
     }
-
-    const payload = await response.json().catch(() => null);
-    if (!response.ok) {
-        const detail = (payload as {message?: string} | null)?.message;
-        throw new Error(detail || `The server returned ${response.status}.`);
-    }
-
-    return fromWire(payload);
 }
 
 /**

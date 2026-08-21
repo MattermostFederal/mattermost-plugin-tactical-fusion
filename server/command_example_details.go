@@ -9,6 +9,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
@@ -339,8 +340,7 @@ var locationDetailGroups = []detailGroup{{
 		{text: "006AG39", note: "GARS: seven alphanumerics with almost nothing to check"},
 		{text: "849vcwc8+r9", note: "a lower-case Plus Code is what a version string looks like"},
 		{text: "CWC8+R9", note: "a short Plus Code needs a reference location we do not have"},
-		{text: "LOC:3510N07901W", note: "LOC introduces an ICAO airfield code in USMTF"},
-		{text: "ICAO:KLAX", note: "which is a facility to look up, not a position to compute"},
+		{text: "LOC:3510N07901W", note: "LOC introduces an airfield code, so the coordinate behind it is not read as one"},
 		{text: "34.0561, -118.2500.", note: "ending a sentence: at the guard this and a range look alike"},
 	},
 }, {
@@ -354,6 +354,38 @@ var locationDetailGroups = []detailGroup{{
 	},
 }}
 
+// airportDetailGroups are the airfield examples.
+//
+// Label-only, and the declined group is where that rule gets stated, because
+// for this grammar the rule IS the content: four letters is what ordinary prose
+// is made of, and 343 of the idents this plugin holds are English dictionary
+// words.
+var airportDetailGroups = []detailGroup{{
+	heading:   "Recognized behind a USMTF field label",
+	decorates: true,
+	examples: []detailExample{
+		{text: "ICAO:KIND", note: "Indianapolis International"},
+		{text: "LOC:EGLL", note: "London Heathrow"},
+		{text: "DEPLOC:KLAX", note: "the departure airfield of a USMTF air movement"},
+		{text: "ARRLOC:PHIK", note: "and the arrival airfield"},
+		{text: "DEPLOC:RJTT//", note: "a set line ends //, which is kept out of the link"},
+		{text: "ICAO :NZSP", note: "a space before the colon is optional"},
+	},
+}, {
+	heading:   "Declined: the label is required, in upper case",
+	decorates: false,
+	examples: []detailExample{
+		{text: "KIND", note: "a bare code is indistinguishable from a word, and KIND is one"},
+		{text: "USCG", note: "and this one is Chelyabinsk Shagol, in Russia"},
+		{text: "FACT", note: "Cape Town International, which is why nothing bare is read"},
+		{text: "icao:kind", note: "a lower-case label would reach words in ordinary prose"},
+		{text: "ICAO:QZQZ", note: "four letters this plugin's airfield database does not hold"},
+		{text: "ICAO:KIN", note: "an ICAO ident is four letters"},
+		{text: "logs/ICAO:KIND", note: "a label inside a path is not a field label"},
+		{text: "LOC: FAST", note: "nothing after the colon, or ordinary capitalized prose would be rewritten"},
+	},
+}}
+
 // detailSet is one decorator's worth of examples.
 type detailSet struct {
 	name   string
@@ -364,10 +396,11 @@ type detailSet struct {
 var detailSets = map[string]detailSet{
 	dtg.Type:      {name: "date-time groups", groups: dtgDetailGroups},
 	location.Type: {name: "coordinates", groups: locationDetailGroups},
+	airport.Type:  {name: "airfields", groups: airportDetailGroups},
 }
 
 // detailSetOrder is the order the messages arrive in, since a map has none.
-var detailSetOrder = []string{dtg.Type, location.Type}
+var detailSetOrder = []string{dtg.Type, location.Type, airport.Type}
 
 // setDetailExamples flattens the groups whose outcome matches, which is how the
 // tests ask for "everything that must decorate" without restating the lists.

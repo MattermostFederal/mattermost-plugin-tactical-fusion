@@ -53,3 +53,7 @@ public/app/
 # 20MB of GeoJSON behind them is not, and neither are the per-tier archives.
 build/maptiles/source/
 build/maptiles/work/
+
+# The upstream airfield database for build/airportdata. Only the filtered
+# result in server/decorators/airport/data/ is committed; see its README.
+build/airportdata/source/

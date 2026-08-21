@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
@@ -88,6 +89,22 @@ func (p *Plugin) locationFormats() location.Formats {
 	}
 }
 
+// airportFormats reports whether the admin has left the airfield decorator on.
+//
+// Read fresh for every message, like the two above, so a change in the admin
+// console takes effect without a restart.
+func (p *Plugin) airportFormats() airport.Formats {
+	config := p.getConfiguration()
+
+	return airport.Formats{
+		Airfield: config.EnableAirport,
+
+		// ANDed with the parent, the way locationMaps is: a message is only
+		// ever expanded for an airfield code this plugin decorated.
+		Table: config.EnableAirport && config.EnableAirportTable,
+	}
+}
+
 // locationMaps reports which surfaces the admin has left drawing a map.
 //
 // Two parents rather than one, because a map only ever appears behind a
@@ -135,6 +152,7 @@ func (p *Plugin) OnActivate() error {
 	registry, err := decorators.NewDefaultRegistry(
 		&dtg.Decorator{Enabled: p.dtgFormats},
 		&location.Decorator{Enabled: p.locationFormats, Maps: p.locationMaps},
+		&airport.Decorator{Enabled: p.airportFormats},
 	)
 	// Expected to stay uncovered: Register only rejects a duplicate or empty
 	// type, and there is one decorator here with a constant one. It is what

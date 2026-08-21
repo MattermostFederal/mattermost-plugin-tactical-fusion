@@ -685,3 +685,36 @@ func TestConfidenceDigitBoundsWhatItAccepts(t *testing.T) {
 		})
 	}
 }
+
+func TestAxesOutsideTheirRangeDecline(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		format Format
+		token  string
+	}{
+		{"dms latitude past 90", FormatDMS, "990000N0790000W"},
+		{"dms longitude past 180", FormatDMS, "350000N9990000W"},
+		{"ddm latitude past 90", FormatDDM, "9900.000N07901.000W"},
+		{"ddm longitude past 180", FormatDDM, "3510.000N99901.000W"},
+		{"latd latitude past 90", FormatLATD, "99N079W"},
+		{"latd longitude past 180", FormatLATD, "35N999W"},
+		{"latm latitude past 90", FormatLATM, "9910N07901W"},
+		{"latm longitude past 180", FormatLATM, "3510N99901W"},
+		{"vlatm latitude past 90", FormatVLATM, "9910N9-07901W7"},
+		{"vlatm longitude past 180", FormatVLATM, "3510N9-99901W7"},
+		{"utm zone past 60", FormatUTM, "99S3234784306483"},
+		{"utm zone zero", FormatUTM, "00S3234784306483"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if loc, ok := Parse(tc.format, tc.token); ok {
+				t.Errorf("Parse(%s, %q) = %v, want a refusal", tc.format, tc.token, loc)
+			}
+		})
+	}
+}
+
+func TestHemiAxisRefusesAnEmptyHemisphere(t *testing.T) {
+	if a, ok := hemiAxis("", "35", "10", "", "", FracNone, maxLatDeg); ok {
+		t.Errorf("hemiAxis with no hemisphere = %v, want a refusal", a)
+	}
+}

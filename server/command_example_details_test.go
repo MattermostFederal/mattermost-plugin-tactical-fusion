@@ -706,3 +706,19 @@ func TestCapitalize(t *testing.T) {
 		})
 	}
 }
+
+func TestPackChunksProducesNoMessageWhenThereIsNothingToSay(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		chunks []detailChunk
+	}{
+		{"no chunks at all", nil},
+		{"an empty slice", []detailChunk{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if messages := packChunks(tc.chunks, defaultPostRunes); len(messages) != 0 {
+				t.Errorf("packed %d messages, want none", len(messages))
+			}
+		})
+	}
+}

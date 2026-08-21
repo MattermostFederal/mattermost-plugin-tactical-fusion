@@ -7,8 +7,9 @@
         "src/**/*.pw.tsx",
         "src/**/*Harness.tsx",
         "src/**/*_fixtures.ts",
-        "src/preferences/stub_route.ts",
+        "src/**/stub_*.ts",
         "src/decorators/types.ts",
+        "src/decorators/airport/types.ts",
         "src/types/**",
         "src/manifest.ts"
     ],

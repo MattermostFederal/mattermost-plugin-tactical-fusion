@@ -191,6 +191,16 @@ map-data-check: map-data
 	@git diff --exit-code -- server/decorators/location/mapdata/admin.go \
 		|| (echo "map data is stale: run 'make map-data' and commit the result" && exit 1)
 
+## Regenerates the embedded airfield database from an upstream airport-codes.csv.
+## Deliberately NOT a prerequisite of test, unlike map-data-check: this transform is
+## filter, round and drop columns, and its drift means an airfield code declines, which
+## is visible and harmless. map-data-check earns that slot because its encoding is opaque
+## and its drift fails invisibly on a plain-HTTP origin. The upstream file is not
+## committed; see server/decorators/airport/data/README.md for where to put it.
+.PHONY: airport-data
+airport-data:
+	$(GO) run ./build/airportdata
+
 ## Builds the server, if it exists, for all supported architectures, unless MM_SERVICESETTINGS_ENABLEDEVELOPER is set.
 .PHONY: server
 server:

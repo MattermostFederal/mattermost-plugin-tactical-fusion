@@ -34,7 +34,7 @@
         </div>
 
         <h1>Admin Settings</h1>
-        <p class="tagline">System Console, Plugins, Tactical Fusion. Three sections and eighteen switches. Seventeen are on by default; <code>EnableLocationUTM</code> is the one that is not.</p>
+        <p class="tagline">System Console, Plugins, Tactical Fusion. Four sections and twenty switches. Nineteen are on by default; <code>EnableLocationUTM</code> is the one that is not.</p>
 
         <h2>How the date-time group switches relate</h2>
 
@@ -579,10 +579,10 @@
         </p>
 
         <p>
-            Unlike the <code>DTG:</code> label, a coordinate label is <strong>kept</strong>
-            rather than consumed, so a decorated USMTF line still reads as USMTF. This one
-            composes the same way the date-time group label does: it only labels formats
-            that are themselves on, and a label vouches for nothing, so
+            Like the <code>DTG:</code> label, a coordinate label is
+            <strong>consumed</strong>: the label and the token together become the link.
+            This one composes the same way the date-time group label does: it only labels
+            formats that are themselves on, and a label vouches for nothing, so
             <code>LATM:9999N99999W</code> stays declined.
         </p>
 
@@ -734,6 +734,54 @@
             everything but the picture.
         </p>
 
+        <h2 id="airfield-switches">The airfield switches</h2>
+
+        <h3 id="enable-airport" data-setting="EnableAirport">Decorate airfield codes <code>EnableAirport</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>New messages stop having airfield codes linked. Links already written keep working, and the airfield panel and page keep answering.</td></tr>
+                <tr><td>Requires</td><td>Nothing</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Recognizes an ICAO airfield code written behind one of the four USMTF field
+            labels that introduce one: <code>ICAO:</code>, <code>LOC:</code>,
+            <code>DEPLOC:</code> and <code>ARRLOC:</code>. The panel names the airfield,
+            where it is, its elevation and its IATA code, and derives every coordinate
+            reading from the position in the built-in database.
+        </p>
+
+        <p>
+            <strong>There is one switch rather than a family of them</strong>, unlike
+            coordinates. A code is only ever recognized behind a label, so there is no
+            second grammar to turn off separately, and a "labels only" switch would just
+            be this one under another name.
+        </p>
+
+        <p>
+            <strong>The label is required, and it must be upper case.</strong> That is not
+            strictness for its own sake. An airfield code is four letters, which is what
+            ordinary words are made of: 343 of the codes in the database are English
+            dictionary words, including <code>FACT</code> (Cape Town International) and
+            <code>FAST</code> (Somerset East). <code>USCG</code> is an airfield in Russia
+            and <code>LIMA</code> is one in Italy. Matching four bare letters would rewrite
+            ordinary sentences into links pointing at the wrong side of the world, and
+            matching a lower-case label would do the same to a line like
+            <code>loc: fast turnaround on the ramp</code>.
+        </p>
+
+        <p>
+            The airfield's position comes from a database compiled into the plugin, so
+            nothing is fetched and this works on an air-gapped install. The panel names its
+            source beside the airfield, because the position is a lookup rather than
+            something computed from what the author typed. Refreshing that database is a
+            plugin upgrade.
+        </p>
+
         <h2 id="tagged-only">Decorating only what an author labeled</h2>
 
         <p>
@@ -750,6 +798,46 @@
         </p>
 
         <h2>Checking the current behavior</h2>
+
+        <h3 id="enable-airport-table" data-setting="EnableAirportTable">Show the airfield details under a labeled code on its own <code>EnableAirportTable</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>New messages that are nothing but an airfield code get the link alone. Messages already posted keep the table they were given.</td></tr>
+                <tr><td>Requires</td><td><code>EnableAirport</code></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            When a message contains nothing but one <em>labeled</em> airfield reference,
+            such as <code>ICAO:KIND</code> or a set line ending <code>DEPLOC:KIND//</code>,
+            it is replaced with a small table of the field's details: its name, the code the author typed, where
+            it is, what kind of field it is, its elevation and its IATA code. The name is
+            the link that opens the panel, which is where the map and the coordinate
+            readings are. The code the author typed stays in the table, so searching for
+            it still finds the message.
+        </p>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">The table is written into the message itself.</p>
+            <p>
+                It is ordinary markdown in the stored message, not something drawn on top
+                of it. That is deliberate, and it is what makes the message render the
+                same way everywhere, including on mobile and in any client that does not
+                run this plugin's web code, and what keeps the post searchable and
+                exportable like any other.
+            </p>
+            <p>
+                It also means the table is <strong>permanent and fixed</strong>. An author
+                who edits the post sees the markdown and can change or delete it. The
+                values are those the database held when the message was posted: if a later
+                version of the plugin corrects an elevation, messages already posted keep
+                the old one. Turning this setting off stops new messages being expanded
+                and does not remove the tables already written.
+            </p>
+        </div>
 
         <p>
             <a href="commands.html#example-details"><code>/tactical-fusion example-details</code></a>

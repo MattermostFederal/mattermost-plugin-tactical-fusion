@@ -174,6 +174,16 @@ type Result struct {
 	SoleToken bool
 	Type      string
 	Params    url.Values
+
+	// Trail is what the pattern matched past the span it rewrote, which is the
+	// airfield grammar's "//" and nothing else today.
+	//
+	// Carried because the tagger has both spans in hand here and the only other
+	// way to recover it is to parse the decorated message back apart, which
+	// couples the reader to labelEscaper and to how buildURL encodes a
+	// destination. Whitespace around the token is NOT in it: match.end is
+	// already the trimmed end.
+	Trail string
 }
 
 // Decorate returns the message with every recognized token replaced by a
@@ -234,7 +244,12 @@ func soleTokenResult(message string, accepted []candidate) Result {
 		return Result{}
 	}
 
-	return Result{SoleToken: true, Type: only.typ, Params: only.params}
+	return Result{
+		SoleToken: true,
+		Type:      only.typ,
+		Params:    only.params,
+		Trail:     message[only.replace.end:only.match.end],
+	}
 }
 
 const tokenSurroundingSpace = " \t\r\n\v\f"

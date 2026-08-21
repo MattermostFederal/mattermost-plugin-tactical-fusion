@@ -197,6 +197,110 @@
             parsed.
         </p>
 
+        <h2 id="airfield-not-linked">An airfield code was not turned into a link</h2>
+
+        <p>
+            Run
+            <a href="commands.html#check"><code>/tactical-fusion check &lt;your text&gt;</code></a>.
+            It runs the real matcher against exactly that text and reports what it did,
+            without posting anything.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">An airfield code is checked against the database, not against a shape.</p>
+            <p>
+                Four letters vouch for nothing, so a code this build's database does not
+                hold is left as plain text rather than linked to a panel that would then
+                have nothing to show. That is unlike every other format here, where the
+                text alone decides.
+            </p>
+        </div>
+
+        <table>
+            <thead>
+                <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>KIND</code> on its own did nothing</td>
+                    <td>There is no bare grammar, permanently. Of the airfield codes this plugin ships, 343 are ordinary English words: <code>FACT</code> is Cape Town International, <code>USCG</code> is an airfield in Russia, <code>LIMA</code> is in Turin. Reading them bare would rewrite ordinary prose.</td>
+                    <td>Write a <a href="formats.html#airfield">USMTF field label</a> in front: <code>ICAO:KIND</code>, <code>LOC:</code>, <code>DEPLOC:</code> or <code>ARRLOC:</code>.</td>
+                </tr>
+                <tr>
+                    <td><code>icao:kind</code> did nothing, but <code>ICAO:KIND</code> works</td>
+                    <td>The label and the code are both matched in upper case only. Coordinate labels accept any case because their tokens carry digits; four letters do not, and <code>loc: fast turnaround on the ramp</code> would link <code>FAST</code>.</td>
+                    <td>Write both in upper case, which is how USMTF writes them.</td>
+                </tr>
+                <tr>
+                    <td><code>ICAO: KIND</code> did nothing, but <code>ICAO:KIND</code> works</td>
+                    <td>Nothing may follow the colon. A space there would let the label reach the next word of an ordinary sentence, and this traffic is often written in capitals: <code>LOC: FAST TURNAROUND ON THE RAMP</code> would rewrite <code>FAST</code> into a link to an airfield in South Africa, permanently.</td>
+                    <td>Write the code directly against the colon, which is how a USMTF field is written. A space <em>before</em> the colon is still fine.</td>
+                </tr>
+                <tr>
+                    <td><code>ICAO:QZQZ</code> did nothing</td>
+                    <td>Those four letters are not in this build's airfield database.</td>
+                    <td>Check the code. If it is right and simply new, a later plugin build may hold it: the database ships with the plugin.</td>
+                </tr>
+                <tr>
+                    <td><code>ICAO:KIN</code> or <code>ICAO:KINDX</code> did nothing</td>
+                    <td>An ICAO ident is exactly four letters. Three is an IATA code, which this plugin does not read.</td>
+                    <td>Write the four-letter ICAO ident. The IATA code is shown in the panel for a field that has one.</td>
+                </tr>
+                <tr>
+                    <td><code>logs/ICAO:KIND</code> did nothing</td>
+                    <td>A slash on either side declines the match, so a label inside a path is not read as a field label. Rewriting the middle of a path is exactly what that guard exists to prevent.</td>
+                    <td>Nothing to do. A genuine set line ending <code>DEPLOC:KIND//</code> does decorate: the trailing <code>//</code> is matched and left in the message.</td>
+                </tr>
+                <tr>
+                    <td>The label was consumed and only the code is left</td>
+                    <td>Not a failure. The label is absorbed into the link, the same way <code>DTG:</code> and the coordinate labels are, because the link already says what it is.</td>
+                    <td>Nothing to do. The stored message keeps the code, never the airfield's name: that changes between builds and this hook rewrites what you wrote.</td>
+                </tr>
+                <tr>
+                    <td>No airfield code in any message links</td>
+                    <td>Airfield decoration is switched off.</td>
+                    <td>Check <a href="admin.html#airfield-switches">the admin setting</a>. There is one switch, not two: the grammar is label-only by construction, so a separate label switch would turn the whole thing off under a second name.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="airfield-messages">The airfield panel or page cannot show the field</h2>
+
+        <p>
+            Four different answers, and they are deliberately distinct because each wants
+            something different from you. The sidebar and the standalone page word them
+            identically, so a code that reads one way in one place reads the same way in
+            the other.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>What it says</th><th>Cause</th><th>Fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>Not an airfield code</code>, over <code>This link does not carry an airfield code this plugin issued, so there is nothing to look up. It was most likely edited by hand.</code></td>
+                    <td>The link's <code>v</code> parameter is not four upper-case letters, so it was not written by this plugin. Codes <a href="error-codes.html#decorators"><code>TF-17002</code></a> on the page and <a href="error-codes.html#api"><code>TF-13009</code></a> from the endpoint behind the panel.</td>
+                    <td>Click the original link in the channel rather than a copy of the URL.</td>
+                </tr>
+                <tr>
+                    <td><code>This airfield code is not in this build's airfield database. The database is refreshed with the plugin, so a code that was recognized when the message was written may have been retired since.</code></td>
+                    <td>The link is well formed and the code is absent. This is an answer rather than a failure, which is why it renders normally instead of refusing: a refreshed database must not turn every message that ever named a retired code into a broken link.</td>
+                    <td>Nothing to do. The code in the message is still the record of what was written.</td>
+                </tr>
+                <tr>
+                    <td><code>This airfield could not be looked up just now. The link is fine; the server could not be reached.</code></td>
+                    <td>An outage, not a verdict about the link. Kept separate from the two above for that reason, and never remembered: the next open tries again.</td>
+                    <td>Try again. If it persists, the plugin's own API is unreachable, which the server log will say more about.</td>
+                </tr>
+                <tr>
+                    <td><code>This airfield has no position in the database, so there is nothing to draw and no coordinate readings for it.</code></td>
+                    <td>The field is in the database and has no usable coordinate. The details still render; only the map and the link to the readings are absent.</td>
+                    <td>Nothing to do. Offering a map, or a link to a view that would refuse it, would be worse than offering neither.</td>
+                </tr>
+            </tbody>
+        </table>
+
         <h2 id="only-me">Nobody else sees the link, or only some clients do</h2>
 
         <p>
@@ -257,6 +361,15 @@
             <code>That is not a coordinate this plugin issued.</code> Despite matching the
             wording of <a href="#not-a-coordinate">TF-13008</a> it is this failure, not
             that one: check the code rather than the sentence.
+        </p>
+
+        <p>
+            The airfield page refuses a link the same way under
+            <a href="error-codes.html#decorators"><code>TF-17002</code></a>, worded
+            <code>That is not an airfield code this plugin issued.</code> A code that is
+            well formed but absent from this build's database is a different thing and
+            renders the page with a note instead; see
+            <a href="#airfield-messages">the airfield messages</a>.
         </p>
 
         <h2 id="not-a-coordinate">The sidebar says "Not a coordinate"</h2>
@@ -337,6 +450,22 @@
                 Nothing is logged and nothing says so in the panel, because to a reader on
                 such an install the plugin simply does not draw maps. The rows below are
                 for a map that is <em>trying</em> to draw and cannot.
+            </p>
+        </div>
+
+        <div class="alert alert-info">
+            <p class="alert-title">Two things about the map under an airfield.</p>
+            <p>
+                The <a href="panel.html#airfield-panel">airfield panel</a> draws the
+                coordinate decorator's own map, so it follows the same panel-map switch,
+                and that switch is combined with coordinate decoration itself: an install
+                that turns <em>coordinates</em> off loses the airfield map too, even
+                though airfield codes keep decorating.
+            </p>
+            <p>
+                The standalone airfield page draws no map at all, deliberately. It links
+                to the coordinate page, which draws one. That is the one place the two
+                airfield surfaces differ, and it follows from the page carrying no script.
             </p>
         </div>
 
@@ -483,12 +612,17 @@
                 <tr>
                     <td><code>Not found.</code></td>
                     <td><a href="error-codes.html#api"><code>TF-13001</code></a></td>
-                    <td>A path under <code>/api/v1</code> that names no resource. The API has exactly two.</td>
+                    <td>A path under <code>/api/v1</code> that names no resource. The API has four: your settings, the coordinate conversion, the map feature switches, and the airfield lookup.</td>
                 </tr>
                 <tr>
                     <td><code>Method not allowed.</code></td>
                     <td><a href="error-codes.html#api"><code>TF-13003</code></a></td>
-                    <td>A method the resource does not have: anything but GET on the conversion endpoint, or anything but GET, PUT and DELETE on your settings.</td>
+                    <td>A method the resource does not have: anything but GET on the conversion, the feature switches or the airfield lookup, or anything but GET, PUT and DELETE on your settings.</td>
+                </tr>
+                <tr>
+                    <td><code>That is not an airfield code this plugin issued.</code></td>
+                    <td><a href="error-codes.html#api"><code>TF-13009</code></a></td>
+                    <td>The airfield lookup was given a <code>v</code> that is not four upper-case letters. A code that is well formed but absent from the database is <em>not</em> this: that answers normally and says so, which is what <a href="#airfield-messages">the panel reports</a>.</td>
                 </tr>
             </tbody>
         </table>

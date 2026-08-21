@@ -134,15 +134,36 @@ func TestProtectedSpansAreLeftAlone(t *testing.T) {
 	}
 }
 
-// A USMTF label is matched but not consumed, so a decorated line still reads as
-// USMTF and the author's structured record survives.
-func TestUSMTFLabelSurvivesDecoration(t *testing.T) {
+// A USMTF label is consumed, the way the DTG moniker's is, so a labeled
+// coordinate becomes the link alone.
+//
+// The cost is named rather than hidden: this rewrites the STORED message, so a
+// labeled line loses its field label permanently. A genuine USMTF set line ends
+// "//" and is declined by the trailing boundary guard anyway, which is what
+// keeps this from reaching the lines most likely to be quoted verbatim.
+func TestUSMTFLabelIsConsumed(t *testing.T) {
 	tg := tagger(t, &location.Decorator{})
 
 	got := tg.Decorate("LATM:2130N15730W", ref)
 
-	if !strings.HasPrefix(got, "LATM:[2130N15730W](") {
-		t.Fatalf("Decorate() = %q, want the label kept and only the token linked", got)
+	if !strings.HasPrefix(got, "[2130N15730W](") {
+		t.Fatalf("Decorate() = %q, want the label consumed and the token linked", got)
+	}
+	if strings.Contains(got, "LATM:") {
+		t.Fatalf("the label is still in the message: %q", got)
+	}
+}
+
+// The lines most likely to be quoted verbatim are the ones that end "//", and
+// those never decorated: the trailing side of the guard refuses a "/". This is
+// what bounds the cost of consuming the label above, so it is pinned rather
+// than left as an argument in a comment.
+func TestAGenuineUSMTFSetLineIsLeftAlone(t *testing.T) {
+	tg := tagger(t, &location.Decorator{})
+
+	const line = "LATM:2130N15730W//"
+	if got := tg.Decorate(line, ref); got != line {
+		t.Fatalf("Decorate(%q) = %q, want it left alone", line, got)
 	}
 }
 
@@ -220,8 +241,10 @@ func TestUSNGLabelsAGridReference(t *testing.T) {
 		t.Fatalf("a USNG label produced %q, want a link carrying f=mgrs", got)
 	}
 
-	if !strings.HasPrefix(got, "USNG:") {
-		t.Fatalf("the USNG label was consumed: %q", got)
+	// The label is consumed like every other, so what survives is the grid
+	// reference alone. What this test is about is the format id, not the label.
+	if !strings.HasPrefix(got, "[18SUJ2306](") {
+		t.Fatalf("the USNG label was not consumed: %q", got)
 	}
 }
 
