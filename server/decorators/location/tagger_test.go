@@ -158,7 +158,7 @@ func TestUSMTFLabelIsConsumed(t *testing.T) {
 // those never decorated: the trailing side of the guard refuses a "/". This is
 // what bounds the cost of consuming the label above, so it is pinned rather
 // than left as an argument in a comment.
-func TestAGenuineUSMTFSetLineStillDecorates(t *testing.T) {
+func TestAGenuineUSMTFSetLineIsLeftAlone(t *testing.T) {
 	tg := tagger(t, &location.Decorator{})
 
 	const line = "LATM:2130N15730W//"

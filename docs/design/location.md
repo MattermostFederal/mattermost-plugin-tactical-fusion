@@ -307,7 +307,7 @@ labeled coordinate loses its field label permanently, in exports and in the raw
 text an author sees when editing. What bounds it is the boundary guard: a
 genuine USMTF set line ends `//`, and the trailing side declines a `/`, so the
 lines most likely to be quoted verbatim as a structured record never decorated
-in the first place. `TestAGenuineUSMTFSetLineStillDecorates` pins that half, and
+in the first place. `TestAGenuineUSMTFSetLineIsLeftAlone` pins that half, and
 it is what makes the trade a small one rather than a large one. `LOC:`, `DEPLOC:`, `ARRLOC:` and `ICAO:` are permanently
 excluded, because in USMTF they introduce an **ICAO airfield code**, which is a
 facility whose position must be looked up rather than computed. An earlier draft

@@ -4,7 +4,7 @@
 
 ## Admin settings
 
-`plugin.json` declares eighteen switches in **three `settings_schema.sections`**:
+`plugin.json` declares twenty switches in **four `settings_schema.sections`**:
 
 - **Date and time**: `EnableDTG` with `EnableDTGMilitary`, `EnableDTGTimestamp`
   and `EnableDTGMoniker`.
@@ -14,6 +14,7 @@
   `EnableLocationPlusCode` and `EnableLocationMoniker`.
 - **Maps**: `EnableLocationMap` with `EnableLocationMapPanel`,
   `EnableLocationMapInline` and `EnableLocationMapPage`.
+- **Airfields**: `EnableAirport` with `EnableAirportTable`.
 
 `model.PluginSettingsSchema` carries a `Sections` field
 (`PluginSettingsSection{Key, Title, Subtitle, Settings, Header, Footer}`), so
@@ -40,7 +41,7 @@ twice. `loadSettings` in `configuration_settings_test.go` flattens the sections,
 which is what stops the move making every other test in that file iterate an
 empty slice and pass while checking nothing.
 
-**Seventeen default on. `EnableLocationUTM` defaults off, and is the only one.** The
+**Nineteen default on. `EnableLocationUTM` defaults off, and is the only one.** The
 reason is a difference in kind rather than in degree: every other switch trades
 a false positive against a missed decoration, so its worst case is that
 something which was not a coordinate gets linked, or something which was does
