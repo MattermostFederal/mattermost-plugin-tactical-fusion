@@ -57,3 +57,14 @@ build/maptiles/work/
 # The upstream airfield database for build/airportdata. Only the filtered
 # result in server/decorators/airport/data/ is committed; see its README.
 build/airportdata/source/
+
+# Downloaded OpenStreetMap extracts, planetiler's auxiliary datasets and tiler
+# intermediates for build/maposm. The pinned digests in build/maposm/sources.lock
+# are what is committed; the PBFs behind them are not, and neither are the
+# per-region archives. build/maposm/out/ is the release-asset output: every
+# region NOT marked `bundled` in regions.txt lands there, on the order of a
+# gigabyte of it, and ships as a release asset rather than in the bundle.
+build/maposm/source/
+build/maposm/work/
+build/maposm/cache/
+build/maposm/out/

@@ -32,6 +32,16 @@ const (
 	SurfacePage  = "page"
 
 	mapSurfaceSeparator = ","
+
+	// PackagesAttr carries the detail map packages this install has, by name.
+	//
+	// The pages need it in the shell rather than from /api/v1/packages because
+	// they have no session and that route requires one. Written unconditionally,
+	// empty included, for the same reason MapSurfacesAttr is: an absent
+	// attribute has to mean "a shell older than this bundle" and nothing else.
+	PackagesAttr = "data-packages"
+
+	packageSeparator = ","
 )
 
 // renderRoot is the whole body of both standalone pages.
@@ -45,12 +55,13 @@ const (
 // Everything interpolated here is escaped. The page declares PageMapping, which
 // admits same-origin script, so escaping is the only thing standing between the
 // author's own text in `r` and execution.
-func renderRoot(page pageData, mode string, maps Maps) string {
+func renderRoot(page pageData, mode string, maps Maps, packages []string) string {
 	loc := page.loc
 
 	attrs := `<div id="root"` +
 		` data-mode="` + html.EscapeString(mode) + `"` +
 		` ` + MapSurfacesAttr + `="` + html.EscapeString(mapSurfaces(maps)) + `"` +
+		` ` + PackagesAttr + `="` + html.EscapeString(strings.Join(packages, packageSeparator)) + `"` +
 		` data-f="` + html.EscapeString(string(loc.Format)) + `"` +
 		` data-v="` + html.EscapeString(loc.Canonical()) + `"`
 

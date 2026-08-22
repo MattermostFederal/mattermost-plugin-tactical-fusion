@@ -167,6 +167,20 @@
                         "type": "bool",
                         "default": true,
                         "help_text": "Serve the standalone page that gives the whole window to one map, which is what \"Open larger\" opens and what a client without the webapp bundle follows a coordinate link to. Turning this off makes that address answer \"not found\"; every reading is still available on the coordinate's own page. Only applies while \"Decorate coordinates\" and \"Draw maps for coordinates\" are on."
+                    },
+                    {
+                        "key": "LocationMapPackagesDir",
+                        "display_name": "Detail map package directory",
+                        "type": "text",
+                        "default": "",
+                        "placeholder": "/opt/mattermost/tactical-fusion/packages",
+                        "help_text": "A directory on this server holding detail map packages, which are the OpenStreetMap archives drawn above zoom 10. Drop a file named <command>-<area>.pmtiles into it, such as indopacom-hawaii.pmtiles, and the area appears without restarting anything. A package here replaces a bundled one of the same name. Leave this empty to use only the packages the plugin ships. In a cluster every node must see this directory, because each node serves the archives it can read; a package on one node alone is drawn for some readers and not others."
+                    },
+                    {
+                        "key": "LocationMapPackages",
+                        "display_name": "Installed detail areas",
+                        "type": "custom",
+                        "help_text": "Install or remove one detail map area. This writes into the package directory above, which is the same place a file copied there by hand is read from, because a map archive is served by byte range and has to sit on disk. Set the directory first. In a cluster an upload reaches only the node that served it."
                     }
                 ]
             },

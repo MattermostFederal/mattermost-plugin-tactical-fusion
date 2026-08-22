@@ -20,6 +20,9 @@ ASSETS_DIR ?= assets
 # Pinned so an archive rebuilt later is rebuilt by the same tiler.
 TIPPECANOE_VERSION ?= 2.78.0
 
+# The OpenStreetMap detail tier's generator, pinned for the same reason.
+PLANETILER_OMT_VERSION ?= v3.16
+
 # Verify environment, and define PLUGIN_ID, PLUGIN_VERSION, HAS_SERVER and HAS_WEBAPP as needed.
 include build/setup.mk
 
@@ -161,6 +164,71 @@ map-tiles:
 		-t tf-maptiles:$(TIPPECANOE_VERSION) build/maptiles/
 	docker run --rm -v "$(PWD)":/work tf-maptiles:$(TIPPECANOE_VERSION) build/maptiles/build.sh
 
+## Rebuilds the OpenStreetMap detail tier, which takes over above the seam.
+##
+## Runs planetiler in a container, so the toolchain is pinned rather than whatever
+## a developer happens to have, and is a prerequisite of NOTHING: it is never
+## reached by `make test` and never runs in CI.
+##
+## PROFILE selects which regions in build/maposm/regions.txt are built. Only a
+## row marked `bundled` writes into public/map/packages/ to be committed; every
+## other row lands in build/maposm/out/ and ships as a release asset.
+##
+## JAVA_HEAP overrides the heap the input size would pick. See build/maposm/README.md.
+##
+## Rebuilds the offline detail map archives selected by PROFILE
+.PHONY: map-osm
+map-osm:
+	docker build --build-arg TIPPECANOE_VERSION=$(TIPPECANOE_VERSION) \
+		--build-arg PLANETILER_OMT_VERSION=$(PLANETILER_OMT_VERSION) \
+		-t tf-maposm:$(PLANETILER_OMT_VERSION) build/maposm/
+	docker run --rm -v "$(PWD)":/work -e PROFILE="$(PROFILE)" -e JAVA_HEAP="$(JAVA_HEAP)" \
+		-e ALLOW_MIXED_DATES="$(ALLOW_MIXED_DATES)" \
+		tf-maposm:$(PLANETILER_OMT_VERSION) build/maposm/build.sh
+
+## Attaches the release-asset map packages in build/maposm/out/ to an existing
+## GitHub release, with a checksum file beside them.
+##
+## Manual and post-release by design: the release workflow can neither download
+## the ~10 GB of extracts nor spend the hours of tiling these need, so the
+## archives are built on a workstation and uploaded afterwards.
+##
+##   make map-publish TAG=v0.3.0
+##
+## Uploads the built map packages to an existing GitHub release
+.PHONY: map-publish
+map-publish:
+ifndef TAG
+	$(error TAG is required, e.g. make map-publish TAG=v0.3.0)
+endif
+	@ls build/maposm/out/*.pmtiles >/dev/null 2>&1 || { \
+		echo "error: no archives in build/maposm/out/; run 'make map-osm PROFILE=<name>' first."; \
+		exit 1; \
+	}
+	@cd build/maposm/out && shasum -a 256 *.pmtiles > PACKAGES.sha256
+	@echo "Uploading to $(TAG):"
+	@ls -l build/maposm/out/
+	gh release upload "$(TAG)" build/maposm/out/*.pmtiles build/maposm/out/PACKAGES.sha256 --clobber
+
+## Downloads the OpenStreetMap extracts the detail tier is cut from and verifies
+## them against build/maposm/sources.lock.
+##
+## PROFILE scopes it to one region or theatre, which matters because the full
+## roster is about 10 GB. UPDATE_LOCK=1 re-pins what is in scope and leaves the
+## rest of the lock alone:
+##
+##   UPDATE_LOCK=1 make osm-sources PROFILE=korea
+##
+## PIN_DATE pins to one Geofabrik cut instead of following -latest, which is how
+## a set is held to a single snapshot when upstream is mid-rollover:
+##
+##   PIN_DATE=260820 UPDATE_LOCK=1 make osm-sources PROFILE=centcom
+##
+## Downloads the OpenStreetMap extracts and verifies them against the lock
+.PHONY: osm-sources
+osm-sources:
+	PROFILE="$(PROFILE)" PIN_DATE="$(PIN_DATE)" ./build/maposm/fetch-sources.sh
+
 ## Downloads the 50m and 10m Natural Earth sources the finer tiers need and
 ## verifies them against build/maptiles/sources.lock. The 110m tier needs no
 ## download: those files are already committed for the country lookup.
@@ -287,6 +355,34 @@ ifneq ($(HAS_PUBLIC),)
 		echo "SIL OFL 1.1 requires the notice to travel with them."; \
 		exit 1; \
 	fi
+	@# The OpenStreetMap detail tier is OPTIONAL: a global-only build is a
+	@# supported profile, so its absence is not an error. What is an error is
+	@# shipping it without the notice, since ODbL requires it to travel with the
+	@# data, and shipping something under that name that is not an archive.
+	@for pkg in dist/$(PLUGIN_ID)/public/map/packages/*.pmtiles; do \
+		[ -e "$$pkg" ] || continue; \
+		if [ "$$(head -c 7 "$$pkg")" != "PMTiles" ]; then \
+			echo "ERROR: $$pkg is not a PMTiles archive."; \
+			echo "Check it is not an LFS pointer or a truncated copy."; \
+			exit 1; \
+		fi; \
+		case "$$(basename "$$pkg" .pmtiles)" in \
+			*[!a-z0-9-]*|-*|*-|*--*) \
+				echo "ERROR: $$pkg is not named <command>-<area>.pmtiles."; \
+				echo "The name reaches a URL, so nothing will serve it."; \
+				exit 1 ;; \
+			*-*) ;; \
+			*) \
+				echo "ERROR: $$pkg is not named <command>-<area>.pmtiles."; \
+				echo "The name reaches a URL, so nothing will serve it."; \
+				exit 1 ;; \
+		esac; \
+		if [ ! -f "dist/$(PLUGIN_ID)/public/map/LICENSE-OSM.txt" ]; then \
+			echo "ERROR: a detail package ships without public/map/LICENSE-OSM.txt."; \
+			echo "ODbL 1.0 requires the notice to travel with the data."; \
+			exit 1; \
+		fi; \
+	done
 endif
 ifneq ($(HAS_SERVER),)
 	mkdir -p dist/$(PLUGIN_ID)/server
@@ -451,6 +547,10 @@ endif
 DOCKER_COMPOSE := docker compose -f docker-compose.dev.yml
 MM_PORT ?= 8065
 
+MAP_PACKAGE_DIR ?= map-packages
+MAP_PACKAGE_HOST := docker/mattermost/data/$(MAP_PACKAGE_DIR)
+MAP_PACKAGE_PATH := /mattermost/data/$(MAP_PACKAGE_DIR)
+
 ## Start Mattermost and PostgreSQL containers
 .PHONY: docker-start
 docker-start:
@@ -561,9 +661,42 @@ docker-enable: docker-check
 docker-plugin-list: docker-check
 	@$(DOCKER_COMPOSE) exec -T mattermost mmctl --local plugin list
 
-## Convenience alias: deploy plugin to Docker
+## Copies the release-asset map packages into the Docker server's drop-in
+## directory and points LocationMapPackagesDir at it, so a development install
+## draws every area without downloading anything.
+##
+## Bundled regions are already inside the plugin and are deliberately not copied:
+## a drop-in copy would shadow the bundled one and stop exercising the bundled
+## path. Only files whose source is newer are copied, so a redeploy is cheap.
+##
+## Drops every built map area into the Docker server for testing
+.PHONY: docker-packages
+docker-packages: docker-check
+	@if ! ls build/maposm/out/*.pmtiles >/dev/null 2>&1; then \
+		echo "No archives in build/maposm/out/. Build some with 'make map-osm PROFILE=<name>'."; \
+	else \
+		mkdir -p $(MAP_PACKAGE_HOST); \
+		n=0; \
+		for f in build/maposm/out/*.pmtiles; do \
+			d="$(MAP_PACKAGE_HOST)/$$(basename $$f)"; \
+			if [ ! -f "$$d" ] || [ "$$f" -nt "$$d" ]; then \
+				cp "$$f" "$$d"; \
+				echo "  copied $$(basename $$f)"; \
+				n=$$((n + 1)); \
+			fi; \
+		done; \
+		if [ "$$n" -eq 0 ]; then echo "  packages already current"; fi; \
+		printf '{"PluginSettings":{"Plugins":{"%s":{"locationmappackagesdir":"%s"}}}}' \
+			"$(PLUGIN_ID)" "$(MAP_PACKAGE_PATH)" > docker/mattermost/data/.mappkg-patch.json; \
+		$(DOCKER_COMPOSE) exec -T mattermost mmctl --local config patch \
+			/mattermost/data/.mappkg-patch.json > /dev/null; \
+		rm -f docker/mattermost/data/.mappkg-patch.json; \
+		echo "LocationMapPackagesDir = $(MAP_PACKAGE_PATH), $$(ls $(MAP_PACKAGE_HOST)/*.pmtiles 2>/dev/null | wc -l | tr -d ' ') dropped-in areas"; \
+	fi
+
+## Deploys the plugin to Docker and drops in every built map area
 .PHONY: deploy
-deploy: docker-deploy
+deploy: docker-deploy docker-packages
 
 ## Build and deploy to a Mattermost server running at MM_LOCAL_SITEURL
 ## (default http://localhost:8065) via the bundled pluginctl tool. Unlike

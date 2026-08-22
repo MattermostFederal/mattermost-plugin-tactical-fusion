@@ -324,11 +324,51 @@
         </p>
 
         <p>
-            It is still <strong>not a navigation chart</strong>. Even at its finest it is
-            accurate to roughly five kilometres and it carries no streets, no buildings
-            and no terrain. It answers <em>which part
+            <strong>Past zoom 10 the map changes source.</strong> Natural Earth is
+            accurate to roughly five kilometres, which reads as generalisation at zoom 9
+            and as fact by zoom 10, so above that this build draws
+            <strong>OpenStreetMap</strong> instead, for the areas it ships. Those areas
+            carry real road networks, coastlines, towns, named water and aerodromes.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">Past zoom 10 outside a covered area, the map keeps drawing but stops being exact.</p>
+            <p>
+                OpenStreetMap detail is shipped for selected areas rather than the whole
+                world, because the whole world at this detail is far larger than a plugin
+                can carry. Outside those areas the world map keeps drawing above zoom 10,
+                magnified past the detail it actually holds: coastlines, borders and major
+                roads stay in place but are <strong>generalized</strong>, and can sit a few
+                kilometres from where they really are. Read them as context, not as
+                position. Inside a covered area the accurate data takes over instead, and
+                the credit beneath the map is what tells you which you are looking at.
+            </p>
+            <p>
+                This build ships <strong>Hawaii</strong> and <strong>Guam</strong>, and
+                whoever installed the plugin may have added more. The map itself does not
+                say which areas are covered; a coverage list is not built yet.
+            </p>
+        </div>
+
+        <p>
+            Where OpenStreetMap is drawn, the credit for it appears beneath the map. That
+            is a licence condition rather than a courtesy, and it names both
+            OpenStreetMap's contributors and the OpenMapTiles schema the tiles are built
+            to. The Natural Earth half is public domain and carries no such requirement,
+            which is why nothing is credited when no OpenStreetMap is on screen.
+        </p>
+
+        <p>
+            It is still <strong>not a navigation chart</strong>. It carries no buildings,
+            no footpaths, no addresses and no terrain, and where it falls back to Natural
+            Earth it is accurate to roughly five kilometres. It answers <em>which part
             of the world is this</em>, and the square around the pin, not the coastline
             under it, is what states how precisely the original text located anything.
+        </p>
+
+        <p>
+            OpenStreetMap is a snapshot rather than a live feed, so it is as current as
+            the build. This one was cut on <strong>18 August 2026</strong>.
         </p>
 
         <div class="alert alert-info">

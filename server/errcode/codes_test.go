@@ -28,7 +28,7 @@ func TestCodesUnique(t *testing.T) {
 // which number to take next.
 func TestCodesAreInAKnownRange(t *testing.T) {
 	for _, code := range AllCodes {
-		if code < 10000 || code >= 18000 {
+		if code < 10000 || code >= 19000 {
 			t.Errorf("code %d is outside every range the package documents", code)
 		}
 	}

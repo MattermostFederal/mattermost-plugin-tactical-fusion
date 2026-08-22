@@ -4,6 +4,7 @@ import type {Store} from 'redux';
 
 import type {PluginRegistry} from 'types/mattermost-webapp';
 
+import PackageUploader from './admin/PackageUploader';
 import {RhsTitle, RhsView} from './components/rhs/RhsView';
 import {installDecoratorClickHandler} from './decorators/click_handler';
 import {registerBuiltinDecorators} from './decorators/index';
@@ -79,6 +80,11 @@ export default class Plugin {
             'Tactical Fusion',
         );
         this.disposers.push(() => registry.unregisterComponent(headerId));
+
+        // The System Console control for detail map packages. `custom` is the
+        // only setting type that can carry a file; every other type is a
+        // string, a number or a switch.
+        registry.registerAdminConsoleCustomSetting('LocationMapPackages', PackageUploader, {showTitle: true});
     }
 
     /**

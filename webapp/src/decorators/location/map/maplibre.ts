@@ -1,7 +1,8 @@
 import type {FeatureCollection} from 'geojson';
 import type {StyleSpecification} from 'maplibre-gl';
 
-import type {Archive} from './basemap';
+import type {Archive, Bounds, DetailArchive} from './basemap';
+import {MAX_ZOOM, SEAM_ZOOM} from './span';
 
 import {pluginBaseUrl} from '../../../plugin_url';
 import {detectTheme} from '../../theme';
@@ -292,15 +293,29 @@ export function palette(dark: boolean): MapColors {
  * labels therefore widens no policy. A sprite would, because its image half
  * loads under `img-src`, which is why there still is not one.
  */
-export function buildStyle(archive: Archive, colors: MapColors): StyleSpecification {
+export function buildStyle(
+    archive: Archive, details: readonly DetailArchive[], colors: MapColors,
+    overzoomGlobal = false,
+): StyleSpecification {
+    const globalCap = overzoomGlobal ? MAX_ZOOM : SEAM_ZOOM;
+    const sources: StyleSpecification['sources'] = {
+        basemap: {type: 'vector', url: `pmtiles://${archive.url}`},
+        cell: {type: 'geojson', data: emptyCollection()},
+        pin: {type: 'geojson', data: emptyCollection()},
+    };
+
+    for (const detail of details) {
+        sources[detailSourceID(detail.name)] = {
+            type: 'vector',
+            url: `pmtiles://${detail.archive.url}`,
+            attribution: OSM_CREDIT.map((credit) => credit.label).join(' '),
+        };
+    }
+
     return {
         version: 8,
         glyphs: `${pluginBaseUrl()}/public/map/fonts/{fontstack}/{range}.pbf`,
-        sources: {
-            basemap: {type: 'vector', url: `pmtiles://${archive.url}`},
-            cell: {type: 'geojson', data: emptyCollection()},
-            pin: {type: 'geojson', data: emptyCollection()},
-        },
+        sources,
         layers: [
             {id: 'water', type: 'background', paint: {'background-color': colors.water}},
             {
@@ -315,6 +330,7 @@ export function buildStyle(archive: Archive, colors: MapColors): StyleSpecificat
                 type: 'fill',
                 source: 'basemap',
                 'source-layer': 'urban_areas',
+                maxzoom: globalCap,
                 paint: {'fill-color': colors.urban},
             },
             {
@@ -322,6 +338,7 @@ export function buildStyle(archive: Archive, colors: MapColors): StyleSpecificat
                 type: 'fill',
                 source: 'basemap',
                 'source-layer': 'lakes',
+                maxzoom: globalCap,
                 paint: {'fill-color': colors.water},
             },
             {
@@ -329,9 +346,10 @@ export function buildStyle(archive: Archive, colors: MapColors): StyleSpecificat
                 type: 'line',
                 source: 'basemap',
                 'source-layer': 'rivers',
+                maxzoom: globalCap,
                 paint: {
                     'line-color': colors.water,
-                    'line-width': ['interpolate', ['linear'], ['zoom'], 4, 0.4, 8, 1.4, 9, 2],
+                    'line-width': ['interpolate', ['linear'], ['zoom'], 4, 0.4, 8, 1.4, 9, 2, MAX_ZOOM, 4],
                 },
             },
             {
@@ -339,6 +357,7 @@ export function buildStyle(archive: Archive, colors: MapColors): StyleSpecificat
                 type: 'line',
                 source: 'basemap',
                 'source-layer': 'admin_1_lines',
+                maxzoom: globalCap,
                 paint: {
                     'line-color': colors.adminLine,
                     'line-width': 0.5,
@@ -350,6 +369,7 @@ export function buildStyle(archive: Archive, colors: MapColors): StyleSpecificat
                 type: 'line',
                 source: 'basemap',
                 'source-layer': 'boundary_lines',
+                maxzoom: globalCap,
                 paint: {'line-color': colors.line, 'line-width': 0.6},
             },
             {
@@ -357,6 +377,7 @@ export function buildStyle(archive: Archive, colors: MapColors): StyleSpecificat
                 type: 'line',
                 source: 'basemap',
                 'source-layer': 'railroads',
+                maxzoom: globalCap,
                 paint: {
                     'line-color': colors.rail,
                     'line-width': 0.5,
@@ -373,6 +394,7 @@ export function buildStyle(archive: Archive, colors: MapColors): StyleSpecificat
                 type: 'line',
                 source: 'basemap',
                 'source-layer': 'roads',
+                maxzoom: globalCap,
                 filter: ['<=', ['coalesce', ['get', 'scalerank'], 12],
                     ['interpolate', ['linear'], ['zoom'], 5, 6, 8, 12]],
                 paint: {
@@ -382,6 +404,7 @@ export function buildStyle(archive: Archive, colors: MapColors): StyleSpecificat
                         5, 0.4,
                         8, ['interpolate', ['linear'], ['coalesce', ['get', 'scalerank'], 12], 0, 2.2, 12, 0.6],
                         9, ['interpolate', ['linear'], ['coalesce', ['get', 'scalerank'], 12], 0, 3.2, 12, 0.9],
+                        MAX_ZOOM, ['interpolate', ['linear'], ['coalesce', ['get', 'scalerank'], 12], 0, 6.4, 12, 1.8],
                     ],
                 },
             },
@@ -430,6 +453,7 @@ export function buildStyle(archive: Archive, colors: MapColors): StyleSpecificat
                 source: 'basemap',
                 'source-layer': 'admin_1_labels',
                 minzoom: 5,
+                maxzoom: globalCap,
                 filter: ['<=', ['coalesce', ['get', 'scalerank'], 11],
                     ['interpolate', ['linear'], ['zoom'], 5, 3, 9, 9]],
                 layout: {
@@ -458,6 +482,7 @@ export function buildStyle(archive: Archive, colors: MapColors): StyleSpecificat
                 source: 'basemap',
                 'source-layer': 'airports',
                 minzoom: 6,
+                maxzoom: globalCap,
                 filter: ['<=', ['coalesce', ['get', 'scalerank'], 9],
                     ['interpolate', ['linear'], ['zoom'], 6, 4, 9, 9]],
                 paint: {
@@ -473,6 +498,7 @@ export function buildStyle(archive: Archive, colors: MapColors): StyleSpecificat
                 source: 'basemap',
                 'source-layer': 'airports',
                 minzoom: 7,
+                maxzoom: globalCap,
                 filter: ['<=', ['coalesce', ['get', 'scalerank'], 9],
                     ['interpolate', ['linear'], ['zoom'], 7, 5, 9, 9]],
                 layout: {
@@ -506,6 +532,7 @@ export function buildStyle(archive: Archive, colors: MapColors): StyleSpecificat
                 source: 'basemap',
                 'source-layer': 'populated_places',
                 minzoom: 3,
+                maxzoom: globalCap,
                 filter: ['<=', ['coalesce', ['get', 'scalerank'], 10],
                     ['interpolate', ['linear'], ['zoom'], 3, 1, 8, 8]],
                 layout: {
@@ -526,6 +553,7 @@ export function buildStyle(archive: Archive, colors: MapColors): StyleSpecificat
                     'text-halo-blur': 0,
                 },
             },
+            ...details.flatMap((detail) => detailLayers(colors, detail.name)),
             {
                 id: 'cell-fill',
                 type: 'fill',
@@ -552,6 +580,345 @@ export function buildStyle(archive: Archive, colors: MapColors): StyleSpecificat
         ],
     };
 }
+
+/**
+ * The OpenStreetMap tier, in the OpenMapTiles schema, from the seam upward.
+ *
+ * Every layer here starts at SEAM_ZOOM and every Natural Earth layer that draws
+ * the same concern stops there. MapLibre's `minzoom` is inclusive and its
+ * `maxzoom` is exclusive, so the pair partitions at exactly the seam with no
+ * gap and no overlap, and nothing is ever drawn twice from two sources.
+ *
+ * `land` is the deliberate exception on the other side: OpenMapTiles has no
+ * land polygon, so the Natural Earth fill keeps overzooming underneath and the
+ * accurate water above it is what draws the coastline.
+ *
+ * Every width interpolation carries a stop at MAX_ZOOM. Past the data the
+ * camera overzooms, which magnifies geometry while a line width stays in screen
+ * pixels, so a network without that stop holds its z14 width while the map
+ * doubles around it and reads as thinning out exactly where a reader zoomed in.
+ */
+export const DETAIL_SOURCE_LAYERS = [
+    'aerodrome_label',
+    'aeroway',
+    'boundary',
+    'place',
+    'transportation',
+    'transportation_name',
+    'water',
+    'water_name',
+    'waterway',
+];
+
+/**
+ * Whether any installed package reaches anywhere in this view.
+ *
+ * INTERSECTION rather than a test of the centre, and the asymmetry is
+ * deliberate. A centre test lifts the cap whenever the middle of the frame
+ * falls outside a package, so a reader who pans until Oahu sits at the edge
+ * gets the generalised tier overzoomed across the whole view while the accurate
+ * one still draws Oahu: the same road twice, kilometres apart, which is the one
+ * failure the seam exists to prevent. Capping whenever any covered ground is on
+ * screen cannot do that. It costs a blank margin at the edge of coverage, which
+ * is the cheaper of the two.
+ *
+ * A package's PMTiles header carries one rectangular bounds, so this is the
+ * only coverage signal the client has, and it is coarser than the data: a box
+ * can contain ground its extracts never held. `indopacom-japan` spans the
+ * Ryukyus to Hokkaido and therefore contains Korea, so a Seoul view reads as
+ * covered on an install holding Japan and not Korea. One rectangle cannot
+ * exclude Korea while keeping Yonaguni, so this is a limit of the shape rather
+ * than something to fix here.
+ */
+export function coveredBy(details: readonly DetailArchive[], view: Bounds): boolean {
+    const [west, south, east, north] = view;
+
+    return details.some(({archive}) => {
+        const [pWest, pSouth, pEast, pNorth] = archive.bounds;
+
+        return west <= pEast && east >= pWest && south <= pNorth && north >= pSouth;
+    });
+}
+
+/**
+ * The Natural Earth layers whose reach the seam decides.
+ *
+ * Listed rather than derived from "draws from the basemap source and carries a
+ * maxzoom", which was the first shape of this and was wrong: `country-label`
+ * carries `maxzoom: 6` to hand over to the town labels, so deriving swept it up
+ * and the sync overwrote a handover threshold with a seam cap. `land` carries
+ * no maxzoom at all and must stay out either way, since it is what stops an
+ * uncovered frame going white.
+ *
+ * TestSeamCappedLayersAreExactlyTheCappedOnes holds this to the style in both
+ * directions, so a layer added on either side fails rather than drifts.
+ */
+export const SEAM_CAPPED_LAYERS = [
+    'urban',
+    'lakes',
+    'rivers',
+    'admin-1',
+    'borders',
+    'railroads',
+    'roads',
+    'admin-1-label',
+    'airport-dot',
+    'airport-label',
+    'place-label',
+];
+
+/**
+ * Re-decides the global tier's reach for where the map now sits.
+ *
+ * The style is built once and the map is moved thereafter, so without this a
+ * reader who pans out of a covered area keeps the cap and sees the empty frame
+ * this exists to remove, and one who pans into a covered area sees both tiers
+ * draw the same road kilometres apart.
+ */
+export function syncGlobalReach(
+    map: {
+        getBounds(): {getWest(): number; getSouth(): number; getEast(): number; getNorth(): number};
+        getLayer(id: string): {minzoom?: number; maxzoom?: number} | undefined;
+        setLayerZoomRange(id: string, min: number, max: number): void;
+    },
+    details: readonly DetailArchive[],
+    layers: readonly string[],
+): void {
+    const view = map.getBounds();
+    const cap = coveredBy(details, [
+        view.getWest(), view.getSouth(), view.getEast(), view.getNorth(),
+    ]) ? SEAM_ZOOM : MAX_ZOOM;
+
+    for (const id of layers) {
+        const layer = map.getLayer(id);
+        if (layer && layer.maxzoom !== cap) {
+            map.setLayerZoomRange(id, layer.minzoom ?? 0, cap);
+        }
+    }
+}
+
+/** The style source and layer ids one package's archive is drawn under. */
+function detailSourceID(name: string): string {
+    return `detail:${name}`;
+}
+
+function detailLayers(colors: MapColors, name: string): StyleSpecification['layers'] {
+    const source = detailSourceID(name);
+    const id = (base: string) => `${base}:${name}`;
+    const roadClasses = ['motorway', 'trunk', 'primary', 'secondary', 'tertiary'];
+    const label = {
+        'text-font': ['NotoSans-Regular'],
+        'text-max-width': 8,
+        'text-padding': 2,
+        'text-allow-overlap': false,
+        'text-ignore-placement': false,
+        'text-optional': true,
+    } as const;
+    const labelPaint = {
+        'text-color': colors.label,
+        'text-halo-color': colors.labelHalo,
+        'text-halo-width': 1.4,
+        'text-halo-blur': 0,
+    } as const;
+
+    // OpenMapTiles carries the local name in `name` and a transliterated one in
+    // `name:latin`. The bundled glyph ranges are Latin only, so a local name in
+    // Hangul, CJK, Arabic or Ge'ez has no typeface to be drawn in and the label
+    // is simply lost. Preferring the transliteration is what keeps a town named
+    // at all outside Latin script.
+    const named = ['coalesce', ['get', 'name:latin'], ['get', 'name']];
+
+    return [
+        {
+            id: id('osm-water'),
+            type: 'fill',
+            source,
+            'source-layer': 'water',
+            minzoom: SEAM_ZOOM,
+            paint: {'fill-color': colors.water},
+        },
+        {
+            id: id('osm-waterway'),
+            type: 'line',
+            source,
+            'source-layer': 'waterway',
+            minzoom: SEAM_ZOOM,
+            paint: {
+                'line-color': colors.water,
+                'line-width': ['interpolate', ['linear'], ['zoom'], SEAM_ZOOM, 0.6, 14, 2, MAX_ZOOM, 4],
+            },
+        },
+        {
+            id: id('osm-boundary'),
+            type: 'line',
+            source,
+            'source-layer': 'boundary',
+            minzoom: SEAM_ZOOM,
+            filter: ['all',
+                ['<=', ['coalesce', ['get', 'admin_level'], 99], 4],
+                ['!=', ['coalesce', ['get', 'disputed'], 0], 1]],
+            paint: {
+                'line-color': ['case', ['<=', ['coalesce', ['get', 'admin_level'], 99], 2],
+                    colors.line, colors.adminLine],
+                'line-width': ['case', ['<=', ['coalesce', ['get', 'admin_level'], 99], 2], 0.8, 0.5],
+            },
+        },
+
+        // A contested line is dashed rather than drawn like a settled one. Not
+        // shipping the classification at all was the Natural Earth posture, and
+        // silence there is an assertion that a ceasefire line and the
+        // France-Germany border are the same kind of thing. OpenStreetMap
+        // carries the flag, so this depicts the dispute rather than resolving
+        // it.
+        {
+            id: id('osm-boundary-disputed'),
+            type: 'line',
+            source,
+            'source-layer': 'boundary',
+            minzoom: SEAM_ZOOM,
+            filter: ['all',
+                ['<=', ['coalesce', ['get', 'admin_level'], 99], 4],
+                ['==', ['coalesce', ['get', 'disputed'], 0], 1]],
+            paint: {
+                'line-color': colors.line,
+                'line-width': 0.8,
+                'line-dasharray': [2, 2],
+            },
+        },
+        {
+            id: id('osm-rail'),
+            type: 'line',
+            source,
+            'source-layer': 'transportation',
+            minzoom: SEAM_ZOOM,
+            filter: ['==', ['get', 'class'], 'rail'],
+            paint: {
+                'line-color': colors.rail,
+                'line-width': 0.5,
+                'line-dasharray': [2, 3],
+            },
+        },
+        {
+            id: id('osm-runway'),
+            type: 'line',
+            source,
+            'source-layer': 'aeroway',
+            minzoom: SEAM_ZOOM,
+            filter: ['match', ['get', 'class'], ['runway', 'taxiway'], true, false],
+            paint: {
+                'line-color': colors.airport,
+                'line-width': ['interpolate', ['linear'], ['zoom'],
+                    SEAM_ZOOM, ['match', ['get', 'class'], 'runway', 1, 0.4],
+                    14, ['match', ['get', 'class'], 'runway', 4, 1.2],
+                    MAX_ZOOM, ['match', ['get', 'class'], 'runway', 10, 3]],
+            },
+        },
+        {
+            id: id('osm-roads'),
+            type: 'line',
+            source,
+            'source-layer': 'transportation',
+            minzoom: SEAM_ZOOM,
+            filter: ['match', ['get', 'class'], roadClasses, true, false],
+            paint: {
+                'line-color': colors.road,
+                'line-width': ['interpolate', ['linear'], ['zoom'],
+                    SEAM_ZOOM, ['match', ['get', 'class'],
+                        'motorway', 1.2, 'trunk', 1, 'primary', 0.8, 'secondary', 0.6, 0.4],
+                    14, ['match', ['get', 'class'],
+                        'motorway', 4, 'trunk', 3.2, 'primary', 2.6, 'secondary', 2, 1.4],
+                    MAX_ZOOM, ['match', ['get', 'class'],
+                        'motorway', 10, 'trunk', 8, 'primary', 6.5, 'secondary', 5, 3.5]],
+            },
+        },
+
+        // Symbol placement runs from the TOP of the layer list DOWN, so among
+        // symbol layers the LAST one wins a collision. These are therefore
+        // ordered least wanted first: water, then roads, then aerodromes, then
+        // towns, which is the landmark somebody placing a coordinate wants most.
+        {
+            id: id('osm-water-label'),
+            type: 'symbol',
+            source,
+            'source-layer': 'water_name',
+            minzoom: SEAM_ZOOM,
+            layout: {...label, 'text-field': named, 'text-size': 11, 'text-transform': 'none'},
+            paint: {...labelPaint, 'text-color': colors.label},
+        },
+        {
+            id: id('osm-road-label'),
+            type: 'symbol',
+            source,
+            'source-layer': 'transportation_name',
+            minzoom: 12,
+            layout: {
+                ...label,
+                'text-field': ['coalesce', ['get', 'ref'], named],
+                'text-size': 10,
+                'symbol-placement': 'line',
+            },
+            paint: {...labelPaint, 'text-color': colors.road},
+        },
+        {
+            id: id('osm-aerodrome-dot'),
+            type: 'circle',
+            source,
+            'source-layer': 'aerodrome_label',
+            minzoom: SEAM_ZOOM,
+            paint: {
+                'circle-radius': ['interpolate', ['linear'], ['zoom'], SEAM_ZOOM, 2.5, 14, 4],
+                'circle-color': colors.airport,
+                'circle-stroke-color': colors.labelHalo,
+                'circle-stroke-width': 1,
+            },
+        },
+        {
+            id: id('osm-aerodrome-label'),
+            type: 'symbol',
+            source,
+            'source-layer': 'aerodrome_label',
+            minzoom: SEAM_ZOOM,
+            layout: {
+                ...label,
+                'text-field': named,
+                'text-size': 11,
+                'text-offset': [0, 0.9],
+                'text-anchor': 'top',
+            },
+            paint: {...labelPaint, 'text-color': colors.airport},
+        },
+        {
+            id: id('osm-place-label'),
+            type: 'symbol',
+            source,
+            'source-layer': 'place',
+            minzoom: SEAM_ZOOM,
+            filter: ['match', ['get', 'class'],
+                ['city', 'town', 'village', 'hamlet', 'suburb'], true, false],
+            layout: {
+                ...label,
+                'text-field': named,
+                'text-size': ['interpolate', ['linear'], ['zoom'], SEAM_ZOOM, 10, 14, 13],
+                'symbol-sort-key': ['coalesce', ['get', 'rank'], 20],
+            },
+            paint: labelPaint,
+        },
+    ] as StyleSpecification['layers'];
+}
+
+/**
+ * The credit the detail tier may not be drawn without.
+ *
+ * OpenStreetMap is ODbL and the OpenMapTiles schema is CC-BY, so unlike Natural
+ * Earth, whose credit this plugin deliberately dropped, both of these are
+ * licence conditions. Written once here and read by both the style's own
+ * `attribution` field and the line the component renders, so the two cannot
+ * disagree about what was credited.
+ */
+export const OSM_CREDIT: ReadonlyArray<{label: string; href: string}> = [
+    {label: '© OpenMapTiles', href: 'https://openmaptiles.org/'},
+    {label: '© OpenStreetMap contributors', href: 'https://www.openstreetmap.org/copyright'},
+];
 
 export function emptyCollection(): FeatureCollection {
     return {type: 'FeatureCollection', features: []};

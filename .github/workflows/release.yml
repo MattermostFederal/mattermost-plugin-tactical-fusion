@@ -195,6 +195,15 @@ jobs:
                ```
             4. Upload via **System Console → Plugin Management → Choose File → Enable**.
 
+            ### Map packages
+
+            The plugin bundles two offline detail-map areas (Hawaii and Guam). Additional areas are
+            attached to this release as separate `.pmtiles` assets, with `PACKAGES.sha256`
+            beside them. Download only what you need, then set **Detail map package
+            directory** (`LocationMapPackagesDir`) in the System Console and copy the files
+            there, or upload them under **Installed detail areas**. They are separate
+            downloads because the whole set is far larger than a plugin bundle may be.
+
             ### Supply-chain artifacts
 
             - **SBOM** (CycloneDX JSON): `server-sbom.json` / `webapp-sbom.json` list every dependency in the shipped bundle. Also embedded under `sbom/` inside the tarball.

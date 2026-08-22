@@ -2,12 +2,18 @@ import type {FeatureCollection} from 'geojson';
 import type {GeoJSONSource, Map as MapLibreMap} from 'maplibre-gl';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 
-import {loadBasemap} from './basemap';
+import type {Bounds} from './basemap';
+import {loadBasemap, loadPackages} from './basemap';
 import {
-    buildStyle, cellFeature, emptyCollection, hasWebGL2, loadMapLibre, mapColors, pointFeature,
+    OSM_CREDIT,
+    SEAM_CAPPED_LAYERS,
+    buildStyle, cellFeature, coveredBy, emptyCollection, hasWebGL2, loadMapLibre,
+    mapColors, pointFeature, syncGlobalReach,
 } from './maplibre';
 import {MAX_ZOOM, cellBounds, isRenderable, zoomForSpan} from './span';
 import type {View} from './view';
+
+import {loadPackageNames} from '../../../packages/store';
 
 /**
  * The map above the readings table.
@@ -143,16 +149,14 @@ const styles: Record<string, React.CSSProperties> = {
     },
     caption: {
         display: 'flex',
-
-        // Was space-between, which held the basemap credit at the left and this
-        // at the right. With the credit gone a single child under space-between
-        // falls back to the left edge, which is not where the link has been.
         justifyContent: 'flex-end',
         gap: 8,
+        flexWrap: 'wrap',
         marginTop: 4,
         fontSize: 11,
         color: 'rgba(var(--center-channel-color-rgb), 0.64)',
     },
+    credit: {display: 'inline-flex', gap: 6, marginRight: 'auto'},
     link: {color: 'var(--link-color)'},
     recenter: {
         position: 'absolute',
@@ -209,6 +213,13 @@ const LocationMap: React.FC<Props> = ({
     // The live camera zoom, and the only thing on this map read from a `zoom`
     // event. Null until the map exists.
     const [zoomLevel, setZoomLevel] = useState<number | null>(null);
+
+    // Whether the OpenStreetMap tier made it into the style, which is the only
+    // thing that decides whether its credit is drawn. Set from the archive that
+    // was actually handed to buildStyle rather than from a probe, so a credit
+    // can never appear over a map that has no OSM in it, nor be missing from
+    // one that does.
+    const [credited, setCredited] = useState(false);
 
     const beyond = lat === null ? null : outsideMercator(lat);
     const known = lat !== null && lon !== null && beyond === null;
@@ -307,7 +318,24 @@ const LocationMap: React.FC<Props> = ({
         let live = true;
 
         (async () => {
-            const [maplibre, basemap] = await Promise.all([loadMapLibre(), loadBasemap()]);
+            // A hover card is built with interactive: false at a zoom
+            // zoomForSpan has already clamped below the seam, so it can never
+            // request an OpenStreetMap tile. Carrying the source anyway would
+            // put an OSM credit on a card with no OSM on it.
+            // The package list is AWAITED here rather than read from a hook,
+            // and that is not a style choice. The map is created once and then
+            // moved, so a list that arrives after creation would never reach a
+            // style again: the panel would draw the global tier for the whole
+            // of its life on an install that has detail areas, which looks
+            // exactly like an install that has none. Both this and the archives
+            // it names are bounded and module-cached, so the cost is one
+            // request per session rather than per map.
+            const names = previewRef.current ? [] : await loadPackageNames();
+            const [maplibre, basemap, details] = await Promise.all([
+                loadMapLibre(),
+                loadBasemap(),
+                loadPackages(names),
+            ]);
             if (!live) {
                 return;
             }
@@ -326,14 +354,25 @@ const LocationMap: React.FC<Props> = ({
                 return;
             }
 
+            setCredited(details.length > 0);
+
             const start = view.current;
             const width = container.current.clientWidth || DEFAULT_WIDTH_PX;
+
+            // A point rather than the opening viewport, and it does not matter
+            // which: zoomForSpan clamps the opening zoom to DATA_MAX_ZOOM, which
+            // is below SEAM_ZOOM, so nothing the cap governs is drawn until the
+            // reader zooms in and moveend has re-decided from real bounds.
+            const opening: Bounds = [
+                start.lon ?? 0, start.lat ?? 0, start.lon ?? 0, start.lat ?? 0,
+            ];
+            const style = buildStyle(basemap, details, mapColors(), !coveredBy(details, opening));
 
             let instance: MapLibreMap | undefined;
             try {
                 instance = new maplibre.Map({
                     container: container.current,
-                    style: buildStyle(basemap, mapColors()),
+                    style,
                     center: [start.lon ?? 0, start.lat ?? 0],
                     zoom: zoomForSpan(start.lat ?? 0, width),
 
@@ -370,6 +409,8 @@ const LocationMap: React.FC<Props> = ({
                 // until the reader's first gesture.
                 instance.on('zoom', (event) => setZoomLevel(event.target.getZoom()));
                 setZoomLevel(instance.getZoom());
+
+                instance.on('moveend', (event) => syncGlobalReach(event.target, details, SEAM_CAPPED_LAYERS));
             } catch (e) {
                 // The constructor allocates its canvas and GL context before it
                 // validates the style, so a throw here leaks a context unless it
@@ -523,14 +564,29 @@ const LocationMap: React.FC<Props> = ({
                 )}
                 <span style={styles.srOnly}>{label(region, note)}</span>
             </div>
-            {!fill && !preview && pageHref !== undefined && (
+            {!preview && (credited || (!fill && pageHref !== undefined)) && (
                 <div style={styles.caption}>
-                    <a
-                        style={styles.link}
-                        href={pageHref}
-                        target='_blank'
-                        rel='noreferrer'
-                    >{'Open larger'}</a>
+                    {credited && (
+                        <span style={styles.credit}>
+                            {OSM_CREDIT.map((credit) => (
+                                <a
+                                    key={credit.href}
+                                    style={styles.link}
+                                    href={credit.href}
+                                    target='_blank'
+                                    rel='noreferrer'
+                                >{credit.label}</a>
+                            ))}
+                        </span>
+                    )}
+                    {!fill && pageHref !== undefined && (
+                        <a
+                            style={styles.link}
+                            href={pageHref}
+                            target='_blank'
+                            rel='noreferrer'
+                        >{'Open larger'}</a>
+                    )}
                 </div>
             )}
         </div>

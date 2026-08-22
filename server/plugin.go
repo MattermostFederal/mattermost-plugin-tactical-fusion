@@ -20,6 +20,10 @@ type Plugin struct {
 	configurationLock sync.RWMutex
 	configuration     *configuration
 
+	packageLock  sync.Mutex
+	packageCache *packageCache
+	warned       map[string]bool
+
 	// decorators is built once in OnActivate and only read afterwards, by the
 	// message hook and by ServeHTTP.
 	//
@@ -151,7 +155,7 @@ func (p *Plugin) OnActivate() error {
 	// Adding a decorator is one line here plus one directory.
 	registry, err := decorators.NewDefaultRegistry(
 		&dtg.Decorator{Enabled: p.dtgFormats},
-		&location.Decorator{Enabled: p.locationFormats, Maps: p.locationMaps},
+		&location.Decorator{Enabled: p.locationFormats, Maps: p.locationMaps, Packages: p.packageNames},
 		&airport.Decorator{Enabled: p.airportFormats},
 	)
 	// Expected to stay uncovered: Register only rejects a duplicate or empty

@@ -4,7 +4,8 @@
 
 ## Admin settings
 
-`plugin.json` declares twenty switches in **four `settings_schema.sections`**:
+`plugin.json` declares twenty switches and two map-package settings in **four
+`settings_schema.sections`**:
 
 - **Date and time**: `EnableDTG` with `EnableDTGMilitary`, `EnableDTGTimestamp`
   and `EnableDTGMoniker`.
@@ -13,7 +14,11 @@
   `EnableLocationUTM`, `EnableLocationGEOREF`, `EnableLocationGARS`,
   `EnableLocationPlusCode` and `EnableLocationMoniker`.
 - **Maps**: `EnableLocationMap` with `EnableLocationMapPanel`,
-  `EnableLocationMapInline` and `EnableLocationMapPage`.
+  `EnableLocationMapInline` and `EnableLocationMapPage`, then
+  `LocationMapPackagesDir` and `LocationMapPackages`, which are a path and a
+  control rather than switches. See
+  [`mapping.md`](mapping.md#the-openstreetmap-detail-tier-above-the-seam) for
+  why the storage is a real directory.
 - **Airfields**: `EnableAirport` with `EnableAirportTable`.
 
 `model.PluginSettingsSchema` carries a `Sections` field

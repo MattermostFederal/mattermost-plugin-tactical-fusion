@@ -15,7 +15,7 @@ func mapPageBody(t *testing.T, format Format, canonical string) *httptest.Respon
 	RenderMapPage(rec, url.Values{
 		paramFormat: {string(format)},
 		paramValue:  {canonical},
-	})
+	}, nil)
 
 	return rec
 }
@@ -40,7 +40,7 @@ func TestMapPageRefusesWhatTheReadingsPageRefuses(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			RenderMapPage(rec, c.params)
+			RenderMapPage(rec, c.params, nil)
 
 			if rec.Code != 400 {
 				t.Fatalf("status = %d, want 400: %s", rec.Code, rec.Body.String())
@@ -67,7 +67,7 @@ func TestMapPageFitsItsBudget(t *testing.T) {
 		RenderMapPage(rec, url.Values{
 			paramFormat: {"dd"},
 			paramValue:  {formatDD(c.lat, c.lon)},
-		})
+		}, nil)
 		if n := rec.Body.Len(); n > worst {
 			worst = n
 		}

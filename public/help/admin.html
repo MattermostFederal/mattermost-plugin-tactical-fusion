@@ -607,6 +607,8 @@
                 <tr><td><a href="#enable-location-map-panel"><code>EnableLocationMapPanel</code></a></td><td>The sidebar panel and the hover card</td><td>On</td></tr>
                 <tr><td><a href="#enable-location-map-inline"><code>EnableLocationMapInline</code></a></td><td>The map under a coordinate-only post</td><td>On</td></tr>
                 <tr><td><a href="#enable-location-map-page"><code>EnableLocationMapPage</code></a></td><td>The full-window map page</td><td>On</td></tr>
+                <tr><td><a href="#location-map-packages-dir"><code>LocationMapPackagesDir</code></a></td><td>Where detail map packages are read from</td><td>Empty</td></tr>
+                <tr><td><a href="#location-map-packages"><code>LocationMapPackages</code></a></td><td>Install or remove one detail area</td><td>Not a stored value</td></tr>
             </tbody>
         </table>
 
@@ -733,6 +735,95 @@
             reduced version of it worth serving, where the readings page still has
             everything but the picture.
         </p>
+
+        <h3 id="location-map-packages-dir" data-setting="LocationMapPackagesDir">Detail map package directory <code>LocationMapPackagesDir</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Text, a directory path on this server</td></tr>
+                <tr><td>Default</td><td>Empty, meaning bundled packages only</td></tr>
+                <tr><td>Effect when empty</td><td>Only the detail packages the plugin ships are drawn. Everything else is unchanged.</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-location"><code>EnableLocation</code></a> and <a href="#enable-location-map"><code>EnableLocationMap</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Above zoom 10 the map draws OpenStreetMap rather than Natural Earth, for the
+            areas this install has. Each area is one file, named
+            <code>&lt;command&gt;-&lt;area&gt;.pmtiles</code>, such as
+            <code>indopacom-hawaii.pmtiles</code>. Point this setting at a directory,
+            drop a file in it, and the area appears; there is no restart and no upload
+            step. A file here <strong>replaces</strong> a bundled package of the same
+            name, which is how an area gets a newer build without waiting for a plugin
+            release.
+        </p>
+
+        <p>
+            <strong>Where the files come from.</strong> This plugin ships with Hawaii
+            and Guam built in. Every other area is a separate download attached to the plugin's
+            GitHub release, alongside the plugin bundle itself, with a
+            <code>PACKAGES.sha256</code> beside them you can verify against. Download
+            only the areas you need: they range from a couple of megabytes to a few
+            hundred, which is exactly why they are not in the bundle. Areas currently
+            published cover Korea, Taiwan, Japan, the Philippines, the South China Sea,
+            Guam, the Persian Gulf, the Levant, the Red Sea, Ukraine, the Baltics and
+            the Horn of Africa.
+        </p>
+
+        <p>
+            Names are checked rather than cleaned: lower case, letters and digits, and at
+            least one hyphen. Anything else in the directory is ignored, and so is any
+            file that is not a valid map archive built for zoom 10 and up. Both are
+            logged with a code, because a package that is quietly skipped looks exactly
+            like an area nobody built.
+        </p>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">Every node in a cluster needs this directory.</p>
+            <p>
+                Each node serves the archives it can read, so a package present on one
+                node alone is drawn for the readers that node happens to serve and not
+                for anybody else, with nothing on screen explaining the difference. Use
+                shared storage, or put an identical copy on every node.
+            </p>
+        </div>
+
+        <h3 id="location-map-packages" data-setting="LocationMapPackages">Installed detail areas <code>LocationMapPackages</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>A control, not a stored value</td></tr>
+                <tr><td>Default</td><td>Whatever is in the package directory</td></tr>
+                <tr><td>Requires</td><td><a href="#location-map-packages-dir"><code>LocationMapPackagesDir</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Lists the detail areas this node has and lets you install or remove one
+            without reaching the filesystem. It writes into the package directory above,
+            which is the same place a file copied there by hand is read from: a map
+            archive is served by byte range, so it has to sit on disk, and there is no
+            plugin storage that can serve a range. Upload and copy are two doors into one
+            room.
+        </p>
+
+        <p>
+            The area's name comes from the <em>file</em> rather than a field, so name the
+            file for the area it holds. An upload is checked before it is put in place,
+            so a truncated or wrongly built archive is refused with a reason instead of
+            being accepted and then quietly skipped.
+        </p>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">Large areas should be copied, not uploaded.</p>
+            <p>
+                An upload crosses this server's own request limits and whatever proxy
+                sits in front of it, which a large area will exceed. Copying the file
+                into the package directory has no such ceiling. In a cluster an upload
+                also reaches only the node that served it, where a copy can be placed on
+                shared storage.
+            </p>
+        </div>
 
         <h2 id="airfield-switches">The airfield switches</h2>
 

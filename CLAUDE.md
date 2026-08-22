@@ -66,9 +66,9 @@ there rather than here or in a comment.
 | [`docs/design/decorators.md`](docs/design/decorators.md) | The framework, the DTG grammars, the tagger and protected spans, `siteURLPath`, page CSP, the slash command, adding a decorator, the post size limit |
 | [`docs/design/location.md`](docs/design/location.md) | Every coordinate grammar, boundary guards, rendering and resolution, geodesy, `/api/v1/convert`, copy buttons, prior art |
 | [`docs/design/airfields.md`](docs/design/airfields.md) | The label-only ICAO grammar, the embedded database, `/api/v1/airport`, the page and panel |
-| [`docs/design/mapping.md`](docs/design/mapping.md) | The vector basemap, `PageStatic` vs `PageMapping`, the page bundle, zoom numbers, the country lookup, `Conversion`, the map page, the panel map, turning maps off, the map under a post |
+| [`docs/design/mapping.md`](docs/design/mapping.md) | The vector basemap, the OpenStreetMap detail tier and its seam, detail map packages, `PageStatic` vs `PageMapping`, the page bundle, zoom numbers, the country lookup, `Conversion`, the map page, the panel map, turning maps off, the map under a post |
 | [`docs/design/preferences.md`](docs/design/preferences.md) | The KV store, both caches, the location hover, the location rows, the zone picker and ordering |
-| [`docs/design/admin-settings.md`](docs/design/admin-settings.md) | The twenty switches, the four sections, why `EnableLocationUTM` ships off |
+| [`docs/design/admin-settings.md`](docs/design/admin-settings.md) | The twenty switches, the two map-package settings, the four sections, why `EnableLocationUTM` ships off |
 | [`docs/design/help-and-errors.md`](docs/design/help-and-errors.md) | `public/help/` and the `TF-NNNN` catalog |
 | [`docs/design/unverified.md`](docs/design/unverified.md) | Claims that need a running server or a phone and have never been checked |
 
@@ -150,6 +150,11 @@ that fails in Go when either side moves alone. Change both halves together.
 | The `/airport` payload | `TestWebappAirportShapeMatches` |
 | The 30 minute cache TTL | `TestWebappCacheLifetimeMatches` |
 | The `data-maps` attribute and its tokens | `TestWebappMapSurfaceAttributeMatches` |
+| The seam zoom: `seamZoom` and `SEAM_ZOOM` in `map/span.ts` | `TestSeamZoomMatchesTheWebapp`, `TestDetailPackagesStartAtTheSeam` |
+| The detail layer set: `DETAIL_SOURCE_LAYERS` in `map/maplibre.ts` | `TestArchiveCarriesEveryLayerTheStyleDraws`, and `style.spec.ts` holds the built style to the same list |
+| The package name grammar: `packageNamePattern` and `PACKAGE_NAME` | `TestWebappPackageNameGrammarMatches` |
+| The `data-packages` attribute and its separator | `TestWebappPackagesAttributeMatches` |
+| The package list's 60 second lifetime | `TestWebappPackageCacheLifetimeMatches` |
 | Rendering fixtures | `format_test.go` and `format.spec.ts` hold the same table |
 | Zone ordering and its tiebreak | Both sides assert the same London/Reykjavik pair |
 

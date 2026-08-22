@@ -3,6 +3,7 @@ import type {LocationPayload} from '../decorators/location';
 import {asConversion} from '../decorators/location/convert';
 import type {ConversionState} from '../decorators/location/convert';
 import type {LocationFormat} from '../decorators/location/format';
+import {PACKAGE_NAME} from '../decorators/location/map/basemap';
 import {ALL_FEATURES} from '../features/types';
 import type {Features} from '../features/types';
 
@@ -30,6 +31,9 @@ export interface PageData {
      * server that rendered it.
      */
     maps: Features;
+
+    /** The detail areas this install has, from the shell rather than the API. */
+    packages: string[];
 }
 
 /**
@@ -64,7 +68,31 @@ export function readPageData(root: HTMLElement): PageData | null {
         conversion: conversionFrom(root.dataset.conversion),
         mode: root.dataset.mode === 'map' ? 'map' : 'location',
         maps: mapsFrom(root.dataset.maps),
+        packages: packagesFrom(root.dataset.packages),
     };
+}
+
+/*
+ * Which detail areas the shell says this install has.
+ *
+ * A page has no session and /api/v1/packages requires one, so the list arrives
+ * in the document rather than being fetched. Names are filtered against the
+ * same pattern the request path is built from: this is the one value on the
+ * page that started life as a filename on somebody's server.
+ *
+ * An absent attribute means NONE, which is the opposite of how `data-maps`
+ * reads its own absence and is right for the same reason. There, absence has to
+ * mean "an older shell" because failing to draw a map is the silent, costly
+ * direction. Here the costly direction is the other way round: a name invented
+ * from nothing would be a request for an archive that does not exist, on every
+ * page load, and there is no list a bundle could guess.
+ */
+function packagesFrom(value: string | undefined): string[] {
+    if (!value) {
+        return [];
+    }
+
+    return value.split(',').filter((name) => PACKAGE_NAME.test(name));
 }
 
 /**

@@ -77,6 +77,8 @@ export const DATA_MAX_ZOOM = 9;
  */
 export const MAX_ZOOM = 17;
 
+export const SEAM_ZOOM = 10;
+
 /** A degree of latitude, the same approximation the Go side makes. */
 export const DEGREE_METERS = 111320;
 

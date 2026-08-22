@@ -120,6 +120,17 @@ type configuration struct {
 	EnableLocationMapPanel  bool
 	EnableLocationMapInline bool
 	EnableLocationMapPage   bool
+
+	// LocationMapPackagesDir is a directory on the server's filesystem that
+	// detail map packages are read from, beside the ones the bundle ships.
+	// Empty means bundled packages only.
+	//
+	// It is a real path rather than anything routed through plugin.API because
+	// PMTiles is read by byte range and neither ReadFile nor GetFile can serve
+	// one: both return the whole file, so a request for a single tile would
+	// load an entire archive into memory. os.Open with http.ServeContent is the
+	// only reader that answers a range without doing that.
+	LocationMapPackagesDir string
 }
 
 func (c *configuration) Clone() *configuration {

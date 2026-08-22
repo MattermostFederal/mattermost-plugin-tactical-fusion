@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -35,6 +36,11 @@ type fakeAPI struct {
 	config   *model.Config
 	warnings []string
 	errors   []string
+
+	// bundlePath is where GetBundlePath points. Empty means the plugin cannot
+	// find its own bundle, which is what most tests want: no bundled map
+	// packages, and the one log line that says so.
+	bundlePath string
 
 	// kv is the fake plugin KV store. Nil until a test needs one, so a test
 	// that does not touch preferences still panics on an unexpected KV call.
@@ -89,6 +95,14 @@ type fakeAPI struct {
 }
 
 func (a *fakeAPI) GetConfig() *model.Config { return a.config }
+
+func (a *fakeAPI) GetBundlePath() (string, error) {
+	if a.bundlePath == "" {
+		return "", errors.New("no bundle path in this test")
+	}
+
+	return a.bundlePath, nil
+}
 
 func (a *fakeAPI) LogWarn(msg string, _ ...any) { a.warnings = append(a.warnings, msg) }
 
