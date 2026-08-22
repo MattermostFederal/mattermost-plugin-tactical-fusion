@@ -1,6 +1,7 @@
 ---
 name: cleanup
 description: Use to fully tear down feature-branch worktrees after their PRs have been merged. Surveys every registered worktree and classifies each as READY / DIRTY / UNPUSHED / OPEN_PR / NO_PR / PROTECTED, then for each target the user picks: verifies the branch is fully merged into the trunk on GitHub, runs `make nuke` to stop dev containers and remove build/data artifacts, deletes the remote and local branch, removes the git worktree, prunes the `project.code-workspace` entry, removes the directory, and finally fetches `.bare` with `--prune` and fast-forwards the `main/` worktree to the trunk. Refuses to run against the `main` worktree, the `main`/`master` branches, or any branch that is not yet merged on GitHub.
+user-invocable: true
 ---
 
 # Cleanup

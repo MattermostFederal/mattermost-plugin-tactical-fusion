@@ -1,6 +1,7 @@
 ---
 name: add-frontend-tests
 description: Systematically find frontend test coverage gaps and add exhaustive Playwright unit and component tests. Use when you want to improve React/TypeScript test coverage, add missing tests, or harden existing test suites.
+user-invocable: true
 ---
 
 # Add Frontend Tests

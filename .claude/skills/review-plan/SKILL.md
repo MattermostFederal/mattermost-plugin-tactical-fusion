@@ -1,6 +1,7 @@
 ---
 name: review-plan
 description: Multi-LLM validation for implementation plans. Supports --spec mode for requirements validation and default mode for technical feasibility. Focuses on 80/20 high-impact issues.
+user-invocable: true
 ---
 
 # Plan Review

@@ -1,6 +1,7 @@
 ---
 name: create-code
 description: Implement code from an approved plan. Supports TDD workflow. Runs linters and tests before completion.
+user-invocable: true
 ---
 
 # Create Code

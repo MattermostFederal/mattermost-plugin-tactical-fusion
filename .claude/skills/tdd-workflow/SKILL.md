@@ -1,6 +1,7 @@
 ---
 name: tdd-workflow
 description: Test-Driven Development workflow for Go and TypeScript. Use when implementing new features or fixing bugs using RED-GREEN-REFACTOR cycle.
+user-invocable: true
 ---
 
 # Test-Driven Development Workflow

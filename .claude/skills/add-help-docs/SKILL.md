@@ -1,6 +1,7 @@
 ---
 name: add-help-docs
 description: Use when plugin code changes need to be reflected in the built-in user-facing documentation under public/help. Trigger after adding or modifying admin settings, slash commands, token grammars, error codes, or any user-visible message, or before cutting a release.
+user-invocable: true
 ---
 
 # Add Help Docs

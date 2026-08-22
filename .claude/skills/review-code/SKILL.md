@@ -1,6 +1,7 @@
 ---
 name: review-code
 description: Comprehensive code review via specialized agents + multi-LLM review. Works on local changes or GitHub PRs.
+user-invocable: true
 ---
 
 # Review Code
