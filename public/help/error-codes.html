@@ -414,6 +414,11 @@
                     <td><code>PackagesBadArchive</code> <span class="level">log</span></td>
                     <td>A file is not the map archive it claims to be, or does not begin at zoom 10, where the detail tier takes over. A half-copied file, a truncated download, or an archive built to the wrong depth.</td>
                 </tr>
+                <tr>
+                    <td><code>TF-18008</code></td>
+                    <td><code>PackagesSchemaMismatch</code> <span class="level">log</span></td>
+                    <td>A well formed archive built for a different map schema. The message says which way round it is: an older archive is re-downloaded for the area, and a newer one means this plugin is behind the archive and should be upgraded. Areas are otherwise portable across plugin versions, so this only appears when the map data itself changed shape.</td>
+                </tr>
             </tbody>
         </table>
     </main>

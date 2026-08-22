@@ -2,11 +2,15 @@ package main
 
 import (
 	"cmp"
+	"compress/gzip"
+	"encoding/binary"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -32,6 +36,30 @@ const (
 	packageMagic       = "PMTiles"
 	packageSpecVersion = 3
 	packageTileTypeMVT = 1
+
+	/*
+	 * The map schema this build draws.
+	 *
+	 * An archive is stamped with the schema it was built for, in its PMTiles
+	 * metadata name, so a plugin that has moved on can say which of the two is
+	 * behind rather than reporting a well formed file as a broken one. Bump it
+	 * when a change makes an older archive WRONG rather than merely shallower:
+	 * the seam moving, or a layer joining or leaving the set the style draws.
+	 * Depth is not one of those, since maxzoom is a floor on both sides.
+	 *
+	 * MAP_SCHEMA in build/maposm/build.sh is the other half;
+	 * TestMapSchemaMatchesTheGenerator holds the pair together.
+	 */
+	mapSchemaVersion = 1
+	schemaPrefix     = "tactical-fusion-map/"
+
+	// How much of the metadata blob is worth reading to find the stamp. The
+	// name is the first field OpenMapTiles writes, and a whole tilestats block
+	// on a dense area runs to hundreds of kilobytes.
+	schemaScanBytes = 4096
+
+	// PMTiles internal compression: 1 is none, 2 is gzip.
+	compressionGzip = 2
 )
 
 // bundledPackageDir is where packages that ship inside the bundle live,
@@ -315,6 +343,68 @@ func (p *Plugin) mapPackage(name string) (mapPackage, bool) {
  * reader sees an area that is simply missing rather than an error. Checking at
  * discovery is what turns that into one log line naming the file.
  */
+// The stamp build.sh writes into an archive's PMTiles metadata name.
+var archiveNamePattern = regexp.MustCompile(`"name"\s*:\s*"([^"]*)"`)
+
+/*
+ * The map schema an archive was built for.
+ *
+ * Read from the metadata rather than the fixed header, because PMTiles has no
+ * field for it and tile-join can only set the ones the format already has. The
+ * name is the first key OpenMapTiles writes, so a few kilobytes of the front is
+ * enough and the whole blob is not decompressed: a dense area carries a quarter
+ * of a megabyte of tilestats behind it.
+ *
+ * An archive with no stamp is schema 1, which is what every archive built
+ * before this existed is. Requiring the stamp instead would have rejected every
+ * package already published, which is the failure this is meant to prevent.
+ */
+func archiveSchema(file io.ReadSeeker, header []byte) (int, error) {
+	offset := binary.LittleEndian.Uint64(header[24:32])
+	length := binary.LittleEndian.Uint64(header[32:40])
+	if length == 0 {
+		return 1, nil
+	}
+
+	if _, err := file.Seek(int64(offset), io.SeekStart); err != nil { // #nosec G115 -- a length from a validated header
+		return 0, err
+	}
+
+	var blob io.Reader = io.LimitReader(file, int64(length)) // #nosec G115 -- same
+	if header[97] == compressionGzip {
+		zipped, err := gzip.NewReader(blob)
+		if err != nil {
+			return 0, errcode.Errorf(errcode.PackagesBadArchive, "unreadable metadata: %v", err)
+		}
+		defer func() { _ = zipped.Close() }()
+		blob = zipped
+	}
+
+	head := make([]byte, schemaScanBytes)
+	n, err := io.ReadFull(blob, head)
+	if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) && !errors.Is(err, io.EOF) {
+		return 0, errcode.Errorf(errcode.PackagesBadArchive, "unreadable metadata: %v", err)
+	}
+
+	m := archiveNamePattern.FindSubmatch(head[:n])
+	if m == nil {
+		return 1, nil
+	}
+
+	stamp, found := strings.CutPrefix(string(m[1]), schemaPrefix)
+	if !found {
+		return 1, nil
+	}
+
+	schema, err := strconv.Atoi(stamp)
+	if err != nil {
+		return 0, errcode.Errorf(errcode.PackagesSchemaMismatch,
+			"carries an unreadable map schema %q", m[1])
+	}
+
+	return schema, nil
+}
+
 func validPackageHeader(path string) error {
 	file, err := os.Open(path) // #nosec G304 -- a path built from a whitelisted name
 	if err != nil {
@@ -338,6 +428,22 @@ func validPackageHeader(path string) error {
 		return errcode.Errorf(errcode.PackagesBadArchive,
 			"tile type %d, want %d (MVT)", header[99], packageTileTypeMVT)
 	}
+	if schema, err := archiveSchema(file, header); err != nil {
+		return err
+	} else if schema != mapSchemaVersion {
+		// Named in both directions, because the fix differs: an older archive is
+		// re-downloaded and a newer one means the plugin is behind it.
+		if schema < mapSchemaVersion {
+			return errcode.Errorf(errcode.PackagesSchemaMismatch,
+				"built for map schema %d and this build draws %d, so re-download the area",
+				schema, mapSchemaVersion)
+		}
+
+		return errcode.Errorf(errcode.PackagesSchemaMismatch,
+			"built for map schema %d and this build draws %d, so upgrade the plugin",
+			schema, mapSchemaVersion)
+	}
+
 	if header[100] != seamZoom {
 		return errcode.Errorf(errcode.PackagesBadArchive,
 			"starts at zoom %d, want %d, which is where the detail tier takes over",

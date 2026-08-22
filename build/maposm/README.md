@@ -198,6 +198,45 @@ into this archive, for the same reason `build/maptiles` drops Natural Earth's
 equivalent field: it would be a viewpoint, and an unreliable one. Drawing
 aerodromes is not the same as classifying them.
 
+## The map schema, and why areas outlive a plugin upgrade
+
+Map areas are large and awkward to move, so an operator upgrading the plugin
+should not have to move them. They do not have to: nothing version gates a
+package. The `?v=` in its URL is the plugin version and is cache busting only,
+the server ignores the query string, and an area built by any version is served
+by any other. Depth is a floor rather than a match, so an older z10-12 area
+still draws against a build that now makes z10-14; it simply runs out of detail
+sooner.
+
+What is NOT portable is a change to the shape of the data itself. Two would do
+it: the seam moving off z10, and a layer joining or leaving
+`DETAIL_SOURCE_LAYERS`. The first is caught already, since the header check
+requires `minzoom == 10` exactly, but it reports a well formed archive as one
+that "is not the archive it claims to be", which sends an operator looking for a
+corrupt file. The second is not caught at all and simply draws nothing.
+
+So `build.sh` stamps the schema an archive was built for into its PMTiles
+metadata name, `tactical-fusion-map/<n>`, and the server reads it back:
+
+```
+indopacom-guam  z10-14  schema 1  -Xmx4g  1783446 -> 976239 bytes
+```
+
+**Bump `MAP_SCHEMA` when an older archive becomes wrong rather than merely
+shallower**, which is those two changes and not much else. A class filter tweak
+is cosmetic drift and does not qualify. `mapSchemaVersion` in `server/packages.go`
+is the other half of the pair and `TestMapSchemaMatchesTheGenerator` holds them
+together.
+
+**An archive with no stamp is schema 1.** Every area published before this
+existed is unstamped, and requiring the stamp would have rejected all of them,
+which is the failure this exists to prevent. The stamp only starts mattering at
+the first bump.
+
+A mismatch is `TF-18008` and says which side is behind: an older archive is
+re-downloaded for that area, a newer one means the plugin is behind the archive.
+That is deliberately distinct from `TF-18002`, which means the file is broken.
+
 ## The regions, and where each one lands
 
 `regions.txt` is the roster. Thirteen areas of responsibility, one archive each,

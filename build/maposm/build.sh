@@ -15,6 +15,13 @@ MINZ="${MINZ:-10}"
 MAXZ="${MAXZ:-14}"
 
 NAME_PATTERN='^[a-z0-9]+(-[a-z0-9]+)+$'
+
+# The map schema an archive is built for, stamped into its metadata so a plugin
+# that has moved on can say so. Bump it when a change makes an archive built by
+# an older generator WRONG rather than merely shallower: the seam moving, or a
+# layer joining or leaving the set the style draws. See README.md.
+MAP_SCHEMA="${MAP_SCHEMA:-1}"
+SCHEMA_PREFIX=tactical-fusion-map
 BBOX_PATTERN='^-?[0-9.]+,-?[0-9.]+,-?[0-9.]+,-?[0-9.]+$'
 BUNDLED_PROFILE=bundled
 MIN_HEAP_GB=4
@@ -171,12 +178,13 @@ while read -r name profiles extract bbox <&3; do
 
     rm -f "${dest}/${name}.pmtiles"
     tile-join --output="${dest}/${name}.pmtiles" --force --no-tile-size-limit --quiet \
+        --name="${SCHEMA_PREFIX}/${MAP_SCHEMA}" \
         -j "$(cat "$HERE/filter.json")" \
         "${WORK}/${name}.raw.pmtiles"
 
     raw=$(wc -c < "${WORK}/${name}.raw.pmtiles")
     final=$(wc -c < "${dest}/${name}.pmtiles")
-    echo "  ${name}  z${MINZ}-${MAXZ}  -Xmx${heap}  ${raw} -> ${final} bytes  -> ${dest}"
+    echo "  ${name}  z${MINZ}-${MAXZ}  schema ${MAP_SCHEMA}  -Xmx${heap}  ${raw} -> ${final} bytes  -> ${dest}"
     shasum -a 256 "${dest}/${name}.pmtiles" 2>/dev/null || sha256sum "${dest}/${name}.pmtiles"
 
     built=$((built + 1))

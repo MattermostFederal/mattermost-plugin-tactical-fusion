@@ -268,6 +268,12 @@ const (
 	// PackagesUploadWriteFailed reports a package directory that cannot be
 	// written to.
 	PackagesUploadWriteFailed = 18007
+
+	// PackagesSchemaMismatch rejects an archive built for a different map
+	// schema. Distinguished from PackagesBadArchive because the file is
+	// well formed and the fix is to re-download the area or upgrade the
+	// plugin, not to rebuild a corrupt one.
+	PackagesSchemaMismatch = 18008
 )
 
 // AllCodes lists every code declared above. TestAllCodesComplete enforces that
@@ -333,4 +339,5 @@ var AllCodes = []int{
 	PackagesUploadTooLarge,
 	PackagesUploadNotAnArchive,
 	PackagesUploadWriteFailed,
+	PackagesSchemaMismatch,
 }

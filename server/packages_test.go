@@ -1,6 +1,10 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/binary"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -535,5 +539,131 @@ func TestWebappPackageCacheLifetimeMatches(t *testing.T) {
 	if seconds != packageListCacheSeconds {
 		t.Errorf("the webapp caches the package list for %ds and this server sends max-age=%d",
 			seconds, packageListCacheSeconds)
+	}
+}
+
+// Rewrites an archive's metadata name, which is where build.sh stamps the map
+// schema. The new blob is appended and the header repointed at it, so the tile
+// data behind it never moves and the length is free to change.
+func restamp(t *testing.T, path, from, to string) {
+	t.Helper()
+
+	raw, err := os.ReadFile(path) // #nosec G304 -- a temp file this test wrote
+	if err != nil {
+		t.Fatalf("cannot read %s: %v", path, err)
+	}
+
+	offset := binary.LittleEndian.Uint64(raw[24:32])
+	length := binary.LittleEndian.Uint64(raw[32:40])
+	plain, err := io.ReadAll(mustGunzip(t, raw[offset:offset+length]))
+	if err != nil {
+		t.Fatalf("cannot read metadata: %v", err)
+	}
+
+	swapped := strings.Replace(string(plain), from, to, 1)
+	if swapped == string(plain) {
+		t.Fatalf("metadata does not contain %q", from)
+	}
+
+	var out bytes.Buffer
+	zw := gzip.NewWriter(&out)
+	if _, err := zw.Write([]byte(swapped)); err != nil {
+		t.Fatalf("cannot compress metadata: %v", err)
+	}
+	_ = zw.Close()
+
+	// The rewritten blob is appended and the header repointed at it, which is
+	// simpler than fitting it back into the original span.
+	binary.LittleEndian.PutUint64(raw[24:32], uint64(len(raw)))
+	binary.LittleEndian.PutUint64(raw[32:40], uint64(out.Len()))
+	if err := os.WriteFile(path, append(raw, out.Bytes()...), 0o600); err != nil {
+		t.Fatalf("cannot write %s: %v", path, err)
+	}
+}
+
+func mustGunzip(t *testing.T, raw []byte) io.Reader {
+	t.Helper()
+
+	zr, err := gzip.NewReader(bytes.NewReader(raw))
+	if err != nil {
+		t.Fatalf("metadata is not gzip: %v", err)
+	}
+
+	return zr
+}
+
+/*
+ * Areas are portable across plugin versions, which is the point: an operator
+ * upgrading should not have to move gigabytes of map data. The stamp exists
+ * only for the change that makes an old archive wrong rather than shallower.
+ */
+func TestAnArchiveWithNoStampIsTheOriginalSchema(t *testing.T) {
+	dir := t.TempDir()
+	path := writePackage(t, dir, "indopacom-hawaii.pmtiles", realPackage(t))
+	p, _ := packagePlugin(t, dir)
+
+	// Every archive published before the stamp existed looks like this.
+	if err := validPackageHeader(path); err != nil {
+		t.Fatalf("an unstamped archive was rejected: %v", err)
+	}
+	if got := len(p.mapPackages()); got != 1 {
+		t.Errorf("discovered %d packages, want 1", got)
+	}
+}
+
+func TestAnArchiveStampedForThisSchemaIsAccepted(t *testing.T) {
+	dir := t.TempDir()
+	path := writePackage(t, dir, "indopacom-hawaii.pmtiles", realPackage(t))
+	restamp(t, path, `"OpenMapTiles"`, `"`+schemaPrefix+`1"`)
+
+	if err := validPackageHeader(path); err != nil {
+		t.Fatalf("an archive stamped for schema %d was rejected: %v", mapSchemaVersion, err)
+	}
+}
+
+func TestAnArchiveFromANewerSchemaSaysToUpgradeThePlugin(t *testing.T) {
+	dir := t.TempDir()
+	path := writePackage(t, dir, "indopacom-hawaii.pmtiles", realPackage(t))
+	restamp(t, path, `"OpenMapTiles"`, `"`+schemaPrefix+`9"`)
+
+	err := validPackageHeader(path)
+	if err == nil {
+		t.Fatal("an archive from a newer map schema was accepted")
+	}
+	if !strings.Contains(err.Error(), "upgrade the plugin") {
+		t.Errorf("error = %q, which does not say which side is behind", err)
+	}
+
+	p, _ := packagePlugin(t, dir)
+	if got := p.mapPackages(); len(got) != 0 {
+		t.Errorf("discovery served %v despite the schema mismatch", got)
+	}
+}
+
+// The generator writes the stamp and this package checks it, so the two
+// constants are one value in two languages.
+func TestMapSchemaMatchesTheGenerator(t *testing.T) {
+	raw, err := os.ReadFile("../build/maposm/build.sh") // #nosec G304 -- a fixed, repo-relative path
+	if err != nil {
+		t.Fatalf("cannot read the generator: %v", err)
+	}
+
+	m := regexp.MustCompile(`MAP_SCHEMA="\$\{MAP_SCHEMA:-(\d+)\}"`).FindStringSubmatch(string(raw))
+	if m == nil {
+		t.Fatal("no MAP_SCHEMA default in build/maposm/build.sh; if it was renamed, point " +
+			"this test at the new name rather than deleting it")
+	}
+
+	built, err := strconv.Atoi(m[1])
+	if err != nil {
+		t.Fatalf("unparsable MAP_SCHEMA %q: %v", m[1], err)
+	}
+
+	if built != mapSchemaVersion {
+		t.Errorf("the generator stamps schema %d and this server draws %d", built, mapSchemaVersion)
+	}
+
+	if !strings.Contains(string(raw), "SCHEMA_PREFIX="+strings.TrimSuffix(schemaPrefix, "/")) {
+		t.Errorf("the generator does not stamp the %q prefix this server reads", schemaPrefix)
 	}
 }

@@ -198,6 +198,24 @@ bundled package of the same name succeeds and the name stays listed, because the
 bundled one underneath resurfaces, and the row losing its button is what stops
 that reading as a failed delete.
 
+**An area outlives a plugin upgrade, and a stamp says when it does not.**
+Areas are large enough that an operator will upgrade the plugin without moving
+them, and nothing stops that: no version gates a package, the `?v=` in its URL
+is cache busting only, and depth is a floor rather than a match. Two changes
+would break that portability, though, and only one of them was visible: the seam
+moving off z10 is caught by the `minzoom == 10` check but reported as a corrupt
+file, and a change to `DETAIL_SOURCE_LAYERS` was not caught at all and simply
+drew nothing.
+
+`build.sh` therefore stamps `tactical-fusion-map/<n>` into the archive's PMTiles
+metadata name, which is the only field `tile-join` can set that the format
+already has, and the server reads it back during discovery. An unstamped archive
+is schema 1, because every area published before this existed is unstamped and
+requiring the stamp would have rejected all of them. A mismatch is `TF-18008`
+and names which side is behind, distinct from `TF-18002`, which means the file
+is broken. Bump it only when an older archive becomes wrong rather than merely
+shallower.
+
 **A package is replaceable, so the route sends an ETag.** The uploader and the
 drop-in directory both overwrite an archive in place, under a URL carrying only
 the plugin version, so nothing about the URL moves when the bytes do. PMTiles is
