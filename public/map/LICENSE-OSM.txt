@@ -1,5 +1,5 @@
-public/map/packages/*.pmtiles
-=============================
+OpenStreetMap detail map packages (*.pmtiles)
+=============================================
 
 These archives are derived from OpenStreetMap data. Each one is a region, named
 <command>-<area>.pmtiles, and this notice covers every one of them: the ones
