@@ -578,7 +578,7 @@ func restamp(t *testing.T, path, from, to string) {
 	// The rewritten blob is appended and the header repointed at it, which is
 	// simpler than fitting it back into the original span.
 	binary.LittleEndian.PutUint64(raw[24:32], uint64(len(raw)))
-	binary.LittleEndian.PutUint64(raw[32:40], uint64(out.Len()))
+	binary.LittleEndian.PutUint64(raw[32:40], uint64(out.Len())) // #nosec G115 -- a buffer this test just filled
 	if err := os.WriteFile(path, append(raw, out.Bytes()...), 0o600); err != nil {
 		t.Fatalf("cannot write %s: %v", path, err)
 	}

@@ -233,7 +233,7 @@ func TestOnlyBundledRegionsAreCommitted(t *testing.T) {
 	}
 
 	bundled := map[string]bool{}
-	for _, line := range strings.Split(string(raw), "\n") {
+	for line := range strings.SplitSeq(string(raw), "\n") {
 		fields := strings.Fields(line)
 		if len(fields) < 2 || strings.HasPrefix(fields[0], "#") {
 			continue

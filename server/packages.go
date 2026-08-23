@@ -360,17 +360,17 @@ var archiveNamePattern = regexp.MustCompile(`"name"\s*:\s*"([^"]*)"`)
  * package already published, which is the failure this is meant to prevent.
  */
 func archiveSchema(file io.ReadSeeker, header []byte) (int, error) {
-	offset := binary.LittleEndian.Uint64(header[24:32])
-	length := binary.LittleEndian.Uint64(header[32:40])
+	offset := int64(binary.LittleEndian.Uint64(header[24:32])) // #nosec G115 -- an offset from a validated header
+	length := int64(binary.LittleEndian.Uint64(header[32:40])) // #nosec G115 -- same
 	if length == 0 {
 		return 1, nil
 	}
 
-	if _, err := file.Seek(int64(offset), io.SeekStart); err != nil { // #nosec G115 -- a length from a validated header
+	if _, err := file.Seek(offset, io.SeekStart); err != nil {
 		return 0, err
 	}
 
-	var blob io.Reader = io.LimitReader(file, int64(length)) // #nosec G115 -- same
+	blob := io.LimitReader(file, length)
 	if header[97] == compressionGzip {
 		zipped, err := gzip.NewReader(blob)
 		if err != nil {
