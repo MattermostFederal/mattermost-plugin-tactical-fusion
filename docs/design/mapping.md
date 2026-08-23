@@ -218,7 +218,10 @@ is schema 1, because every area published before this existed is unstamped and
 requiring the stamp would have rejected all of them. A mismatch is `TF-18008`
 and names which side is behind, distinct from `TF-18002`, which means the file
 is broken. Bump it only when an older archive becomes wrong rather than merely
-shallower.
+shallower. Only the first few kilobytes of the metadata blob are read to find
+it: the name is the first field OpenMapTiles writes, and a whole tilestats block
+on a dense area runs to hundreds of kilobytes that discovery would otherwise
+decompress on every pass.
 
 **A package is replaceable, so the route sends an ETag.** The uploader and the
 drop-in directory both overwrite an archive in place, under a URL carrying only
@@ -244,7 +247,10 @@ an operator never waits on this layer; `installPackage` and `removePackage` drop
 the memo outright so the System Console reflects a change at once. The key
 includes the directories, since `LocationMapPackagesDir` changes under a running
 plugin. A rejected package is logged once per path rather than once per
-discovery, which before the memo meant once per tile.
+discovery, which before the memo meant once per tile. Keying that memo by path
+has a cost worth naming: replacing a bad archive with another bad one under the
+same name is silent until the plugin restarts. The alternative is stat-ing every
+rejected file on every pass to notice, which is the work this exists to avoid.
 
 **Three branches on the package path are deliberately untested.** Everything
 else in `packages.go`, `api.go` and `servePackage` is exercised, including every
@@ -356,6 +362,16 @@ uploader is a convenience for modest areas; a large one is copied, because an
 upload crosses Mattermost's own request limits and whatever proxy is in front of
 it.
 
+**An upload is written beside its target and renamed, and validated before the
+rename.** Discovery lists the directory on every pass, so a file written
+directly under its final name would be found, validated, rejected and logged
+while the upload was still in progress. Writing to a temporary name in the same
+directory and renaming makes the archive appear whole or not at all. Validation
+runs on the temporary file, before the rename, so a file that is not an archive
+is refused with a reason the uploader can show rather than accepted and then
+silently skipped by the next discovery, which is where every other bad package
+ends up.
+
 **The name is a whitelist in three languages.** `build.sh` writes it,
 `packages.go` serves it and `basemap.ts` requests it, and it reaches both a URL
 and a filesystem path, so it is matched against `^[a-z0-9]+(-[a-z0-9]+)+$`
@@ -372,6 +388,13 @@ four questions `basemap.ts` asks on arrival are asked again at discovery,
 because a client cannot report what it found: a bad archive draws nothing, and
 the reader sees an area that is simply missing. The log line is the only thing
 that will ever explain it.
+
+**Discovery runs before `OnActivate` has handed the plugin an API.** `ServeHTTP`
+and the page renderers are wired the moment the plugin loads, so `p.API` is
+reachably nil. With no API there is no bundle to find and nowhere to send a
+warning, and the honest answer is the configured directory alone; the warning a
+rejected file would have produced is dropped rather than taken as a nil
+dereference that stops the process.
 
 **One bad package does not take the others off the map.** `loadPackages` drops
 what does not answer and keeps the rest, so an install with six areas and one

@@ -17,19 +17,11 @@ import (
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
-// A detail package is one region's OpenStreetMap archive, named
-// <command>-<area>. The name reaches a URL and a filesystem path, so it is
-// matched against a whitelist rather than cleaned: no dot, no slash and no
-// separator survives this, which is what makes traversal impossible rather than
-// merely unlikely.
 var packageNamePattern = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)+$`)
 
 const (
 	packageSuffix = ".pmtiles"
 
-	// Where the seam is. The archive must start exactly here or the two tiers
-	// leave a blank band or draw the same road twice; TestSeamZoomMatchesTheWebapp
-	// holds this to SEAM_ZOOM in map/span.ts.
 	seamZoom = 10
 
 	packageHeaderBytes = 127
@@ -37,63 +29,24 @@ const (
 	packageSpecVersion = 3
 	packageTileTypeMVT = 1
 
-	/*
-	 * The map schema this build draws.
-	 *
-	 * An archive is stamped with the schema it was built for, in its PMTiles
-	 * metadata name, so a plugin that has moved on can say which of the two is
-	 * behind rather than reporting a well formed file as a broken one. Bump it
-	 * when a change makes an older archive WRONG rather than merely shallower:
-	 * the seam moving, or a layer joining or leaving the set the style draws.
-	 * Depth is not one of those, since maxzoom is a floor on both sides.
-	 *
-	 * MAP_SCHEMA in build/maposm/build.sh is the other half;
-	 * TestMapSchemaMatchesTheGenerator holds the pair together.
-	 */
 	mapSchemaVersion = 1
 	schemaPrefix     = "tactical-fusion-map/"
 
-	// How much of the metadata blob is worth reading to find the stamp. The
-	// name is the first field OpenMapTiles writes, and a whole tilestats block
-	// on a dense area runs to hundreds of kilobytes.
 	schemaScanBytes = 4096
 
-	// PMTiles internal compression: 1 is none, 2 is gzip.
 	compressionGzip = 2
 )
 
-// bundledPackageDir is where packages that ship inside the bundle live,
-// relative to the bundle root.
 var bundledPackageDir = filepath.Join("public", "map", "packages")
 
 type mapPackage struct {
 	Name string `json:"name"`
 
-	// Where the bytes are. Never sent to a client: the client is given a route
-	// and this is what that route reads.
 	path string
 
-	// Whether this one came from the operator's directory rather than the
-	// bundle, which is the same question as whether removePackage can unlink
-	// it. A bundled area is inside the plugin and only a release replaces it.
 	dropIn bool
 }
 
-/*
- * Every detail package this install has, bundled and dropped in, validated.
- *
- * The dropped-in directory is read SECOND and wins on a name collision, so an
- * operator can replace a bundled package with a newer build of the same area
- * without waiting for a plugin release. That is the whole point of the
- * directory existing, and the alternative ordering would make a shipped
- * package permanently unreplaceable.
- *
- * A package that fails validation is dropped and logged rather than served. The
- * failure modes here are an operator's: a half-copied file, an archive built to
- * the wrong depth, a raster archive, or something that is not an archive at all.
- * Every one of them draws nothing and says nothing if it reaches a client, so
- * the log line is the only thing that will ever explain it.
- */
 func (p *Plugin) mapPackages() []mapPackage {
 	dirs := p.packageDirs()
 	if cached := p.cachedPackages(dirs); cached != nil {
@@ -102,9 +55,6 @@ func (p *Plugin) mapPackages() []mapPackage {
 
 	found := map[string]mapPackage{}
 
-	// packageDirs returns the bundle first and the operator's directory second,
-	// so the later write is what makes a drop-in override a bundled package of
-	// the same name, and what makes dropIn true for it.
 	dropInDir := strings.TrimSpace(p.getConfiguration().LocationMapPackagesDir)
 	for _, dir := range dirs {
 		for _, pkg := range p.packagesIn(dir) {
@@ -124,24 +74,6 @@ func (p *Plugin) mapPackages() []mapPackage {
 	return packages
 }
 
-/*
- * Discovery is memoised, because it is on the tile path.
- *
- * MapLibre asks for one byte range per tile, and every one of those reached
- * servePackage, which read both directories and opened, read and closed every
- * archive to re-validate its header. With the thirteen areas the release ships
- * that is thirteen file opens per tile, and a reader panning a map issues tiles
- * continuously. packageNames is on the same path for every page render.
- *
- * The TTL is what keeps "drop a file in and it appears, with no restart", which
- * is most of what the directory is for. It is far shorter than the client's own
- * minute so an operator never waits on this layer, and installPackage and
- * removePackage drop it outright so the System Console reflects a change at once.
- *
- * Keyed on the directories as well as the clock: LocationMapPackagesDir can
- * change under a running plugin, and a stale list from the previous directory
- * would outlive the setting.
- */
 const packageCacheTTL = 5 * time.Second
 
 type packageCache struct {
@@ -173,8 +105,6 @@ func (p *Plugin) storePackages(dirs []string, packages []mapPackage) {
 	}
 }
 
-// forgetPackages drops the memo, for the two writes that know the directory
-// changed and should not wait out the TTL.
 func (p *Plugin) forgetPackages() {
 	p.packageLock.Lock()
 	defer p.packageLock.Unlock()
@@ -182,14 +112,6 @@ func (p *Plugin) forgetPackages() {
 	p.packageCache = nil
 }
 
-/*
- * The packages removePackage can actually unlink.
- *
- * A bundled area lives inside the plugin, so Remove cannot touch it and the
- * System Console should not offer it: it used to, and the attempt surfaced
- * os.Remove's ENOENT to an admin as "the package could not be removed", which
- * reads as a broken feature rather than a thing that was never possible.
- */
 func (p *Plugin) removablePackages() []string {
 	names := []string{}
 	for _, pkg := range p.mapPackages() {
@@ -201,7 +123,6 @@ func (p *Plugin) removablePackages() []string {
 	return names
 }
 
-// packageNames is mapPackages reduced to what a client is told.
 func (p *Plugin) packageNames() []string {
 	packages := p.mapPackages()
 	names := make([]string, 0, len(packages))
@@ -212,11 +133,6 @@ func (p *Plugin) packageNames() []string {
 	return names
 }
 
-// The directories packages are read from, in precedence order: the bundle
-// first, the operator's directory second so it overrides.
-// logWarn drops the line when there is no API to take it, which packageDirs
-// already treats as a reachable state: ServeHTTP can run before OnActivate, and
-// a discovery warning is not worth a nil dereference taking the process down.
 func (p *Plugin) logWarn(message string, pairs ...any) {
 	if p.API == nil {
 		return
@@ -225,18 +141,6 @@ func (p *Plugin) logWarn(message string, pairs ...any) {
 	p.API.LogWarn(message, pairs...)
 }
 
-/*
- * warnOnce keeps a rejected package to one log line rather than one per
- * discovery.
- *
- * Discovery used to run per tile request, so a single malformed file wrote a
- * line for every tile a reader panned past. The memo above cuts that to one per
- * TTL, which over an hour is still hundreds, and the comment on packagesIn
- * promises the operator a line naming the file rather than a stream of them.
- * Keyed by path, so replacing a bad archive with another bad one under the same
- * name is silent until the plugin restarts; the alternative is stat-ing every
- * rejected file on every pass to notice, which is the cost this exists to avoid.
- */
 func (p *Plugin) warnOnce(path, message string, pairs ...any) {
 	p.packageLock.Lock()
 	if p.warned == nil {
@@ -254,10 +158,6 @@ func (p *Plugin) warnOnce(path, message string, pairs ...any) {
 func (p *Plugin) packageDirs() []string {
 	var dirs []string
 
-	// Reachable before OnActivate has run, since ServeHTTP and the page
-	// renderers are wired the moment the plugin loads. Without an API there is
-	// no bundle to find and nothing to log the failure to, so the honest answer
-	// is the configured directory alone.
 	if p.API == nil {
 		if dir := strings.TrimSpace(p.getConfiguration().LocationMapPackagesDir); dir != "" {
 			return []string{dir}
@@ -283,9 +183,6 @@ func (p *Plugin) packageDirs() []string {
 func (p *Plugin) packagesIn(dir string) []mapPackage {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		// Not an error worth a log line on every call: a bundle without the
-		// directory is an ordinary global-only build, and an operator who has
-		// not created theirs yet has not done anything wrong.
 		return nil
 	}
 
@@ -319,8 +216,6 @@ func (p *Plugin) packagesIn(dir string) []mapPackage {
 	return packages
 }
 
-// The package with this name, or false. The name is validated here rather than
-// trusted from a route, so this is the only way to turn a request into a path.
 func (p *Plugin) mapPackage(name string) (mapPackage, bool) {
 	if !packageNamePattern.MatchString(name) {
 		return mapPackage{}, false
@@ -335,30 +230,8 @@ func (p *Plugin) mapPackage(name string) (mapPackage, bool) {
 	return mapPackage{}, false
 }
 
-/*
- * Whether a file is the archive a reader will assume it is.
- *
- * The same four questions basemap.ts asks on arrival, asked here because a
- * client cannot report what it found: a bad archive draws nothing, and the
- * reader sees an area that is simply missing rather than an error. Checking at
- * discovery is what turns that into one log line naming the file.
- */
-// The stamp build.sh writes into an archive's PMTiles metadata name.
 var archiveNamePattern = regexp.MustCompile(`"name"\s*:\s*"([^"]*)"`)
 
-/*
- * The map schema an archive was built for.
- *
- * Read from the metadata rather than the fixed header, because PMTiles has no
- * field for it and tile-join can only set the ones the format already has. The
- * name is the first key OpenMapTiles writes, so a few kilobytes of the front is
- * enough and the whole blob is not decompressed: a dense area carries a quarter
- * of a megabyte of tilestats behind it.
- *
- * An archive with no stamp is schema 1, which is what every archive built
- * before this existed is. Requiring the stamp instead would have rejected every
- * package already published, which is the failure this is meant to prevent.
- */
 func archiveSchema(file io.ReadSeeker, header []byte) (int, error) {
 	offset := int64(binary.LittleEndian.Uint64(header[24:32])) // #nosec G115 -- an offset from a validated header
 	length := int64(binary.LittleEndian.Uint64(header[32:40])) // #nosec G115 -- same
@@ -431,8 +304,6 @@ func validPackageHeader(path string) error {
 	if schema, err := archiveSchema(file, header); err != nil {
 		return err
 	} else if schema != mapSchemaVersion {
-		// Named in both directions, because the fix differs: an older archive is
-		// re-downloaded and a newer one means the plugin is behind it.
 		if schema < mapSchemaVersion {
 			return errcode.Errorf(errcode.PackagesSchemaMismatch,
 				"built for map schema %d and this build draws %d, so re-download the area",
@@ -453,21 +324,6 @@ func validPackageHeader(path string) error {
 	return nil
 }
 
-/*
- * Installing a package from the System Console.
- *
- * This writes into the SAME directory the drop-in path reads, because there is
- * nowhere else the server can range-read from: plugin.API.ReadFile and GetFile
- * both return the whole file, so a package stored through them would be pulled
- * into memory for every tile a reader scrolls past.
- *
- * Two consequences follow and neither is a defect to be fixed here. In a
- * cluster the upload lands on ONE node, so shared storage or a copy per node is
- * required exactly as it is for a file copied by hand. And an upload crosses
- * Mattermost's own request limits and whatever proxy sits in front of it, which
- * a large area will exceed: the directory, not this route, is the mechanism for
- * those.
- */
 const maxUploadBytes = 512 << 20
 
 func (p *Plugin) installPackage(name string, body io.Reader) error {
@@ -487,10 +343,6 @@ func (p *Plugin) installPackage(name string, body io.Reader) error {
 			"the package directory cannot be created: %v", err)
 	}
 
-	// Written beside the target and renamed, so a reader never sees a
-	// half-written archive: discovery lists the directory on every request, and
-	// a partial file would be validated, rejected and logged while the upload
-	// was still in progress.
 	temp, err := os.CreateTemp(dir, "."+name+".*.part")
 	if err != nil {
 		return errcode.Errorf(errcode.PackagesUploadWriteFailed,
@@ -516,9 +368,6 @@ func (p *Plugin) installPackage(name string, body io.Reader) error {
 		return errcode.Errorf(errcode.PackagesUploadWriteFailed, "the upload failed: %v", err)
 	}
 
-	// Validated BEFORE it is put in place, so a file that is not an archive is
-	// refused with a reason rather than accepted and then silently skipped by
-	// discovery, which is where every other bad package ends up.
 	if err := validPackageHeader(tempPath); err != nil {
 		return errcode.Errorf(errcode.PackagesUploadNotAnArchive,
 			"that is not a map archive built for zoom %d and up: %v", seamZoom, err)
@@ -534,17 +383,12 @@ func (p *Plugin) installPackage(name string, body io.Reader) error {
 	return nil
 }
 
-// Removing one, which is the other half of being able to install one: an area
-// that can only ever be added is a directory an admin has to reach by hand
-// anyway.
 func (p *Plugin) removePackage(name string) error {
 	dir := strings.TrimSpace(p.getConfiguration().LocationMapPackagesDir)
 	if !packageNamePattern.MatchString(name) || dir == "" {
 		return errcode.Errorf(errcode.PackagesUploadBadName, "no such package")
 	}
 
-	// Said plainly rather than left to os.Remove's ENOENT, which an admin reads
-	// as a failure of the button rather than as the answer.
 	if !slices.Contains(p.removablePackages(), name) {
 		return errcode.Errorf(errcode.PackagesUploadBadName,
 			"that area ships inside the plugin and is replaced by a release, not from here")

@@ -137,8 +137,9 @@ static, light-only and self-contained so they render air-gapped.
 
 ### Cross-language sync points
 
-Go and TypeScript hold duplicate copies of a few things, each guarded by a test
-that fails in Go when either side moves alone. Change both halves together.
+Go and TypeScript hold duplicate copies of a few things, and Go and the map
+generator hold one more, each guarded by a test that fails in Go when either
+side moves alone. Change both halves together.
 
 | Duplicate | Guard |
 |---|---|
@@ -155,6 +156,7 @@ that fails in Go when either side moves alone. Change both halves together.
 | The package name grammar: `packageNamePattern` and `PACKAGE_NAME` | `TestWebappPackageNameGrammarMatches` |
 | The `data-packages` attribute and its separator | `TestWebappPackagesAttributeMatches` |
 | The package list's 60 second lifetime | `TestWebappPackageCacheLifetimeMatches` |
+| The map schema: `mapSchemaVersion` and `schemaPrefix`, and `MAP_SCHEMA` and `SCHEMA_PREFIX` in `build/maposm/build.sh` | `TestMapSchemaMatchesTheGenerator` |
 | Rendering fixtures | `format_test.go` and `format.spec.ts` hold the same table |
 | Zone ordering and its tiebreak | Both sides assert the same London/Reykjavik pair |
 
