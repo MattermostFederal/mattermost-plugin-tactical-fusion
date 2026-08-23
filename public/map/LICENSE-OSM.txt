@@ -1,7 +1,10 @@
-public/map/detail.pmtiles
-=========================
+public/map/packages/*.pmtiles
+=============================
 
-This archive is derived from OpenStreetMap data.
+These archives are derived from OpenStreetMap data. Each one is a region, named
+<command>-<area>.pmtiles, and this notice covers every one of them: the ones
+bundled under public/map/packages/ and any dropped into the package directory
+an operator configures.
 
   © OpenStreetMap contributors
   https://www.openstreetmap.org/copyright
@@ -17,8 +20,8 @@ and which requires its own visible credit:
   © OpenMapTiles
   https://openmaptiles.org/
 
-Any map drawn from this archive must display both credits. Every surface in this
-plugin that draws it renders them beside the map.
+Any map drawn from these archives must display both credits. Every surface in
+this plugin that draws them renders both beside the map.
 
 
 Where this came from
@@ -37,8 +40,8 @@ derivation is named here rather than left to be reconstructed.
   Toolchain       build/maposm/Dockerfile, which pins planetiler-openmaptiles
                   and tippecanoe by version and by digest
 
-Running `make osm-sources && make map-osm` against that tree reproduces this
-archive.
+Running `make osm-sources && make map-osm` against that tree rebuilds these
+archives.
 
 
 The global tier is not this
