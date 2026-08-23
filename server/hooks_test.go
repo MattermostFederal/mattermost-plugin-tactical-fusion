@@ -36,6 +36,13 @@ type fakeAPI struct {
 	config   *model.Config
 	warnings []string
 	errors   []string
+	infos    []string
+
+	// permitted is what HasPermissionTo answers, and permissionsAsked records
+	// what was asked for, so a test can prove the System Console routes check
+	// rather than trusting the console to have checked.
+	permitted        bool
+	permissionsAsked []*model.Permission
 
 	// bundlePath is where GetBundlePath points. Empty means the plugin cannot
 	// find its own bundle, which is what most tests want: no bundled map
@@ -107,6 +114,13 @@ func (a *fakeAPI) GetBundlePath() (string, error) {
 func (a *fakeAPI) LogWarn(msg string, _ ...any) { a.warnings = append(a.warnings, msg) }
 
 func (a *fakeAPI) LogError(msg string, _ ...any) { a.errors = append(a.errors, msg) }
+
+func (a *fakeAPI) LogInfo(msg string, _ ...any) { a.infos = append(a.infos, msg) }
+
+func (a *fakeAPI) HasPermissionTo(_ string, permission *model.Permission) bool {
+	a.permissionsAsked = append(a.permissionsAsked, permission)
+	return a.permitted
+}
 
 func (a *fakeAPI) KVGet(key string) ([]byte, *model.AppError) {
 	if a.kvGetErr != nil {

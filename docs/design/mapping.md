@@ -242,6 +242,18 @@ includes the directories, since `LocationMapPackagesDir` changes under a running
 plugin. A rejected package is logged once per path rather than once per
 discovery, which before the memo meant once per tile.
 
+**Three branches on the package path are deliberately untested.** Everything
+else in `packages.go`, `api.go` and `servePackage` is exercised, including every
+refusal an operator can provoke, so the gaps are worth naming rather than
+rediscovering. `installPackage`'s 512 MB ceiling needs 512 MB streamed through
+`io.Copy` onto disk to reach; the wall clock is not worth it, and lowering the
+constant would be changing what ships to suit a test. The `temp.Close()` failure
+beside it, and `file.Stat()` failing in `servePackage` on an `*os.File` that
+opened a moment earlier, cannot be provoked from outside the process at all. The
+other two uncovered branches in `server/` are the starter-template guard in
+`setConfiguration` and the registry error in `OnActivate`, both of which say so
+in a comment where they sit.
+
 **Coverage is a rectangle, so it is coarser than the data.** A package header
 carries one bbox, and `indopacom-japan` spans the Ryukyus to Hokkaido, which
 means it contains Korea. On an install holding Japan and not Korea, a Seoul

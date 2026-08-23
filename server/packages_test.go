@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/binary"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -17,6 +18,8 @@ import (
 	"time"
 
 	"github.com/mattermost/mattermost/server/public/plugin"
+
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
 // The bytes of the pilot package, which is a real archive this build ships.
@@ -666,4 +669,492 @@ func TestMapSchemaMatchesTheGenerator(t *testing.T) {
 	if !strings.Contains(string(raw), "SCHEMA_PREFIX="+strings.TrimSuffix(schemaPrefix, "/")) {
 		t.Errorf("the generator does not stamp the %q prefix this server reads", schemaPrefix)
 	}
+}
+
+/*
+ * ServeHTTP and the page renderers are wired the moment the plugin loads, so
+ * discovery runs before OnActivate has handed the plugin an API. With no API
+ * there is no bundle to find and nowhere to log the failure, and the honest
+ * answer is the configured directory alone rather than a nil dereference.
+ */
+func TestDiscoveryBeforeActivationReadsOnlyTheConfiguredDirectory(t *testing.T) {
+	dir := t.TempDir()
+	writePackage(t, dir, "indopacom-hawaii.pmtiles", realPackage(t))
+
+	p := &Plugin{}
+	p.setConfiguration(&configuration{LocationMapPackagesDir: dir})
+
+	if got := p.packageDirs(); !slices.Equal(got, []string{dir}) {
+		t.Errorf("dirs = %v, want just the configured one", got)
+	}
+	if got := p.packageNames(); !slices.Equal(got, []string{"indopacom-hawaii"}) {
+		t.Errorf("packages = %v, want the configured directory read", got)
+	}
+}
+
+func TestDiscoveryBeforeActivationWithNoDirectoryFindsNothing(t *testing.T) {
+	p := &Plugin{}
+	p.setConfiguration(&configuration{})
+
+	if got := p.packageDirs(); len(got) != 0 {
+		t.Errorf("dirs = %v, want none", got)
+	}
+	if got := p.packageNames(); len(got) != 0 {
+		t.Errorf("packages = %v, want none", got)
+	}
+}
+
+// The warning a bad file would have produced is dropped rather than taking the
+// process down, which is the only thing logWarn exists to do.
+func TestARejectedPackageFoundBeforeActivationIsNotAPanic(t *testing.T) {
+	dir := t.TempDir()
+	writePackage(t, dir, "eucom-html.pmtiles", []byte("<html>a captive portal</html>"))
+
+	p := &Plugin{}
+	p.setConfiguration(&configuration{LocationMapPackagesDir: dir})
+
+	if got := p.packageNames(); len(got) != 0 {
+		t.Errorf("packages = %v, want the bad file dropped", got)
+	}
+}
+
+// An operator who has not created their directory yet has not done anything
+// wrong, so this is silent rather than logged on every call.
+func TestAMissingPackageDirectoryIsNotAnError(t *testing.T) {
+	p, api := packagePlugin(t, filepath.Join(t.TempDir(), "not-created-yet"))
+
+	if got := p.packageNames(); len(got) != 0 {
+		t.Errorf("packages = %v, want none", got)
+	}
+	for _, line := range api.warnings {
+		if strings.Contains(line, "ignoring") {
+			t.Errorf("a missing directory was logged as a package failure: %q", line)
+		}
+	}
+}
+
+func TestASubdirectoryInThePackageDirectoryIsSkipped(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(dir, "indopacom-hawaii.pmtiles"), 0o750); err != nil {
+		t.Fatalf("cannot create the decoy directory: %v", err)
+	}
+
+	p, api := packagePlugin(t, dir)
+
+	if got := p.packageNames(); len(got) != 0 {
+		t.Errorf("packages = %v, want a directory ignored", got)
+	}
+	for _, line := range api.warnings {
+		if strings.Contains(line, "ignoring") {
+			t.Errorf("a directory was reported as a bad archive: %q", line)
+		}
+	}
+}
+
+/*
+ * The name is a whitelist rather than a cleaning step, and mapPackage is the
+ * only way a request becomes a path. Anything that is not <command>-<area> is
+ * refused before a filesystem call is made.
+ */
+func TestAPackageIsNeverLookedUpByAnUnwhitelistedName(t *testing.T) {
+	dir := t.TempDir()
+	writePackage(t, dir, "indopacom-hawaii.pmtiles", realPackage(t))
+	p, _ := packagePlugin(t, dir)
+
+	for _, name := range []string{"", "Indopacom-Hawaii", "../plugin", "nodash", "indopacom_hawaii", "indopacom-"} {
+		t.Run(name, func(t *testing.T) {
+			if pkg, ok := p.mapPackage(name); ok {
+				t.Errorf("%q resolved to %q", name, pkg.path)
+			}
+		})
+	}
+
+	if _, ok := p.mapPackage("indopacom-hawaii"); !ok {
+		t.Error("the whitelist also refused the real package")
+	}
+}
+
+// A reader that fails where a real file would not, so the metadata paths that
+// only a broken filesystem reaches can be exercised without one.
+type failingSeeker struct {
+	seekErr error
+	readErr error
+	body    []byte
+	at      int
+}
+
+func (f *failingSeeker) Seek(int64, int) (int64, error) {
+	if f.seekErr != nil {
+		return 0, f.seekErr
+	}
+
+	f.at = 0
+
+	return 0, nil
+}
+
+func (f *failingSeeker) Read(p []byte) (int, error) {
+	if f.at >= len(f.body) {
+		if f.readErr != nil {
+			return 0, f.readErr
+		}
+
+		return 0, io.EOF
+	}
+
+	n := copy(p, f.body[f.at:])
+	f.at += n
+
+	return n, nil
+}
+
+// A header pointing at a metadata blob of the given offset and length, stored
+// uncompressed so a test can hand archiveSchema plain bytes.
+func schemaHeader(offset, length uint64) []byte {
+	header := make([]byte, packageHeaderBytes)
+	binary.LittleEndian.PutUint64(header[24:32], offset)
+	binary.LittleEndian.PutUint64(header[32:40], length)
+	header[97] = 1
+
+	return header
+}
+
+/*
+ * An archive with no stamp is schema 1, which is what every archive built
+ * before the stamp existed is. The rest of these are a filesystem or a build
+ * failing in ways a client could never report.
+ */
+func TestReadingTheMapSchemaFromMetadata(t *testing.T) {
+	cases := []struct {
+		name   string
+		header []byte
+		file   *failingSeeker
+		want   int
+		errIs  string
+	}{
+		{
+			name:   "no metadata at all",
+			header: schemaHeader(0, 0),
+			file:   &failingSeeker{},
+			want:   1,
+		},
+		{
+			name:   "metadata that cannot be sought to",
+			header: schemaHeader(64, 16),
+			file:   &failingSeeker{seekErr: errors.New("the disk went away")},
+			errIs:  "the disk went away",
+		},
+		{
+			name:   "metadata that cannot be read",
+			header: schemaHeader(0, 16),
+			file:   &failingSeeker{body: []byte(`{"na`), readErr: errors.New("a bad sector")},
+			errIs:  "unreadable metadata",
+		},
+		{
+			name:   "metadata carrying no name",
+			header: schemaHeader(0, 32),
+			file:   &failingSeeker{body: []byte(`{"format":"pbf"}`)},
+			want:   1,
+		},
+		{
+			name:   "a name that is not a stamp",
+			header: schemaHeader(0, 32),
+			file:   &failingSeeker{body: []byte(`{"name":"OpenMapTiles"}`)},
+			want:   1,
+		},
+		{
+			name:   "a stamp that is not a number",
+			header: schemaHeader(0, 64),
+			file:   &failingSeeker{body: []byte(`{"name":"` + schemaPrefix + `two"}`)},
+			errIs:  "unreadable map schema",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := archiveSchema(tc.file, tc.header)
+
+			if tc.errIs != "" {
+				if err == nil {
+					t.Fatalf("schema = %d, want an error mentioning %q", got, tc.errIs)
+				}
+				if !strings.Contains(err.Error(), tc.errIs) {
+					t.Errorf("error = %q, want it to mention %q", err, tc.errIs)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got != tc.want {
+				t.Errorf("schema = %d, want %d", got, tc.want)
+			}
+		})
+	}
+}
+
+// Metadata that claims to be gzip and is not. tile-join writes the compression
+// byte, so this is a truncated or corrupted archive rather than a hand edit.
+func TestMetadataThatIsNotTheCompressionItClaimsIsRejected(t *testing.T) {
+	header := schemaHeader(0, 16)
+	header[97] = compressionGzip
+
+	if _, err := archiveSchema(&failingSeeker{body: []byte("not gzip at all")}, header); err == nil {
+		t.Fatal("metadata that is not gzip was accepted")
+	} else if !strings.Contains(err.Error(), "unreadable metadata") {
+		t.Errorf("error = %q, want it to say the metadata is unreadable", err)
+	}
+}
+
+/*
+ * Every one of these is a file somebody could put in the package directory: a
+ * half-copied download, an archive built to the wrong depth, an old build. A
+ * client cannot report any of them, so they are caught here and named.
+ */
+func TestValidationNamesWhatIsWrongWithAnArchive(t *testing.T) {
+	body := realPackage(t)
+
+	spec := append([]byte(nil), body[:packageHeaderBytes]...)
+	spec[7] = packageSpecVersion + 1
+
+	// The whole archive rather than its header, because the seam is checked
+	// after the schema and the schema is read from the metadata behind it.
+	shallow := append([]byte(nil), body...)
+	shallow[100] = seamZoom + 1
+
+	cases := []struct {
+		name string
+		body []byte
+		says string
+	}{
+		{"empty", nil, ""},
+		{"not an archive", []byte("<html>a captive portal</html>"), "not a PMTiles archive"},
+		{"the wrong spec version", spec, "PMTiles spec version"},
+		{"the wrong seam", shallow, "which is where the detail tier takes over"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			path := writePackage(t, t.TempDir(), "indopacom-hawaii.pmtiles", tc.body)
+
+			err := validPackageHeader(path)
+			if err == nil {
+				t.Fatal("the file was accepted")
+			}
+			if tc.says != "" && !strings.Contains(err.Error(), tc.says) {
+				t.Errorf("error = %q, want it to mention %q", err, tc.says)
+			}
+		})
+	}
+}
+
+func TestAnArchiveThatIsNotThereIsNotAnArchive(t *testing.T) {
+	if err := validPackageHeader(filepath.Join(t.TempDir(), "gone.pmtiles")); err == nil {
+		t.Fatal("a missing file was accepted")
+	}
+}
+
+// The other half of TestAnArchiveFromANewerSchemaSaysToUpgradeThePlugin: the
+// fix differs by direction, so each direction has to say its own thing.
+func TestAnArchiveFromAnOlderSchemaSaysToReDownloadTheArea(t *testing.T) {
+	dir := t.TempDir()
+	path := writePackage(t, dir, "indopacom-hawaii.pmtiles", realPackage(t))
+	restamp(t, path, `"OpenMapTiles"`, `"`+schemaPrefix+`0"`)
+
+	err := validPackageHeader(path)
+	if err == nil {
+		t.Fatal("an archive from an older map schema was accepted")
+	}
+	if !strings.Contains(err.Error(), "re-download the area") {
+		t.Errorf("error = %q, which does not say which side is behind", err)
+	}
+}
+
+// A reader that fails part way, which is what a client hanging up mid-upload
+// looks like from here.
+type failingReader struct{ err error }
+
+func (f failingReader) Read([]byte) (int, error) { return 0, f.err }
+
+func TestAnUploadIsRefusedWithAReasonRatherThanFailingSilently(t *testing.T) {
+	good := t.TempDir()
+
+	// A directory whose parent is a regular file, so MkdirAll cannot create it.
+	blocked := filepath.Join(writePackage(t, t.TempDir(), "in-the-way", []byte("x")), "packages")
+
+	cases := []struct {
+		name string
+		dir  string
+		pkg  string
+		body io.Reader
+		says string
+		code int
+	}{
+		{
+			name: "a name that is not an area",
+			dir:  good,
+			pkg:  "Indopacom_Hawaii",
+			body: strings.NewReader(""),
+			says: "<command>-<area>",
+			code: errcode.PackagesUploadBadName,
+		},
+		{
+			name: "no directory to put it in",
+			dir:  "",
+			pkg:  "indopacom-hawaii",
+			body: strings.NewReader(""),
+			says: "nowhere to put this",
+			code: errcode.PackagesUploadNoDir,
+		},
+		{
+			name: "a directory that cannot be created",
+			dir:  blocked,
+			pkg:  "indopacom-hawaii",
+			body: strings.NewReader(""),
+			says: "cannot be created",
+			code: errcode.PackagesUploadWriteFailed,
+		},
+		{
+			name: "a client that hung up",
+			dir:  good,
+			pkg:  "indopacom-hawaii",
+			body: failingReader{err: errors.New("connection reset")},
+			says: "the upload failed",
+			code: errcode.PackagesUploadWriteFailed,
+		},
+		{
+			name: "something that is not an archive",
+			dir:  good,
+			pkg:  "indopacom-hawaii",
+			body: strings.NewReader("<html>a captive portal</html>"),
+			says: "not a map archive",
+			code: errcode.PackagesUploadNotAnArchive,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			p, _ := packagePlugin(t, tc.dir)
+
+			err := p.installPackage(tc.pkg, tc.body)
+			if err == nil {
+				t.Fatal("the upload was accepted")
+			}
+			if !strings.Contains(err.Error(), tc.says) {
+				t.Errorf("error = %q, want it to mention %q", err, tc.says)
+			}
+			assertCode(t, err.Error(), tc.code)
+		})
+	}
+}
+
+// The archive is renamed into place last, so a target that cannot be written is
+// reported rather than leaving the directory with a stray part file in it.
+func TestAnUploadThatCannotBePutInPlaceIsReported(t *testing.T) {
+	dir := t.TempDir()
+	p, _ := packagePlugin(t, dir)
+
+	// A non-empty directory under the target name, which os.Rename cannot
+	// replace on any platform this runs on.
+	occupied := filepath.Join(dir, "indopacom-hawaii"+packageSuffix)
+	if err := os.Mkdir(occupied, 0o750); err != nil {
+		t.Fatalf("cannot occupy the target name: %v", err)
+	}
+	writePackage(t, occupied, "child", []byte("x"))
+
+	err := p.installPackage("indopacom-hawaii", strings.NewReader(string(realPackage(t))))
+	if err == nil {
+		t.Fatal("the upload reported success")
+	}
+	if !strings.Contains(err.Error(), "could not be put in place") {
+		t.Errorf("error = %q", err)
+	}
+	assertCode(t, err.Error(), errcode.PackagesUploadWriteFailed)
+}
+
+// A directory the plugin can read and not write. Skipped rather than failed
+// where the test process can write to it anyway, which is what running as root
+// does.
+func TestAnUploadIntoAReadOnlyDirectoryIsReported(t *testing.T) {
+	dir := t.TempDir()
+	err := os.Chmod(dir, 0o500) // #nosec G302 -- a directory that cannot be written is the point
+	if err != nil {
+		t.Skipf("cannot make the directory read-only: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o750) }) // #nosec G302 -- so t.TempDir can clean up
+
+	if probe, probeErr := os.CreateTemp(dir, "probe"); probeErr == nil {
+		_ = probe.Close()
+		t.Skip("this process can write to a read-only directory, so there is nothing to test")
+	}
+
+	p, _ := packagePlugin(t, dir)
+
+	err = p.installPackage("indopacom-hawaii", strings.NewReader(string(realPackage(t))))
+	if err == nil {
+		t.Fatal("the upload reported success")
+	}
+	if !strings.Contains(err.Error(), "cannot write to the package directory") {
+		t.Errorf("error = %q", err)
+	}
+	assertCode(t, err.Error(), errcode.PackagesUploadWriteFailed)
+}
+
+func TestRemovingSomethingThatIsNotAPackageSaysSo(t *testing.T) {
+	cases := []struct {
+		name string
+		dir  string
+		pkg  string
+	}{
+		{"a name that is not an area", t.TempDir(), "Indopacom_Hawaii"},
+		{"no directory at all", "", "indopacom-hawaii"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			p, _ := packagePlugin(t, tc.dir)
+
+			err := p.removePackage(tc.pkg)
+			if err == nil {
+				t.Fatal("the removal reported success")
+			}
+			if !strings.Contains(err.Error(), "no such package") {
+				t.Errorf("error = %q", err)
+			}
+			assertCode(t, err.Error(), errcode.PackagesUploadBadName)
+		})
+	}
+}
+
+/*
+ * A package that discovery listed and that Remove then cannot unlink. The memo
+ * is what makes this reachable: it still holds the package while the file
+ * underneath it has been replaced by something os.Remove refuses.
+ */
+func TestARemovalThatFailsIsReportedRatherThanSilentlySucceeding(t *testing.T) {
+	dir := t.TempDir()
+	p, _ := packagePlugin(t, dir)
+	path := writePackage(t, dir, "indopacom-hawaii"+packageSuffix, realPackage(t))
+
+	if got := p.removablePackages(); !slices.Equal(got, []string{"indopacom-hawaii"}) {
+		t.Fatalf("removable = %v before the file is replaced", got)
+	}
+
+	if err := os.Remove(path); err != nil {
+		t.Fatalf("cannot clear the way: %v", err)
+	}
+	if err := os.Mkdir(path, 0o750); err != nil {
+		t.Fatalf("cannot occupy the name: %v", err)
+	}
+	writePackage(t, path, "child", []byte("x"))
+
+	err := p.removePackage("indopacom-hawaii")
+	if err == nil {
+		t.Fatal("the removal reported success")
+	}
+	if !strings.Contains(err.Error(), "could not be removed") {
+		t.Errorf("error = %q", err)
+	}
+	assertCode(t, err.Error(), errcode.PackagesUploadWriteFailed)
 }

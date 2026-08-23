@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -387,5 +388,56 @@ func TestMapRouteRejectsANonGet(t *testing.T) {
 
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("status = %d, want 405", rec.Code)
+	}
+}
+
+/*
+ * ServeHTTP checks the prefix before it routes, so this branch is unreachable
+ * through the router and a direct call is the only honest way to hold it. It
+ * stays because servePackage builds a filesystem path and a path built from an
+ * unchecked prefix is the shape traversal takes.
+ */
+func TestThePackageRouteRefusesAPathItWasNotRoutedFor(t *testing.T) {
+	p, _ := packagePlugin(t, t.TempDir())
+
+	rec := httptest.NewRecorder()
+	p.servePackage(rec, httptest.NewRequest(http.MethodGet, "/elsewhere/indopacom-hawaii.pmtiles", nil))
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", rec.Code)
+	}
+	assertCode(t, rec.Body.String(), errcode.HTTPPackagePathInvalid)
+}
+
+/*
+ * Discovery is memoised, so a package can be listed and then gone by the time a
+ * tile asks for it: an operator replacing an archive by hand unlinks it for a
+ * moment. That is a 404 with a line naming the file, not a panic and not a
+ * silent empty body, because the reader sees an area that simply stops drawing.
+ */
+func TestAPackageThatVanishedAfterDiscoveryIs404(t *testing.T) {
+	dir := t.TempDir()
+	p, api := packagePlugin(t, dir)
+	path := writePackage(t, dir, "indopacom-hawaii"+packageSuffix, realPackage(t))
+
+	if got := p.packageNames(); len(got) != 1 {
+		t.Fatalf("packages = %v, want the archive discovered first", got)
+	}
+
+	if err := os.Remove(path); err != nil {
+		t.Fatalf("cannot remove the archive: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	p.ServeHTTP(&plugin.Context{}, rec,
+		httptest.NewRequest(http.MethodGet, packagesPath+"/indopacom-hawaii"+packageSuffix, nil))
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", rec.Code)
+	}
+	assertCode(t, rec.Body.String(), errcode.HTTPPackageUnreadable)
+
+	if len(api.warnings) == 0 {
+		t.Error("nothing was logged, so an operator has no way to learn which file went away")
 	}
 }
