@@ -154,6 +154,7 @@ side moves alone. Change both halves together.
 | The seam zoom: `seamZoom` and `SEAM_ZOOM` in `map/span.ts` | `TestSeamZoomMatchesTheWebapp`, `TestDetailPackagesStartAtTheSeam` |
 | The detail layer set: `DETAIL_SOURCE_LAYERS` in `map/maplibre.ts` | `TestArchiveCarriesEveryLayerTheStyleDraws`, and `style.spec.ts` holds the built style to the same list |
 | The package name grammar: `packageNamePattern` and `PACKAGE_NAME` | `TestWebappPackageNameGrammarMatches` |
+| The same grammar again, as the `case` in the Makefile's bundle guard | `TestBundleGuardAcceptsExactlyWhatDiscoveryDoes`, which compares behavior rather than text and holds the guard to `LC_ALL=C` |
 | The `data-packages` attribute and its separator | `TestWebappPackagesAttributeMatches` |
 | The package list's 60 second lifetime | `TestWebappPackageCacheLifetimeMatches` |
 | The map schema: `mapSchemaVersion` and `schemaPrefix`, and `MAP_SCHEMA` and `SCHEMA_PREFIX` in `build/maposm/build.sh` | `TestMapSchemaMatchesTheGenerator` |

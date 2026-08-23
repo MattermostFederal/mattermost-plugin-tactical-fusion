@@ -362,7 +362,11 @@ ifneq ($(HAS_PUBLIC),)
 	@# supported profile, so its absence is not an error. What is an error is
 	@# shipping it without the notice, since ODbL requires it to travel with the
 	@# data, and shipping something under that name that is not an archive.
-	@for pkg in dist/$(PLUGIN_ID)/public/map/packages/*.pmtiles; do \
+	@# LC_ALL=C because [a-z] in a glob is collation order, and en_US.UTF-8
+	@# collates aAbBcC, so an uppercase name passes the check below under the
+	@# locale a developer actually has while packagesIn still refuses to serve it.
+	@LC_ALL=C; export LC_ALL; \
+	for pkg in dist/$(PLUGIN_ID)/public/map/packages/*.pmtiles; do \
 		[ -e "$$pkg" ] || continue; \
 		if [ "$$(head -c 7 "$$pkg")" != "PMTiles" ]; then \
 			echo "ERROR: $$pkg is not a PMTiles archive."; \

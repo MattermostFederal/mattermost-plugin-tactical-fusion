@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -1157,4 +1158,75 @@ func TestARemovalThatFailsIsReportedRatherThanSilentlySucceeding(t *testing.T) {
 		t.Errorf("error = %q", err)
 	}
 	assertCode(t, err.Error(), errcode.PackagesUploadWriteFailed)
+}
+
+/*
+ * The bundle guard is a fourth copy of the package name grammar, written as a
+ * shell case rather than a regexp, so it cannot be string-compared to the other
+ * three. Held to this one by behavior instead: every name either side accepts,
+ * the other must accept.
+ *
+ * Without this, narrowing packageNamePattern would let `make dist` ship a
+ * bundled archive that packagesIn then ignores, which is an area that is present
+ * in the bundle and absent from every map.
+ */
+func TestBundleGuardAcceptsExactlyWhatDiscoveryDoes(t *testing.T) {
+	raw, err := os.ReadFile("../Makefile") // #nosec G304 -- a fixed, repo-relative path
+	if err != nil {
+		t.Fatalf("cannot read the Makefile: %v", err)
+	}
+
+	m := regexp.MustCompile(`case "\$\$\(basename "\$\$pkg" \.pmtiles\)" in \\\n\s*([^)]+)\) \\`).
+		FindStringSubmatch(string(raw))
+	if m == nil {
+		t.Fatal("could not find the package name case in the Makefile; if the bundle guard " +
+			"was rewritten, point this test at the new shape rather than deleting it")
+	}
+	reject := m[1]
+
+	accept := regexp.MustCompile(`\n\s*(\*-\*)\) ;; \\`).FindStringSubmatch(string(raw))
+	if accept == nil {
+		t.Fatal("could not find the accepting arm of the package name case in the Makefile")
+	}
+
+	// The guard has to pin the locale, because [a-z] in a glob is collation
+	// order and en_US.UTF-8 collates aAbBcC: without this an uppercase name
+	// passes the bundle guard under the locale a developer actually has, and
+	// packagesIn then refuses to serve the archive it let through.
+	if !regexp.MustCompile(`LC_ALL=C; export LC_ALL; \\\n\tfor pkg in`).Match(raw) {
+		t.Error("the bundle guard does not force LC_ALL=C, so its idea of [a-z] is " +
+			"whatever locale the build happens to run under")
+	}
+
+	script := "case \"$1\" in " + reject + ") exit 1 ;; " + accept[1] + ") exit 0 ;; *) exit 1 ;; esac"
+
+	names := []string{
+		"indopacom-hawaii", "eucom-baltics", "a-b", "a1-b2", "x-y-z", "centcom-red-sea",
+		"", "nodash", "Indopacom-Hawaii", "indopacom_hawaii", "-leading", "trailing-",
+		"double--hyphen", "with.dot", "with/slash", "../etc", "UPPER-CASE", "a b",
+		"a\tb", "a*b", "a?b", "a[b", "a$b", "a\\b", "a-b-", "-a-b", "a--", "--a",
+	}
+
+	// A sweep over every character either side has an opinion about, in both
+	// halves of the name. Without it a narrowing that rejects one letter, or one
+	// digit, passes: the handful of names above simply would not use it.
+	for _, c := range "abcdefghijklmnopqrstuvwxyz0123456789ABCXYZ_.:/ " {
+		names = append(names, string(c)+"-area", "command-"+string(c), string(c))
+	}
+
+	for _, name := range names {
+		t.Run(name, func(t *testing.T) {
+			// Run it the way the Makefile does, so this measures the grammar
+			// rather than the locale of whoever is running the tests.
+			cmd := exec.Command("sh", "-c", script, "sh", name) // #nosec G204 -- a case built from this repo's own Makefile
+			cmd.Env = append(os.Environ(), "LC_ALL=C")
+			shellAccepts := cmd.Run() == nil
+
+			if got := packageNamePattern.MatchString(name); got != shellAccepts {
+				t.Errorf("discovery accepts %q as %v and the bundle guard as %v. One of them "+
+					"would ship or serve a package the other will not",
+					name, got, shellAccepts)
+			}
+		})
+	}
 }
