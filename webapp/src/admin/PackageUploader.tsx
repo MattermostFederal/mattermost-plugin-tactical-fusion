@@ -115,14 +115,15 @@ const PackageUploader: React.FC = () => {
                 body: chosen,
             });
 
-            const body = await response.json() as {packages?: unknown; message?: unknown};
+            const body = await response.json() as {packages?: unknown; removable?: unknown; message?: unknown};
             if (!response.ok) {
                 setError(typeof body.message === 'string' ? body.message : 'The upload was refused.');
                 return;
             }
 
             if (Array.isArray(body.packages)) {
-                setPackages(body.packages.filter((n): n is string => typeof n === 'string'));
+                setPackages(names(body.packages));
+                setRemovable(names(body.removable));
             }
         } catch {
             setError('The upload could not be completed. A large package may exceed what this server accepts; copy it into the package directory instead.');
@@ -143,14 +144,15 @@ const PackageUploader: React.FC = () => {
                 credentials: 'same-origin',
                 headers: {'X-Requested-With': 'XMLHttpRequest'},
             });
-            const body = await response.json() as {packages?: unknown; message?: unknown};
+            const body = await response.json() as {packages?: unknown; removable?: unknown; message?: unknown};
 
             if (!response.ok) {
                 setError(typeof body.message === 'string' ? body.message : 'The package could not be removed.');
                 return;
             }
             if (Array.isArray(body.packages)) {
-                setPackages(body.packages.filter((n): n is string => typeof n === 'string'));
+                setPackages(names(body.packages));
+                setRemovable(names(body.removable));
             }
         } catch {
             setError('The package could not be removed.');

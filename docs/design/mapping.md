@@ -196,7 +196,11 @@ names, and the row says "ships with the plugin" instead of offering a button.
 The shadow case falls out of the same field: removing a drop-in that covers a
 bundled package of the same name succeeds and the name stays listed, because the
 bundled one underneath resurfaces, and the row losing its button is what stops
-that reading as a failed delete.
+that reading as a failed delete. Both write routes answer with `removable`
+beside `packages` for that reason, and the uploader has to read both: reading
+only `packages` back left `removable` holding whatever the opening GET returned,
+so an area an admin had just uploaded rendered as "ships with the plugin" and a
+shadowing drop-in kept a button after the removal that made it bundled again.
 
 **An area outlives a plugin upgrade, and a stamp says when it does not.**
 Areas are large enough that an operator will upgrade the plugin without moving
