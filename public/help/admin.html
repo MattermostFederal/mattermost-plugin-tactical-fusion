@@ -778,6 +778,19 @@
             like an area nobody built.
         </p>
 
+        <p>
+            <strong>An area outlives a plugin upgrade, but not every one of them.</strong>
+            Each archive is stamped with the map schema it was built for, so a build that
+            has moved on can say which of the two is behind rather than reporting a well
+            formed file as a broken one. The refusal names the direction: an older archive
+            asks you to re-download the area, and a newer one means the plugin is behind
+            the archive and should be upgraded. This only happens when the shape of the map
+            data changed, not when an area is merely shallower than another, so upgrading
+            the plugin does not normally mean moving gigabytes again. See
+            <a href="troubleshooting.html#detail-packages">a detail area that will not
+            install</a>.
+        </p>
+
         <div class="alert alert-warning">
             <p class="alert-title">Every node in a cluster needs this directory.</p>
             <p>
@@ -812,6 +825,17 @@
             file for the area it holds. An upload is checked before it is put in place,
             so a truncated or wrongly built archive is refused with a reason instead of
             being accepted and then quietly skipped.
+        </p>
+
+        <p>
+            <strong>Remove is offered only where Remove can work.</strong> An area that
+            ships inside the plugin is listed with <code>ships with the plugin</code> in
+            place of a button, because a release is what replaces it and there is no file
+            here to unlink. Removing a dropped-in area that shadowed a bundled one of the
+            same name succeeds and leaves the name listed, since the bundled copy
+            underneath resurfaces, and the row loses its button at the same moment. Every
+            refusal this control can show is quoted in
+            <a href="troubleshooting.html#detail-packages">troubleshooting</a>.
         </p>
 
         <div class="alert alert-warning">
