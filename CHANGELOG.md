@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.2.0](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/compare/v0.1.0...v0.2.0) (2026-08-23)
+
+
+### Features
+
+* **airport:** recognize ICAO airfield codes behind USMTF field labels ([#19](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/19)) ([7c68176](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/7c68176744768ec8808284523f862233889b0f5e))
+* **maps:** draw OpenStreetMap detail above the Natural Earth seam ([#21](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/21)) ([c2182f2](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/c2182f292b898e53e0bc1aae3c22e837353678ab))
+
+
+### Bug Fixes
+
+* **ci:** read the Node version from .nvmrc in PR validation too ([#16](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/16)) ([1df7b27](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/1df7b27e8e7379e15a50c84e1b42b82471c27da5))
+* **security:** suppress GO-2026-5932, which no version bump can clear ([#18](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/18)) ([7b19aa3](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/7b19aa3a1909c67c4b6527ab7d33fdf53d9a545b))
+
+
+### Dependencies
+
+* bump golang.org/x/crypto to 0.55.0 to clear GO-2026-5932 ([#17](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/17)) ([37db5ee](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/37db5ee442b88cc634abefddf68950b13d4794e9))
+
 ## 0.1.0 (2026-08-18)
 
 
