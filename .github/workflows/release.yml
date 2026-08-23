@@ -128,9 +128,11 @@ jobs:
         run: |
           PLUGIN_ID=$(build/bin/manifest id)
           PLUGIN_VERSION=$(build/bin/manifest version)
+          PLUGIN_NAME=$(build/bin/manifest name)
           BUNDLE_NAME="${PLUGIN_ID}-${PLUGIN_VERSION}.tar.gz"
           echo "plugin_id=${PLUGIN_ID}" >> "$GITHUB_OUTPUT"
           echo "plugin_version=${PLUGIN_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "plugin_name=${PLUGIN_NAME}" >> "$GITHUB_OUTPUT"
           echo "bundle_name=${BUNDLE_NAME}" >> "$GITHUB_OUTPUT"
 
       # Push CodeQL findings to the Security tab for this release ref.
@@ -164,7 +166,7 @@ jobs:
           # Pin the target tag — on the workflow_call path github.ref is main,
           # so the action's default (github.ref) would target the wrong ref.
           tag_name: ${{ env.RELEASE_TAG }}
-          name: ${{ steps.plugin_info.outputs.plugin_id }} v${{ steps.plugin_info.outputs.plugin_version }}
+          name: ${{ steps.plugin_info.outputs.plugin_name }} v${{ steps.plugin_info.outputs.plugin_version }}
           files: |
             dist/${{ steps.plugin_info.outputs.bundle_name }}
             dist/${{ steps.plugin_info.outputs.bundle_name }}.sha256
@@ -178,7 +180,7 @@ jobs:
           draft: false
           prerelease: ${{ contains(env.RELEASE_TAG, '-rc') || contains(env.RELEASE_TAG, '-beta') || contains(env.RELEASE_TAG, '-alpha') }}
           body: |
-            ## ${{ steps.plugin_info.outputs.plugin_id }} ${{ env.RELEASE_TAG }}
+            ## ${{ steps.plugin_info.outputs.plugin_name }} ${{ env.RELEASE_TAG }}
 
             See [`CHANGELOG.md`](${{ github.server_url }}/${{ github.repository }}/blob/${{ env.RELEASE_TAG }}/CHANGELOG.md) for curated release notes.
 
@@ -194,6 +196,15 @@ jobs:
                gpg --verify ${{ steps.plugin_info.outputs.bundle_name }}.sig ${{ steps.plugin_info.outputs.bundle_name }}
                ```
             4. Upload via **System Console → Plugin Management → Choose File → Enable**.
+
+            ### Map packages
+
+            The plugin bundles two offline detail-map areas (Hawaii and Guam). Additional areas are
+            attached to this release as separate `.pmtiles` assets, with `PACKAGES.sha256`
+            beside them. Download only what you need, then set **Detail map package
+            directory** (`LocationMapPackagesDir`) in the System Console and copy the files
+            there, or upload them under **Installed detail areas**. They are separate
+            downloads because the whole set is far larger than a plugin bundle may be.
 
             ### Supply-chain artifacts
 

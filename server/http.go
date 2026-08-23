@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/mattermost/mattermost/server/public/plugin"
@@ -24,6 +26,22 @@ const decoratePath = "/decorate"
 // answers "where is it" and gives the window to one picture. Authenticated and a
 // pure function of its query string on the same terms.
 const mapPath = "/map"
+
+/*
+ * packagesPath serves one detail map package's archive.
+ *
+ * Deliberately OUTSIDE the session gate below, and a sibling of it rather than
+ * a route under /decorate. Two reasons, and the second is the operational one.
+ *
+ * It carries the same posture as the bundle's own public/ directory, which
+ * Mattermost serves without a session and which world.pmtiles is fetched from
+ * today: a basemap is not reader-specific and there is nothing in one to
+ * protect. And MapLibre fetches tiles from a worker through the pmtiles
+ * protocol, so a route that could redirect to a login would answer a tile
+ * request with an HTML page, which the reader would see as a map that half
+ * drew.
+ */
+const packagesPath = "/packages"
 
 // ServeHTTP routes GET /decorate/<type> to the matching decorator's page, GET
 // /map to the coordinate's own page, and everything under /api/v1 to the JSON
@@ -53,6 +71,11 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	if strings.HasPrefix(r.URL.Path, packagesPath+"/") {
+		p.servePackage(w, r)
+		return
+	}
+
 	// After the method check, so a request that could never be resumed is
 	// refused rather than sent to a login page it cannot come back from.
 	if sessionUserID(r) == "" {
@@ -70,7 +93,7 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 			return
 		}
 
-		location.RenderMapPage(w, r.URL.Query())
+		location.RenderMapPage(w, r.URL.Query(), p.packageNames())
 		return
 	}
 
@@ -132,4 +155,84 @@ func (p *Plugin) redirectToLogin(w http.ResponseWriter, r *http.Request) {
 	// A cached redirect keeps bouncing a reader who has since signed in.
 	w.Header().Set("Cache-Control", "no-store")
 	http.Redirect(w, r, target, http.StatusFound)
+}
+
+/*
+ * Serves one detail package's archive, by byte range.
+ *
+ * http.ServeContent is what makes this viable at all: it answers Range from an
+ * open file without reading the whole thing, where plugin.API.ReadFile would
+ * pull an entire archive into memory for every tile a reader scrolls past.
+ *
+ * The name is whitelisted by mapPackage before it ever becomes a path, so no
+ * traversal reaches here to be cleaned; a name that is not a package is a 404
+ * rather than a 403, because which areas an install has is not a secret and
+ * distinguishing the two would only tell a prober more.
+ */
+func (p *Plugin) servePackage(w http.ResponseWriter, r *http.Request) {
+	name, ok := strings.CutPrefix(r.URL.Path, packagesPath+"/")
+	if !ok {
+		decorators.WriteError(w, http.StatusNotFound,
+			errcode.WithCode(errcode.HTTPPackagePathInvalid, "Not found."))
+		return
+	}
+
+	name, ok = strings.CutSuffix(name, packageSuffix)
+	if !ok || strings.Contains(name, "/") {
+		decorators.WriteError(w, http.StatusNotFound,
+			errcode.WithCode(errcode.HTTPPackagePathInvalid, "Not found."))
+		return
+	}
+
+	pkg, ok := p.mapPackage(name)
+	if !ok {
+		decorators.WriteError(w, http.StatusNotFound,
+			errcode.WithCode(errcode.HTTPPackageUnknown, "Not found."))
+		return
+	}
+
+	file, err := os.Open(pkg.path) // #nosec G304 -- a path built from a whitelisted name
+	if err != nil {
+		p.API.LogWarn("a discovered map package could not be opened",
+			"error_code", errcode.HTTPPackageUnreadable, "file", pkg.path, "error", err.Error())
+		decorators.WriteError(w, http.StatusNotFound,
+			errcode.WithCode(errcode.HTTPPackageUnreadable, "Not found."))
+		return
+	}
+	defer func() { _ = file.Close() }()
+
+	info, err := file.Stat()
+	if err != nil {
+		decorators.WriteError(w, http.StatusNotFound,
+			errcode.WithCode(errcode.HTTPPackageUnreadable, "Not found."))
+		return
+	}
+
+	/*
+	 * An ETag, because a package is NOT immutable.
+	 *
+	 * The upload route and the documented drop-in workflow both replace an
+	 * archive in place, under a URL that carries only the plugin version and so
+	 * does not change with it. PMTiles is read by byte offsets taken from a
+	 * directory the client read earlier, so a reader whose tab is holding those
+	 * offsets against a file that has since been replaced reads the new bytes at
+	 * the old positions, which is garbage rather than an error. pmtiles.js
+	 * watches the ETag across its own requests for exactly this and re-reads the
+	 * directory when it moves; with no ETag it has nothing to compare and the
+	 * recovery it already implements never fires.
+	 *
+	 * Size and modification time rather than a digest of the contents: this runs
+	 * per tile request, and hashing a 500 MB archive to answer one is not a
+	 * trade worth making. The pair moves whenever a file is replaced by any
+	 * means an operator has, which is what it has to catch.
+	 */
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("ETag", fmt.Sprintf("%q", fmt.Sprintf("%x-%x", info.Size(), info.ModTime().UnixNano())))
+
+	// Bounded to the same minute the client caches the package list for, rather
+	// than the five it was. A replaced archive is stale for at most that long,
+	// and the ETag makes the revalidation at the end of it a 304 rather than a
+	// re-download.
+	w.Header().Set("Cache-Control", "private, max-age=60")
+	http.ServeContent(w, r, pkg.Name+packageSuffix, info.ModTime(), file)
 }

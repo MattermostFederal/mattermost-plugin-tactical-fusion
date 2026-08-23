@@ -32,7 +32,7 @@ h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0
 //
 // It reads no map configuration of its own: this page IS the map, so reaching it
 // at all means ServeHTTP found the surface switched on and refused it otherwise.
-func RenderMapPage(w http.ResponseWriter, params url.Values) {
+func RenderMapPage(w http.ResponseWriter, params url.Values, packages []string) {
 	page, ok := validateParams(params)
 	if !ok {
 		decorators.WriteError(w, http.StatusBadRequest,
@@ -44,7 +44,7 @@ func RenderMapPage(w http.ResponseWriter, params url.Values) {
 		Title:      mapPageTitle,
 		Theme:      decorators.ThemeFromParams(params),
 		StyleCSS:   pageStyles + mapPageStyles,
-		BodyHTML:   renderRoot(page, pageModeMap, Maps{Page: true}),
+		BodyHTML:   renderRoot(page, pageModeMap, Maps{Page: true}, packages),
 		ScriptSrc:  pageAppFromRoot,
 		Capability: decorators.PageMapping,
 	})

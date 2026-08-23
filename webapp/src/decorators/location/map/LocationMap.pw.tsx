@@ -763,3 +763,85 @@ test.describe('preview mode', () => {
         expect(await component.getByTestId('zoom').textContent()).toBe(before);
     });
 });
+
+/*
+ * The OpenStreetMap credit.
+ *
+ * Unlike the Natural Earth credit this plugin deliberately dropped, this one is
+ * a licence condition: OpenStreetMap is ODbL and the OpenMapTiles schema is
+ * CC-BY. It is a line beside the map rather than a MapLibre control because
+ * every corner is already taken, and because a compact AttributionControl is a
+ * button whose text only appears on click, which at a 300px panel width is the
+ * only form that fits.
+ *
+ * The three cases below are the three deployments: the tier is drawn, it is not
+ * shipped, and it cannot be reached at the zoom this surface uses.
+ */
+test.describe('the OpenStreetMap credit', () => {
+    const OSM = '© OpenStreetMap contributors';
+    const OMT = '© OpenMapTiles';
+
+    test('is drawn whenever the detail tier is in the style', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness start='Los Angeles'/>);
+
+        await expect(component.getByText(OSM)).toBeVisible();
+        await expect(component.getByText(OMT)).toBeVisible();
+        await expect(component.getByRole('link', {name: OSM})).
+            toHaveAttribute('href', 'https://www.openstreetmap.org/copyright');
+    });
+
+    /*
+     * A global-only build is a supported shipping profile, so its map is
+     * today's map: no credit, because there is nothing to credit, and no note,
+     * because nothing failed.
+     */
+    test('is absent, silently, when no detail archive is shipped', async ({mount, page}) => {
+        const warnings: string[] = [];
+        page.on('console', (message) => {
+            if (message.type() === 'warning') {
+                warnings.push(message.text());
+            }
+        });
+
+        await serveMapAssets(page, undefined, false, false);
+
+        const component = await mount(<LocationMapHarness start='Los Angeles'/>);
+
+        await expect.poll(async () => {
+            await readMap(component);
+
+            return component.getByTestId('pin-features').textContent();
+        }, {message: 'pin drawn'}).toBe('1');
+
+        await expect(component.getByText(OSM)).toBeHidden();
+        await expect(component.getByRole('button', {name: RESET})).toBeVisible();
+        expect(warnings.filter((line) => line.includes('detail'))).toEqual([]);
+    });
+
+    /*
+     * The hover card is clamped below the seam by zoomForSpan and cannot pan or
+     * zoom, so it can never request an OpenStreetMap tile. It therefore carries
+     * no detail source, and crediting one on a card with no OSM on it would be
+     * the same kind of untruth as omitting it from one that has.
+     */
+    test('is absent from a hover card, which draws no OpenStreetMap', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness
+                start='Los Angeles'
+                preview={true}
+            />);
+
+        await expect.poll(async () => {
+            await readMap(component);
+
+            return component.getByTestId('pin-features').textContent();
+        }, {message: 'pin drawn'}).toBe('1');
+
+        await expect(component.getByText(OSM)).toBeHidden();
+        await expect(component.getByText(OMT)).toBeHidden();
+    });
+});

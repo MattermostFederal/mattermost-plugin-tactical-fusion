@@ -114,7 +114,7 @@ func TestShellNamesTheMapSurfaces(t *testing.T) {
 		{"inline alone says nothing", Maps{Inline: true}, `data-maps=""`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if root := renderRoot(page, pageModeLocation, tc.maps); !strings.Contains(root, tc.want) {
+			if root := renderRoot(page, pageModeLocation, tc.maps, nil); !strings.Contains(root, tc.want) {
 				t.Fatalf("shell does not carry %s: %s", tc.want, root)
 			}
 		})
@@ -126,7 +126,7 @@ func TestShellNamesTheMapSurfaces(t *testing.T) {
 func TestMapPageShellNamesItsOwnSurface(t *testing.T) {
 	page := pageData{loc: mustParse(t, "3510N07901W")}
 
-	if root := renderRoot(page, pageModeMap, Maps{Page: true}); !strings.Contains(root, `data-maps="page"`) {
+	if root := renderRoot(page, pageModeMap, Maps{Page: true}, nil); !strings.Contains(root, `data-maps="page"`) {
 		t.Fatalf("the map page shell does not name its own surface: %s", root)
 	}
 }
@@ -137,7 +137,7 @@ func TestMapPageShellNamesItsOwnSurface(t *testing.T) {
 func TestShellEscapesTheAuthorsText(t *testing.T) {
 	page := pageData{loc: mustParse(t, "3510N07901W"), raw: `" onload="alert(1)`}
 
-	root := renderRoot(page, pageModeLocation, AllMaps)
+	root := renderRoot(page, pageModeLocation, AllMaps, nil)
 
 	if strings.Contains(root, `onload="`) {
 		t.Fatalf("the author's text broke out of its attribute: %s", root)

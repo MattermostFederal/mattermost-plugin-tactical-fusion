@@ -4,8 +4,8 @@ import path from 'path';
 import {expect, test} from '@playwright/test';
 import manifest from 'manifest';
 
-import {basemapUrl, loadBasemap, _resetForTesting} from './basemap';
-import {DATA_MAX_ZOOM} from './span';
+import {basemapUrl, loadBasemap, loadPackages, packageUrl, _resetForTesting} from './basemap';
+import {DATA_MAX_ZOOM, SEAM_ZOOM} from './span';
 
 /*
  * The real archive, off disk.
@@ -258,5 +258,170 @@ test.describe('a transient failure is not remembered', () => {
         expect(await loadBasemap()).toBeNull();
         expect(await loadBasemap()).not.toBeNull();
         expect(calls).toHaveLength(2);
+    });
+});
+
+/*
+ * The OpenStreetMap detail tier, which is optional and whose absence is a
+ * configuration rather than a fault.
+ */
+const PILOT = 'indopacom-hawaii';
+
+const REAL_DETAIL = fs.readFileSync(
+    path.resolve(__dirname, `../../../../../public/map/packages/${PILOT}.pmtiles`),
+);
+
+function realDetailHeader(): ArrayBuffer {
+    const slice = REAL_DETAIL.subarray(0, HEADER_BYTES);
+
+    return slice.buffer.slice(slice.byteOffset, slice.byteOffset + slice.byteLength) as ArrayBuffer;
+}
+
+function detailHeaderWith(offset: number, value: number): ArrayBuffer {
+    const bytes = new Uint8Array(realDetailHeader());
+    bytes[offset] = value;
+
+    return bytes.buffer as ArrayBuffer;
+}
+
+// eslint-disable-next-line no-console
+const realWarn = console.warn;
+
+function captureWarnings(): string[] {
+    const lines: string[] = [];
+
+    // eslint-disable-next-line no-console
+    console.warn = (...args: unknown[]) => {
+        lines.push(args.map(String).join(' '));
+    };
+
+    return lines;
+}
+
+test.afterEach(() => {
+    // eslint-disable-next-line no-console
+    console.warn = realWarn;
+});
+
+test.describe('the detail tier', () => {
+    test('points at the route that serves both bundled and dropped-in areas', () => {
+        expect(packageUrl(PILOT)).toBe(
+            `/plugins/${manifest.id}/packages/${PILOT}.pmtiles?v=${encodeURIComponent(manifest.version)}`,
+        );
+    });
+
+    /*
+     * The name is whitelisted on the server and again here. A name that reaches
+     * a URL from a filename on somebody's disk is the one value in this module
+     * that did not come from this plugin, and the two checks agreeing by
+     * accident would be a request for something else entirely.
+     */
+    test('refuses a name that is not <command>-<area>', async () => {
+        stubFetch(() => ({bytes: realDetailHeader()}));
+
+        expect(await loadPackages(['../world', 'INDOPACOM-HAWAII', 'hawaii', ''])).toEqual([]);
+    });
+
+    // One bad archive must not take the others off the map: an install with six
+    // areas and one half-copied file draws the other five.
+    test('a package that does not answer is dropped, not fatal to the set', async () => {
+        stubFetch((n) => (n === 0 ? {ok: false, status: 404} : {bytes: realDetailHeader()}));
+
+        const loaded = await loadPackages(['indopacom-broken', PILOT]);
+
+        expect(loaded.map((entry) => entry.name)).toEqual([PILOT]);
+    });
+
+    test('accepts the archive this build ships', async () => {
+        stubFetch(() => ({bytes: realDetailHeader()}));
+
+        const [loaded] = await loadPackages([PILOT]);
+
+        expect(loaded).toBeTruthy();
+        expect(loaded.name).toBe(PILOT);
+        expect(loaded.archive.minZoom).toBe(SEAM_ZOOM);
+        expect(loaded.archive.maxZoom).toBeGreaterThanOrEqual(SEAM_ZOOM);
+    });
+
+    /*
+     * The two probes are one machine with two accept rules, so the rules are
+     * what has to be shown not to be interchangeable: the global archive must
+     * start at 0 and the detail archive at the seam, and each rejects the
+     * other's shape. Without this the shared machine could be reading one rule
+     * for both and nothing would say so.
+     */
+    test('refuses the global archive, and the global probe refuses this one', async () => {
+        stubFetch(() => ({bytes: realHeader()}));
+        expect(await loadPackages([PILOT])).toEqual([]);
+
+        _resetForTesting();
+
+        stubFetch(() => ({bytes: realDetailHeader()}));
+        expect(await loadBasemap()).toBeNull();
+    });
+
+    // A FLOOR, not an equality. An operator may ship a shallower profile than
+    // the deepest one this pipeline can build, and rejecting it would leave
+    // them with no detail and, by the silence rule below, nothing saying so.
+    test('accepts an archive shallower than the one this build ships', async () => {
+        stubFetch(() => ({bytes: detailHeaderWith(101, SEAM_ZOOM + 2)}));
+
+        const [loaded] = await loadPackages([PILOT]);
+
+        expect(loaded).toBeTruthy();
+        expect(loaded.archive.maxZoom).toBe(SEAM_ZOOM + 2);
+    });
+
+    test('refuses an archive that starts below the seam, which would draw twice', async () => {
+        stubFetch(() => ({bytes: detailHeaderWith(100, SEAM_ZOOM - 1)}));
+
+        expect(await loadPackages([PILOT])).toEqual([]);
+    });
+
+    /*
+     * A 404 is a global-only build, which is supported, so it says nothing to
+     * anybody and is remembered: a missing file will not appear, and one probe
+     * per panel for the life of the tab is a request loop for no answer.
+     */
+    test('a missing archive is silent, and is asked for once', async () => {
+        const warnings = captureWarnings();
+        const calls = stubFetch(() => ({ok: false, status: 404}));
+
+        expect(await loadPackages([PILOT])).toEqual([]);
+        expect(await loadPackages([PILOT])).toEqual([]);
+
+        expect(calls).toHaveLength(1);
+        expect(warnings).toEqual([]);
+    });
+
+    /*
+     * A transient failure is the opposite, and is the one case where the two
+     * look identical on screen: the style is built once inside the map's
+     * creation effect and the map is created once and then moved, so a
+     * timed-out probe yields a panel with no detail source for the whole of its
+     * life, rendering exactly like a correct global-only install. It is
+     * therefore logged, and it is not remembered, so the next map retries.
+     */
+    test('an unreachable archive says so, and is retried', async () => {
+        const warnings = captureWarnings();
+        const calls = stubFetch((n) => (n === 0 ? {throws: true} : {bytes: realDetailHeader()}));
+
+        expect(await loadPackages([PILOT])).toEqual([]);
+        expect(warnings).toHaveLength(1);
+        expect(warnings[0]).toContain('detail');
+
+        expect(await loadPackages([PILOT])).toHaveLength(1);
+        expect(calls).toHaveLength(2);
+    });
+
+    // The global archive keeps its own silence on both branches, which is what
+    // makes the logging above a property of the detail tier rather than of the
+    // shared machine.
+    test('the global probe stays silent on the same failures', async () => {
+        const warnings = captureWarnings();
+        stubFetch(() => ({throws: true}));
+
+        expect(await loadBasemap()).toBeNull();
+        expect(warnings).toEqual([]);
     });
 });

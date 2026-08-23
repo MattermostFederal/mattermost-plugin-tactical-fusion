@@ -598,3 +598,33 @@ func readPageSource(t *testing.T, name string) string {
 
 	return string(raw)
 }
+
+/*
+ * The package list reaches a page through the document rather than the API,
+ * because a page has no session. Three things have to agree for that to work:
+ * the attribute name, the separator, and that the webapp reads it at all.
+ *
+ * An attribute the webapp never reads is an absent one, and absence here means
+ * NONE, so the pages would silently draw the global tier alone on an install
+ * that has every area.
+ */
+func TestWebappPackagesAttributeMatches(t *testing.T) {
+	source := readPageSource(t, "payload.ts")
+
+	t.Run("attribute", func(t *testing.T) {
+		// dataset turns data-packages into .packages.
+		want := strings.TrimPrefix(PackagesAttr, "data-")
+		if !regexp.MustCompile(`dataset\.` + want + `\b`).MatchString(source) {
+			t.Errorf("the webapp never reads %q (as dataset.%s); an attribute it does not "+
+				"read is absent, which it takes as no detail area being installed",
+				PackagesAttr, want)
+		}
+	})
+
+	t.Run("separator", func(t *testing.T) {
+		if !strings.Contains(source, `split('`+packageSeparator+`')`) {
+			t.Errorf("the webapp does not split on %q, so every name but one is discarded "+
+				"by the grammar filter behind it", packageSeparator)
+		}
+	})
+}

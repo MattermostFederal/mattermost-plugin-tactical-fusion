@@ -17,6 +17,7 @@
 //	15000-15999   server/preferences_cache.go   cache and cluster events
 //	16000-16999   server/command*.go            the slash command
 //	17000-17999   server/decorators/            framework and decorator pages
+//	18000-18999   server/packages.go            detail map packages
 //
 // Within a range codes are allocated in source order the first time a file is
 // instrumented; a site added later takes the next free number in its range, so
@@ -79,6 +80,18 @@ const (
 	// full-window map page off. A 404 rather than a 403, because to a reader the
 	// route does not exist on this install.
 	HTTPMapDisabled = 12004
+
+	// HTTPPackagePathInvalid rejects a /packages request whose path is not
+	// one package archive.
+	HTTPPackagePathInvalid = 12005
+
+	// HTTPPackageUnknown reports a /packages request for an area this install
+	// does not have.
+	HTTPPackageUnknown = 12006
+
+	// HTTPPackageUnreadable reports a package that was discovered and then
+	// could not be opened, which usually means it moved between the two.
+	HTTPPackageUnreadable = 12007
 
 	// server/api.go (13000-13999)
 
@@ -221,6 +234,46 @@ const (
 	// parameter is not four upper-case letters. An ident this build does not
 	// hold renders at 200 with a note instead.
 	AirportPageInvalid = 17002
+
+	// server/packages.go (18000-18999)
+
+	// PackagesNoBundlePath reports that the plugin cannot locate its own
+	// bundle, so no bundled map package can be served. Dropped-in packages
+	// are unaffected.
+	PackagesNoBundlePath = 18000
+
+	// PackagesBadName rejects a file in a package directory whose name is not
+	// <command>-<area>. The name reaches a URL, so it is whitelisted.
+	PackagesBadName = 18001
+
+	// PackagesBadArchive rejects a file that is not the PMTiles archive it
+	// claims to be, or is built to a depth the seam cannot use.
+	PackagesBadArchive = 18002
+
+	// PackagesUploadBadName rejects an upload whose name is not <command>-<area>.
+	PackagesUploadBadName = 18003
+
+	// PackagesUploadNoDir rejects an upload when no package directory is
+	// configured, because there is nowhere a range-readable file could go.
+	PackagesUploadNoDir = 18004
+
+	// PackagesUploadTooLarge rejects an upload past what this route carries.
+	// Larger areas are copied into the package directory instead.
+	PackagesUploadTooLarge = 18005
+
+	// PackagesUploadNotAnArchive rejects an upload that is not a map archive
+	// built for the seam, before it is put in place rather than after.
+	PackagesUploadNotAnArchive = 18006
+
+	// PackagesUploadWriteFailed reports a package directory that cannot be
+	// written to.
+	PackagesUploadWriteFailed = 18007
+
+	// PackagesSchemaMismatch rejects an archive built for a different map
+	// schema. Distinguished from PackagesBadArchive because the file is
+	// well formed and the fix is to re-download the area or upgrade the
+	// plugin, not to rebuild a corrupt one.
+	PackagesSchemaMismatch = 18008
 )
 
 // AllCodes lists every code declared above. TestAllCodesComplete enforces that
@@ -239,6 +292,9 @@ var AllCodes = []int{
 	HTTPDecoratorsNotReady,
 	HTTPDecoratorUnknown,
 	HTTPMapDisabled,
+	HTTPPackagePathInvalid,
+	HTTPPackageUnknown,
+	HTTPPackageUnreadable,
 
 	APINotAuthorized,
 	APINotFound,
@@ -274,4 +330,14 @@ var AllCodes = []int{
 	DTGPageParamsInvalid,
 	LocationPageParamsInvalid,
 	AirportPageInvalid,
+
+	PackagesNoBundlePath,
+	PackagesBadName,
+	PackagesBadArchive,
+	PackagesUploadBadName,
+	PackagesUploadNoDir,
+	PackagesUploadTooLarge,
+	PackagesUploadNotAnArchive,
+	PackagesUploadWriteFailed,
+	PackagesSchemaMismatch,
 }

@@ -1,0 +1,13 @@
+{
+  "transportation": [
+    "any",
+    ["in", "class", "motorway", "trunk", "primary", "secondary", "rail"],
+    ["all", ["==", "class", "tertiary"], [">=", "$zoom", 12]]
+  ],
+  "transportation_name": [
+    "any",
+    ["in", "class", "motorway", "trunk", "primary", "secondary"],
+    ["all", ["==", "class", "tertiary"], [">=", "$zoom", 12]]
+  ],
+  "boundary": ["<=", "admin_level", 4]
+}

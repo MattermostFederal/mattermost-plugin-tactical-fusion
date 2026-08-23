@@ -1,6 +1,7 @@
 ---
 name: add-slash-cmds
 description: Use when the plugin's REST endpoints in server/api.go (or equivalent) have grown out of sync with its slash commands in server/command.go. Surveys both files, identifies API operations that lack a corresponding slash command, and suggests new subcommands to add. Trigger after adding new REST endpoints, during periodic audits, or before cutting a release.
+user-invocable: true
 ---
 
 # Add Slash Commands

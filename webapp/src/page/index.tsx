@@ -7,6 +7,7 @@ import {readPageData} from './payload';
 
 import LinkButton from '../components/LinkButton';
 import LocationReadings from '../decorators/location/LocationReadings';
+import {seedPackages} from '../packages/store';
 import {docsUrl} from '../plugin_url';
 
 /**
@@ -36,6 +37,10 @@ function start(): void {
     if (!data) {
         return;
     }
+
+    // Before the first render, so the map's creation effect sees the list
+    // rather than fetching a route this document has no session for.
+    seedPackages(data.packages);
 
     createRoot(root).render(
         <React.StrictMode>

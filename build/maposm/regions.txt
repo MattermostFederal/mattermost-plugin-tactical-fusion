@@ -1,0 +1,26 @@
+# Regions the OSM detail tier is built for, one per line, one archive each.
+# See README.md for the decisions behind the columns.
+#
+#   name      the PACKAGE name, `<command>-<area>`, lower case. It reaches a URL.
+#   profiles  comma separated, no spaces. `bundled` is RESERVED and routes the
+#             archive into public/map/packages/ to be committed; every other row
+#             lands in build/maposm/out/ and ships as a release asset.
+#   extract   comma separated, no spaces. More than one is `osmium merge`d, and
+#             they must all be cut on the same day.
+#   bbox      west,south,east,north. The TILE extent, not the extract extent,
+#             and the last field, so nothing may follow it.
+#
+# name                    profiles                     extract                                                                                west,south,east,north
+indopacom-hawaii          bundled,pilot,indopacom,dod  north-america/us/hawaii                                                                -160.6,18.6,-154.6,22.4
+indopacom-korea           korea,indopacom,dod          asia/south-korea,asia/north-korea                                                       124.0,32.9,132.0,43.2
+indopacom-taiwan          taiwan,indopacom,dod         asia/taiwan                                                                             118.1,21.7,122.3,26.5
+indopacom-japan           japan,indopacom,dod          asia/japan                                                                              122.8,24.0,146.1,45.6
+indopacom-philippines     philippines,indopacom,dod    asia/philippines                                                                        116.8,4.5,126.7,21.2
+indopacom-guam            bundled,guam,indopacom,dod   australia-oceania/american-oceania                                                       144.5,13.2,146.2,15.4
+centcom-persian-gulf      gulf,centcom,dod             asia/gcc-states,asia/iran,asia/iraq                                                      46.5,22.5,60.0,31.5
+centcom-levant            levant,centcom,dod           asia/israel-and-palestine,asia/lebanon,asia/syria,asia/jordan                            33.9,30.2,42.5,37.4
+centcom-red-sea           redsea,centcom,dod           africa/egypt,africa/sudan,africa/eritrea,asia/yemen,asia/gcc-states,asia/jordan,asia/israel-and-palestine  32.0,15.0,45.0,30.2
+eucom-ukraine             ukraine,eucom,dod            europe/ukraine                                                                           22.0,44.2,40.3,52.5
+eucom-baltics             baltics,eucom,dod            europe/estonia,europe/latvia,europe/lithuania,europe/poland,europe/belarus,russia/kaliningrad  19.5,53.0,28.3,59.8
+africom-horn              horn,africom,dod             africa/somalia,africa/ethiopia,africa/eritrea,africa/djibouti,africa/kenya,asia/yemen     32.9,-1.7,51.6,15.0
+indopacom-scs             scs,indopacom,dod            asia/china,asia/vietnam,asia/malaysia-singapore-brunei,asia/philippines,asia/indonesia  105.0,3.0,116.8,23.5

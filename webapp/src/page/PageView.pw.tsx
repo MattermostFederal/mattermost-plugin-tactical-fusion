@@ -38,6 +38,7 @@ const GRID: PageData = {
     },
     mode: 'location',
     maps: ALL_FEATURES,
+    packages: [],
 };
 
 test('a page renders every row without waiting on anything', async ({mount}) => {
@@ -296,6 +297,7 @@ const TEXTUAL: PageData = {
     },
     mode: 'map',
     maps: ALL_FEATURES,
+    packages: [],
 };
 
 test('the map page draws a position the token itself carries', async ({mount}) => {

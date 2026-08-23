@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-import type {Page} from '@playwright/test';
+import type {Page, Route} from '@playwright/test';
 
 /*
  * The routes a real map needs, shared by every suite that draws one.
@@ -23,6 +23,8 @@ import type {Page} from '@playwright/test';
 
 const BASEMAP = path.resolve(__dirname, '../../../../../public/map/world.pmtiles');
 const ARCHIVE = fs.readFileSync(BASEMAP);
+export const PILOT_PACKAGE = 'indopacom-hawaii';
+const DETAIL = path.resolve(__dirname, `../../../../../public/map/packages/${PILOT_PACKAGE}.pmtiles`);
 const FONTS = path.resolve(__dirname, '../../../../../public/map/fonts/NotoSans-Regular');
 
 /*
@@ -59,30 +61,32 @@ export async function serveMapAssets(
     page: Page,
     holdWorker?: Promise<void>,
     starveFonts = false,
+    serveDetail = true,
 ): Promise<void> {
+    // The detail tier is optional, so both answers are real deployments and a
+    // suite has to be able to ask for either. Absent means a global-only build,
+    // which must render as today's map with nothing said about it.
+    // The panel learns which areas exist from the API; the pages are handed the
+    // same list in their shell. Without this route the store answers "none" and
+    // every detail assertion below would be testing a global-only install.
+    await page.route('**/api/v1/packages', (route) => route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({packages: serveDetail ? [PILOT_PACKAGE] : []}),
+    }));
+
+    await page.route('**/packages/*.pmtiles*', (route) => {
+        if (!serveDetail) {
+            return route.fulfill({status: 404});
+        }
+
+        return rangeReply(route, fs.readFileSync(DETAIL));
+    });
+
     // PMTiles reads by byte range, so this has to answer 206 with the requested
     // slice. route.fulfill({path}) always returns the whole file with a 200,
     // which leaves the reader parsing the header as if it were a tile.
-    await page.route('**/public/map/world.pmtiles*', (route) => {
-        const range = (/bytes=(\d+)-(\d+)/).exec(route.request().headers().range ?? '');
-        if (!range) {
-            return route.fulfill({
-                status: 200,
-                contentType: 'application/octet-stream',
-                body: ARCHIVE,
-            });
-        }
-
-        const start = Number(range[1]);
-        const end = Math.min(Number(range[2]), ARCHIVE.length - 1);
-
-        return route.fulfill({
-            status: 206,
-            contentType: 'application/octet-stream',
-            headers: {'content-range': `bytes ${start}-${end}/${ARCHIVE.length}`},
-            body: ARCHIVE.subarray(start, end + 1),
-        });
-    });
+    await page.route('**/public/map/world.pmtiles*', (route) => rangeReply(route, ARCHIVE));
 
     if (starveFonts) {
         await page.route('**/public/map/fonts/**', (route) => route.fulfill({status: 404}));
@@ -103,5 +107,33 @@ export async function serveMapAssets(
             await holdWorker;
         }
         await route.fulfill({path: WORKER, contentType: 'text/javascript'});
+    });
+}
+
+/**
+ * A PMTiles archive served the way a real one is.
+ *
+ * PMTiles reads by byte range, so this has to answer 206 with the requested
+ * slice. `route.fulfill({path})` always returns the whole file with a 200,
+ * which leaves the reader parsing the header as if it were a tile.
+ */
+function rangeReply(route: Route, archive: Buffer): Promise<void> {
+    const range = (/bytes=(\d+)-(\d+)/).exec(route.request().headers().range ?? '');
+    if (!range) {
+        return route.fulfill({
+            status: 200,
+            contentType: 'application/octet-stream',
+            body: archive,
+        });
+    }
+
+    const start = Number(range[1]);
+    const end = Math.min(Number(range[2]), archive.length - 1);
+
+    return route.fulfill({
+        status: 206,
+        contentType: 'application/octet-stream',
+        headers: {'content-range': `bytes ${start}-${end}/${archive.length}`},
+        body: archive.subarray(start, end + 1),
     });
 }

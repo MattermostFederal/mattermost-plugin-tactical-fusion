@@ -159,6 +159,20 @@ type Decorator struct {
 	// Maps reports which surfaces draw a map, read fresh for every render for
 	// the same reason. Nil means all of them.
 	Maps func() Maps
+
+	// Packages reports the detail map packages this install has, by name, read
+	// fresh for every render so one dropped into the directory appears without
+	// a restart. Nil means none, which is a global-only install.
+	Packages func() []string
+}
+
+// packages is the detail areas this install has, or none.
+func (d *Decorator) packages() []string {
+	if d.Packages == nil {
+		return nil
+	}
+
+	return d.Packages()
 }
 
 // maps is the selector, or every surface when there is none.
@@ -480,7 +494,7 @@ func (d *Decorator) RenderPage(w http.ResponseWriter, params url.Values) {
 
 	decorators.WritePage(w, decorators.Page{
 		Title:      pageTitle,
-		BodyHTML:   renderRoot(page, pageModeLocation, d.maps()),
+		BodyHTML:   renderRoot(page, pageModeLocation, d.maps(), d.packages()),
 		Theme:      decorators.ThemeFromParams(params),
 		StyleCSS:   pageStyles,
 		ScriptSrc:  pageAppFromDecorate,

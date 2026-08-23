@@ -1,0 +1,51 @@
+OpenStreetMap detail map packages (*.pmtiles)
+=============================================
+
+These archives are derived from OpenStreetMap data. Each one is a region, named
+<command>-<area>.pmtiles, and this notice covers every one of them: the ones
+bundled under public/map/packages/ and any dropped into the package directory
+an operator configures.
+
+  © OpenStreetMap contributors
+  https://www.openstreetmap.org/copyright
+
+OpenStreetMap data is made available under the Open Database License (ODbL)
+version 1.0:
+
+  https://opendatacommons.org/licenses/odbl/1-0/
+
+The tile schema is OpenMapTiles, whose cartographic design is licensed CC-BY 4.0
+and which requires its own visible credit:
+
+  © OpenMapTiles
+  https://openmaptiles.org/
+
+Any map drawn from these archives must display both credits. Every surface in
+this plugin that draws them renders both beside the map.
+
+
+Where this came from
+--------------------
+
+A filtered regional extract of OpenStreetMap is a Derivative Database under ODbL
+section 4.6, so the notice above travels with the file and the source of the
+derivation is named here rather than left to be reconstructed.
+
+  Extracts        build/maposm/sources.lock, which pins each OpenStreetMap
+                  extract by SHA-256 and by the date it was cut. The extracts
+                  themselves come from https://download.geofabrik.de/ and are
+                  not committed.
+  Regions         build/maposm/regions.txt
+  Filtering       build/maposm/build.sh and build/maposm/filter.json
+  Toolchain       build/maposm/Dockerfile, which pins planetiler-openmaptiles
+                  and tippecanoe by version and by digest
+
+Running `make osm-sources && make map-osm` against that tree rebuilds these
+archives.
+
+
+The global tier is not this
+---------------------------
+
+public/map/world.pmtiles is built from Natural Earth, which is public domain and
+carries no attribution requirement. Nothing in this file applies to it.

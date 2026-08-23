@@ -66,6 +66,9 @@ func main() {
 	case "version":
 		dumpPluginVersion(manifest)
 
+	case "name":
+		dumpPluginName(manifest)
+
 	case "has_server":
 		if manifest.HasServer() {
 			fmt.Printf("true")
@@ -153,6 +156,10 @@ func dumpPluginID(manifest *model.Manifest) {
 // dumpPluginVersion writes the plugin version from the given manifest to standard out
 func dumpPluginVersion(manifest *model.Manifest) {
 	fmt.Printf("%s", manifest.Version)
+}
+
+func dumpPluginName(manifest *model.Manifest) {
+	fmt.Printf("%s", manifest.Name)
 }
 
 // applyManifest propagates the plugin_id into the server and webapp folders, as necessary

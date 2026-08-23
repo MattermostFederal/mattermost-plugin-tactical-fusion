@@ -2,7 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
+
+	"github.com/mattermost/mattermost/server/public/model"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
@@ -55,6 +59,12 @@ const (
 	// and there is no way to carry a name to the browser through the link: the
 	// link's stored text has to stay the author's own token.
 	airportPath = apiPath + "/airport"
+
+	// packagesPathAPI lists the detail map packages this install has, which is
+	// what lets the panel add one vector source per covered area. Names only:
+	// the client builds the archive URL the same way it builds the global one,
+	// so no URL crosses the wire to be got wrong.
+	packagesPathAPI = apiPath + "/packages"
 )
 
 // airportResponse is what the airfield endpoint answers.
@@ -155,6 +165,16 @@ func (p *Plugin) serveAPI(w http.ResponseWriter, r *http.Request) {
 
 	if r.URL.Path == airportPath {
 		p.serveAirport(w, r)
+		return
+	}
+
+	if r.URL.Path == packagesPathAPI {
+		p.servePackageList(w, r)
+		return
+	}
+
+	if strings.HasPrefix(r.URL.Path, packagesPathAPI+"/") {
+		p.servePackageAdmin(w, r, userID)
 		return
 	}
 
@@ -406,4 +426,100 @@ func writeAPIJSON(w http.ResponseWriter, status int, body any) {
 
 func writeAPIError(w http.ResponseWriter, status int, message string) {
 	writeAPIJSON(w, status, map[string]string{"message": message})
+}
+
+const packageListCacheSeconds = 60
+
+type packagesResponse struct {
+	Packages []string `json:"packages"`
+
+	// The subset the System Console may remove, which is the drop-in directory
+	// alone. Sent as its own list rather than folded into Packages so the
+	// reader-facing shape stays a plain array of names.
+	Removable []string `json:"removable"`
+}
+
+func (p *Plugin) packagesPayload() packagesResponse {
+	return packagesResponse{Packages: p.packageNames(), Removable: p.removablePackages()}
+}
+
+/*
+ * The detail map packages this install has, by name.
+ *
+ * Names rather than URLs, for the same reason basemapUrl() is built in the
+ * webapp rather than sent to it: a URL on the wire is a second place a subpath
+ * install can be got wrong, and the client already knows how to address this
+ * plugin.
+ *
+ * Never 503 while the configuration is loading, unlike /features. There the
+ * zero value is a real answer that a client caches for half an hour, so an
+ * unloaded configuration would be stored as an admin decision. Here the zero
+ * value is "the bundled packages", which is exactly what an install with no
+ * directory configured has, so answering it early costs nothing and a reader
+ * gets a map rather than a failure.
+ */
+func (p *Plugin) servePackageList(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeAPIError(w, http.StatusMethodNotAllowed,
+			errcode.WithCode(errcode.APIMethodNotAllowed, "Method not allowed."))
+		return
+	}
+
+	// Short rather than absent: a package dropped into the directory should
+	// appear without a restart, and a reader should not have to reload the tab
+	// to see it. Named because the webapp caches the same list for the same
+	// span; TestWebappPackageCacheLifetimeMatches holds the pair together.
+	w.Header().Set("Cache-Control", fmt.Sprintf("private, max-age=%d", packageListCacheSeconds))
+
+	writeAPIJSON(w, http.StatusOK, p.packagesPayload())
+}
+
+/*
+ * Installing and removing a detail map package from the System Console.
+ *
+ * Restricted to system administrators, and checked here rather than trusted
+ * from the fact that the request came from the console: the console is a
+ * client, and a client is where a request claims to be from rather than where
+ * it is from.
+ *
+ * The body is streamed to disk rather than read, which is the whole reason this
+ * is a plain route and not something built on plugin.API: an archive is read by
+ * byte range forever afterwards, so it has to land somewhere os.Open can reach.
+ */
+func (p *Plugin) servePackageAdmin(w http.ResponseWriter, r *http.Request, userID string) {
+	if !p.API.HasPermissionTo(userID, model.PermissionManageSystem) {
+		writeAPIError(w, http.StatusForbidden,
+			errcode.WithCode(errcode.APINotAuthorized, "Not authorized."))
+		return
+	}
+
+	name, _ := strings.CutPrefix(r.URL.Path, packagesPathAPI+"/")
+
+	switch r.Method {
+	case http.MethodPost:
+		if err := p.installPackage(name, r.Body); err != nil {
+			p.API.LogWarn("a map package upload was refused",
+				"error_code", errcode.PackagesUploadWriteFailed, "name", name, "error", err.Error())
+			writeAPIError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		p.API.LogInfo("a map package was installed from the System Console",
+			"name", name, "user_id", userID)
+		writeAPIJSON(w, http.StatusOK, p.packagesPayload())
+
+	case http.MethodDelete:
+		if err := p.removePackage(name); err != nil {
+			writeAPIError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		p.API.LogInfo("a map package was removed from the System Console",
+			"name", name, "user_id", userID)
+		writeAPIJSON(w, http.StatusOK, p.packagesPayload())
+
+	default:
+		writeAPIError(w, http.StatusMethodNotAllowed,
+			errcode.WithCode(errcode.APIMethodNotAllowed, "Method not allowed."))
+	}
 }

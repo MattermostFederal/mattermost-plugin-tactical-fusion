@@ -533,6 +533,248 @@
             not have every panel you open asking for the same file again.
         </p>
 
+        <h2 id="detail-packages">A detail area will not install, or never appears</h2>
+
+        <p>
+            Above zoom 10 the map draws <a href="panel.html#location-map">OpenStreetMap
+            detail</a> for the areas this install has, and each area is one file on disk.
+            Two very different things send people here, and the fix has nothing in common
+            between them.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">No detail anywhere past zoom 10 is not a failure.</p>
+            <p>
+                Detail is shipped per area rather than for the whole world. Outside a
+                covered area the world map keeps drawing, magnified past the detail it
+                holds, which is the expected behavior and is described under
+                <a href="panel.html#location-map">the map</a>. This build ships Hawaii and
+                Guam; anything else was added by whoever installed the plugin, through
+                <a href="admin.html#location-map-packages-dir">the package directory</a>.
+                The credit beneath the map does not answer this: it is drawn whenever this
+                install's detail areas went into the map at all, so it appears at every
+                zoom and everywhere in the world once any area is installed. What tells
+                you an area is covered is the map itself, real road networks and named
+                water where the world map carried none. See
+                <a href="panel.html#location-map">the map</a>.
+            </p>
+        </div>
+
+        <p>
+            The rest of this section is for an area that was <em>meant</em> to be there.
+            Either the System Console refused to install it, which says why on screen, or
+            the file is in the directory and the area still never appears, which says
+            nothing on screen at all and has to be read out of the server log.
+        </p>
+
+        <h3 id="detail-packages-console">What the System Console says</h3>
+
+        <p>
+            These are refused in the browser, before anything is sent, or are what the
+            control shows when the server answered without a reason of its own.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>What it says</th><th>Cause</th><th>Fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>"&lt;file&gt;" is not named &lt;command&gt;-&lt;area&gt;.pmtiles, such as indopacom-hawaii.pmtiles.</code></td>
+                    <td>The file name is not an area name. The area is keyed on that name, so it is taken from the file rather than from a field: lower case, letters and digits, and at least one hyphen. Nothing was uploaded.</td>
+                    <td>Rename the file to the area it holds and choose it again.</td>
+                </tr>
+                <tr>
+                    <td><code>&lt;file&gt; is larger than 512 MB. Copy it into the package directory instead.</code></td>
+                    <td>Past what this route carries. Checked in the browser so a large file is not sent only to be refused at the far end. TF-18005 is the same limit applied on the server.</td>
+                    <td>Copy the file into <a href="admin.html#location-map-packages-dir">the package directory</a>. There is no ceiling on that path.</td>
+                </tr>
+                <tr>
+                    <td><code>The upload could not be completed. A large package may exceed what this server accepts; copy it into the package directory instead.</code></td>
+                    <td>The request never arrived, or the answer was not readable. Usually a body limit in Mattermost or in a proxy in front of it, which is why this names size first: no code, because nothing on the server ever saw the upload.</td>
+                    <td>Copy the file into the package directory. If small uploads fail too, the plugin is not reachable at all and the cause is in front of Mattermost.</td>
+                </tr>
+                <tr>
+                    <td><code>The upload was refused.</code></td>
+                    <td>The server refused it and sent no message of its own. Unusual: every refusal below carries one.</td>
+                    <td>Read the server log for the code, then find it in the next table.</td>
+                </tr>
+                <tr>
+                    <td><code>The package could not be removed.</code></td>
+                    <td>The same fallback for a removal.</td>
+                    <td>As above.</td>
+                </tr>
+                <tr>
+                    <td><code>No detail areas are installed. The map draws its global basemap everywhere.</code></td>
+                    <td>Not an error. This install has no packages: none bundled and none in the directory.</td>
+                    <td>None, unless you expected an area, in which case check the directory is set and readable.</td>
+                </tr>
+                <tr>
+                    <td><code>ships with the plugin</code>, where a Remove button would be</td>
+                    <td>Not an error. That area is inside the plugin bundle and a release is what replaces it, so there is no file for Remove to unlink.</td>
+                    <td>None. To replace it sooner, drop a newer build of the same name into the package directory; it takes precedence.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3 id="detail-packages-refused">What the server sends back</h3>
+
+        <p>
+            Each of these is shown in the System Console exactly as written, with its code
+            appended. Every one leaves the directory as it found it: an upload is validated
+            <strong>before</strong> it is put in place, so a refused file is never half
+            installed.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Code</th><th>What it says</th><th>Cause and fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>TF-18004</code></td>
+                    <td><code>no package directory is configured, so there is nowhere to put this</code></td>
+                    <td>A map archive is served by byte range, so it has to sit on disk and there is nowhere else it could go. Set <a href="admin.html#location-map-packages-dir"><code>LocationMapPackagesDir</code></a> first.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-18003</code></td>
+                    <td><code>a package is named &lt;command&gt;-&lt;area&gt;, lower case, such as indopacom-hawaii</code></td>
+                    <td>The name reaches both a URL and a filesystem path, so it is checked against a whitelist rather than cleaned. Rename the file.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-18003</code></td>
+                    <td><code>that area ships inside the plugin and is replaced by a release, not from here</code></td>
+                    <td>A bundled area was asked to be removed. Said plainly rather than left to a failed unlink, which reads as a broken button. Nothing to fix.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-18003</code></td>
+                    <td><code>no such package</code></td>
+                    <td>A removal naming an area this install does not have, or naming something that is not an area name at all.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-18006</code></td>
+                    <td><code>that is not a map archive built for zoom 10 and up: &lt;reason&gt;</code></td>
+                    <td>The file is not the archive it claims to be. The reason after the colon is one of the validation messages in the last table below, and it is the part worth reading.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-18007</code></td>
+                    <td><code>the package directory cannot be created: &lt;reason&gt;</code><br><code>cannot write to the package directory: &lt;reason&gt;</code><br><code>the package could not be put in place: &lt;reason&gt;</code><br><code>the package could not be removed: &lt;reason&gt;</code></td>
+                    <td>The directory is not writable by the Mattermost process, or a path component of it is not a directory. Check it exists, check the ownership, and check there is room on the volume.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-18007</code></td>
+                    <td><code>the upload failed: &lt;reason&gt;</code></td>
+                    <td>The body stopped arriving part way. A dropped connection, or a client that gave up. Try again; copy the file in if it keeps happening.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-18005</code></td>
+                    <td><code>a package uploaded this way is limited to 512 MB; copy larger areas into the package directory instead</code></td>
+                    <td>The server's half of the size check, reached when something other than this plugin's own control posted the file.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3 id="detail-packages-silent">A file is in the directory and the area never appears</h3>
+
+        <p>
+            This is the case with nothing on screen. A package that fails validation is
+            <strong>dropped and logged rather than served</strong>, because a bad archive
+            that reached a browser would draw nothing and say nothing, and the reader would
+            see an area that is simply missing. The log line is the only thing that will
+            ever explain it, and it names the file.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">Each rejected file is logged once, not once per request.</p>
+            <p>
+                Discovery is memoized, so a bad archive writes one line rather than one per
+                map tile a reader pans past. Replacing a bad file with another bad one under
+                the same name is therefore silent until the plugin restarts.
+            </p>
+        </div>
+
+        <table>
+            <thead>
+                <tr><th>Code</th><th>In the log</th><th>Cause and fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>TF-18001</code></td>
+                    <td><code>ignoring a map package whose name is not &lt;command&gt;-&lt;area&gt;</code></td>
+                    <td>A <code>.pmtiles</code> file in the directory whose name is not an area name. Rename it.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-18002</code></td>
+                    <td><code>ignoring a map package that is not the archive it claims to be</code></td>
+                    <td>The file failed validation. The reason travels with the line; see the table below.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-18000</code></td>
+                    <td><code>cannot locate the plugin bundle, so no bundled map packages are served</code></td>
+                    <td>The plugin cannot find its own directory on disk, so the areas it ships are unavailable. Anything in <a href="admin.html#location-map-packages-dir">the package directory</a> is unaffected. Unusual, and worth reporting.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-12007</code></td>
+                    <td><code>a discovered map package could not be opened</code></td>
+                    <td>An area was listed and then could not be read when a tile asked for it. Normal for the moment a file is being replaced by hand; persistent means the permissions changed under a running plugin.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>
+            The reason carried by <code>TF-18002</code>, <code>TF-18006</code> and
+            <code>TF-18008</code> is one of these. The same four questions the browser asks
+            on arrival are asked here, at discovery, so that the answer is one log line
+            naming the file rather than an area that quietly does not draw.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Reason</th><th>What it means</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>not a PMTiles archive</code></td>
+                    <td>The file does not begin the way an archive does. A half-copied file, an HTML error page saved under the wrong name, or a download that never finished.</td>
+                </tr>
+                <tr>
+                    <td><code>PMTiles spec version &lt;n&gt;, want 3</code></td>
+                    <td>An archive in an older or newer container format than this build reads. Rebuild or re-download the area.</td>
+                </tr>
+                <tr>
+                    <td><code>tile type &lt;n&gt;, want 1 (MVT)</code></td>
+                    <td>A raster archive where a vector one is required. The map styles the tiles itself, so images cannot be drawn.</td>
+                </tr>
+                <tr>
+                    <td><code>starts at zoom &lt;n&gt;, want 10, which is where the detail tier takes over</code></td>
+                    <td>Built to the wrong depth. The detail tier begins exactly at zoom 10, so an archive that starts elsewhere either leaves a blank band or draws the same road twice.</td>
+                </tr>
+                <tr>
+                    <td><code>built for map schema &lt;n&gt; and this build draws &lt;m&gt;, so re-download the area</code></td>
+                    <td>The archive predates a change in the shape of the map data. Areas are otherwise portable across plugin versions, so this only appears when the data itself changed. Download the area again from the release matching this plugin.</td>
+                </tr>
+                <tr>
+                    <td><code>built for map schema &lt;n&gt; and this build draws &lt;m&gt;, so upgrade the plugin</code></td>
+                    <td>The other direction: the archive is newer than the plugin. Upgrade the plugin rather than replacing the area.</td>
+                </tr>
+                <tr>
+                    <td><code>unreadable metadata: &lt;reason&gt;</code><br><code>carries an unreadable map schema &lt;value&gt;</code></td>
+                    <td>The archive's own description of itself is corrupt or was written by something this build does not recognize. Rebuild or re-download.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>
+            Two more codes belong to the route that serves an archive, and are likelier to
+            appear in a proxy log than on anybody's screen.
+            <code>TF-12005</code> is a request under <code>/packages</code> that does not
+            name one archive, and <code>TF-12006</code> is a request for an area this
+            install does not have. Both answer 404 rather than 403: which areas an install
+            holds is not a secret, and distinguishing the two would only tell a prober
+            more. Every code on this page is listed in
+            <a href="error-codes.html#packages">the registry</a>.
+        </p>
+
         <h2 id="dark-map">The map is dark, but my Mattermost is light</h2>
 
         <p>

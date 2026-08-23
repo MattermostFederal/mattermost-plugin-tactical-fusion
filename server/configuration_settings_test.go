@@ -90,6 +90,15 @@ func TestEverySettingBindsToAConfigurationField(t *testing.T) {
 
 	for _, setting := range loadSettings(t).allSettings() {
 		t.Run(setting.Key, func(t *testing.T) {
+			// A "custom" setting stores nothing. Mattermost renders a component
+			// the webapp registered under the key instead, so there is no value
+			// to bind and a configuration field for one would be a field
+			// nothing ever writes. Every other type is a value and is held to
+			// the rule above.
+			if setting.Type == "custom" {
+				t.Skipf("%q renders a component rather than storing a value", setting.Key)
+			}
+
 			field, ok := fields[strings.ToLower(setting.Key)]
 			if !ok {
 				t.Fatalf("plugin.json declares %q but configuration has no such field", setting.Key)

@@ -132,6 +132,21 @@
                     <td><code>Not found.</code> The type is not one this build registers. A link from a newer version of the plugin, or a hand-edited URL.</td>
                 </tr>
                 <tr>
+                    <td><code>TF-12005</code></td>
+                    <td><code>HTTPPackagePathInvalid</code> <span class="level">404</span></td>
+                    <td><code>Not found.</code> A request under <code>/packages</code> that does not name one archive. A hand-edited URL.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-12006</code></td>
+                    <td><code>HTTPPackageUnknown</code> <span class="level">404</span></td>
+                    <td><code>Not found.</code> A detail map package this install does not have. See <a href="admin.html#location-map-packages-dir"><code>LocationMapPackagesDir</code></a>.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-12007</code></td>
+                    <td><code>HTTPPackageUnreadable</code> <span class="level">404</span></td>
+                    <td><code>Not found.</code> A package was discovered and then could not be opened, which usually means it moved or its permissions changed between the two.</td>
+                </tr>
+                <tr>
                     <td><code>TF-12004</code></td>
                     <td><code>HTTPMapDisabled</code> <span class="level">404</span></td>
                     <td><code>Not found.</code> The full-window map page is switched off. See <a href="admin.html#enable-location-map-page"><code>EnableLocationMapPage</code></a>; the coordinate's own page still carries every reading.</td>
@@ -342,6 +357,67 @@
                     <td><code>TF-17002</code></td>
                     <td><code>AirportPageInvalid</code> <span class="level">400</span></td>
                     <td><code>That is not an airfield code this plugin issued.</code> The airfield page was given a <code>v</code> parameter that is not four upper-case letters, which means the link was not written by this plugin. A code that is well formed but absent from this build's database renders the page with a note instead.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="packages">Detail map packages <code>18000</code> to <code>18999</code></h2>
+
+        <p>
+            These are logged rather than shown to a reader. A package that is skipped
+            draws nothing, which on screen is indistinguishable from an area nobody
+            built, so the log line is the only thing that will ever explain it.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Code</th><th>Name and status</th><th>Message and meaning</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>TF-18000</code></td>
+                    <td><code>PackagesNoBundlePath</code> <span class="level">log</span></td>
+                    <td>The plugin cannot locate its own bundle, so no bundled package is served. Packages in <a href="admin.html#location-map-packages-dir"><code>LocationMapPackagesDir</code></a> are unaffected.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-18001</code></td>
+                    <td><code>PackagesBadName</code> <span class="level">log</span></td>
+                    <td>A file in a package directory is not named <code>&lt;command&gt;-&lt;area&gt;.pmtiles</code>. The name reaches a URL, so it is checked against a whitelist rather than cleaned. Rename it.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-18003</code></td>
+                    <td><code>PackagesUploadBadName</code> <span class="level">400</span></td>
+                    <td>An upload whose file is not named <code>&lt;command&gt;-&lt;area&gt;.pmtiles</code>. The name is what the area is keyed on, so it comes from the file rather than a field.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-18004</code></td>
+                    <td><code>PackagesUploadNoDir</code> <span class="level">400</span></td>
+                    <td>An upload with no <a href="admin.html#location-map-packages-dir"><code>LocationMapPackagesDir</code></a> set. A map archive is served by byte range, so there is nowhere else it could go.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-18005</code></td>
+                    <td><code>PackagesUploadTooLarge</code> <span class="level">400</span></td>
+                    <td>An upload past what this route carries. Copy larger areas into the package directory instead; an upload also crosses the server's own request limits.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-18006</code></td>
+                    <td><code>PackagesUploadNotAnArchive</code> <span class="level">400</span></td>
+                    <td>An upload that is not a map archive built for the seam. Checked before the file is put in place, so a bad upload is refused with a reason rather than accepted and then skipped.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-18007</code></td>
+                    <td><code>PackagesUploadWriteFailed</code> <span class="level">400</span></td>
+                    <td>The package directory could not be written to. Check it exists and that the Mattermost process owns it.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-18002</code></td>
+                    <td><code>PackagesBadArchive</code> <span class="level">log</span></td>
+                    <td>A file is not the map archive it claims to be, or does not begin at zoom 10, where the detail tier takes over. A half-copied file, a truncated download, or an archive built to the wrong depth.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-18008</code></td>
+                    <td><code>PackagesSchemaMismatch</code> <span class="level">log</span></td>
+                    <td>A well formed archive built for a different map schema. The message says which way round it is: an older archive is re-downloaded for the area, and a newer one means this plugin is behind the archive and should be upgraded. Areas are otherwise portable across plugin versions, so this only appears when the map data itself changed shape.</td>
                 </tr>
             </tbody>
         </table>

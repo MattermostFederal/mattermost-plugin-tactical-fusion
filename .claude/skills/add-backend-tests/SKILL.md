@@ -1,6 +1,7 @@
 ---
 name: add-backend-tests
 description: Systematically find Go backend test coverage gaps and add exhaustive unit/integration tests. Use when you want to improve Go test coverage, add missing tests, or harden existing test suites.
+user-invocable: true
 ---
 
 # Add Backend Tests
