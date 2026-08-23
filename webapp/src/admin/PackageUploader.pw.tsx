@@ -303,6 +303,20 @@ test.describe('removing', () => {
         await expect(component.getByRole('button', {name: 'Remove'})).toBeDisabled();
         await expect(fileInput(component)).toBeDisabled();
     });
+
+    // Both writes share one in-flight state, so the line has to name which of
+    // them is running: it read "Installing" over a removal.
+    test('says it is removing rather than installing', async ({mount}) => {
+        const component = await mount(
+            <PackageUploaderHarness
+                list='ok'
+                write='hold'
+            />);
+        await component.getByRole('button', {name: 'Remove'}).click();
+
+        await expect(component.getByText('Removing indopacom-guam…')).toBeVisible();
+        await expect(component.getByText(/^Installing/)).toBeHidden();
+    });
 });
 
 /*

@@ -45,7 +45,7 @@ const PackageUploader: React.FC = () => {
     const [packages, setPackages] = useState<string[]>([]);
     const [removable, setRemovable] = useState<string[]>([]);
     const [error, setError] = useState<string | null>(null);
-    const [busy, setBusy] = useState<string | null>(null);
+    const [busy, setBusy] = useState<{name: string; removing: boolean} | null>(null);
     const file = useRef<HTMLInputElement | null>(null);
     const live = useRef(true);
 
@@ -101,7 +101,7 @@ const PackageUploader: React.FC = () => {
         }
 
         setError(null);
-        setBusy(name);
+        setBusy({name, removing: false});
 
         try {
             const response = await fetch(`${pluginBaseUrl()}/api/v1/packages/${name}`, {
@@ -136,7 +136,7 @@ const PackageUploader: React.FC = () => {
 
     const remove = useCallback(async (name: string) => {
         setError(null);
-        setBusy(name);
+        setBusy({name, removing: true});
 
         try {
             const response = await fetch(`${pluginBaseUrl()}/api/v1/packages/${name}`, {
@@ -217,7 +217,9 @@ const PackageUploader: React.FC = () => {
                 }}
             />
 
-            {busy !== null && <p style={styles.busy}>{`Installing ${busy}…`}</p>}
+            {busy !== null && (
+                <p style={styles.busy}>{`${busy.removing ? 'Removing' : 'Installing'} ${busy.name}…`}</p>
+            )}
             {error !== null && <p style={styles.error}>{error}</p>}
 
             <p style={styles.note}>

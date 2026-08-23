@@ -341,7 +341,9 @@
                 roads stay in place but are <strong>generalized</strong>, and can sit a few
                 kilometres from where they really are. Read them as context, not as
                 position. Inside a covered area the accurate data takes over instead, and
-                the credit beneath the map is what tells you which you are looking at.
+                the difference is visible in the map itself: real road networks, named
+                water and towns where the world map carried none. The credit below is not
+                the thing to read for this, and is described under the map.
             </p>
             <p>
                 This build ships <strong>Hawaii</strong> and <strong>Guam</strong>, and
@@ -354,12 +356,28 @@
         </div>
 
         <p>
-            Where OpenStreetMap is drawn, the credit for it appears beneath the map. That
-            is a licence condition rather than a courtesy, and it names both
+            Where the map carries OpenStreetMap at all, the credit for it appears beneath
+            the map. That is a licence condition rather than a courtesy, and it names both
             OpenStreetMap's contributors and the OpenMapTiles schema the tiles are built
             to. The Natural Earth half is public domain and carries no such requirement,
-            which is why nothing is credited when no OpenStreetMap is on screen.
+            which is why a map built with no OpenStreetMap in it, such as a hover card,
+            carries no credit at all.
         </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">The credit is not a coverage indicator.</p>
+            <p>
+                It is decided by whether this install's detail areas went into the map at
+                all, not by what is under the pin, so on an install that has any detail
+                area the credit shows at every zoom and everywhere in the world, including
+                views far outside every covered area and views below zoom 10 where no
+                OpenStreetMap is drawn yet. Attribution is a licence condition, and
+                showing it wherever the data is loaded is the safe way round; deciding
+                frame by frame whether any OpenStreetMap is currently visible would risk
+                dropping a credit that is owed. Read it as "this install has detail
+                areas", not as "you are looking at one".
+            </p>
+        </div>
 
         <p>
             It is still <strong>not a navigation chart</strong>. It carries no buildings,
