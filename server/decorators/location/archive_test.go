@@ -94,12 +94,20 @@ func readArchiveHeader(t *testing.T) []byte {
 	return readArchive(t, archivePath)
 }
 
+func buildCommandFor(path string) string {
+	if path == archivePath {
+		return "make map-tiles"
+	}
+
+	return "make map-osm"
+}
+
 func readArchive(t *testing.T, path string) []byte {
 	t.Helper()
 
 	raw, err := os.ReadFile(path) // #nosec G304 -- an archive path named by this test
 	if err != nil {
-		t.Fatalf("the basemap archive is missing: %v. Run 'make map-tiles'", err)
+		t.Fatalf("%s is missing: %v. Run %q", path, err, buildCommandFor(path))
 	}
 	if len(raw) < archiveHeaderBytes {
 		t.Fatalf("%s is %d bytes, shorter than its own header", path, len(raw))
@@ -476,7 +484,7 @@ func archiveLayers(t *testing.T, path string) []string {
 
 	raw, err := os.ReadFile(path) // #nosec G304 -- an archive path named by this test
 	if err != nil {
-		t.Fatalf("the basemap archive is missing: %v. Run 'make map-tiles'", err)
+		t.Fatalf("%s is missing: %v. Run %q", path, err, buildCommandFor(path))
 	}
 
 	offset := binary.LittleEndian.Uint64(raw[24:32])

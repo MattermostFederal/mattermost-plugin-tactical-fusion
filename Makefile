@@ -20,8 +20,10 @@ ASSETS_DIR ?= assets
 # Pinned so an archive rebuilt later is rebuilt by the same tiler.
 TIPPECANOE_VERSION ?= 2.78.0
 
-# The OpenStreetMap detail tier's generator, pinned for the same reason.
+# The OpenStreetMap detail tier's generator, pinned for the same reason. The
+# digest travels with the version: moving one without the other fails the build.
 PLANETILER_OMT_VERSION ?= v3.16
+PLANETILER_OMT_SHA256 ?= 246cd5c9c10102a3bcc58465ae7dde5b97aa4cee6524ea25788e23333ba2579d
 
 # Verify environment, and define PLUGIN_ID, PLUGIN_VERSION, HAS_SERVER and HAS_WEBAPP as needed.
 include build/setup.mk
@@ -181,6 +183,7 @@ map-tiles:
 map-osm:
 	docker build --build-arg TIPPECANOE_VERSION=$(TIPPECANOE_VERSION) \
 		--build-arg PLANETILER_OMT_VERSION=$(PLANETILER_OMT_VERSION) \
+		--build-arg PLANETILER_OMT_SHA256=$(PLANETILER_OMT_SHA256) \
 		-t tf-maposm:$(PLANETILER_OMT_VERSION) build/maposm/
 	docker run --rm -v "$(PWD)":/work -e PROFILE="$(PROFILE)" -e JAVA_HEAP="$(JAVA_HEAP)" \
 		-e ALLOW_MIXED_DATES="$(ALLOW_MIXED_DATES)" \

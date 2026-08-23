@@ -18,7 +18,12 @@ RUN git clone --depth 1 --branch ${TIPPECANOE_VERSION} \
 RUN mkdir -p /opt/planetiler \
  && curl -fsSL --retry 3 -o /opt/planetiler/planetiler-openmaptiles.jar \
       "https://github.com/openmaptiles/planetiler-openmaptiles/releases/download/${PLANETILER_OMT_VERSION}/planetiler-openmaptiles.jar" \
- && echo "${PLANETILER_OMT_SHA256}  /opt/planetiler/planetiler-openmaptiles.jar" | sha256sum -c -
+ && if ! echo "${PLANETILER_OMT_SHA256}  /opt/planetiler/planetiler-openmaptiles.jar" | sha256sum -c -; then \
+      echo "the planetiler-openmaptiles jar for ${PLANETILER_OMT_VERSION} does not match" >&2; \
+      echo "PLANETILER_OMT_SHA256. Moving the version means moving the digest with it:" >&2; \
+      echo "set both in the Makefile, or pass both to make." >&2; \
+      exit 1; \
+    fi
 
 ENV PLANETILER_JAR=/opt/planetiler/planetiler-openmaptiles.jar
 

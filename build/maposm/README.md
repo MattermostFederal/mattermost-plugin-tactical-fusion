@@ -518,7 +518,12 @@ at these.
 `admin_level`, and dropping them is what the filter is for. Noted here so nobody
 chases it.
 
-The build is **byte-reproducible** from the pinned sources. Rebuilding the pilot
+The build is **byte-reproducible from the pinned sources given the same
+auxiliary cache**, and that qualifier is the whole of the gap described under
+"Three auxiliary datasets are NOT pinned" above. The extracts, the toolchain and
+the tiler are pinned; planetiler's ~1.2 GB of Natural Earth, water polygons and
+lake centrelines are not, so a clean build made after one of those upstream URLs
+changes can differ. With `build/maposm/cache/` preserved, rebuilding the pilot
 reproduces the committed archive exactly:
 
 ```

@@ -158,7 +158,6 @@ func dumpPluginVersion(manifest *model.Manifest) {
 	fmt.Printf("%s", manifest.Version)
 }
 
-// dumpPluginName writes the plugin's display name from the given manifest to standard out
 func dumpPluginName(manifest *model.Manifest) {
 	fmt.Printf("%s", manifest.Name)
 }

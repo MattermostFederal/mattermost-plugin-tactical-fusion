@@ -1,5 +1,30 @@
 # An OSM detail tier above z9
 
+> **Status: partly superseded. This is a historical record of what was planned,
+> not a description of what shipped.** It is kept for the reasoning behind the
+> design. Read `docs/design/mapping.md` for the implemented contract; where the
+> two disagree, that file is right and this one is not to be used to "restore"
+> anything.
+>
+> Known divergences, all deliberate:
+>
+> - **One archive became one archive per region.** The plan assembles every
+>   region into a single `public/map/detail.pmtiles`. What shipped is one
+>   `<command>-<area>.pmtiles` per region, because a merged archive declares one
+>   rectangular bounds covering everything between its regions, so coverage was
+>   unknowable and stale, partial, uncovered and truncated all rendered alike.
+> - **Build-time regions became a runtime package system.** The plan has no
+>   package route and no package state, on the argument that it keeps the
+>   feature small. An area an operator cannot add without a plugin release is an
+>   area they cannot add, so `server/packages.go`, `/api/v1/packages`, the
+>   `/packages` route and `LocationMapPackagesDir` all exist.
+> - **A buffered `osmium extract` was abandoned.** A multi-country region is
+>   merged rather than cut, because cutting drops a way whose vertices all fall
+>   outside the box and would erase a national border invisibly.
+>
+> Nothing below this banner has been rewritten to match, deliberately: the value
+> of a plan is what it says was intended at the time.
+
 ## Overview
 
 Natural Earth stops being the right source somewhere around z9. This adds a
