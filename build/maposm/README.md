@@ -270,7 +270,7 @@ budget alone would let one accidental region through and a guard that catches
 only the second mistake is not a guard.
 
 Every region is built and measured from **one Geofabrik snapshot, 260820**, the
-pilot's 260818 aside. The eleven release assets total **2,442,966,520 bytes**,
+pilot's 260818 aside. The eleven release assets total **2,442,977,125 bytes**,
 which is 2.44 GB; Hawaii and Guam ship in the plugin instead.
 
 | Region | Extracts | Input | Built |
@@ -400,7 +400,7 @@ that range is `centcom-red-sea`, and it says something: in a mostly water, mostl
 desert region the bytes are coastline and water, which the class filter does not
 touch, rather than the road classes it prunes.
 
-**Every archive so far carries all nine layers**, including Guam's at 976,208
+**Every archive so far carries all nine layers**, including Guam's at 976,239
 bytes. The concern that a small or mostly water region would omit one entirely,
 which `TestArchiveCarriesEveryLayerTheStyleDraws` requires in both directions and
 which no test can catch for a release asset, has not materialised at a thousandth
@@ -532,9 +532,10 @@ c584a1e3ee583aa5013115c9d00504f5169f76fd11a6b2d52ba1cec0b0ca166d  public/map/pac
 
 An earlier hash here, `960e3a27...` over 6,808,864 bytes, belonged to the merged
 `detail.pmtiles` that per-region packages replaced. Planetiler's output is
-identical either way at 11,329,212 bytes; the nine byte difference is metadata
-`tile-join` writes for the archive it is producing, so the merged figure cannot
-be reproduced by this pipeline and is not a regression.
+identical either way at 11,329,212 bytes; the 111 byte difference is metadata
+`tile-join` writes for the archive it is producing, nine bytes of it the naming
+that always differed and 102 the schema stamp added later, so the merged figure
+cannot be reproduced by this pipeline and is not a regression.
 
 Planetiler's scratch (`--tmpdir`, `--tile_weights`) is pointed into `work/` and
 `cache/`, both gitignored. Left at its defaults it writes `data/` into the
