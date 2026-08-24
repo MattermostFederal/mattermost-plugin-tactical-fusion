@@ -432,7 +432,7 @@ the opposite reason: there, failing to draw a map is the silent costly
 direction, and here a name invented from nothing would be a request for an
 archive that does not exist.
 
-**What Phase 1 ships is `indopacom-hawaii`**, z10-14, 6,808,873 bytes, which is what turns
+**What Phase 1 ships is `indopacom-hawaii`**, z10-14, 6,808,975 bytes, which is what turns
 every assertion above from one that skips into one that runs. The pilot
 measurement, the per-zoom curve that decides how deep a bigger profile can go,
 and the extrapolation to the thirteen requested areas of responsibility are all
@@ -444,7 +444,7 @@ responsibility: Korea, Taiwan, Japan, the Philippines, the South China Sea,
 Guam, the Persian Gulf, the Levant, the Red Sea, Ukraine, the Baltics and the
 Horn of Africa. Hawaii stays the reference package because it is small enough to
 commit and is what proves the whole lifecycle of build, package, transfer,
-install and render. **`indopacom-guam` is bundled beside it** at 976,218 bytes,
+install and render. **`indopacom-guam` is bundled beside it** at 976,239 bytes,
 which buys Andersen and the CNMI divert fields and makes the shipped plugin
 exercise the multi-package path rather than the single-package one.
 

@@ -606,7 +606,11 @@ func TestAnArchiveWithNoStampIsTheOriginalSchema(t *testing.T) {
 	path := writePackage(t, dir, "indopacom-hawaii.pmtiles", realPackage(t))
 	p, _ := packagePlugin(t, dir)
 
-	// Every archive published before the stamp existed looks like this.
+	// Built rather than taken from the bundle: every shipped archive carries
+	// the stamp now, so the unstamped case has to be made on purpose or this
+	// stops covering the archives published before the stamp existed.
+	restamp(t, path, `"`+schemaPrefix+`1"`, `"OpenMapTiles"`)
+
 	if err := validPackageHeader(path); err != nil {
 		t.Fatalf("an unstamped archive was rejected: %v", err)
 	}
@@ -615,20 +619,49 @@ func TestAnArchiveWithNoStampIsTheOriginalSchema(t *testing.T) {
 	}
 }
 
+// The shipped archives carry the stamp, so this reads one as it is rather than
+// building the case: a bundled package that stopped being accepted is the
+// failure worth catching here.
 func TestAnArchiveStampedForThisSchemaIsAccepted(t *testing.T) {
 	dir := t.TempDir()
 	path := writePackage(t, dir, "indopacom-hawaii.pmtiles", realPackage(t))
-	restamp(t, path, `"OpenMapTiles"`, `"`+schemaPrefix+`1"`)
 
+	if got := archiveStamp(t, path); got != schemaPrefix+"1" {
+		t.Fatalf("the bundled archive carries %q, want %q", got, schemaPrefix+"1")
+	}
 	if err := validPackageHeader(path); err != nil {
 		t.Fatalf("an archive stamped for schema %d was rejected: %v", mapSchemaVersion, err)
 	}
 }
 
+// The metadata name an archive carries, which is where build.sh writes the stamp.
+func archiveStamp(t *testing.T, path string) string {
+	t.Helper()
+
+	raw, err := os.ReadFile(path) // #nosec G304 -- a temp file this test wrote
+	if err != nil {
+		t.Fatalf("cannot read %s: %v", path, err)
+	}
+
+	offset := binary.LittleEndian.Uint64(raw[24:32])
+	length := binary.LittleEndian.Uint64(raw[32:40])
+	plain, err := io.ReadAll(mustGunzip(t, raw[offset:offset+length]))
+	if err != nil {
+		t.Fatalf("cannot read metadata: %v", err)
+	}
+
+	m := archiveNamePattern.FindSubmatch(plain)
+	if m == nil {
+		t.Fatal("the archive metadata carries no name field")
+	}
+
+	return string(m[1])
+}
+
 func TestAnArchiveFromANewerSchemaSaysToUpgradeThePlugin(t *testing.T) {
 	dir := t.TempDir()
 	path := writePackage(t, dir, "indopacom-hawaii.pmtiles", realPackage(t))
-	restamp(t, path, `"OpenMapTiles"`, `"`+schemaPrefix+`9"`)
+	restamp(t, path, `"`+schemaPrefix+`1"`, `"`+schemaPrefix+`9"`)
 
 	err := validPackageHeader(path)
 	if err == nil {
@@ -961,7 +994,7 @@ func TestAnArchiveThatIsNotThereIsNotAnArchive(t *testing.T) {
 func TestAnArchiveFromAnOlderSchemaSaysToReDownloadTheArea(t *testing.T) {
 	dir := t.TempDir()
 	path := writePackage(t, dir, "indopacom-hawaii.pmtiles", realPackage(t))
-	restamp(t, path, `"OpenMapTiles"`, `"`+schemaPrefix+`0"`)
+	restamp(t, path, `"`+schemaPrefix+`1"`, `"`+schemaPrefix+`0"`)
 
 	err := validPackageHeader(path)
 	if err == nil {
