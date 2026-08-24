@@ -190,7 +190,7 @@ fork. `filter.json` is that filter, and its `$zoom` clause is what holds tertiar
 roads back to z12.
 
 Measured on the pilot: the filter takes the archive from 11,329,212 bytes to
-6,808,873, which is 60% of it.
+6,808,975, which is 60% of it.
 
 **Military classification is not shipped.** OpenStreetMap tags some aerodromes
 `military=airfield` and carries `landuse=military` polygons. Neither is built
@@ -254,10 +254,10 @@ packages are held under 64 MiB by `TestArchivesFitTheBundleTogether`:
 | | bytes |
 |---|---:|
 | `world.pmtiles` | 43,074,410 |
-| `indopacom-hawaii.pmtiles` | 6,808,873 |
-| `indopacom-guam.pmtiles` | 976,218 |
-| **used** | **50,859,501** |
-| **free** | **16,249,363** |
+| `indopacom-hawaii.pmtiles` | 6,808,975 |
+| `indopacom-guam.pmtiles` | 976,239 |
+| **used** | **50,859,624** |
+| **free** | **16,249,240** |
 
 Guam earns its place at under a megabyte: it covers Andersen and the CNMI divert
 fields, and it makes the shipped plugin exercise the **multi-package** path
@@ -275,19 +275,19 @@ which is 2.44 GB; Hawaii and Guam ship in the plugin instead.
 
 | Region | Extracts | Input | Built |
 |---|---|---:|---:|
-| `indopacom-hawaii` | `north-america/us/hawaii` | 27 MB | **6,808,873** (bundled) |
-| `indopacom-korea` | `asia/south-korea`, `asia/north-korea` | 377 MB | **182,564,763** |
-| `indopacom-taiwan` | `asia/taiwan` | 326 MB | **57,553,192** |
-| `indopacom-japan` | `asia/japan` | 2,500 MB | **477,543,062** |
-| `indopacom-philippines` | `asia/philippines` | 604 MB | **160,885,873** |
-| `indopacom-scs` | `asia/china`, `asia/vietnam`, `asia/malaysia-singapore-brunei`, `asia/philippines`, `asia/indonesia` | 4,491 MB | **268,095,846** |
-| `indopacom-guam` | `australia-oceania/american-oceania` | 5 MB | **976,218** (bundled) |
-| `centcom-persian-gulf` | `asia/gcc-states`, `asia/iran`, `asia/iraq` | 571 MB | **125,582,695** |
-| `centcom-levant` | `asia/israel-and-palestine`, `asia/lebanon`, `asia/syria`, `asia/jordan` | 284 MB | **94,109,251** |
-| `centcom-red-sea` | `africa/egypt`, `africa/sudan`, `africa/eritrea`, `asia/yemen`, `asia/gcc-states`, `asia/jordan`, `asia/israel-and-palestine` | 857 MB | **168,252,760** |
-| `eucom-ukraine` | `europe/ukraine` | 874 MB | **351,774,983** |
-| `eucom-baltics` | `europe/estonia`, `europe/latvia`, `europe/lithuania`, `europe/poland`, `europe/belarus`, `russia/kaliningrad` | 2,947 MB | **336,976,212** |
-| `africom-horn` | `africa/somalia`, `africa/ethiopia`, `africa/eritrea`, `africa/djibouti`, `africa/kenya`, `asia/yemen` | 734 MB | **219,627,883** |
+| `indopacom-hawaii` | `north-america/us/hawaii` | 27 MB | **6,808,975** (bundled) |
+| `indopacom-korea` | `asia/south-korea`, `asia/north-korea` | 377 MB | **182,566,918** |
+| `indopacom-taiwan` | `asia/taiwan` | 326 MB | **57,554,170** |
+| `indopacom-japan` | `asia/japan` | 2,500 MB | **477,542,728** |
+| `indopacom-philippines` | `asia/philippines` | 604 MB | **160,887,479** |
+| `indopacom-scs` | `asia/china`, `asia/vietnam`, `asia/malaysia-singapore-brunei`, `asia/philippines`, `asia/indonesia` | 4,491 MB | **268,097,003** |
+| `indopacom-guam` | `australia-oceania/american-oceania` | 5 MB | **976,239** (bundled) |
+| `centcom-persian-gulf` | `asia/gcc-states`, `asia/iran`, `asia/iraq` | 571 MB | **125,583,819** |
+| `centcom-levant` | `asia/israel-and-palestine`, `asia/lebanon`, `asia/syria`, `asia/jordan` | 284 MB | **94,109,271** |
+| `centcom-red-sea` | `africa/egypt`, `africa/sudan`, `africa/eritrea`, `asia/yemen`, `asia/gcc-states`, `asia/jordan`, `asia/israel-and-palestine` | 857 MB | **168,252,834** |
+| `eucom-ukraine` | `europe/ukraine` | 874 MB | **351,775,011** |
+| `eucom-baltics` | `europe/estonia`, `europe/latvia`, `europe/lithuania`, `europe/poland`, `europe/belarus`, `russia/kaliningrad` | 2,947 MB | **336,976,224** |
+| `africom-horn` | `africa/somalia`, `africa/ethiopia`, `africa/eritrea`, `africa/djibouti`, `africa/kenya`, `asia/yemen` | 734 MB | **219,631,668** |
 
 **`eucom-baltics` carries the Suwalki approaches, not just the three states.**
 The first build was Estonia, Latvia and Lithuania alone, and the z12 layerstats
@@ -310,7 +310,7 @@ the extracts without moving the box would have changed almost nothing on screen.
 
 The cost is the largest input on the roster after `indopacom-scs`: 2,947 MB,
 almost all of it Poland, because Poland extends far west of the box and merge
-never cuts. The archive grew 1.6x to 336,976,212 bytes, still 190 MiB clear of
+never cuts. The archive grew 1.6x to 336,976,224 bytes, still 190 MiB clear of
 the upload ceiling.
 
 **No two boxes overlap, and that took a deliberate split.** The client adds one
@@ -370,19 +370,19 @@ though both draw on `asia/gcc-states`.
 
 | Region | Bytes | Land | Bytes per km² | vs pilot |
 |---|---:|---:|---:|---:|
-| `africom-horn` | 219,627,883 | ~2,470,000 km² | ~89 | 0.4x |
-| `indopacom-hawaii` | 6,808,873 | 28,311 km² | 241 | 1.0x |
-| `centcom-red-sea` | 168,252,760 | ~800,000 km² | ~210 | 0.9x |
-| `centcom-persian-gulf` | 125,582,695 | ~500,000 km² | ~251 | 1.0x |
-| `centcom-levant` | 94,109,251 | ~300,000 km² | ~314 | 1.3x |
-| `indopacom-scs` | 268,095,846 | ~570,000 km² | ~470 | 2.0x |
-| `indopacom-philippines` | 160,885,873 | 300,000 km² | 536 | 2.2x |
-| `eucom-ukraine` | 351,774,983 | 603,548 km² | 583 | 2.4x |
-| `indopacom-korea` | 182,564,763 | 220,750 km² | 827 | 3.4x |
-| `indopacom-guam` | 976,218 | 1,008 km² | 968 | 4.0x |
-| `eucom-baltics` | 336,976,212 | ~330,000 km² | ~1,021 | 4.2x |
-| `indopacom-japan` | 477,543,062 | 377,975 km² | 1,263 | 5.2x |
-| `indopacom-taiwan` | 57,553,192 | 36,197 km² | **1,590** | **6.6x** |
+| `africom-horn` | 219,631,668 | ~2,470,000 km² | ~89 | 0.4x |
+| `indopacom-hawaii` | 6,808,975 | 28,311 km² | 241 | 1.0x |
+| `centcom-red-sea` | 168,252,834 | ~800,000 km² | ~210 | 0.9x |
+| `centcom-persian-gulf` | 125,583,819 | ~500,000 km² | ~251 | 1.0x |
+| `centcom-levant` | 94,109,271 | ~300,000 km² | ~314 | 1.3x |
+| `indopacom-scs` | 268,097,003 | ~570,000 km² | ~470 | 2.0x |
+| `indopacom-philippines` | 160,887,479 | 300,000 km² | 536 | 2.2x |
+| `eucom-ukraine` | 351,775,011 | 603,548 km² | 583 | 2.4x |
+| `indopacom-korea` | 182,566,918 | 220,750 km² | 827 | 3.4x |
+| `indopacom-guam` | 976,239 | 1,008 km² | 968 | 4.0x |
+| `eucom-baltics` | 336,976,224 | ~330,000 km² | ~1,021 | 4.2x |
+| `indopacom-japan` | 477,542,728 | 377,975 km² | 1,263 | 5.2x |
+| `indopacom-taiwan` | 57,554,170 | 36,197 km² | **1,590** | **6.6x** |
 
 Hawaii was the only density figure this pipeline had, and it is the **least**
 representative of the roster rather than a middle case. An island chain with one
@@ -408,10 +408,10 @@ of Japan's size.
 
 ### `indopacom-japan` is the largest region and it fits
 
-Japan is **477,543,062 bytes, or 455.4 MiB**, which is **56.6 MiB under the 512
+Japan is **477,542,728 bytes, or 455.4 MiB**, which is **56.6 MiB under the 512
 MiB upload ceiling** in `server/packages.go`. It installs through the System
 Console uploader like any other area and needs no special handling. It is the largest region on the roster by input and by output; `eucom-ukraine`
-is second at 351,774,983 bytes and still 176 MiB clear, so nothing else here
+is second at 351,775,011 bytes and still 176 MiB clear, so nothing else here
 threatens that ceiling.
 
 Had it landed above, the file would have been copied into
@@ -527,7 +527,7 @@ changes can differ. With `build/maposm/cache/` preserved, rebuilding the pilot
 reproduces the committed archive exactly:
 
 ```
-d29847a48ce6e1cfa7ed3affbd0751e29ecd6810b745eb711ac1abc7a5f1f518  public/map/packages/indopacom-hawaii.pmtiles
+c584a1e3ee583aa5013115c9d00504f5169f76fd11a6b2d52ba1cec0b0ca166d  public/map/packages/indopacom-hawaii.pmtiles
 ```
 
 An earlier hash here, `960e3a27...` over 6,808,864 bytes, belonged to the merged
@@ -547,7 +547,7 @@ Hawaii, main islands, z10-14, from `hawaii-260818.osm.pbf`.
 | Stage | Bytes |
 |---|---:|
 | planetiler output | 11,329,212 |
-| after the `tile-join` class filter | **6,808,873** |
+| after the `tile-join` class filter | **6,808,975** |
 
 Per zoom, from planetiler's own `--output_layerstats` (uncompressed layer bytes,
 before the class filter):
