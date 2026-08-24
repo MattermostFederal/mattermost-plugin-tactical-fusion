@@ -109,7 +109,7 @@ jobs:
       - name: Upload Go Grype SARIF to code scanning
         if: always() && steps.grype-server.outputs.sarif != ''
         continue-on-error: ${{ github.event.repository.private }}
-        uses: github/codeql-action/upload-sarif@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
         with:
           sarif_file: ${{ steps.grype-server.outputs.sarif }}
           category: grype-server
@@ -136,7 +136,7 @@ jobs:
       - name: Upload webapp Grype SARIF to code scanning
         if: always() && steps.grype-webapp.outputs.sarif != ''
         continue-on-error: ${{ github.event.repository.private }}
-        uses: github/codeql-action/upload-sarif@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
         with:
           sarif_file: ${{ steps.grype-webapp.outputs.sarif }}
           category: grype-webapp
@@ -196,7 +196,7 @@ jobs:
       - name: Upload Go CodeQL SARIF to code scanning
         if: always() && hashFiles('dist/codeql-go.sarif') != ''
         continue-on-error: ${{ github.event.repository.private }}
-        uses: github/codeql-action/upload-sarif@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
         with:
           sarif_file: dist/codeql-go.sarif
           category: codeql-go
@@ -205,7 +205,7 @@ jobs:
       - name: Upload JS/TS CodeQL SARIF to code scanning
         if: always() && hashFiles('dist/codeql-js.sarif') != ''
         continue-on-error: ${{ github.event.repository.private }}
-        uses: github/codeql-action/upload-sarif@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
         with:
           sarif_file: dist/codeql-js.sarif
           category: codeql-js
