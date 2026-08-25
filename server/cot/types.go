@@ -96,7 +96,7 @@ func decodeType(raw string) decodedType {
 		return decodedType{Label: label}
 	}
 
-	if strings.HasPrefix(raw, "a-") {
+	if strings.HasPrefix(raw, atomPrefix) {
 		return decodeAtom(raw)
 	}
 

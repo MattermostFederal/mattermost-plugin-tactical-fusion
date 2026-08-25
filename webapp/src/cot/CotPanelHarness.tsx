@@ -2,6 +2,7 @@ import React, {useState} from 'react';
 
 import CotCard from './CotCard';
 import type {CotPayload} from './types';
+import {emptyDetail} from './types';
 
 import {RhsTitle, RhsView} from '../components/rhs/RhsView';
 import {_resetForTesting as resetDecorators} from '../decorators/registry';
@@ -10,7 +11,10 @@ import {clearSelection} from '../decorators/selection';
 import {registerCotPanel} from './index';
 
 interface Props {
-    event?: Record<string, string>;
+    event?: Record<string, unknown>;
+
+    /** Registry keys, camelCased, merged over an empty block. */
+    detail?: Record<string, string>;
     source?: string;
     fileName?: string;
     src?: string;
@@ -26,6 +30,7 @@ interface Props {
  */
 const CotPanelHarness: React.FC<Props> = ({
     event = {},
+    detail = {},
     source = 'fence',
     fileName = '',
     src = '<event uid="ANDROID-1"/>',
@@ -46,6 +51,11 @@ const CotPanelHarness: React.FC<Props> = ({
         fileName,
         events: [{
             uid: 'ANDROID-1',
+            cotClass: '',
+            detailUnknown: '',
+            detailDropped: '',
+            detail: {...emptyDetail(), ...detail},
+            flow: [],
             callsign: '',
             cotType: 'a-f-G-U-C',
             typeLabel: 'Friend ground',

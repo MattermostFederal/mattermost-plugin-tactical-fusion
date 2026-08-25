@@ -6,6 +6,17 @@ Prerequisites that need a running server and have **not** been checked.
 
 ### Cursor on Target
 
+**The `<detail>` extension shapes.** `docs/design/cot.md` carries the provenance
+table. Three rows in it rest on nothing citable and render as the stated string
+rather than as a decode: `precisionlocation/@pdop`, `@hdop` and `@vdop`;
+`status/@readiness`; and `_medevac_/@security`, whose numeric 9-line vocabulary
+is plausible and uncited. None has been seen against a real emitter.
+
+**No real ATAK output has been through the registry.** Every fixture in the test
+suite is hand-written or built from the registry itself, so the parser has never
+met an event a device actually produced. The shapes most likely to be wrong are
+the ones with the most attributes: `_medevac_` and `sensor`.
+
 - **Does `plugin.API.GetFile` succeed inside `MessageWillBePosted`**, before the
   file is attached to the post? Expected yes: the upload has already written the
   `FileInfo` and the filestore object, and only `PostId` is unset. If it does

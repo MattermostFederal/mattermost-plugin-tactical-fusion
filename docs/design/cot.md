@@ -208,6 +208,14 @@ with. `unicode.IsControl` is `Cc` only, so U+200E, U+200F, U+200B and the rest
 survived it; none of them belongs in a callsign, and two `uid` values that render
 identically is impersonation of another track.
 
+**The ranges themselves are gone**, and were dead from the moment the category
+test went in above them. All ten codepoints they named, U+202A to U+202E,
+U+2066 to U+2069 and U+FEFF, are in `Cf`, so the three arms below it could never
+run. They read as a second, narrower defence and were none:
+`TestTheCategoryTestCoversTheRangesItReplaced` sweeps every one of them rather
+than sampling, so a Go release that moved any codepoint out of `Cf` fails there
+instead of quietly letting an override back into a callsign.
+
 **Every author-controlled string is sanitised, including the three that are not
 fields.** `lead`, `trail` and `src` were the last unfiltered values, and `src` is
 the one that matters most: the panel's source pane is what a reader opens to
@@ -609,38 +617,88 @@ and Cursor on Target is the last entry. The catalog exists so a test asking
 decorators and quietly ignoring anything that is not one, which is exactly how
 this section first went in with three tests still green.
 
-**Every example is one line, and none of them is a fenced block.** Two separate
-reasons, and both of them bite.
+**The examples are real fenced blocks, and two invariants make that safe.** A
+block labelled `cot` or `xml` is exactly what `cotSource` recognises, so a post
+made of them is a post describing the thing it is made of. Both ways that can go
+wrong are closed by construction rather than by hoping the packing is kind.
 
-The packer's atomic unit is a line, so a fenced block spanning several of them
-can be split across two posts: one message ends holding an unterminated fence
-and the next opens with an orphan closing one. A single line cannot be split, so
-this cannot happen however small a server's post limit turns out to be.
+*A fence-bearing chunk is one packing atom.* `packChunks` writes `chunk.lines[i]`
+verbatim and only ever measures its rune count, so an atom holding a whole
+chunk's worth of blocks (its notes, its fences and the XML between them) cannot
+be split across two posts. The earlier shape wrote one line per row, which left a
+fence able to land with its opener in one message and its closer in the next.
 
-The other reason is that this post is describing the thing it is made of. A
-fenced block labelled `cot` or `xml` is exactly what `cotSource` recognises, and
-`SoleFencedBlock` needs only that there be **one** of them in the message. A
-details post that happened to be chunked down to a single labelled fence would
-be stamped: the card would own the body, and every other row in that post would
-render as the plain text of its own markup. The events are therefore written
-inside **inline code**, which is a code range, so `SoleElementSpan` does not see
-an event in one and `SoleFencedBlock` has nothing to find at all.
+*Every fence-bearing atom carries at least two blocks.* `SoleFencedBlock` needs
+there to be exactly **one** fence in the message, so two or more make it answer
+no; and the bare-event fallback `SoleElementSpan` cannot see the events either,
+because a fenced block is a code range. A message holding no fence at all is
+equally safe. The one forbidden state is a message holding exactly one, which is
+why the count is asserted per atom rather than per message: an atom is what a
+message is assembled from, so holding the atoms to it holds every packing to it.
 
-Showing the fence syntax at all is done by printing the opening line, `` ```cot ``,
-as a row of its own rather than by drawing a real block.
+`TestNoCotChunkCarriesExactlyOneFence` is the second invariant, and
+`TestEveryCotAtomFitsTheFloorBudget` is what keeps the first one affordable. An
+atom is indivisible, so one larger than `safePostRunes - headingBudget` would
+leave `postDetails` with nothing smaller to retry: the floor is the bottom rung
+of that ladder, not a target. That is the real cost of fencing, and it is why the
+examples are grouped two or three to an atom rather than all of one heading's.
+
+**A pretty-printed event is only ever recognised behind a fence, and the rows say
+so.** `isIndentedCode` treats any line indented four spaces or a tab as a code
+range, and `SoleElementSpan` refuses to look inside one. Nested XML reaches four
+spaces at its second level, and a hanging attribute indent reaches seven on the
+first, so *no* readably indented event survives a bare paste. Only the flat,
+one-line form does, which is also how an event arrives over the wire.
+
+That is why "Posting one" leads with the flat event and then says to fence the
+indented one, rather than showing the same event three ways and implying all
+three are interchangeable. `TestTheFlatExampleIsRecognizedWithoutAFence` asserts
+both halves, the flat one being found and the indented one not, because the rows
+teach the difference between them and a row is worth nothing if only its
+agreeable half is checked. The same correction is in `public/help/formats.html`,
+whose "a fence is optional" bullet had claimed it of the indented example printed
+directly above it.
+
+**The examples are whole events, not `detail` fragments.** A fragment had to be
+read alongside a note saying where to put it; a fenced event can be copied out of
+the post and pasted straight back into the channel, which is the only way a
+reader confirms that what they are looking at works. It also lets the section
+cover the whole `<detail>` registry rather than the four elements that fitted on
+one line each.
 
 **The test that guards this asks `cotSource`, not the text.** It used to check
 that no unstamped post contained the substring `<event`, which was true and
-sufficient while the only event in the output was the live card's own post. It
-is now false by construction: the details post is full of events, inside code,
-where nothing reads them. `TestTheEventExampleIsAPostOfItsOwn` therefore runs
-every created post through the recognition function itself, which is both
-stronger and the actual invariant.
+sufficient while the only event in the output was the live card's own post. It is
+now false by construction: the details posts are full of events, in fences where
+nothing reads them. `TestTheEventExampleIsAPostOfItsOwn` therefore runs every
+created post through the recognition function itself, and the budget sweep in
+`TestDetailsPostWhateverTheServerAccepts` asks the same question again at every
+budget the retry ladder can choose, which is where a packing bug would appear
+rather than at the default one.
+
+The flat event is written out rather than sliced from the pretty one, because
+collapsing the pretty source would have to know which of its whitespace sits
+inside an attribute value. `TestTheFlatExampleIsTheCardsOwnEvent` holds the two
+to the same uid, type, time and point, which is the same shape of guard
+`TestTheFileExampleIsTheCardsOwnEvent` already applies to `cotDetailFile`. The
+compact row in `examples` is sliced from the flat one, as it always was.
+
+The block that demonstrates an unfenced event is itself fenced, labelled `text`.
+It has to be a fence of some kind for the post to survive itself, and a label
+`cotInfoString` refuses is what keeps the row from being read as the event it is
+printing.
+
+`longestDetailAtom` in the split test reads `detailMessageSets` rather than
+`detailSetOrder`, so it covers this set as well. Listing the decorators there
+measured a row of text while the packer was being handed a fenced block twenty
+times its size, and the budget assertion silently stopped meaning anything.
 
 `TestTheDetailEventsAreWhatTheirRowsClaim` holds the examples to their notes: a
 row promising several events parses to several, and the link row's link parses
 and names a parent. A row teaching the wrong shape cannot be caught by reading
-it.
+it. `TestEveryRegisteredExtensionIsDemonstrated` reads `cot.Extensions()` rather
+than a list somebody maintains, so an entry added to the registry is an entry the
+examples section is required to show.
 
 ### A backtick in `plugin.json` breaks both builds
 
@@ -801,3 +859,377 @@ check that storage is reachable.
 value pairs, so no test could tell one refusal from another and the call site
 kept an inherited code after the reason for it had changed. The ownership test
 asserts the new code is present and the old one is not.
+
+## The `<detail>` extension registry
+
+`<detail>` has no schema. It is an open container into which ATAK,
+FreeTAKServer, TAK Server and third-party plugins each write their own
+conventions, so there is nothing to validate against and the only honest shape
+is a registry of what this build knows, with everything else falling through to
+the source pane.
+
+`extensions.go` declares that registry. The parser reads it to decide which
+children to collect, `eventProps` reads it to decide what to write, and
+`cot_sync_test.go` reads it to build the fixture that holds the webapp to it.
+Adding an extension is one row.
+
+### The props key space is closed, and that is a security property
+
+Every key an extension writes is `<prefix>_<key>` with both halves coming from
+the registry. No author string is ever a props key.
+
+That is not tidiness. `format` and `value` sit in the same map, and
+`isLinkable` builds `/decorate/location?f=&v=` from them verbatim; `affiliation`
+sits there too and keys the marker colour, which `cot.md` already refuses to let
+an author choose. An author-chosen key beside those three is the whole attack,
+and `_flow-tags_`, whose attribute NAMES are the data, is the one element that
+would have supplied it.
+
+So `_flow-tags_` is not a registry entry at all. It is read by one function into
+an ordered array under `flow`, where a name is a value and can collide with
+nothing. `TestEventPropsKeysAreClosed` feeds it attribute names spelled
+`format`, `value`, `affiliation`, `lat` and `uid`, and asserts the event's
+top-level key set is still exactly what the registry can produce.
+
+### No author string is ever a URL, an `src`, a `style` value or a `className`
+
+This is the general rule the `color` and `usericon` entries rest on, and it is
+worth stating once rather than re-deriving per element.
+
+`color/@argb` is the first author-controlled value in this repository that
+reaches a style property. React sets style values through `setProperty` without
+sanitising, so `background: url(https://attacker/px)` in a swatch would be an
+outbound request from every reader who opens the panel: a read receipt on a
+tactical channel.
+
+ATAK writes `argb` as a **signed 32-bit decimal** (`argb="-1"`), not as hex. Go
+parses it, drops the alpha byte and writes a validated `#RRGGBB` or writes
+nothing. The webapp re-validates against `/^#[0-9a-f]{6}$/i` before the value
+reaches a style property, because a props blob is not a trusted input either:
+the type is forgeable and the props under a plugin's key are not protected.
+
+The alpha byte is dropped rather than applied. An `argb` of `#00FF0000` is a
+fully transparent swatch, which is a row that says nothing, and the hex is
+rendered as text beside the swatch so colour is never the only channel. The
+swatch is `aria-hidden` like the affiliation dot and carries a themed 1px
+border, without which `#FFFFFF` on a light theme is an invisible square.
+
+`usericon/@iconsetpath` is text for the same reason and is one refactor away
+from being an `<img src>`, which is why the rule is written down rather than
+left to each call site.
+
+### Author URLs are not clickable, and what that does and does not buy
+
+`__video/@url` and a `ConnectionEntry` address are author-controlled. They are
+rendered as text, never as an anchor.
+
+**What that buys:** no anchor is created. A plugin that owns a post body draws
+its own markup and gets none of Mattermost's markdown renderer, so nothing
+autolinks inside the card or the panel.
+
+**What it does not buy** is that the URL is unreachable, and an earlier draft of
+this note claimed it did by citing the page CSP from `decorators.md`. That CSP
+governs `/decorate/*` and `/map`, which are this plugin's own routes. The card
+and the panel render inside the Mattermost webapp, on Mattermost's origin, under
+Mattermost's CSP, with this bundle already trusted. And in the fence case the
+raw event is still in `post.Message`, which Mattermost's own markdown autolinks
+on every fallback surface: mobile, search results, export, and this plugin's own
+`Fallback` after an edit.
+
+The limit is stated rather than papered over. `__video/@url` is kept off the
+card entirely; the panel shows it as text under its own heading.
+
+### Parent, namespace, and who wins a repeat
+
+Three rules the parser did not have, each of which was a way for the card to
+disagree with the pane a reader opens to check it.
+
+**Parent.** `readChild` matched on `Name.Local` at any depth, so a `<contact>`
+nested inside another extension became the event's callsign and a `<link>`
+inside `<__video>` became a relation in the "Relates to" row. An extension is
+now read only as a child of the `<detail>` element at depth 2, and a nested
+child (`chatgrp`, `ConnectionEntry`) only under the block that owns it.
+
+**The parent stack has to survive `readText`.** `readText` swallows the
+`<remarks>` subtree and calls `counts.enter()` itself, so a stack maintained
+only in `Parse`'s main loop desyncs the first time remarks contain markup, and
+the symptom is a later sibling attributed to the wrong parent, which is the
+exact bug the parent rule exists to fix. So the stack IS the depth: `enter`
+takes the element name and pushes it, `leave` pops, and `depth` is the stack's
+length.
+
+**Namespace.** Matching on `Name.Local` alone read `<x:contact callsign="ADMIN"/>`
+as the callsign. Elements and attributes are now required to be in no namespace.
+
+**And the stack carries the namespace too**, which the first version of this
+missed. Pushing `Name.Local` enforced the rule on the element being matched and
+on none of its ancestors, so `<x:detail>` was indistinguishable from `<detail>`
+to every parent test below it and everything inside one was read as the event's
+own, while the pane a reader opens to check the card showed markup that was not
+`<detail>` at all. `enter` pushes a qualified name, which can never equal a bare
+registry element name.
+
+**A nested child needs the element it is INSIDE to have been accepted**, and
+that is per instance, not per name. Acceptance rides on the stack beside the
+path, so a child asks about the element enclosing it rather than about a name.
+
+The first version asked a flat set, which answered "some element with this name
+was accepted somewhere earlier in this event". That let a legitimate
+`<detail><__video/></detail>` vouch for a second `<__video>` parked outside
+`<detail>` entirely, so a `ConnectionEntry` under the second one became a panel
+row built from markup that was never in `<detail>`.
+
+**A prefix bound to the empty URI is refused outright.** `xmlns:x=""` resolves
+`<x:detail>` back to `Space == ""`, so the qualified push returns the bare name
+and every namespace test in the file is undone at once. Go accepts that binding
+although XML Namespaces forbids it, so `enter` refuses the source. The legal
+default undeclaration `xmlns=""` arrives as `Space == ""`, `Local == "xmlns"`
+and is untouched.
+
+**A namespaced root is refused rather than stamped.** Every child of
+`<event xmlns="urn:cot">` is skipped for carrying a namespace, while the
+unprefixed `uid`, `type` and `time` attributes carry none and survive. The card
+would therefore have told a reader the event stated no position when it stated
+one, which is the claim this package exists not to make.
+
+**First wins, for both a repeated element and a duplicate attribute.**
+`encoding/xml` performs no duplicate-attribute check, verified against the
+pinned SDK, and the two halves of the old code disagreed: `attrValue` was
+first-wins while a repeated `<contact>` was last-wins because each arm assigned.
+One rule now, and it is `attrValue`'s.
+
+That rule is also what keeps the sync fixture honest. Because registry names are
+a closed set and repeats add no keys, no cap can drop a key from a
+registry-derived fixture, so there is no `maxCotBlocks` to pin and no way for the
+cross-language guard to narrow as entries are added.
+
+**"Repeats add no keys" was not true of nested children**, and that is the
+second thing acceptance had to be about the instance rather than the name. A
+repeated `<__chat>` is rejected by first-wins, but its `<chatgrp>` was still
+read, so `chat_sender` from the first block rendered beside `chatgrp_uid0` taken
+from the second. `TestARejectedRepeatDoesNotContributeItsChild` holds it.
+
+**Attributes join the budget.** `budget.enter` counts `len(start.Attr)` as well
+as the element. Attributes were free, and `_flow-tags_` is the first element
+whose attribute count is author-chosen without bound.
+
+### Classification decides layout, in two passes, and the type code is final
+
+The card gains one summary line chosen by a class. Four of them, `chat`,
+`medevac`, `sensor` and `video`, written into props only when they change
+something, per the `putIfSet` precedent. Absent is the default and is today's
+card.
+
+**Pass 1 matches the type code and is final. Pass 2 may only promote an event
+pass 1 left unclassified.**
+
+A single ordered table of "type matches X **or** block present" was the obvious
+design and is wrong. Under it, a hostile contact carrying an empty `<__chat/>`
+classifies as chat, and its remarks are promoted into a message-shaped block:
+ten bytes, chosen by the author, to re-shape somebody else's contact report. An
+`a-*` atom is never re-classed by a `<detail>` child.
+
+**Matching is case-sensitive**, because case is part of a CoT code everywhere
+else in this package and a `classify` that folded it would disagree with the
+label rendered beside it. Match kind (exact or prefix) is a field on the row
+rather than a glob a reader has to interpret.
+
+**Layout degrades to the default when the block the class names is absent.** A
+`b-t-f` with no `__chat` element has no sender and no room, so the chat heading
+would be empty chrome. Classification is type-driven; layout selection needs the
+data to draw.
+
+**Classes apply to single-event cards only.** The card already lists rather than
+details a batch, and a post carrying a chat, a sensor and three position reports
+has no one class. Each event keeps its own for the panel.
+
+**A class is frozen in props like everything else here.** Two identical GeoChat
+events posted either side of this change render differently in the same channel,
+because the older one carries no class. That is the same trade the frozen-props
+section above argues, and `cot_type` is stored, so a later version could
+re-derive rather than being stuck with it.
+
+### The chat card is a reading of an event, not a message
+
+`__chat/@senderCallsign` is author-chosen text with no relationship to the
+Mattermost identity that posted. Anything shaped like a quoted message from a
+named sender borrows Mattermost's own attribution chrome, so an author who sets
+`senderCallsign` to a colleague's name would hand a reader a message from that
+person.
+
+This is the same failure `cot.md` already argues for `uid` ("two `uid` values
+that render identically is impersonation of another track") and for the example
+carrying no `__group`, on a louder surface.
+
+So the chat heading stays inside the card's own header treatment and is labelled
+as what the event states. No blockquote, no avatar, no username styling. The
+message text is rendered exactly once: the class suppresses the ordinary Remarks
+row rather than drawing the same string twice.
+
+### What the registry does and does not decode
+
+`Unit` on an attribute is the whole formatting vocabulary. Empty means the
+sanitised stated string; `m`, `°`, `%` and `m/s` parse the number and append the
+unit, inheriting the `9999999.0` sentinel handling from `knownNumber`.
+
+**`courseText` could not be reused for degrees.** It rejects anything below
+zero, which is right for a course and wrong for `Attitude/@pitch` and `@roll`,
+`track/@slope` and `sensor/@elevation`, all of which are legitimately negative.
+Reusing it would have silently dropped every negative attitude. `signedDegrees`
+is the one new formatter in this work.
+
+**`Attitude/@yaw` renders as "Yaw", not "Heading".** Yaw is orientation about
+the vertical axis; `track/@course` is the event's own word for direction of
+travel. An event carrying both would otherwise show two rows both labelled
+Heading and disagreeing.
+
+**MEDEVAC counts are written even when they are zero**, and that fell out rather
+than being built. The registry began with a `Zero` flag on an attribute, added
+because a stated zero and an unstated field are different facts and a card
+reading "1 priority" for an event that stated "0 urgent, 1 priority, 0 routine"
+is wrong about casualties. Writing it showed the flag had nothing to do:
+`putIfSet` and the block renderer both drop the empty string, not `"0"`, so a
+stated zero already survived. The flag came out. `TestMedevacStatedZerosSurvive`
+is what keeps that true, since it is now a property of a renderer rather than of
+a field somebody can see.
+
+**`_medevac_` attribute names are inconsistently cased in the wild.** Both
+`Security` and `security` occur. Both spellings are separate registry rows
+mapping to one key, which is data rather than a case-folding flag, and first-wins
+resolves a collision with no new branch and no new rule.
+
+**`_medevac_/@security` is shown as stated, not decoded.** The numeric 9-line
+vocabulary (0 no enemy, 1 possible enemy, and so on) is plausible and this
+plugin has no primary source for it that also states TAK writes it that way.
+Shipping a decode that cannot be cited is the derived claim
+`TestNoCountryIsDerivedForAnEvent` exists to prevent.
+
+**An extension with no attributes is a presence row.** `archive` writes
+`"stated"` under its own prefix. An empty block would contradict `putIfSet`, and
+a row reading "Archive: true" is not a sentence a reader acts on.
+
+### `_flow-tags_`
+
+The one element whose attribute names are the data, and the reason it is handled
+by hand rather than by a registry row.
+
+- Stored as an **ordered array**, never a map. `json.Marshal` sorts map keys and
+  the ordering IS the processing path.
+- **`xmlns` declarations arrive as attributes.** `Name.Local` on
+  `xmlns:x="urn:evil"` is `"x"`, verified against the pinned SDK, so an
+  unfiltered reader would render a namespace URI as a hop's timestamp. Any
+  attribute in or named `xmlns` is skipped.
+- **`version` is excluded by name**, or the table gains a system called
+  "version" whose timestamp is "1".
+- **A name is dropped rather than truncated.** A truncated key is our word, not
+  the event's, and two long names would truncate to two rows a reader cannot
+  tell apart.
+- **The cap drops from the front.** Flow tags are appended, so document order is
+  oldest first, and dropping the tail would discard the most recent hops, which
+  are the ones a reader is trying to see.
+- **A timestamp that is not RFC 3339 keeps its hop** and is shown as stated.
+  Omitting it would show a shorter route than the event described.
+
+Rendered under "Processing path". The element name is not shown, and the times
+go through `dtg.FormatZulu` like every other time in this repository. Rendering
+them as a bare time of day was considered and refused: it is lossy across a day
+boundary, and it would be a second DTG rendering.
+
+### The source pane now covers everything the parser read
+
+`maxInlineSrcRunes` was 8192 while `Parse` accepts `MaxSourceBytes`, 64 KiB, so
+the pane a reader opens to check the card covered the first eighth of what the
+card was derived from.
+
+That was survivable while five elements were read from the top of a small event.
+It is not survivable for a registry: an extension parsed from byte 20000 landed
+in props with nothing in the pane to verify it against, which inverts the pane's
+entire purpose. Worse, every claim in this note and in the plan that unknown
+`<detail>` children "remain readable in As posted" was false past that boundary,
+for exactly the extension-rich events the registry exists to read.
+
+`maxInlineSrcRunes` is now `MaxSourceBytes`. The budget affords it:
+`PostPropsMaxUserRunes` is 760,000 runes, against about 65,000 of `src`.
+
+`detail_unknown` closes the other half. Once the panel enumerates blocks, an
+event with none reads as "this event carried nothing" rather than "this build
+did not recognise what it carried", so the parser counts the `<detail>` children
+it skipped and the panel says so and points at the pane.
+
+### Over budget, the card degrades before it is refused
+
+`cotStamp` discarded the whole clone when the props map exceeded the budget.
+With extension keys added, a post that stamps today could stop stamping, and the
+reader would meet raw XML where they used to meet a card. That is a regression
+this work would have introduced.
+
+The ladder is now: measure the full map; over budget, rebuild without the
+extension keys and measure again; only then refuse. The middle rung keeps
+everything version 2 ever wrote, so the degraded card is exactly the card this
+feature shipped with, and it is logged under its own code rather than sharing
+the refusal's.
+
+`TestABatchOfMaximalEventsStillStamps` measures the shape that actually decides
+it: `maxCotEvents` events, each carrying every registry entry at its cap, with
+`lead` and `trail` at `maxNoteRunes` **each** and `src` at its new cap. A test
+built on one maximal event measures a case that was never in doubt. It also
+asserts the extension keys are PRESENT, because without that the two rungs could
+be swapped and every test would still pass while every post silently lost them.
+
+**The degraded rung says so on both surfaces.** `detail_dropped` is the one key
+it adds. Without it the panel draws no groups and no unrecognised count, which a
+reader meets as "this event carried nothing" rather than "this did not fit":
+the same false reading `detail_unknown` exists to prevent, arriving by a
+different route. The card carries the notice too, because the degraded rung also
+drops `class`, so a MEDEVAC card's summary line vanishes with nothing to explain
+it and a reader who never opens the panel would see only the absence.
+
+**A props map that will not marshal is its own failure**, under `TF-11008`.
+Folding it into the size refusal told the author their event was too big for a
+failure that has nothing to do with their event and that no rung of this ladder
+can shed: the value came from something else already attached to the post.
+
+**The card's one summary line refuses rather than clips, for the same reason.**
+Dropping trailing readings until the line fits is right until one reading alone
+is over the cap: popping to empty made the line vanish, and clipping put ninety
+runes of an author's `urgent` value under "Patients stated" with the word itself
+cut off. Neither is a reading. The line says the value is stated and points at
+the panel.
+
+**A figure too long to be a reading is refused rather than clipped.**
+`FormatFloat` never uses exponent notation, so a subnormal like `1e-320` expands
+to 324 runes against a stated field cap of 128. A clipped number still reads as
+a number, which is worse than an absent row, so this follows the flow-name rule.
+Negative zero is normalised for the same class of reason: `-0` reads as a
+direction on a bearing and as a sign on a battery.
+
+### Where each extension's shape came from
+
+`<detail>` is convention rather than standard, so the registry records what each
+row rests on. Anything not tied to a primary source renders as **stated** rather
+than as a decode, which needs no second code path: `Unit == ""` already means
+"the sanitised string the event wrote".
+
+| Extension | Rests on |
+|---|---|
+| `contact/@endpoint` | ATAK-CIV, written on every self position report |
+| `__group`, `track`, `remarks`, `link` | Already shipped; unchanged here |
+| `uid/@Droid` | ATAK-CIV |
+| `takv` | ATAK-CIV, the client's own version element |
+| `precisionlocation/@geopointsrc`, `@altsrc` | ATAK-CIV |
+| `precisionlocation/@pdop`, `@hdop`, `@vdop` | **Unverified.** Rendered as stated |
+| `archive` | ATAK-CIV, presence only |
+| `usericon/@iconsetpath` | ATAK-CIV |
+| `color/@argb` | ATAK-CIV. The signed-decimal encoding is the part that matters and is why it is decoded rather than shown raw |
+| `track/@slope` | ATAK-CIV |
+| `status/@battery` | ATAK-CIV. `@readiness` is **unverified** and rendered as stated |
+| `Attitude` | FreeTAKServer's CoT model |
+| `sensor` | ATAK-CIV |
+| `__video`, `ConnectionEntry` | ATAK-CIV |
+| `__chat`, `chatgrp` | ATAK-CIV GeoChat |
+| `_medevac_` | FreeTAKServer's CoT model. `@security` is **not decoded**, see above |
+| `_flow-tags_` | The MITRE XSD in the ATAK repository, which is also where the open attribute set is stated |
+
+Two things this table is for. It says which rows a maintainer may tighten
+without new evidence, and it says which ones a bug report should be believed
+about first.

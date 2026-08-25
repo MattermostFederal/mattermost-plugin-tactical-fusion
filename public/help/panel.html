@@ -859,13 +859,45 @@
         </p>
 
         <p>
+            <strong>Under the remarks are the <code>detail</code> extensions</strong> the
+            event carried, in a fixed set of groups rather than one heading each: Device
+            (the TAK client, battery, network endpoint, icon and stated colour), Position
+            quality (where the position and altitude came from), Orientation (yaw, pitch,
+            roll and slope), and Payload (sensor, video, GeoChat and MEDEVAC). A group
+            with nothing in it is not drawn at all.
+        </p>
+
+        <p>
+            <strong>Yaw is called yaw.</strong> It is which way the platform is pointing,
+            which is not the same as the direction it is travelling; that is the course,
+            and it is up in the readings where the event put it. Naming both "heading"
+            would give you two rows that disagree.
+        </p>
+
+        <p>
+            <strong>The processing path is collapsed.</strong> An event that crossed one
+            or more servers carries a note from each, and the panel lists them in the
+            order the event recorded them. It starts closed because it says how the event
+            travelled rather than anything about what it describes.
+        </p>
+
+        <p>
+            <strong>What this build did not recognise is stated.</strong> If the event
+            carried <code>detail</code> elements this version does not read, the panel
+            says how many, so an event with no groups reads as "nothing recognised here"
+            rather than as "this event carried nothing". All of it is in the pane below.
+        </p>
+
+        <p>
             <strong>Below that is the event as it was posted.</strong> The panel prints
             the source XML in a scrollable pane, so the readings above can be checked
             against what actually arrived rather than trusted. That pane is the reason
             the card does not need to repeat the XML, and it is what makes the plain
             words above it honest: anything this plugin could not name is still visible
-            in the source. When the event came from an attachment, the file it came from
-            is named above the pane and links to itself.
+            in the source. That pane now covers the whole event rather than its first
+            few kilobytes, which is what makes the sentence above true for an event with
+            a lot of <code>detail</code> on it. When the event came from an attachment,
+            the file it came from is named above the pane and links to itself.
         </p>
 
         <h2 id="customize">Customize your view</h2>

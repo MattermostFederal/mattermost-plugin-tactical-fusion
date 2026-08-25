@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -756,5 +758,171 @@ func TestCotRefusesAFileIdThatIsNotOne(t *testing.T) {
 	}
 	if api.fileInfoCalls != 0 {
 		t.Errorf("the filestore was asked about a malformed id %d times", api.fileInfoCalls)
+	}
+}
+
+// The shape that actually decides whether a real post drops to raw XML: every
+// event this build reads, each carrying every registry entry, with the author's
+// own notes at their cap on both sides of the fence.
+//
+// A test built on ONE maximal event measures a case that was never in doubt.
+func TestABatchOfMaximalEventsStillStamps(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	var events strings.Builder
+	for i := range cot.MaxEvents {
+		fmt.Fprintf(&events, `<event version="2.0" uid="UID-%d" type="a-f-G-U-C-I" how="m-g" `+
+			`time="2026-08-23T11:43:38Z" start="2026-08-23T11:43:38Z" stale="2026-08-23T11:45:38Z">`+
+			`<point lat="34.056100" lon="-118.250000" hae="-42.6" ce="45.3" le="99.5"/>`+
+			`<detail>%s</detail></event>`, i, cot.FixtureDetail())
+	}
+
+	note := strings.Repeat("n", 65536)
+	post := &model.Post{
+		Message: note + "\n" + cotFence("cot", events.String()) + "\n" + note,
+		UserId:  testUserID,
+	}
+
+	updated, stamped := p.cotStamp(post)
+	if !stamped {
+		t.Fatal("a batch of maximal events was left unstamped; a reader meets raw XML where a card belongs")
+	}
+
+	blob, ok := updated.GetProps()[cot.PropsKey].(map[string]any)
+	if !ok {
+		t.Fatal("the event blob is missing")
+	}
+	rendered, ok := blob["events"].([]any)
+	if !ok || len(rendered) != cot.MaxEvents {
+		t.Fatalf("the blob carries %v events, want %d", blob["events"], cot.MaxEvents)
+	}
+
+	// The widest rung has to be the one that ran. Without this the two rungs
+	// could be swapped, or the first deleted, and every test here would still
+	// pass while every stamped post silently lost its extension keys.
+	first, ok := rendered[0].(map[string]any)
+	if !ok {
+		t.Fatal("the first event is not a props map")
+	}
+	for _, key := range []string{"takv_platform", "status_battery", "flow"} {
+		if _, held := first[key]; !held {
+			t.Errorf("a post that fits was stamped without %q, so the ladder took the wrong rung", key)
+		}
+	}
+	if _, held := first["detail_dropped"]; held {
+		t.Error("a post that fits was marked as degraded")
+	}
+}
+
+// Over budget, the extension keys go and the card stays. Everything version 2
+// ever wrote survives, so the degraded card is exactly the card this feature
+// shipped with rather than a fall all the way back to raw XML.
+func TestOverBudgetTheDetailIsDroppedBeforeTheCardIs(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	var events strings.Builder
+	for i := range cot.MaxEvents {
+		fmt.Fprintf(&events, `<event version="2.0" uid="UID-%d" type="a-f-G-U-C-I" how="m-g" `+
+			`time="2026-08-23T11:43:38Z" stale="2026-08-23T11:45:38Z">`+
+			`<point lat="34.056100" lon="-118.250000" hae="-42.6" ce="45.3" le="99.5"/>`+
+			`<detail>%s</detail></event>`, i, cot.FixtureDetail())
+	}
+
+	post := &model.Post{Message: cotFence("cot", events.String()), UserId: testUserID}
+
+	// Sized so the full blob cannot fit and the degraded one can. Measured
+	// rather than guessed, since both blobs move as the registry grows.
+	full := len(mustJSON(t, cot.Props(mustParse(t, events.String()), cot.Source{Kind: cot.SourceFence, Text: events.String()})))
+	lean := len(mustJSON(t, cot.PropsWithoutDetail(mustParse(t, events.String()), cot.Source{Kind: cot.SourceFence, Text: events.String()})))
+	if lean >= full {
+		t.Fatal("dropping the detail did not make the blob smaller")
+	}
+	post.AddProp("bulky", strings.Repeat("x", model.PostPropsMaxUserRunes-((full+lean)/2)))
+
+	updated, stamped := p.cotStamp(post)
+	if !stamped {
+		t.Fatal("the post was refused rather than degraded")
+	}
+
+	blob := updated.GetProps()[cot.PropsKey].(map[string]any)
+	first := blob["events"].([]any)[0].(map[string]any)
+
+	if _, held := first["takv_platform"]; held {
+		t.Error("the degraded blob still carries extension keys")
+	}
+	if first["callsign"] != "DELTA1" {
+		t.Errorf("callsign is %v; the degraded card keeps everything version 2 wrote", first["callsign"])
+	}
+
+	api := p.API.(*fakeAPI)
+	if !slices.Contains(api.warnCodes, errcode.HooksCotDetailDropped) {
+		t.Errorf("the degraded stamp was not logged under TF-%d", errcode.HooksCotDetailDropped)
+	}
+}
+
+func mustParse(t *testing.T, source string) []cot.Event {
+	t.Helper()
+
+	events, err := cot.Parse([]byte(source))
+	if err != nil {
+		t.Fatalf("fixture did not parse: %v", err)
+	}
+	return events
+}
+
+func mustJSON(t *testing.T, blob map[string]any) []byte {
+	t.Helper()
+
+	encoded, err := json.Marshal(blob)
+	if err != nil {
+		t.Fatalf("blob did not marshal: %v", err)
+	}
+	return encoded
+}
+
+// A props value that will not marshal stops the ladder, rather than falling
+// through to a rung that would stamp a map nobody could measure.
+//
+// The size gate exists to stop the server refusing the post outright, and an
+// unmeasurable map is exactly the input that gate cannot see. It also must not
+// be reported as a size failure: the offending value came from elsewhere on the
+// post and no rung of this ladder can shed it.
+func TestPropsThatWillNotMarshalStopTheLadder(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	post := &model.Post{Message: cotFence("cot", cotEventXML), UserId: testUserID}
+	post.AddProp("unmarshalable", make(chan int))
+
+	updated, stamped := p.cotStamp(post)
+	if stamped {
+		t.Fatal("a post whose props cannot be measured was stamped anyway")
+	}
+	if updated != nil && updated.Type == cot.PostType {
+		t.Error("the post wears the card type after a refusal")
+	}
+
+	api := p.API.(*fakeAPI)
+	if !slices.Contains(api.warnCodes, errcode.HooksCotPropsUnmeasurable) {
+		t.Errorf("warn codes are %v, want TF-%d", api.warnCodes, errcode.HooksCotPropsUnmeasurable)
+	}
+	if slices.Contains(api.warnCodes, errcode.HooksCotPropsTooLarge) {
+		t.Error("an unmeasurable props map was reported to the author as a size failure")
+	}
+}
+
+// The claim the refusal makes: the value that would not marshal cannot have
+// come from this package, so telling the author to post a smaller event would
+// be wrong whatever the size.
+func TestEveryBlobThisPackageWritesCanBeMarshalled(t *testing.T) {
+	events := mustParse(t, cotEventXML)
+	source := cot.Source{Kind: cot.SourceFence, Text: cotEventXML}
+
+	for name, blob := range map[string]map[string]any{
+		"full":     cot.Props(events, source),
+		"degraded": cot.PropsWithoutDetail(events, source),
+	} {
+		if _, err := json.Marshal(blob); err != nil {
+			t.Errorf("the %s blob does not marshal: %v", name, err)
+		}
 	}
 }

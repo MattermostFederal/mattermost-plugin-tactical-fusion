@@ -221,12 +221,8 @@ func TestDetailsSplitWhenAMessageRunsOutOfRoom(t *testing.T) {
 			for i, message := range messages {
 				runes := len([]rune(message))
 
-				// A single row always goes in, so a budget below one row
-				// overflows by design. The allowance is that row, not a blanket
-				// exemption for small budgets: an earlier version skipped the
-				// check outright below 1000 and so asserted nothing there.
-				if runes > budget+headingBudget+longestDetailLine(t, p, tagger) {
-					t.Errorf("message %d of %d is %d runes, past the %d budget plus one row",
+				if runes > budget+headingBudget+longestDetailAtom(t, p, tagger) {
+					t.Errorf("message %d of %d is %d runes, past the %d budget plus one atom",
 						i+1, len(messages), runes, budget)
 				}
 
@@ -317,16 +313,14 @@ func TestEveryDetailMessageFitsInOnePost(t *testing.T) {
 	}
 }
 
-// longestDetailLine is the size of the biggest single row, which is the one
-// thing a message is allowed to exceed its budget by.
-func longestDetailLine(t *testing.T, p *Plugin, tagger *decorators.Tagger) int {
+func longestDetailAtom(t *testing.T, p *Plugin, tagger *decorators.Tagger) int {
 	t.Helper()
 
 	longest := 0
-	for _, typ := range detailSetOrder {
-		for _, chunk := range p.detailChunks(detailSets[typ], tagger, hookRef) {
-			for _, line := range chunk.lines {
-				longest = max(longest, len([]rune(line)))
+	for _, set := range p.detailMessageSets(tagger, hookRef) {
+		for _, chunk := range set.chunks {
+			for _, atom := range chunk.lines {
+				longest = max(longest, len([]rune(atom)))
 			}
 		}
 	}

@@ -1,6 +1,7 @@
 import {expect, test} from '@playwright/test';
 
-import {AFFILIATION_COLORS, COT_PROPS_KEY, accuracyMeters, affiliationWord, fromProps, isLinkable, staleAfterPosting} from './types';
+import {SUMMARY_MAX_RUNES, TOO_LONG, oneLine} from './summary';
+import {AFFILIATION_COLORS, COT_CLASSES, COT_PROPS_KEY, accuracyMeters, affiliationWord, fromProps, isLinkable, staleAfterPosting, statedColor} from './types';
 import type {CotEvent} from './types';
 
 function props(overrides: Record<string, unknown> = {}, event: Record<string, unknown> = {}) {
@@ -198,4 +199,159 @@ test('every affiliation with a colour has a word', () => {
 test('an affiliation this build does not know is named rather than dropped', () => {
     expect(affiliationWord({affiliation: 'zzz'} as CotEvent)).toBe('unstated');
     expect(affiliationWord({affiliation: ''} as CotEvent)).toBe('unstated');
+});
+
+test('a version 1 blob still reads, and simply carries no extensions', () => {
+    const payload = fromProps(props({}, {callsign: 'DELTA1'}));
+
+    expect(payload?.events[0].cotClass).toBe('');
+    expect(payload?.events[0].detailUnknown).toBe('');
+    expect(payload?.events[0].flow).toEqual([]);
+    expect(payload?.events[0].detail.takvPlatform).toBe('');
+});
+
+test('reads the registry keys the server writes', () => {
+    const payload = fromProps(props({}, {
+        takv_platform: 'ATAK-CIV',
+        status_battery: '87%',
+        attitude_yaw: '183.5°',
+        chatgrp_uid0: 'A',
+        medevac_urgent: '0',
+    }));
+
+    const {detail} = payload!.events[0];
+    expect(detail.takvPlatform).toBe('ATAK-CIV');
+    expect(detail.statusBattery).toBe('87%');
+    expect(detail.attitudeYaw).toBe('183.5°');
+    expect(detail.chatgrpUid0).toBe('A');
+    expect(detail.medevacUrgent).toBe('0');
+});
+
+test('a class this build does not know falls to the default layout', () => {
+    for (const value of ['teleport', '', 42, null, 'CHAT']) {
+        const payload = fromProps(props({}, {class: value}));
+        expect(payload?.events[0].cotClass, String(value)).toBe('');
+    }
+});
+
+test('every class the server writes is one this build lays out', () => {
+    for (const value of COT_CLASSES) {
+        const payload = fromProps(props({}, {class: value}));
+        expect(payload?.events[0].cotClass, value).toBe(value);
+    }
+});
+
+// The ordering IS the processing path, so it survives the trip through JSON.
+test('the processing path keeps its order', () => {
+    const payload = fromProps(props({}, {
+        flow: [
+            {system: 'alpha', time: 'T1'},
+            {system: 'bravo', time: 'T2'},
+        ],
+    }));
+
+    expect(payload?.events[0].flow.map((hop) => hop.system)).toEqual(['alpha', 'bravo']);
+});
+
+test('a malformed processing path reads as none rather than throwing', () => {
+    for (const value of ['nope', 42, null, {system: 'a'}]) {
+        const payload = fromProps(props({}, {flow: value}));
+        expect(payload?.events[0].flow, String(value)).toEqual([]);
+    }
+});
+
+test('a hop with no system is dropped and the rest survive', () => {
+    const payload = fromProps(props({}, {
+        flow: [{time: 'T1'}, {system: 'bravo', time: 'T2'}, 'nope'],
+    }));
+
+    expect(payload?.events[0].flow).toEqual([{system: 'bravo', time: 'T2'}]);
+});
+
+// React sets style values through setProperty without sanitising them, so this
+// is the last gate before an author-derived string reaches one.
+test('only a hex triple is offered as a colour', () => {
+    const accepted = ['#ff0000', '#FF0000', '#0a0b0c'];
+    const refused = ['url(https://attacker.example/px)', 'red', '#f00', '#ff00000', '', 'expression(1)'];
+
+    for (const value of accepted) {
+        const payload = fromProps(props({}, {color_argb: value}));
+        expect(statedColor(payload!.events[0]), value).toBe(value);
+    }
+
+    for (const value of refused) {
+        const payload = fromProps(props({}, {color_argb: value}));
+        expect(statedColor(payload!.events[0]), value).toBeUndefined();
+    }
+});
+
+// The sync guard checks that every key is read SOMEWHERE. It cannot see a
+// transposition: `takvDevice: text(event,'takv_os')` type-checks, satisfies the
+// guard, and mislabels an operator-facing row forever. This is what sees it.
+const DETAIL_KEYS = [
+    'archive', 'attitude_pitch', 'attitude_roll', 'attitude_yaw',
+    'chat_group_owner', 'chat_id', 'chat_parent', 'chat_room', 'chat_sender',
+    'chatgrp_id', 'chatgrp_uid0', 'chatgrp_uid1', 'color_argb', 'contact_endpoint',
+    'medevac_ambulatory', 'medevac_casevac', 'medevac_equipment_detail',
+    'medevac_equipment_none', 'medevac_freq', 'medevac_hlz_marking', 'medevac_litter',
+    'medevac_medline_remarks', 'medevac_nationality', 'medevac_nbc', 'medevac_priority',
+    'medevac_routine', 'medevac_security', 'medevac_terrain_none', 'medevac_title',
+    'medevac_urgent', 'medevac_zone_prot_selection', 'precision_altsrc',
+    'precision_geopointsrc', 'precision_hdop', 'precision_pdop', 'precision_vdop',
+    'sensor_azimuth', 'sensor_elevation', 'sensor_fov', 'sensor_model', 'sensor_range',
+    'sensor_roll', 'sensor_vfov', 'status_battery', 'status_readiness', 'takv_device',
+    'takv_os', 'takv_platform', 'takv_version', 'track_slope', 'uid_extra_droid',
+    'usericon_iconsetpath', 'video_conn_address', 'video_conn_path', 'video_conn_port',
+    'video_conn_protocol', 'video_uid', 'video_url',
+];
+
+function camel(key: string): string {
+    const [head, ...rest] = key.split('_');
+    return head + rest.map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join('');
+}
+
+test('every registry key lands on the field named after it', () => {
+    const blob: Record<string, unknown> = {};
+    for (const key of DETAIL_KEYS) {
+        blob[key] = `sentinel-${key}`;
+    }
+
+    const detail = fromProps(props({}, blob))!.events[0].detail as unknown as Record<string, string>;
+
+    for (const key of DETAIL_KEYS) {
+        expect(detail[camel(key)], key).toBe(`sentinel-${key}`);
+    }
+
+    // And nothing else: a field reading two keys would leave one unread.
+    expect(Object.keys(detail).sort()).toEqual(DETAIL_KEYS.map(camel).sort());
+});
+
+// The cap is what makes "one line" reviewable. Popping to empty returned '',
+// which made the caller render nothing: the line the cap exists to bound
+// disappeared entirely.
+test('the summary drops trailing readings rather than the whole line', () => {
+    expect(oneLine(['a', 'b', 'c'])).toBe('a · b · c');
+    expect(oneLine([])).toBe('');
+
+    const long = 'x'.repeat(80);
+    const trimmed = oneLine([long, 'second', 'third']);
+    expect(trimmed).toContain(long);
+    expect(trimmed).not.toContain('third');
+    expect([...trimmed].length).toBeLessThanOrEqual(SUMMARY_MAX_RUNES);
+});
+
+// Neither blank nor clipped. Popping to empty erased the line the cap exists to
+// bound; clipping put 90 runes of an author's value under a casualty label with
+// the word itself cut off, which is not a reading of anything.
+test('a single overlong reading points at the panel rather than being clipped', () => {
+    const line = oneLine(['y'.repeat(SUMMARY_MAX_RUNES + 40) + ' urgent']);
+
+    expect(line).toBe(TOO_LONG);
+    expect(line).not.toContain('yyy');
+    expect([...line].length).toBeLessThanOrEqual(SUMMARY_MAX_RUNES);
+});
+
+test('nothing stated still renders nothing', () => {
+    expect(oneLine([])).toBe('');
+    expect(oneLine(['', ''])).toBe('');
 });

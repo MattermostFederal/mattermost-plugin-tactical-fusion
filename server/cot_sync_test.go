@@ -59,7 +59,7 @@ func TestWebappCotShapeMatches(t *testing.T) {
 	source := readCotTypes(t)
 
 	webappKeys := map[string]bool{}
-	for _, m := range regexp.MustCompile(`text\((?:blob|event), '([a-z_]+)'\)`).FindAllStringSubmatch(source, -1) {
+	for _, m := range regexp.MustCompile(`text\((?:blob|event), '([a-z0-9_]+)'\)`).FindAllStringSubmatch(source, -1) {
 		webappKeys[m[1]] = true
 	}
 	if len(webappKeys) == 0 {
@@ -94,7 +94,19 @@ func TestWebappCotShapeMatches(t *testing.T) {
 	}
 	slices.Sort(goKeys)
 
+	// Every registry entry has to reach this comparison, or the guard narrows
+	// silently as entries are added. The fixture is built from the registry for
+	// exactly that reason, so assert it actually produced them.
+	for _, key := range cot.PropKeys() {
+		if !slices.Contains(goKeys, key) {
+			t.Errorf("the registry declares %q and the fixture did not produce it", key)
+		}
+	}
+
 	for _, key := range goKeys {
+		if cotNonTextKeys[key] {
+			continue
+		}
 		if !webappKeys[key] {
 			t.Errorf("Go writes %q but the webapp never reads it", key)
 		}
@@ -109,23 +121,80 @@ func TestWebappCotShapeMatches(t *testing.T) {
 
 // Keys Go omits when it has nothing to say. The webapp still reads them, since
 // absent and empty mean the same thing to it, so they are not drift.
+// Keys the webapp reads through something other than text(), which is the only
+// shape the scraper above recognises. TestWebappReadsTheProcessingPath is what
+// holds this one instead.
+var cotNonTextKeys = map[string]bool{"flow": true}
+
 var cotOptionalKeys = map[string]bool{
 	"position_note": true,
-	"start":         true,
-	"src":           true,
-	"parent":        true,
-	"related":       true,
+
+	// Written only by PropsWithoutDetail, the middle rung of the hook's budget
+	// ladder, so the full blob this fixture builds never carries it.
+	// TestTheDegradedBlobSaysSo is what holds it instead.
+	"detail_dropped": true,
+
+	"start":   true,
+	"src":     true,
+	"parent":  true,
+	"related": true,
 
 	// Version 1 wrote one "event" where version 2 writes an "events" array. The
 	// webapp still reads it, for posts stamped before the bump.
 	"event": true,
 }
 
-const fullCotEvent = `<event version="2.0" uid="ANDROID-1" type="a-f-G-U-C" how="m-g" ` +
+// The processing path is an ordered array rather than a rendered string, so it
+// has a reader of its own rather than a text() call. It still has to have one.
+func TestWebappReadsTheProcessingPath(t *testing.T) {
+	source := readCotTypes(t)
+
+	if !strings.Contains(source, "readFlow") {
+		t.Error("the webapp has no readFlow; Go writes an ordered flow array that nothing reads")
+	}
+	if !strings.Contains(source, "event.flow") {
+		t.Error("the webapp never reads the flow key")
+	}
+}
+
+// Every class the server can write needs a layout on the other side. A class the
+// webapp does not know falls to the default, which is today's card, so the cost
+// is a silent loss of the layout rather than a broken render. That is still a
+// drift nothing else would report.
+func TestWebappCotClassesMatch(t *testing.T) {
+	source := readCotTypes(t)
+
+	_, block, found := strings.Cut(source, "export const COT_CLASSES = [")
+	if !found {
+		t.Fatal("COT_CLASSES is not in cot/types.ts")
+	}
+	if end, _, closed := strings.Cut(block, "]"); closed {
+		block = end
+	}
+
+	for _, class := range cot.Classes() {
+		if !strings.Contains(block, "'"+class+"'") {
+			t.Errorf("the server writes class %q and the webapp does not name it", class)
+		}
+	}
+
+	for _, m := range regexp.MustCompile(`'([a-z_]+)'`).FindAllStringSubmatch(block, -1) {
+		if !slices.Contains(cot.Classes(), m[1]) {
+			t.Errorf("the webapp names class %q, which the server never writes", m[1])
+		}
+	}
+}
+
+// fullCotEvent carries every <detail> extension this build reads, because it is
+// built from the registry rather than written by hand. A hand-written fixture
+// stops covering the moment somebody adds an entry and forgets to extend it,
+// and the guard would go quiet rather than fail.
+//
+// The type is b-t-f so the blob also carries a class, which is otherwise absent.
+var fullCotEvent = `<event version="2.0" uid="ANDROID-1" type="b-t-f" how="m-g" ` +
 	`time="2026-08-23T11:43:38Z" start="2026-08-23T11:43:38Z" stale="2026-08-23T11:45:38Z">` +
 	`<point lat="34.056100" lon="-118.250000" hae="-42.6" ce="45.3" le="99.5"/>` +
-	`<detail><contact callsign="DELTA1"/><__group name="Cyan" role="Team Member"/>` +
-	`<track speed="3.2" course="180.0"/><remarks>holding</remarks></detail></event>`
+	`<detail>` + cot.FixtureDetail() + `<mystery-element/></detail></event>`
 
 // The card reads the map switch the location decorator already owns, so there is
 // no CoT map setting and no new /features field. If somebody adds one, this test

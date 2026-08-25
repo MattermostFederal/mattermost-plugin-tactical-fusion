@@ -75,9 +75,7 @@ const CotPostBodyHarness: React.FC<Props> = ({
                 src,
                 file_id: fileId,
                 file_name: fileName,
-                events: events ?
-                    events.map((e, i) => ({uid: `${uid}-${i}`, cot_type: 'a-f-G-U-C', type_label: 'Friendly Ground', ...e})) :
-                    [{uid, cot_type: 'a-f-G-U-C', type_label: 'Friendly Ground', ...event}],
+                events: events ? events.map((e, i) => ({uid: `${uid}-${i}`, cot_type: 'a-f-G-U-C', type_label: 'Friendly Ground', ...e})) : [{uid, cot_type: 'a-f-G-U-C', type_label: 'Friendly Ground', ...event}],
             },
         };
     }

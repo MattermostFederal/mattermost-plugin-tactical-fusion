@@ -174,7 +174,10 @@ side moves alone. Change both halves together.
 | The same grammar again, as the `case` in the Makefile's bundle guard | `TestBundleGuardAcceptsExactlyWhatDiscoveryDoes`, which compares behavior rather than text and holds the guard to `LC_ALL=C` |
 | The `data-packages` attribute and its separator | `TestWebappPackagesAttributeMatches` |
 | The CoT post type, props key and props version | `TestWebappCotPostTypeMatches` |
-| The CoT props shape: every key Go writes and the webapp reads | `TestWebappCotShapeMatches` |
+| The CoT props shape: every key Go writes and the webapp reads | `TestWebappCotShapeMatches`, on a fixture built from `cot.FixtureDetail()` |
+| The `<detail>` extension registry: every key it can write | Same test, plus `TestEveryRegisteredKeyIsWrittenFromTheFixture` |
+| The CoT semantic classes | `TestWebappCotClassesMatch` |
+| The processing path, which is an array rather than a rendered string | `TestWebappReadsTheProcessingPath` |
 | The package list's 60 second lifetime | `TestWebappPackageCacheLifetimeMatches` |
 | The map schema: `mapSchemaVersion` and `schemaPrefix`, and `MAP_SCHEMA` and `SCHEMA_PREFIX` in `build/maposm/build.sh` | `TestMapSchemaMatchesTheGenerator` |
 | Rendering fixtures | `format_test.go` and `format.spec.ts` hold the same table |

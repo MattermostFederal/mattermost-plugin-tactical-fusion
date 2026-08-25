@@ -14,6 +14,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/cot"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
@@ -444,6 +445,16 @@ func TestDetailsPostWhateverTheServerAccepts(t *testing.T) {
 				}
 			}
 
+			for i, post := range api.created {
+				if post.Type == cot.PostType {
+					continue
+				}
+				if _, found := p.cotSource(post); found {
+					t.Errorf("message %d of %d would be read as an event:\n%s",
+						i+1, len(api.created), first(post.Message))
+				}
+			}
+
 			// Nothing is dropped in the retry: the smaller packing is a
 			// repacking of the same set, not a truncation of it.
 			all := strings.Join(messages, "")
@@ -451,6 +462,9 @@ func TestDetailsPostWhateverTheServerAccepts(t *testing.T) {
 				if !strings.Contains(all, "#### "+capitalize(detailSets[typ].name)) {
 					t.Errorf("the %q section went missing", typ)
 				}
+			}
+			if !strings.Contains(all, "#### "+capitalize(cotDetailSetName)) {
+				t.Errorf("the %q section went missing", cotDetailSetName)
 			}
 		})
 	}

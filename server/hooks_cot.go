@@ -69,27 +69,61 @@ func (p *Plugin) cotStamp(post *model.Post) (result *model.Post, stamped bool) {
 
 	updated := post.Clone()
 
-	props := cotProps(updated, cot.Props(events, source))
-
-	// Marshalled here rather than through model.StringInterfaceToJSON, which
-	// discards the error and answers "". An unmeasurable props map would score
-	// zero runes and sail through the one gate that exists to stop the server
-	// refusing the post.
-	encoded, err := json.Marshal(props)
-	if err != nil || utf8.RuneCountInString(string(encoded)) > cotPropsBudgetRunes {
-		if api != nil {
-			api.LogWarn("tactical-fusion: the parsed event would exceed the maximum post props size; posting unstamped",
-				"error_code", errcode.HooksCotPropsTooLarge, "channel_id", post.ChannelId)
-		}
-		p.reportCotRefusal(post, source, errcode.HooksCotPropsTooLarge,
-			"The Cursor on Target event you just posted carries too much detail to render, so it was left as ordinary text.")
-		return stripped, false
+	// The ladder, widest rung first. Dropping the extension keys leaves exactly
+	// the card this feature shipped with, which is a better answer than raw XML
+	// for a post that would have stamped before the registry existed.
+	rungs := []struct {
+		blob     map[string]any
+		degraded bool
+	}{
+		{cot.Props(events, source), false},
+		{cot.PropsWithoutDetail(events, source), true},
 	}
 
-	updated.Type = cot.PostType
-	updated.SetProps(props)
+	for _, rung := range rungs {
+		props := cotProps(updated, rung.blob)
 
-	return updated, true
+		// Marshalled here rather than through model.StringInterfaceToJSON, which
+		// discards the error and answers "". An unmeasurable props map would score
+		// zero runes and sail through the one gate that exists to stop the server
+		// refusing the post.
+		encoded, err := json.Marshal(props)
+		if err != nil {
+			// Not the author's problem and not a size problem: the value that
+			// will not marshal came from elsewhere on the post, and no rung of
+			// this ladder can shed it. Say so once and stop.
+			if api != nil {
+				api.LogWarn("tactical-fusion: the post's props could not be measured; posting unstamped",
+					"error_code", errcode.HooksCotPropsUnmeasurable, "channel_id", post.ChannelId, "error", err)
+			}
+			p.reportCotRefusal(post, source, errcode.HooksCotPropsUnmeasurable,
+				"The Cursor on Target event you just posted could not be rendered, because something else attached to the post could not be read. It was left as ordinary text.")
+			return stripped, false
+		}
+
+		if utf8.RuneCountInString(string(encoded)) > cotPropsBudgetRunes {
+			continue
+		}
+
+		if rung.degraded && api != nil {
+			api.LogWarn("tactical-fusion: the parsed event carried more detail than the post props map has room for; stamping without it",
+				"error_code", errcode.HooksCotDetailDropped, "channel_id", post.ChannelId)
+		}
+
+		updated.Type = cot.PostType
+		updated.SetProps(props)
+
+		return updated, true
+	}
+
+	if api != nil {
+		api.LogWarn("tactical-fusion: the parsed event would exceed the maximum post props size; posting unstamped",
+			"error_code", errcode.HooksCotPropsTooLarge, "channel_id", post.ChannelId)
+	}
+	p.reportCotRefusal(post, source, errcode.HooksCotPropsTooLarge,
+		"The Cursor on Target event you just posted carries too much detail to render, so it was left as ordinary text.")
+
+	return stripped, false
 }
 
 func cotProps(post *model.Post, blob map[string]any) model.StringInterface {

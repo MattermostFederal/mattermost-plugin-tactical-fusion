@@ -212,7 +212,7 @@ test('the rows are a labelled description list', async ({mount}) => {
     const component = await mount(<CotPostBodyHarness/>);
 
     await expect(
-        component.getByRole('group', {name: 'Details of this Cursor on Target event'}),
+        component.getByRole('group', {name: /^Details of the Cursor on Target event /}),
     ).toBeVisible();
 });
 
@@ -397,7 +397,7 @@ test.describe('a post carrying several events', () => {
 
         // The single-event detail table is what a block deliberately does not show.
         await expect(
-            component.getByRole('group', {name: 'Details of this Cursor on Target event'}),
+            component.getByRole('group', {name: /^Details of the Cursor on Target event /}),
         ).toHaveCount(0);
     });
 
@@ -405,7 +405,7 @@ test.describe('a post carrying several events', () => {
         const component = await mount(<CotPostBodyHarness event={{callsign: 'DELTA1'}}/>);
 
         await expect(
-            component.getByRole('group', {name: 'Details of this Cursor on Target event'}),
+            component.getByRole('group', {name: /^Details of the Cursor on Target event /}),
         ).toBeVisible();
         await expect(component.getByTestId('cot-card')).not.toContainText('1 events');
     });
@@ -432,4 +432,162 @@ test('an event that names who sent it says so', async ({mount}) => {
 
     await expect(component.getByTestId('cot-card')).toContainText('ALPHA');
     await expect(component.getByTestId('cot-card')).toContainText('ANDROID-9');
+});
+
+test.describe('the class picks one line, and nothing else moves', () => {
+    test('a chat event names the stated sender as a reading, not as a message', async ({mount}) => {
+        const component = await mount(
+            <CotPostBodyHarness
+                event={{
+                    class: 'chat',
+                    chat_sender: 'ALPHA-1',
+                    chat_room: 'Operations',
+                    remarks: 'Moving to checkpoint Bravo.',
+                }}
+            />,
+        );
+
+        await expect(component.getByTestId('cot-card')).toContainText('Event states sender:');
+        await expect(component.getByTestId('cot-card')).toContainText('ALPHA-1 to Operations');
+        await expect(component.getByTestId('cot-card')).toContainText('Moving to checkpoint Bravo.');
+    });
+
+    // senderCallsign is author-chosen and has no relationship to the Mattermost
+    // identity that posted. Anything shaped like a quoted message from a named
+    // person would borrow Mattermost's own attribution.
+    test('a chat card draws no avatar and no blockquote', async ({mount}) => {
+        const component = await mount(
+            <CotPostBodyHarness
+                event={{class: 'chat', chat_sender: 'ADMIN', remarks: 'trust me'}}
+            />,
+        );
+
+        await expect(component.locator('img')).toHaveCount(0);
+        await expect(component.locator('blockquote')).toHaveCount(0);
+    });
+
+    // The message is above the rows, so drawing Remarks as well would put the
+    // same string on the card twice.
+    test('a chat card renders the message exactly once', async ({mount}) => {
+        const component = await mount(
+            <CotPostBodyHarness
+                event={{class: 'chat', chat_sender: 'ALPHA-1', remarks: 'checkpoint bravo'}}
+            />,
+        );
+
+        await expect(component.getByText('checkpoint bravo')).toHaveCount(1);
+        await expect(component.getByTestId('cot-card')).not.toContainText('Remarks');
+    });
+
+    // A b-t-f with no __chat element has no sender and no room, so the chat
+    // layout would be empty chrome.
+    test('a chat class with no chat block falls back to the ordinary card', async ({mount}) => {
+        const component = await mount(
+            <CotPostBodyHarness event={{class: 'chat', remarks: 'still a remark'}}/>,
+        );
+
+        await expect(component.getByTestId('cot-card')).not.toContainText('Event states sender');
+        await expect(component.getByTestId('cot-card')).toContainText('Remarks');
+    });
+
+    // A stated zero and an unstated field are different facts.
+    test('a medevac card keeps the stated zeros', async ({mount}) => {
+        const component = await mount(
+            <CotPostBodyHarness
+                event={{
+                    class: 'medevac',
+                    medevac_urgent: '0',
+                    medevac_priority: '1',
+                    medevac_routine: '0',
+                }}
+            />,
+        );
+
+        await expect(component.getByTestId('cot-card')).toContainText('Patients stated:');
+        await expect(component.getByTestId('cot-card')).toContainText('0 urgent · 1 priority · 0 routine');
+    });
+
+    test('a sensor card carries its field of view', async ({mount}) => {
+        const component = await mount(
+            <CotPostBodyHarness
+                event={{class: 'sensor', sensor_fov: '18°', sensor_azimuth: '185°'}}
+            />,
+        );
+
+        await expect(component.getByTestId('cot-card')).toContainText('field of view 18°');
+    });
+
+    // The address is author-controlled and stays off the card entirely.
+    test('a video card says a stream exists and never where it is', async ({mount}) => {
+        const component = await mount(
+            <CotPostBodyHarness
+                event={{class: 'video', video_url: 'rtsp://attacker.example/steal'}}
+            />,
+        );
+
+        await expect(component.getByTestId('cot-card')).toContainText('a stream is associated');
+        await expect(component.getByTestId('cot-card')).not.toContainText('attacker.example');
+    });
+
+    // A class this build does not know falls to the default rather than to a
+    // blank card, which is what lets the server add one before the bundle ships.
+    test('a class this build does not know renders the ordinary card', async ({mount}) => {
+        const component = await mount(
+            <CotPostBodyHarness event={{class: 'teleport', remarks: 'ordinary'}}/>,
+        );
+
+        await expect(component.getByTestId('cot-card')).toContainText('Remarks');
+        await expect(component.getByTestId('cot-card')).toContainText('ordinary');
+    });
+
+    // The card lists rather than details a batch, so there is no one class for
+    // a post carrying a chat, a sensor and three position reports.
+    test('a multi-event post carries no class summary', async ({mount}) => {
+        const component = await mount(
+            <CotPostBodyHarness
+                events={[
+                    {class: 'chat', chat_sender: 'ALPHA-1', chat_room: 'Ops'},
+                    {cot_type: 'a-f-G-U-C'},
+                ]}
+            />,
+        );
+
+        await expect(component.getByTestId('cot-card')).not.toContainText('Event states sender');
+    });
+});
+
+// The degraded rung also drops `class`, so the summary line vanishes. A reader
+// who never opens the panel would otherwise see only the absence.
+test('a degraded card says so where the reader is', async ({mount}) => {
+    const component = await mount(
+        <CotPostBodyHarness event={{detail_dropped: 'stated'}}/>,
+    );
+
+    await expect(component.getByTestId('cot-card')).toContainText('too large to store');
+});
+
+// The class picks the layout from the type code, so it can name a block the
+// event never carried. `ClassSummary` says it degrades to nothing in that case
+// and `docs/design/cot.md` states the rule, but only chat was ever tested for
+// it: a summary label with nothing after it would have gone unnoticed on the
+// other three.
+test.describe('a class whose block is absent degrades to the ordinary card', () => {
+    const cases = [
+        {name: 'medevac', label: 'Patients stated'},
+        {name: 'sensor', label: 'Sensor:'},
+        {name: 'video', label: 'Video:'},
+    ];
+
+    for (const {name, label} of cases) {
+        test(`${name} with no ${name} block`, async ({mount}) => {
+            const component = await mount(
+                <CotPostBodyHarness event={{class: name, remarks: 'still a remark'}}/>,
+            );
+
+            const card = component.getByTestId('cot-card');
+            await expect(card).not.toContainText(label);
+            await expect(card).toContainText('Remarks');
+            await expect(card).toContainText('still a remark');
+        });
+    }
 });

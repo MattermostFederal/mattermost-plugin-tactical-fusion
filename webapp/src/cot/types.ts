@@ -23,8 +23,91 @@ export const COT_PROPS_VERSION = 2;
 
 const READABLE_VERSIONS = [1, 2];
 
+/**
+ * Every registered <detail> extension, flat and registry-derived.
+ *
+ * The key space is closed on the Go side and every name here comes from the
+ * registry, which is what keeps an author-chosen string from ever landing
+ * beside `format`, `value` or `affiliation` in the same map.
+ */
+export interface CotDetail {
+    archive: string;
+    attitudePitch: string;
+    attitudeRoll: string;
+    attitudeYaw: string;
+    chatGroupOwner: string;
+    chatId: string;
+    chatParent: string;
+    chatRoom: string;
+    chatSender: string;
+    chatgrpId: string;
+    chatgrpUid0: string;
+    chatgrpUid1: string;
+    colorArgb: string;
+    contactEndpoint: string;
+    medevacAmbulatory: string;
+    medevacCasevac: string;
+    medevacEquipmentDetail: string;
+    medevacEquipmentNone: string;
+    medevacFreq: string;
+    medevacHlzMarking: string;
+    medevacLitter: string;
+    medevacMedlineRemarks: string;
+    medevacNationality: string;
+    medevacNbc: string;
+    medevacPriority: string;
+    medevacRoutine: string;
+    medevacSecurity: string;
+    medevacTerrainNone: string;
+    medevacTitle: string;
+    medevacUrgent: string;
+    medevacZoneProtSelection: string;
+    precisionAltsrc: string;
+    precisionGeopointsrc: string;
+    precisionHdop: string;
+    precisionPdop: string;
+    precisionVdop: string;
+    sensorAzimuth: string;
+    sensorElevation: string;
+    sensorFov: string;
+    sensorModel: string;
+    sensorRange: string;
+    sensorRoll: string;
+    sensorVfov: string;
+    statusBattery: string;
+    statusReadiness: string;
+    takvDevice: string;
+    takvOs: string;
+    takvPlatform: string;
+    takvVersion: string;
+    trackSlope: string;
+    uidExtraDroid: string;
+    usericonIconsetpath: string;
+    videoConnAddress: string;
+    videoConnPath: string;
+    videoConnPort: string;
+    videoConnProtocol: string;
+    videoUid: string;
+    videoUrl: string;
+}
+
+export interface CotFlowHop {
+    system: string;
+    time: string;
+}
+
+/** The classes the server writes. Anything else falls to the default layout. */
+export const COT_CLASSES = ['chat', 'medevac', 'sensor', 'video'] as const;
+
+export type CotClass = (typeof COT_CLASSES)[number] | '';
+
 export interface CotEvent {
     uid: string;
+    cotClass: CotClass;
+    detailUnknown: string;
+    detailDropped: string;
+    detail: CotDetail;
+    flow: CotFlowHop[];
     callsign: string;
     cotType: string;
     typeLabel: string;
@@ -149,6 +232,11 @@ function readEvent(event: Record<string, unknown>): CotEvent | null {
 
     return {
         uid,
+            cotClass: readClass(event),
+            detailUnknown: text(event, 'detail_unknown'),
+            detailDropped: text(event, 'detail_dropped'),
+            detail: readDetail(event),
+            flow: readFlow(event),
             callsign: text(event, 'callsign'),
             cotType: text(event, 'cot_type'),
             typeLabel: text(event, 'type_label'),
@@ -180,6 +268,189 @@ function readEvent(event: Record<string, unknown>): CotEvent | null {
         parent: text(event, 'parent'),
         related: text(event, 'related'),
     };
+}
+
+/**
+ * A detail block with nothing in it.
+ *
+ * Exported for the harnesses and the tests, which otherwise have to spell every
+ * registry key to build one event, and would then quietly stop compiling every
+ * time the registry grows.
+ */
+export function emptyDetail(): CotDetail {
+    return {
+    archive: '',
+    attitudePitch: '',
+    attitudeRoll: '',
+    attitudeYaw: '',
+    chatGroupOwner: '',
+    chatId: '',
+    chatParent: '',
+    chatRoom: '',
+    chatSender: '',
+    chatgrpId: '',
+    chatgrpUid0: '',
+    chatgrpUid1: '',
+    colorArgb: '',
+    contactEndpoint: '',
+    medevacAmbulatory: '',
+    medevacCasevac: '',
+    medevacEquipmentDetail: '',
+    medevacEquipmentNone: '',
+    medevacFreq: '',
+    medevacHlzMarking: '',
+    medevacLitter: '',
+    medevacMedlineRemarks: '',
+    medevacNationality: '',
+    medevacNbc: '',
+    medevacPriority: '',
+    medevacRoutine: '',
+    medevacSecurity: '',
+    medevacTerrainNone: '',
+    medevacTitle: '',
+    medevacUrgent: '',
+    medevacZoneProtSelection: '',
+    precisionAltsrc: '',
+    precisionGeopointsrc: '',
+    precisionHdop: '',
+    precisionPdop: '',
+    precisionVdop: '',
+    sensorAzimuth: '',
+    sensorElevation: '',
+    sensorFov: '',
+    sensorModel: '',
+    sensorRange: '',
+    sensorRoll: '',
+    sensorVfov: '',
+    statusBattery: '',
+    statusReadiness: '',
+    takvDevice: '',
+    takvOs: '',
+    takvPlatform: '',
+    takvVersion: '',
+    trackSlope: '',
+    uidExtraDroid: '',
+    usericonIconsetpath: '',
+    videoConnAddress: '',
+    videoConnPath: '',
+    videoConnPort: '',
+    videoConnProtocol: '',
+    videoUid: '',
+    videoUrl: '',
+    };
+}
+
+function readClass(event: Record<string, unknown>): CotClass {
+    const value = text(event, 'class');
+    return (COT_CLASSES as readonly string[]).includes(value) ? (value as CotClass) : '';
+}
+
+function readDetail(event: Record<string, unknown>): CotDetail {
+    return {
+        archive: text(event, 'archive'),
+        attitudePitch: text(event, 'attitude_pitch'),
+        attitudeRoll: text(event, 'attitude_roll'),
+        attitudeYaw: text(event, 'attitude_yaw'),
+        chatGroupOwner: text(event, 'chat_group_owner'),
+        chatId: text(event, 'chat_id'),
+        chatParent: text(event, 'chat_parent'),
+        chatRoom: text(event, 'chat_room'),
+        chatSender: text(event, 'chat_sender'),
+        chatgrpId: text(event, 'chatgrp_id'),
+        chatgrpUid0: text(event, 'chatgrp_uid0'),
+        chatgrpUid1: text(event, 'chatgrp_uid1'),
+        colorArgb: text(event, 'color_argb'),
+        contactEndpoint: text(event, 'contact_endpoint'),
+        medevacAmbulatory: text(event, 'medevac_ambulatory'),
+        medevacCasevac: text(event, 'medevac_casevac'),
+        medevacEquipmentDetail: text(event, 'medevac_equipment_detail'),
+        medevacEquipmentNone: text(event, 'medevac_equipment_none'),
+        medevacFreq: text(event, 'medevac_freq'),
+        medevacHlzMarking: text(event, 'medevac_hlz_marking'),
+        medevacLitter: text(event, 'medevac_litter'),
+        medevacMedlineRemarks: text(event, 'medevac_medline_remarks'),
+        medevacNationality: text(event, 'medevac_nationality'),
+        medevacNbc: text(event, 'medevac_nbc'),
+        medevacPriority: text(event, 'medevac_priority'),
+        medevacRoutine: text(event, 'medevac_routine'),
+        medevacSecurity: text(event, 'medevac_security'),
+        medevacTerrainNone: text(event, 'medevac_terrain_none'),
+        medevacTitle: text(event, 'medevac_title'),
+        medevacUrgent: text(event, 'medevac_urgent'),
+        medevacZoneProtSelection: text(event, 'medevac_zone_prot_selection'),
+        precisionAltsrc: text(event, 'precision_altsrc'),
+        precisionGeopointsrc: text(event, 'precision_geopointsrc'),
+        precisionHdop: text(event, 'precision_hdop'),
+        precisionPdop: text(event, 'precision_pdop'),
+        precisionVdop: text(event, 'precision_vdop'),
+        sensorAzimuth: text(event, 'sensor_azimuth'),
+        sensorElevation: text(event, 'sensor_elevation'),
+        sensorFov: text(event, 'sensor_fov'),
+        sensorModel: text(event, 'sensor_model'),
+        sensorRange: text(event, 'sensor_range'),
+        sensorRoll: text(event, 'sensor_roll'),
+        sensorVfov: text(event, 'sensor_vfov'),
+        statusBattery: text(event, 'status_battery'),
+        statusReadiness: text(event, 'status_readiness'),
+        takvDevice: text(event, 'takv_device'),
+        takvOs: text(event, 'takv_os'),
+        takvPlatform: text(event, 'takv_platform'),
+        takvVersion: text(event, 'takv_version'),
+        trackSlope: text(event, 'track_slope'),
+        uidExtraDroid: text(event, 'uid_extra_droid'),
+        usericonIconsetpath: text(event, 'usericon_iconsetpath'),
+        videoConnAddress: text(event, 'video_conn_address'),
+        videoConnPath: text(event, 'video_conn_path'),
+        videoConnPort: text(event, 'video_conn_port'),
+        videoConnProtocol: text(event, 'video_conn_protocol'),
+        videoUid: text(event, 'video_uid'),
+        videoUrl: text(event, 'video_url'),
+    };
+}
+
+/**
+ * The processing path, in the order the event wrote it.
+ *
+ * An ordered array rather than a map on both sides, because the ordering IS the
+ * path and a map would have been re-sorted by its keys on the way through JSON.
+ */
+function readFlow(event: Record<string, unknown>): CotFlowHop[] {
+    const raw = event.flow;
+    if (!Array.isArray(raw)) {
+        return [];
+    }
+
+    const hops: CotFlowHop[] = [];
+    for (const entry of raw) {
+        const hop = record(entry);
+        if (hop === null) {
+            continue;
+        }
+
+        const system = typeof hop.system === 'string' ? hop.system : '';
+        if (system === '') {
+            continue;
+        }
+
+        hops.push({system, time: typeof hop.time === 'string' ? hop.time : ''});
+    }
+
+    return hops;
+}
+
+/**
+ * The colour the EVENT stated, and never this plugin's own.
+ *
+ * Re-validated here even though Go already validated it, because a props blob
+ * is not a trusted input either: the post type is forgeable and props under a
+ * plugin's key are not protected. This is the only author-derived value in the
+ * bundle that reaches a style property, and React sets style values through
+ * setProperty without sanitising them.
+ */
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+
+export function statedColor(event: CotEvent): string | undefined {
+    return HEX_COLOR.test(event.detail.colorArgb) ? event.detail.colorArgb : undefined;
 }
 
 /**

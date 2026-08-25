@@ -1,6 +1,7 @@
 package cot
 
 import (
+	"fmt"
 	"math"
 	"regexp"
 	"strconv"
@@ -31,11 +32,16 @@ const (
 )
 
 const (
-	maxFieldRunes     = 128
-	maxRemarksRunes   = 1024
-	maxInlineSrcRunes = 8192
-	maxNoteRunes      = 65536
-	truncationMarker  = "…"
+	maxFieldRunes   = 128
+	maxRemarksRunes = 1024
+	maxNoteRunes    = 65536
+
+	// maxInlineSrcRunes is the source pane, and it covers everything Parse
+	// read. It was an eighth of that, which left an extension parsed from byte
+	// 20000 with nothing in the pane to check it against.
+	maxInlineSrcRunes = MaxSourceBytes
+
+	truncationMarker = "…"
 )
 
 const unknownSentinel = 9999999.0
@@ -57,9 +63,23 @@ type Source struct {
 }
 
 func Props(events []Event, src Source) map[string]any {
+	return props(events, src, true)
+}
+
+// PropsWithoutDetail is the same blob with the <detail> extension keys left out,
+// and is the middle rung of the hook's budget ladder.
+//
+// Everything version 2 ever wrote survives it, so a post too large to carry the
+// registry still gets exactly the card this feature shipped with rather than
+// falling all the way back to raw XML.
+func PropsWithoutDetail(events []Event, src Source) map[string]any {
+	return props(events, src, false)
+}
+
+func props(events []Event, src Source, withDetail bool) map[string]any {
 	rendered := make([]any, 0, len(events))
 	for _, event := range events {
-		rendered = append(rendered, eventProps(event))
+		rendered = append(rendered, eventProps(event, withDetail))
 	}
 
 	props := map[string]any{
@@ -89,7 +109,7 @@ func Props(events []Event, src Source) map[string]any {
 	return props
 }
 
-func eventProps(event Event) map[string]any {
+func eventProps(event Event, withDetail bool) map[string]any {
 	props := map[string]any{
 		"uid":      sanitize(event.UID, maxFieldRunes),
 		"cot_type": sanitize(event.Type, maxFieldRunes),
@@ -117,7 +137,101 @@ func eventProps(event Event) map[string]any {
 	putIfSet(props, "speed", speedText(event.Detail.Speed))
 	putIfSet(props, "course", courseText(event.Detail.Course))
 
+	if !withDetail {
+		// Said on the card rather than only in the server log. Without it the
+		// panel draws no groups and no unrecognised count, which reads as "this
+		// event carried nothing" instead of "this did not fit".
+		props["detail_dropped"] = presenceValue
+		return props
+	}
+
+	putIfSet(props, "class", classify(event))
+	putIfSet(props, "detail_unknown", countText(event.Detail.Unknown))
+
+	// Merged rather than written through, and nothing on the registry path is
+	// handed this map. format, value and affiliation live in it: the first two
+	// build a location URL the webapp follows and the third keys the marker
+	// colour, so nothing author-derived may land beside them.
+	for key, value := range blockProps(event.Detail.Blocks) {
+		if _, held := props[key]; !held {
+			props[key] = value
+		}
+	}
+
+	if flow := flowProps(event.Detail.Flow); len(flow) > 0 {
+		props["flow"] = flow
+	}
+
 	return props
+}
+
+func blockProps(blocks []Block) map[string]any {
+	props := map[string]any{}
+
+	for _, block := range blocks {
+		ext, ok := extensionByElement(block.Name)
+		if !ok {
+			continue
+		}
+
+		if len(ext.Attrs) == 0 {
+			props[ext.Prefix] = presenceValue
+			continue
+		}
+
+		for _, attr := range ext.Attrs {
+			key := ext.Prefix + "_" + attr.Key
+			if _, held := props[key]; held {
+				continue
+			}
+			if rendered := renderAttr(block.Attrs[attr.Key], attr.Unit); rendered != "" {
+				props[key] = rendered
+			}
+		}
+	}
+
+	return props
+}
+
+func renderAttr(raw, unit string) string {
+	switch unit {
+	case unitMeters:
+		return metersText(raw, false)
+	case unitDegrees:
+		return signedDegrees(raw)
+	case unitPercent:
+		return percentText(raw)
+	case unitColor:
+		return colorText(raw)
+	default:
+		return sanitize(raw, maxFieldRunes)
+	}
+}
+
+// flowProps is the processing path, in the order the event wrote it.
+//
+// An ordered array rather than a map, because json.Marshal sorts map keys and
+// the ordering IS the path. A name too long to render is dropped rather than
+// truncated: a truncated key is our word rather than the event's, and two long
+// names would collapse into two rows a reader cannot tell apart.
+func flowProps(tags []FlowTag) []any {
+	rendered := make([]any, 0, len(tags))
+
+	for _, tag := range tags {
+		system := strings.TrimSpace(stripUnsafe(tag.System))
+		if system == "" || utf8.RuneCountInString(system) > maxFieldRunes {
+			continue
+		}
+
+		at := sanitize(tag.Time, maxFieldRunes)
+		if instant, ok := instantOf(tag.Time); ok {
+			at = dtg.FormatZulu(instant)
+		}
+
+		rendered = append(rendered, map[string]any{"system": system, "time": at})
+	}
+
+	return rendered
 }
 
 // addLinks says who sent the event and what else it names.
@@ -221,12 +335,26 @@ func addPosition(props map[string]any, point Point) {
 	props["value"] = parsed.Canonical()
 }
 
+// numberText refuses a figure too long to be a reading rather than clipping it.
+//
+// FormatFloat never uses exponent notation, so a subnormal like 1e-320 expands
+// to its full positional form: 324 runes in a cell whose stated cap is 128. A
+// clipped number still reads as a number, which is worse than no row, so this
+// follows the flow-tag rule and drops it.
+func numberText(value float64, unit string) string {
+	text := trimFloat(value)
+	if utf8.RuneCountInString(text) > maxFieldRunes {
+		return ""
+	}
+	return text + unit
+}
+
 func speedText(raw string) string {
 	value, ok := knownNumber(raw, true)
 	if !ok {
 		return ""
 	}
-	return trimFloat(value) + " m/s"
+	return numberText(value, " m/s")
 }
 
 func courseText(raw string) string {
@@ -234,7 +362,55 @@ func courseText(raw string) string {
 	if !ok || value < 0 || value > 360 {
 		return ""
 	}
-	return trimFloat(value) + "°"
+	return numberText(value, "°")
+}
+
+// signedDegrees is courseText for the angles that are legitimately negative.
+//
+// courseText rejects anything below zero, which is right for a course and wrong
+// for pitch, roll, slope and sensor elevation. Reusing it dropped every negative
+// attitude silently.
+func signedDegrees(raw string) string {
+	value, ok := knownNumber(raw, false)
+	if !ok {
+		return ""
+	}
+	return numberText(value, "°")
+}
+
+func percentText(raw string) string {
+	value, ok := knownNumber(raw, true)
+	if !ok {
+		return ""
+	}
+	return numberText(value, "%")
+}
+
+// colorText is the event's stated display colour, and never this plugin's.
+//
+// ATAK writes argb as a signed 32-bit decimal rather than as hex. The alpha
+// byte is dropped: a fully transparent swatch is a row that says nothing. The
+// hex is validated here and again in the webapp before it reaches a style
+// property, because a props blob is not a trusted input either.
+func colorText(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return ""
+	}
+
+	value, err := strconv.ParseInt(trimmed, 10, 64)
+	if err != nil || value < math.MinInt32 || value > math.MaxUint32 {
+		return ""
+	}
+
+	return fmt.Sprintf("#%06x", value&0x00FFFFFF)
+}
+
+func countText(count int) string {
+	if count <= 0 {
+		return ""
+	}
+	return strconv.Itoa(count)
 }
 
 func metersText(raw string, nonNegative bool) string {
@@ -242,7 +418,7 @@ func metersText(raw string, nonNegative bool) string {
 	if !ok {
 		return ""
 	}
-	return trimFloat(value) + " m"
+	return numberText(value, " m")
 }
 
 func knownMeters(raw string) string {
@@ -250,7 +426,7 @@ func knownMeters(raw string) string {
 	if !ok {
 		return ""
 	}
-	return trimFloat(value)
+	return numberText(value, "")
 }
 
 func knownNumber(raw string, nonNegative bool) (float64, bool) {
@@ -284,7 +460,12 @@ func numberOf(raw string) (float64, bool) {
 	return value, true
 }
 
+// trimFloat normalises negative zero, which formats as "-0" and reads as a
+// direction on a bearing and as a sign on a battery.
 func trimFloat(value float64) string {
+	if value == 0 {
+		value = 0
+	}
 	return strconv.FormatFloat(value, 'f', -1, 64)
 }
 
@@ -330,12 +511,6 @@ func stripUnsafe(raw string) string {
 		case unicode.IsControl(r):
 			return -1
 		case unicode.Is(unicode.Cf, r):
-			return -1
-		case r >= 0x202A && r <= 0x202E:
-			return -1
-		case r >= 0x2066 && r <= 0x2069:
-			return -1
-		case r == 0xFEFF:
 			return -1
 		}
 		return r

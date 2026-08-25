@@ -790,6 +790,65 @@
             labelled <code>cot</code> tells you why it was not rendered.
         </p>
 
+        <h3 id="cot-detail">What the card reads out of <code>detail</code></h3>
+
+        <p>
+            <code>&lt;detail&gt;</code> is an open container. There is no schema for it: ATAK,
+            TAK Server, FreeTAKServer and third-party plugins each write their own
+            conventions into it. This plugin reads the ones it knows and leaves the rest
+            alone, so an element it does not recognise costs you nothing.
+        </p>
+
+        <p>
+            <strong>Recognised today:</strong> <code>contact</code>, <code>__group</code>,
+            <code>track</code>, <code>remarks</code>, <code>link</code>, <code>uid</code>,
+            <code>takv</code>, <code>precisionlocation</code>, <code>archive</code>,
+            <code>usericon</code>, <code>color</code>, <code>status</code>,
+            <code>Attitude</code>, <code>sensor</code>, <code>__video</code>,
+            <code>__chat</code>, <code>_medevac_</code> and <code>_flow-tags_</code>.
+            Geometry (<code>shape</code>, <code>polyline</code>, <code>ellipse</code>,
+            <code>route</code>) is not read yet.
+        </p>
+
+        <p>
+            <strong>Almost none of it reaches the card.</strong> The card stays what it was:
+            the callsign, what the event is, the position, the times and the accuracy. The
+            recognised extensions are in the sidebar behind <strong>Open details</strong>,
+            grouped under Device, Position quality, Orientation, Payload and Processing
+            path. What the card gains is at most one extra line, and only for four kinds
+            of event: a GeoChat message, a MEDEVAC request, a sensor and a video stream.
+        </p>
+
+        <p>
+            <strong>An element this build does not recognise is counted, not dropped.</strong>
+            The sidebar says how many there were and the whole event is still printed
+            under <strong>As posted</strong>, unchanged.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">What kind of event it is comes from the type code, not from <code>detail</code>.</p>
+            <p>
+                A <code>__chat</code> or <code>_medevac_</code> element inside an
+                <code>a-</code> event does not change how the card is drawn. Only the
+                type code decides, so nobody can re-shape somebody else's contact report
+                by adding one element to it. An element only picks the layout when the
+                type code says nothing about what the event is.
+            </p>
+            <p>
+                For the same reason, a callsign inside <code>__chat</code> is labelled as
+                the sender the <em>event states</em>. It has no connection to the
+                Mattermost account that posted, and the card never draws it as though a
+                person had sent a message.
+            </p>
+        </div>
+
+        <p>
+            Two values are shown and deliberately not acted on. A stated
+            <code>color</code> appears as a value in the sidebar and never colours the map
+            marker or the affiliation dot, which are what tell one track from another. A
+            video address is shown as text and is never a link.
+        </p>
+
         <h3 id="cot-file">As an attached file</h3>
 
         <p>
@@ -837,10 +896,13 @@
                 does not hold.
             </li>
             <li>
-                <strong>A fence is optional.</strong> An event pasted straight into a message
-                is read the same way, with your surrounding text kept. An event you put in a
-                code block without labelling the fence is left as code, because that is what
-                you said it was.
+                <strong>A fence is optional for a one-line event.</strong> An event pasted
+                straight into a message, as it arrives over the wire, is read the same way,
+                with your surrounding text kept. An <em>indented</em> event needs the fence:
+                Markdown reads a line indented four spaces as a code block, so a
+                pretty-printed event pasted bare is left as the text you wrote. An event you
+                put in a code block without labelling the fence is left as code too, because
+                that is what you said it was.
             </li>
             <li>
                 <strong>Two fenced blocks are left alone.</strong> Put the events in one

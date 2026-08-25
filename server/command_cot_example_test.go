@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
@@ -362,4 +363,307 @@ func positionOf(t *testing.T, field airport.Details) (lat, lon float64, ok bool)
 	}
 
 	return parsed.Point()
+}
+
+func TestTheDetailExamplesAreWhatTheirRowsClaim(t *testing.T) {
+	cases := []struct {
+		name   string
+		source string
+		want   map[string]string
+	}{{
+		name:   "chat",
+		source: cotDetailChat,
+		want: map[string]string{
+			"class":       cot.ClassChat,
+			"chat_sender": "ALPHA-1",
+			"chat_room":   "Operations",
+			"chatgrp_id":  "t1",
+			"remarks":     "Moving to checkpoint Bravo.",
+		},
+	}, {
+		name:   "medevac",
+		source: cotDetailMedevac,
+		want: map[string]string{
+			"class":            cot.ClassMedevac,
+			"medevac_urgent":   "0",
+			"medevac_priority": "1",
+			"medevac_routine":  "0",
+			"medevac_litter":   "2",
+		},
+	}, {
+		name:   "device",
+		source: cotDetailDevice,
+		want: map[string]string{
+			"takv_platform":    "ATAK-CIV",
+			"status_battery":   "87%",
+			"contact_endpoint": "192.168.1.40:4242:tcp",
+			"uid_extra_droid":  "ALPHA1",
+			"archive":          "stated",
+		},
+	}, {
+		name:   "precision",
+		source: cotDetailPrecision,
+		want: map[string]string{
+			"precision_geopointsrc": "GPS",
+			"precision_hdop":        "0.8",
+		},
+	}, {
+		name:   "attitude",
+		source: cotDetailAttitude,
+		want:   map[string]string{"attitude_yaw": "271.5°", "attitude_roll": "-4.5°"},
+	}, {
+		name:   "track",
+		source: cotDetailTrack,
+		want:   map[string]string{"track_slope": "-2.5°", "speed": "13.4 m/s", "course": "72°"},
+	}, {
+		name:   "sensor",
+		source: cotDetailSensor,
+		want: map[string]string{
+			"class":        cot.ClassSensor,
+			"sensor_fov":   "42°",
+			"sensor_range": "1500 m",
+			"sensor_model": "MX-10",
+		},
+	}, {
+		name:   "video",
+		source: cotDetailVideo,
+		want: map[string]string{
+			"class":              cot.ClassVideo,
+			"video_uid":          "VID-1",
+			"video_conn_address": "198.51.100.20",
+			"video_conn_path":    "/tower",
+		},
+	}, {
+		name:   "appearance",
+		source: cotDetailAppearance,
+		want: map[string]string{
+			"usericon_iconsetpath": "COT_MAPPING_2525C/a-f/a-f-G-U-C",
+			"color_argb":           "#ff0000",
+		},
+	}, {
+		name:   "group",
+		source: cotDetailGroup,
+		want:   map[string]string{"group": "Cyan", "role": "Team Lead"},
+	}}
+
+	for _, c := range cases {
+		props := detailExampleProps(t, c.source)
+
+		for key, want := range c.want {
+			if props[key] != want {
+				t.Errorf("%s: %s is %v, want %q", c.name, key, props[key], want)
+			}
+		}
+	}
+}
+
+func TestTheFlowExampleIsAProcessingPath(t *testing.T) {
+	props := detailExampleProps(t, cotDetailFlow)
+
+	flow, ok := props["flow"].([]any)
+	if !ok || len(flow) != 2 {
+		t.Fatalf("the flow example produced %v, want two hops", props["flow"])
+	}
+
+	first := flow[0].(map[string]any)["system"]
+	if first != "TAK-Server-Prod" {
+		t.Errorf("the first hop is %v, want TAK-Server-Prod; the row promises document order", first)
+	}
+	for _, entry := range flow {
+		if entry.(map[string]any)["system"] == "version" {
+			t.Error("version was rendered as a system, which the row says it is not")
+		}
+	}
+}
+
+func TestTheUnknownExampleIsCountedRatherThanDropped(t *testing.T) {
+	props := detailExampleProps(t, cotDetailUnknown)
+
+	if props["detail_unknown"] != "2" {
+		t.Fatalf("the unrecognised example counted %v elements, want the two it carries",
+			props["detail_unknown"])
+	}
+	if props["callsign"] != "GOLF1" {
+		t.Errorf("the event lost its callsign to the elements it does not read: %v", props["callsign"])
+	}
+}
+
+func TestTheDetailNotesAreTrueAboutAnAtom(t *testing.T) {
+	source := strings.Replace(cotDetailChat, `type="b-t-f"`, `type="a-h-G-U-C-A"`, 1)
+
+	if held, ok := detailExampleProps(t, source)["class"]; ok {
+		t.Errorf("a hostile contact carrying the chat example classified as %v", held)
+	}
+}
+
+func detailExampleProps(t *testing.T, source string) map[string]any {
+	t.Helper()
+
+	events, err := cot.Parse([]byte(source))
+	if err != nil {
+		t.Fatalf("the example does not parse: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("the example carries %d events, not one", len(events))
+	}
+
+	blob := cot.Props(events, cot.Source{Kind: cot.SourceFence, Text: source})
+	return blob["events"].([]any)[0].(map[string]any)
+}
+
+func cotExampleSources() map[string]string {
+	return map[string]string{
+		"example":    cotExampleEvent,
+		"one line":   cotExampleOneLine,
+		"multi":      cotDetailMultiEvent,
+		"batch":      cotDetailBatch,
+		"multi link": cotDetailMultiLink,
+		"linked":     cotDetailLinked,
+		"chat":       cotDetailChat,
+		"medevac":    cotDetailMedevac,
+		"device":     cotDetailDevice,
+		"precision":  cotDetailPrecision,
+		"attitude":   cotDetailAttitude,
+		"track":      cotDetailTrack,
+		"sensor":     cotDetailSensor,
+		"video":      cotDetailVideo,
+		"appearance": cotDetailAppearance,
+		"group":      cotDetailGroup,
+		"flow":       cotDetailFlow,
+		"unknown":    cotDetailUnknown,
+		"file":       cotDetailFile(),
+	}
+}
+
+func TestEveryCotExampleParsesToNamedTypes(t *testing.T) {
+	for name, source := range cotExampleSources() {
+		events, err := cot.Parse([]byte(source))
+		if err != nil {
+			t.Errorf("%s does not parse: %v", name, err)
+			continue
+		}
+
+		for _, event := range events {
+			row := cot.Props([]cot.Event{event}, cot.Source{})["events"].([]any)[0].(map[string]any)
+			if row["type_label"] == "" || row["type_label"] == nil {
+				t.Errorf("%s: %q resolves to no type name", name, event.Type)
+			}
+		}
+	}
+}
+
+func TestEveryRegisteredExtensionIsDemonstrated(t *testing.T) {
+	written := map[string]bool{}
+
+	for _, source := range cotExampleSources() {
+		events, err := cot.Parse([]byte(source))
+		if err != nil {
+			continue
+		}
+
+		for _, raw := range cot.Props(events, cot.Source{})["events"].([]any) {
+			for key := range raw.(map[string]any) {
+				written[key] = true
+			}
+		}
+	}
+
+	for _, key := range cot.PropKeys() {
+		if !written[key] {
+			t.Errorf("no example writes %q, so nothing demonstrates it", key)
+		}
+	}
+}
+
+func TestNoCotAtomCarriesExactlyOneFence(t *testing.T) {
+	for _, enabled := range []bool{true, false} {
+		for _, files := range []bool{true, false} {
+			for _, chunk := range cotDetailChunks(enabled, files) {
+				for i, atom := range chunk.lines {
+					if fences := countFences(atom); fences == 1 {
+						t.Errorf("%q atom %d carries exactly one fence, so a post holding "+
+							"only it would be stamped as a card", chunk.heading, i)
+					}
+				}
+			}
+		}
+	}
+}
+
+func TestEveryCotAtomFitsTheFloorBudget(t *testing.T) {
+	floor := safePostRunes - headingBudget
+
+	for _, chunk := range cotDetailChunks(true, true) {
+		for i, atom := range chunk.lines {
+			if runes := utf8.RuneCountInString(atom); runes > floor {
+				t.Errorf("%q atom %d is %d runes, past the %d floor the retry ladder "+
+					"falls back to", chunk.heading, i, runes, floor)
+			}
+		}
+	}
+}
+
+func TestTheFlatExampleIsRecognizedWithoutAFence(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	source, found := p.cotSource(&model.Post{Message: cotExampleOneLine, UserId: "u1"})
+	if !found {
+		t.Fatal("the flat event is not recognized when posted bare, so the row promising " +
+			"no fence is needed is false")
+	}
+	if _, err := cot.Parse([]byte(source.Text)); err != nil {
+		t.Errorf("the recognized span does not parse: %v", err)
+	}
+
+	if _, found := p.cotSource(&model.Post{Message: cotExampleEvent, UserId: "u1"}); found {
+		t.Error("the indented event was recognized bare, so the row telling readers to " +
+			"fence an indented event is stating a rule that does not exist")
+	}
+}
+
+func TestNoCotExampleIsTabIndented(t *testing.T) {
+	for name, source := range cotExampleSources() {
+		for line := range strings.SplitSeq(source, "\n") {
+			if strings.HasPrefix(line, "\t") {
+				t.Errorf("%s has a tab-indented line: %q", name, line)
+			}
+		}
+	}
+}
+
+func TestTheFlatExampleIsTheCardsOwnEvent(t *testing.T) {
+	short, err := cot.Parse([]byte(cotExampleOneLine))
+	if err != nil {
+		t.Fatalf("the compact row's event does not parse: %v", err)
+	}
+	card, err := cot.Parse([]byte(cotExampleEvent))
+	if err != nil {
+		t.Fatalf("the card example does not parse: %v", err)
+	}
+
+	if len(short) != 1 || len(card) != 1 {
+		t.Fatalf("expected one event each, got %d and %d", len(short), len(card))
+	}
+	if short[0].UID != card[0].UID || short[0].Type != card[0].Type ||
+		short[0].Time != card[0].Time || short[0].Point != card[0].Point {
+		t.Errorf("the flat example shows %s/%s and the card shows %s/%s",
+			short[0].UID, short[0].Type, card[0].UID, card[0].Type)
+	}
+	if strings.Contains(cotExampleOneLine, "\n") {
+		t.Error("the flat example is not one line, so it is not recognized without a fence")
+	}
+	if strings.Contains(cotExampleShort(), "\n") {
+		t.Error("the compact row is not one line, so it cannot sit in the examples list")
+	}
+}
+
+func countFences(atom string) int {
+	fences := 0
+	for line := range strings.SplitSeq(atom, "\n") {
+		if strings.HasPrefix(line, "```") {
+			fences++
+		}
+	}
+
+	return fences / 2
 }

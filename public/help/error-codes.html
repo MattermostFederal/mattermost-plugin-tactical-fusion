@@ -121,6 +121,16 @@
                     <td><code>HooksCotUnreadable</code> <span class="level">Warn</span></td>
                     <td>A fenced block the author labelled <code>cot</code> could not be read as a Cursor on Target event, so it was left as an ordinary code block. The author is told, and nobody else sees the notice.</td>
                 </tr>
+                <tr>
+                    <td><code>TF-11007</code></td>
+                    <td><code>HooksCotDetailDropped</code> <span class="level">Warn</span></td>
+                    <td>The parsed event carried more <code>&lt;detail&gt;</code> than the post's props map had room for, so the card was rendered without the extension rows rather than not rendered at all. Position, timing, accuracy, callsign, team and remarks are unaffected, and the whole event is still readable under "As posted" in the sidebar.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-11008</code></td>
+                    <td><code>HooksCotPropsUnmeasurable</code> <span class="level">Warn</span></td>
+                    <td>Something already attached to the post could not be converted to JSON, so the size of the post's properties could not be checked and nothing was rendered. This is not caused by the event and cannot be fixed by posting a smaller one: look for another integration writing a value it cannot serialize.</td>
+                </tr>
             </tbody>
         </table>
 

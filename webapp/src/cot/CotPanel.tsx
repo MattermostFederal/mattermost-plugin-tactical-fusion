@@ -1,17 +1,22 @@
 import React from 'react';
 
 import CotMap from './CotMap';
+import DetailGroups from './DetailGroups';
 import type {CotEvent, CotPayload} from './types';
 import {SOURCE_FILE, isLinkable, validFor} from './types';
 
+import ErrorBoundary from '../components/ErrorBoundary';
 import Countdown from '../decorators/dtg/Countdown';
 import HoverLink from '../decorators/HoverLink';
 import {pluginBaseUrl} from '../plugin_url';
 
 export const PANEL_TITLE = 'Cursor on Target';
 
+export const SECTION_FAILED = 'This event could not be rendered.';
+
 const styles: Record<string, React.CSSProperties> = {
     heading: {margin: '0 0 4px', fontSize: '16px', fontWeight: 600},
+    groupHeading: {margin: '16px 0 4px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.04em', opacity: 0.85, fontWeight: 600},
     subhead: {margin: '0 0 12px', opacity: 0.85, fontSize: '13px'},
     rawType: {fontFamily: 'monospace', fontSize: '0.85em', opacity: 0.9},
     section: {margin: '16px 0 4px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.04em', opacity: 0.85},
@@ -88,7 +93,7 @@ function StaleCountdown({event}: {event: CotEvent}) {
 
     return (
         <div>
-            <p style={styles.section}>{'Goes stale'}</p>
+            <h3 style={styles.groupHeading}>{'Goes stale'}</h3>
             <Countdown target={new Date(staleAt)}/>
             <p style={styles.countdownNote}>
                 {'Counted against this device’s clock, unlike every other reading here.'}
@@ -102,22 +107,26 @@ const EventSection: React.FC<{event: CotEvent; payload: CotPayload}> = ({event, 
 
     return (
         <div>
-            <p style={styles.heading}>{event.callsign === '' ? event.uid : event.callsign}</p>
+            <h2 style={styles.heading}>{event.callsign === '' ? event.uid : event.callsign}</h2>
             <p style={styles.subhead}>
                 {event.typeLabel === '' ? 'Unrecognized event type' : event.typeLabel}
                 {' '}
                 <span style={styles.rawType}>{`(${event.cotType})`}</span>
             </p>
 
-            {isLinkable(event) && <CotMap events={[event]}/>}
+            {isLinkable(event) && (
+                <ErrorBoundary>
+                    <CotMap events={[event]}/>
+                </ErrorBoundary>
+            )}
 
             {event.positionNote !== '' && <p style={styles.subhead}>{event.positionNote}</p>}
 
-            <p style={styles.section}>{'Event'}</p>
+            <h3 style={styles.groupHeading}>{'Event'}</h3>
             <dl
                 style={styles.rows}
                 role='group'
-                aria-label='Readings for this Cursor on Target event'
+                aria-label={`Readings for the Cursor on Target event ${event.callsign === '' ? event.uid : event.callsign}`}
             >
                 {event.lat !== '' && <Row label='Position'><Position event={event}/></Row>}
                 {event.hae !== '' && <Row label='Altitude (HAE)'>{event.hae}</Row>}
@@ -164,21 +173,23 @@ const EventSection: React.FC<{event: CotEvent; payload: CotPayload}> = ({event, 
 
             {event.remarks !== '' && (
                 <div>
-                    <p style={styles.section}>{'Remarks'}</p>
+                    <h3 style={styles.groupHeading}>{'Remarks'}</h3>
                     <p style={styles.remarks}>{event.remarks}</p>
                 </div>
             )}
 
+            <DetailGroups event={event}/>
+
             {payload.source === SOURCE_FILE && payload.fileName !== '' && (
                 <div>
-                    <p style={styles.section}>{'Source file'}</p>
+                    <h3 style={styles.groupHeading}>{'Source file'}</h3>
                     <p style={styles.value}>{payload.fileName}</p>
                 </div>
             )}
 
             {payload.src !== '' && (
                 <div>
-                    <p style={styles.section}>{'As posted'}</p>
+                    <h3 style={styles.groupHeading}>{'As posted'}</h3>
                     <pre
                         style={styles.source}
                         tabIndex={0}
@@ -206,10 +217,12 @@ export const CotPanel: React.FC<{payload: CotPayload}> = ({payload}) => (
                 key={`${event.uid}-${index}`}
                 style={index > 0 ? styles.later : undefined}
             >
-                <EventSection
-                    event={event}
-                    payload={payload}
-                />
+                <ErrorBoundary fallback={<p style={styles.subhead}>{SECTION_FAILED}</p>}>
+                    <EventSection
+                        event={event}
+                        payload={payload}
+                    />
+                </ErrorBoundary>
             </div>
         ))}
     </div>

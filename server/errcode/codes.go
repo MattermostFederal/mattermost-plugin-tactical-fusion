@@ -87,6 +87,22 @@ const (
 	// explicitly labeled cot could not be read as a Cursor on Target event.
 	HooksCotUnreadable = 11005
 
+	// HooksCotDetailDropped is a warn recording that the parsed event carried
+	// more <detail> than the post's props map had room for, so the card was
+	// stamped without them rather than not stamped at all.
+	HooksCotDetailDropped = 11007
+
+	// HooksCotPropsUnmeasurable is a warn recording that the post's props map
+	// could not be marshalled, so its size could not be checked and nothing was
+	// stamped.
+	//
+	// Its own code rather than HooksCotPropsTooLarge, because the two say
+	// different things to an operator and only one of them is the author's to
+	// act on. The value that cannot be marshalled came from somewhere else on
+	// the post, so telling the author their event was too big is both false and
+	// useless advice.
+	HooksCotPropsUnmeasurable = 11008
+
 	// server/http.go (12000-12999)
 
 	// HTTPMethodNotAllowed is returned for anything other than GET on the
@@ -320,6 +336,8 @@ var AllCodes = []int{
 	HooksCotFileNotOwned,
 	HooksCotPropsTooLarge,
 	HooksCotUnreadable,
+	HooksCotDetailDropped,
+	HooksCotPropsUnmeasurable,
 
 	HTTPMethodNotAllowed,
 	HTTPDecoratePathInvalid,

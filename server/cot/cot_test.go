@@ -749,3 +749,51 @@ func TestPropsDropANumericFieldThatIsNotANumber(t *testing.T) {
 		})
 	}
 }
+
+// Every codepoint the explicit bidi, isolate and BOM arms used to name.
+//
+// Those three arms sat below the Cf test and could never run, because all ten
+// codepoints they named are in category Cf. They came out, and this is what the
+// deletion rests on: it sweeps the ranges rather than sampling them, so a Go
+// release that moved any of these out of Cf would fail here rather than quietly
+// letting an override back into a callsign.
+func TestTheCategoryTestCoversTheRangesItReplaced(t *testing.T) {
+	var named []rune
+	for r := rune(0x202A); r <= 0x202E; r++ {
+		named = append(named, r)
+	}
+	for r := rune(0x2066); r <= 0x2069; r++ {
+		named = append(named, r)
+	}
+	named = append(named, 0xFEFF)
+
+	for _, r := range named {
+		if got := sanitize("AL"+string(r)+"PHA", maxFieldRunes); got != "ALPHA" {
+			t.Errorf("U+%04X survived sanitize: %q", r, got)
+		}
+	}
+}
+
+// decodeHow puts a method word in front of a source, and falls back to the
+// source alone when the leading letter names no method.
+//
+// That fallback is unreachable today, which is the point: it is the only thing
+// between a future howSources entry with an unlisted leading letter and a label
+// rendered as ", GPS". Reaching it in a test would mean faking a table state, so
+// the invariant it defends is pinned here instead. Read from the catalog rather
+// than listed, per the repo's convention.
+func TestEveryHowSourceHasAMethod(t *testing.T) {
+	if len(howSources) == 0 {
+		t.Fatal("howSources is empty, so this test is checking nothing")
+	}
+
+	for code := range howSources {
+		if code == "" {
+			t.Error("howSources holds an empty code")
+			continue
+		}
+		if _, ok := howMethods[code[0]]; !ok {
+			t.Errorf("howSources has %q and howMethods has no %q, so its label would begin with a comma", code, code[0])
+		}
+	}
+}

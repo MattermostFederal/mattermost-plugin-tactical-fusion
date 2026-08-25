@@ -1,6 +1,7 @@
 import React from 'react';
 
 import CotMap from './CotMap';
+import {ClassSummary, chatReading} from './summary';
 import type {CotEvent, CotPayload} from './types';
 import {SOURCE_FILE, affiliationColor, isLinkable, staleAfterPosting, validFor} from './types';
 
@@ -67,6 +68,15 @@ const styles: Record<string, React.CSSProperties> = {
  * since by then the reader has already clicked through.
  */
 export const CARD_KIND = 'Cursor on Target (CoT)';
+
+/**
+ * What a boundary says when it catches something.
+ *
+ * A boundary rendering null leaves a card with a heading and no rows, and no
+ * reader can tell that from an event that stated nothing. The fallback may
+ * never be blank, for the reason the post body's own fallback may not be.
+ */
+export const DETAIL_FAILED = 'The detail of this event could not be rendered. Open details to read the event as it was posted.';
 
 function Row({label, children}: {label: string; children: React.ReactNode}) {
     return (
@@ -140,6 +150,20 @@ function Dot({event}: {event: CotEvent}) {
     );
 }
 
+/**
+ * That the extension rows did not fit, said where the reader is.
+ *
+ * The panel carries the same notice, but a reader who never opens it would
+ * otherwise meet a card whose class summary silently vanished.
+ */
+function Degraded({event}: {event: CotEvent}) {
+    if (event.detailDropped === '') {
+        return null;
+    }
+
+    return <p style={styles.note}>{'Some detail was too large to store. Open details to read the event as posted.'}</p>;
+}
+
 function Naming({event}: {event: CotEvent}) {
     return (
         <>
@@ -158,6 +182,10 @@ function EventDetail({event, createAt}: {event: CotEvent; createAt: number}) {
     const staleReading = staleAfterPosting(event, createAt);
     const window = validFor(event);
 
+    // The chat class carries the message above these rows, so drawing Remarks
+    // here as well would put the same string on the card twice.
+    const showRemarks = event.remarks !== '' && chatReading(event) === null;
+
     return (
         <>
             {event.positionNote !== '' && <p style={styles.note}>{event.positionNote}</p>}
@@ -165,7 +193,7 @@ function EventDetail({event, createAt}: {event: CotEvent; createAt: number}) {
             <dl
                 style={styles.rows}
                 role='group'
-                aria-label='Details of this Cursor on Target event'
+                aria-label={`Details of the Cursor on Target event ${event.callsign === '' ? event.uid : event.callsign}`}
             >
                 {event.lat !== '' && <Row label='Position'><PositionValue event={event}/></Row>}
                 {event.hae !== '' && <Row label='Altitude (HAE)'>{event.hae}</Row>}
@@ -215,7 +243,7 @@ function EventDetail({event, createAt}: {event: CotEvent; createAt: number}) {
                 {event.related !== '' && <Row label='Relates to'>{event.related}</Row>}
                 {event.howLabel !== '' && <Row label='Source'>{event.howLabel}</Row>}
                 <Row label='UID'>{event.uid}</Row>
-                {event.remarks !== '' && <Row label='Remarks'>{event.remarks}</Row>}
+                {showRemarks && <Row label='Remarks'>{event.remarks}</Row>}
             </dl>
         </>
     );
@@ -267,7 +295,11 @@ export const CotCard: React.FC<Props> = ({payload, createAt, compactDisplay}) =>
                     {only ? `${CARD_KIND}:` : `${CARD_KIND}: ${events.length} events`}
                 </p>
 
-                {only && <div style={styles.header}><Naming event={only}/></div>}
+                <ErrorBoundary fallback={<p style={styles.note}>{DETAIL_FAILED}</p>}>
+                    {only && <div style={styles.header}><Naming event={only}/></div>}
+                    {only && <ClassSummary event={only}/>}
+                    {only && <Degraded event={only}/>}
+                </ErrorBoundary>
 
                 {!compactDisplay && events.some(isLinkable) && (
                     <ErrorBoundary>
@@ -275,12 +307,14 @@ export const CotCard: React.FC<Props> = ({payload, createAt, compactDisplay}) =>
                     </ErrorBoundary>
                 )}
 
-                {only ? (
-                    <EventDetail
-                        event={only}
-                        createAt={createAt}
-                    />
-                ) : <EventList events={events}/>}
+                <ErrorBoundary fallback={<p style={styles.note}>{DETAIL_FAILED}</p>}>
+                    {only ? (
+                        <EventDetail
+                            event={only}
+                            createAt={createAt}
+                        />
+                    ) : <EventList events={events}/>}
+                </ErrorBoundary>
 
                 <div style={styles.actions}>
                     <button
