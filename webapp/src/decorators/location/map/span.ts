@@ -121,3 +121,96 @@ export function cellBounds(
 
     return [[lon - (dLon / 2), south], [lon + (dLon / 2), north]];
 }
+
+/**
+ * How much of the canvas the map's own chrome covers, per edge, in CSS pixels.
+ *
+ * Every corner has something in it: the Reset button top left, MapLibre's zoom
+ * buttons top right, the zoom readout bottom left, and the scale bar bottom
+ * right. A block of events framed with one uniform padding put markers under
+ * all four, because a number small enough not to waste the canvas is smaller
+ * than the tallest thing on it.
+ *
+ * Corner chrome only has to be cleared on ONE axis, and which axis is chosen by
+ * which is cheaper on a box this shape. The zoom buttons are 29 wide and 58
+ * tall, so clearing them sideways costs 12% of a 320px width where clearing
+ * them downwards costs 34% of a 200px height; the Reset button and the readout
+ * are the other way round, wide and short, so they are cleared vertically. That
+ * is why these four numbers are not symmetrical and must not be tidied into
+ * one.
+ *
+ * Each includes half a marker, since a crosshair is drawn centred on its point
+ * and would otherwise hang over the edge it was just cleared of. That allowance
+ * is not a rounding: at 40 the top edge of a marker landed exactly on the
+ * bottom edge of the Reset button. The reach of each control, measured from the
+ * edge it is anchored to, is 32 for Reset (8 + 24), 39 for the zoom buttons
+ * (10 + 29), 30 for the readout (8 + 22) and 28 for the scale bar (10 + 18);
+ * every number above is that plus half a marker plus a little. The BOTTOM edge
+ * is sized against the readout's 30 rather than the scale bar's 28, since both
+ * sit on it and the taller one is what has to be cleared.
+ *
+ * span.spec.ts holds them to MARKER_SIZE, and the browser test 'no marker opens
+ * underneath a control' holds them to where MapLibre actually puts a marker on
+ * a panel-width canvas, which is the only thing that catches a graze.
+ */
+const CHROME_PADDING_PX = {top: 48, right: 52, bottom: 46, left: 26} as const;
+
+/**
+ * The same, for a surface that draws no chrome at all.
+ *
+ * The hover card is `preview`: no controls, no readout, no Reset. It still
+ * needs half a marker plus enough that a pin does not sit against the frame.
+ */
+const BARE_PADDING_PX = {top: 24, right: 24, bottom: 24, left: 24} as const;
+
+/**
+ * The most of one axis padding may take.
+ *
+ * Padding is in pixels and the canvas is not: the panel map is 200px tall at
+ * its minimum, where the chrome and its marker allowance want 88 of them. That
+ * is 44% of the shortest map this component draws, which is why the share is a
+ * half rather than something more comfortable: the chrome genuinely covers that
+ * much of a short canvas, and a lower ceiling would scale the padding back down
+ * into the controls it exists to clear.
+ *
+ * Past this share the padding is scaled down rather than allowed to invert the
+ * viewport, which MapLibre answers with a camera nobody can read.
+ */
+export const MAX_PADDING_SHARE = 0.5;
+
+export interface FitPadding {
+    top: number;
+    right: number;
+    bottom: number;
+    left: number;
+}
+
+/**
+ * What to pad a multi-marker fit by, so no marker lands under the chrome.
+ */
+export function fitPadding(widthPx: number, heightPx: number, hasChrome: boolean): FitPadding {
+    const want = hasChrome ? CHROME_PADDING_PX : BARE_PADDING_PX;
+    const [left, right] = withinAxis(want.left, want.right, widthPx);
+    const [top, bottom] = withinAxis(want.top, want.bottom, heightPx);
+
+    return {top, right, bottom, left};
+}
+
+/**
+ * Both edges of one axis, scaled together if they would not fit.
+ *
+ * Scaled in proportion rather than clamped individually, because the asymmetry
+ * is the whole point: halving both keeps the wide edge wide, while clipping
+ * each to a ceiling would flatten them into the uniform padding this replaced.
+ */
+function withinAxis(near: number, far: number, sizePx: number): [number, number] {
+    const total = near + far;
+    const budget = Math.max(0, sizePx) * MAX_PADDING_SHARE;
+
+    if (total <= budget || total === 0) {
+        return [near, far];
+    }
+
+    const scale = budget / total;
+    return [Math.floor(near * scale), Math.floor(far * scale)];
+}

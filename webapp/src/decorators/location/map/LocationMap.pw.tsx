@@ -4,6 +4,7 @@ import React from 'react';
 import {serveMapAssets} from './asset_fixtures';
 import LocationMapHarness from './LocationMapHarness';
 import type {ViewName} from './LocationMapHarness';
+import {MARKER_SIZE} from './maplibre';
 import {DATA_MAX_ZOOM} from './span';
 
 import {expect, test} from '../../../../playwright/ct-coverage';
@@ -59,6 +60,32 @@ function noteOf(component: Locator): Locator {
  */
 async function expectDrawn(component: Locator): Promise<void> {
     await expect(component.getByRole('button', {name: RESET})).toBeVisible({timeout: 15_000});
+    await expect(noteOf(component)).toHaveCount(0);
+}
+
+/**
+ * Drawn, for a preview card, which has none of the furniture to wait on.
+ *
+ * `expectDrawn` keys on the Reset button, and preview mode deliberately draws
+ * no controls, so the preview tests had nothing to wait on and polled a reading
+ * straight away. Every reading is -1 until MapLibre exists, so a map that failed
+ * to come up at all reported `expected "1", received "-1"`, which names neither
+ * the failure nor its cause and is the shape the intermittent one took.
+ *
+ * The note is rendered in preview mode too, so this gets the same diagnosis
+ * `expectDrawn` does.
+ */
+async function expectPreviewDrawn(component: Locator): Promise<void> {
+    // Reports the note rather than the readiness flag, so the failure names the
+    // cause: "The map could not be loaded." rather than "expected yes, got no".
+    await expect.poll(async () => {
+        if (await component.getByTestId('live-map').textContent() === 'yes') {
+            return 'drawn';
+        }
+
+        return await noteOf(component).textContent().catch(() => null) ?? 'no map, and no note';
+    }, {message: 'the preview map never came up', timeout: 15_000}).toBe('drawn');
+
     await expect(noteOf(component)).toHaveCount(0);
 }
 
@@ -695,6 +722,8 @@ test.describe('preview mode', () => {
                 preview={true}
             />);
 
+        await expectPreviewDrawn(component);
+
         // The map itself is there: the pin lands, which is the only proof that
         // survives the controls being gone.
         await expect.poll(async () => {
@@ -746,11 +775,13 @@ test.describe('preview mode', () => {
                 preview={true}
             />);
 
+        await expectPreviewDrawn(component);
+
         await expect.poll(async () => {
             await readMap(component);
 
             return component.getByTestId('pin-features').textContent();
-        }).toBe('1');
+        }, {message: 'pin drawn'}).toBe('1');
 
         await readMap(component);
         const before = await component.getByTestId('zoom').textContent();
@@ -835,6 +866,8 @@ test.describe('the OpenStreetMap credit', () => {
                 preview={true}
             />);
 
+        await expectPreviewDrawn(component);
+
         await expect.poll(async () => {
             await readMap(component);
 
@@ -843,5 +876,198 @@ test.describe('the OpenStreetMap credit', () => {
 
         await expect(component.getByText(OSM)).toBeHidden();
         await expect(component.getByText(OMT)).toBeHidden();
+    });
+});
+
+/*
+ * A block of events is framed clear of the map's own chrome.
+ *
+ * The defect: fitBounds was called with one uniform 32px padding, and every
+ * corner of this map has something in it. The zoom buttons are 58px tall and
+ * the Reset button, the zoom readout and the scale bar all sit within 30px of
+ * their edges, so markers near the bounds of a spread opened underneath them.
+ *
+ * Asserted by PROJECTING each marker onto the canvas and checking it against
+ * the rectangles the chrome occupies, rather than by asserting a zoom number.
+ * A zoom assertion would pass for a padding that zoomed out and still put a
+ * marker under the scale bar, which is the actual complaint.
+ */
+test.describe('framing a block of events', () => {
+    /*
+     * Mounted at the width the RHS panel actually gives the map.
+     *
+     * Left to fill the test page this canvas is about 1264px wide, where the
+     * four corners are so far apart that nothing can reach the chrome and this
+     * whole suite passes against any padding at all. The bug being covered is a
+     * bug about a small canvas, so the canvas has to be small.
+     */
+    const PANEL_WIDTH_PX = 360;
+
+    // Spread far enough apart that the fit, not the opening span, decides the
+    // camera: Hickam, Hilo and Wheeler are the three the examples use.
+    const BLOCK = [
+        {lat: 21.3353, lon: -157.9483, color: '#c0392b'},
+        {lat: 19.7297, lon: -155.0900, color: '#2e86c1'},
+        {lat: 21.4836, lon: -158.0386, color: '#2e86c1'},
+    ];
+
+    /*
+     * What each control covers, measured from the edge it is anchored to.
+     *
+     * MapLibre's own controls carry a 10px margin: the zoom buttons are 29
+     * wide and 58 tall, the scale bar is up to 90 wide and about 18 tall. The
+     * Reset button and the zoom readout are this component's, at 8px in.
+     */
+    const CHROME = [
+        {name: 'Reset view', left: 0, top: 0, width: 78, height: 32},
+        {name: 'zoom buttons', right: 0, top: 0, width: 39, height: 68},
+        {name: 'zoom readout', left: 0, bottom: 0, width: 63, height: 30},
+        {name: 'scale bar', right: 0, bottom: 0, width: 100, height: 28},
+    ];
+
+    /*
+     * The MARKER, not the point it is centred on.
+     *
+     * A crosshair is MARKER_SIZE across and drawn centred, so a marker whose
+     * centre clears the scale bar by 4px still has its bottom third under it.
+     * Checking the centre alone passed against the uniform padding this test
+     * exists to catch, which is the whole reason it is written this way.
+     */
+    function covers(box: typeof CHROME[number], x: number, y: number, w: number, h: number): boolean {
+        const half = MARKER_SIZE / 2;
+
+        const x0 = box.left === undefined ? w - box.width : 0;
+        const x1 = box.left === undefined ? w : box.width;
+        const y0 = box.top === undefined ? h - box.height : 0;
+        const y1 = box.top === undefined ? h : box.height;
+
+        return x + half >= x0 && x - half <= x1 && y + half >= y0 && y - half <= y1;
+    }
+
+    test('no marker opens underneath a control', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <div style={{width: PANEL_WIDTH_PX}}><LocationMapHarness markers={BLOCK}/></div>,
+        );
+        await expectDrawn(component);
+        await readMap(component);
+
+        const raw = await component.getByTestId('pins').textContent();
+        expect(raw, 'the harness reported no projection').toBeTruthy();
+
+        const {w, h, at} = JSON.parse(raw!) as {w: number; h: number; at: number[][]};
+        expect(at).toHaveLength(BLOCK.length);
+
+        for (const [x, y] of at) {
+            // On the canvas at all, which a fit that overshot would fail.
+            expect(x, `marker at ${x},${y} is off a ${w}x${h} canvas`).toBeGreaterThanOrEqual(0);
+            expect(x).toBeLessThanOrEqual(w);
+            expect(y).toBeGreaterThanOrEqual(0);
+            expect(y).toBeLessThanOrEqual(h);
+
+            for (const box of CHROME) {
+                expect(
+                    covers(box, x, y, w, h),
+                    `marker at ${x},${y} is under the ${box.name} on a ${w}x${h} canvas`,
+                ).toBe(false);
+            }
+        }
+    });
+
+    /*
+     * The whole set, not just the first. A fit that framed one event and left
+     * the others off screen would satisfy the clearance check above by having
+     * nothing left to check.
+     */
+    test('every event is inside the frame, not just the first', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <div style={{width: PANEL_WIDTH_PX}}><LocationMapHarness markers={BLOCK}/></div>,
+        );
+        await expectDrawn(component);
+        await readMap(component);
+
+        const raw = await component.getByTestId('pins').textContent();
+        expect(raw, 'the harness reported no projection').toBeTruthy();
+
+        const {w, h, at} = JSON.parse(raw!) as {w: number; h: number; at: number[][]};
+        expect(at).toHaveLength(BLOCK.length);
+
+        // ON the canvas, first. Without this the test passed for a camera that
+        // never fitted at all: markers left off screen have LARGER spread than
+        // framed ones, so the spread check below was satisfied by the very
+        // failure its own name promises to catch.
+        for (const [x, y] of at) {
+            expect(x, `marker at ${x},${y} is off a ${w}x${h} canvas`).toBeGreaterThanOrEqual(0);
+            expect(x).toBeLessThanOrEqual(w);
+            expect(y).toBeGreaterThanOrEqual(0);
+            expect(y).toBeLessThanOrEqual(h);
+        }
+
+        const xs = at.map(([x]) => x);
+        const ys = at.map(([, y]) => y);
+
+        // And spread across it rather than stacked, which is what says the
+        // camera fitted the block instead of zooming out to the world.
+        expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(20);
+        expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(20);
+    });
+});
+
+/*
+ * The accessible label agrees with how many markers there are.
+ *
+ * A block used to be announced as "World map with the position marked. The
+ * marker is 3 events." Three things wrong at once: singular grammar for N
+ * markers, a sentence that is not a description of a marker, and no affiliation
+ * anywhere. That last one is the defect that matters, because colour is the
+ * whole of what tells one marker from another on this map, so a reader who gets
+ * no colour got a count and nothing else.
+ */
+test.describe('the accessible label for a block', () => {
+    const TWO = [
+        {lat: 21.3353, lon: -157.9483, color: '#c0392b'},
+        {lat: 19.7297, lon: -155.0900, color: '#3d85c6'},
+    ];
+
+    async function labelOf(component: Locator): Promise<string> {
+        return await component.locator('span').filter({hasText: 'World map'}).first().innerText();
+    }
+
+    test('is plural, and carries what the markers are', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness
+                markers={TWO}
+                markerLabel='1 hostile and 1 friendly'
+            />,
+        );
+        await expectDrawn(component);
+
+        const label = await labelOf(component);
+
+        expect(label).toContain('2 positions marked');
+        expect(label).toContain('The markers are 1 hostile and 1 friendly');
+
+        // The singular forms are the bug, so they are asserted absent rather
+        // than left to the phrasing above.
+        expect(label).not.toContain('the position marked');
+        expect(label).not.toContain('The marker is');
+    });
+
+    test('stays singular for one position', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness markerLabel='Hostile Armor Unit'/>);
+        await expectDrawn(component);
+
+        const label = await labelOf(component);
+
+        expect(label).toContain('the position marked');
+        expect(label).toContain('The marker is Hostile Armor Unit');
+        expect(label).not.toContain('positions marked');
     });
 });

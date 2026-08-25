@@ -35,8 +35,11 @@ type fakeAPI struct {
 
 	config   *model.Config
 	warnings []string
-	errors   []string
-	infos    []string
+
+	// warnCodes is the TF code from each warning, in the same order.
+	warnCodes []int
+	errors    []string
+	infos     []string
 
 	// permitted is what HasPermissionTo answers, and permissionsAsked records
 	// what was asked for, so a test can prove the System Console routes check
@@ -99,6 +102,52 @@ type fakeAPI struct {
 	// destination it is handed, and loadErr forces the load to fail.
 	loadedConfig string
 	loadErr      error
+
+	// files and fileContent are the fake filestore the Cursor on Target file
+	// path reads. Nil until a test needs one, so a test that does not attach a
+	// file still panics on an unexpected call.
+	files       map[string]*model.FileInfo
+	fileContent map[string][]byte
+
+	// fileInfoErr and fileErr force the corresponding failure, which is the
+	// only way to prove the post survives a filestore that will not answer.
+	fileInfoErr *model.AppError
+	fileErr     *model.AppError
+
+	// panicOnFileInfo is the injection point for the Cursor on Target recover.
+	// Nothing else on that path can be made to panic from a test, and a recover
+	// that is never entered is a recover nothing has verified.
+	panicOnFileInfo bool
+
+	// fileInfoCalls counts filestore lookups, so a test can assert a refusal
+	// happened BEFORE the store was asked rather than after.
+	fileInfoCalls int
+}
+
+func (a *fakeAPI) GetFileInfo(fileID string) (*model.FileInfo, *model.AppError) {
+	a.fileInfoCalls++
+	if a.panicOnFileInfo {
+		panic("the filestore exploded")
+	}
+	if a.fileInfoErr != nil {
+		return nil, a.fileInfoErr
+	}
+	info, ok := a.files[fileID]
+	if !ok {
+		return nil, &model.AppError{Message: "no such file"}
+	}
+	return info, nil
+}
+
+func (a *fakeAPI) GetFile(fileID string) ([]byte, *model.AppError) {
+	if a.fileErr != nil {
+		return nil, a.fileErr
+	}
+	content, ok := a.fileContent[fileID]
+	if !ok {
+		return nil, &model.AppError{Message: "no such file"}
+	}
+	return content, nil
 }
 
 func (a *fakeAPI) GetConfig() *model.Config { return a.config }
@@ -111,7 +160,27 @@ func (a *fakeAPI) GetBundlePath() (string, error) {
 	return a.bundlePath, nil
 }
 
-func (a *fakeAPI) LogWarn(msg string, _ ...any) { a.warnings = append(a.warnings, msg) }
+func (a *fakeAPI) LogWarn(msg string, pairs ...any) {
+	a.warnings = append(a.warnings, msg)
+	a.warnCodes = append(a.warnCodes, errorCodeIn(pairs))
+}
+
+// errorCodeIn pulls the TF code out of a log call's key/value pairs.
+//
+// The pairs used to be discarded, which meant no test could tell one refusal
+// from another: every one of them logs a warning, and the code is the only
+// thing that says which. That is what let a call site keep an inherited code
+// after the reason for it had changed.
+func errorCodeIn(pairs []any) int {
+	for i := 0; i+1 < len(pairs); i += 2 {
+		if key, ok := pairs[i].(string); ok && key == "error_code" {
+			if code, ok := pairs[i+1].(int); ok {
+				return code
+			}
+		}
+	}
+	return 0
+}
 
 func (a *fakeAPI) LogError(msg string, _ ...any) { a.errors = append(a.errors, msg) }
 
@@ -241,6 +310,9 @@ func newTestPlugin(t *testing.T, siteURL string, enabled bool) *Plugin {
 
 		EnableAirport:      enabled,
 		EnableAirportTable: enabled,
+
+		EnableCot:     enabled,
+		EnableCotFile: enabled,
 	})
 
 	registerDecoratorsForTest(t, p)

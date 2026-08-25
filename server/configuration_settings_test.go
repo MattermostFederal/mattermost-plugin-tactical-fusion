@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -293,4 +294,26 @@ func saysItShipsOff(text string) bool {
 	}
 
 	return false
+}
+
+// Both generated manifests embed plugin.json verbatim inside a literal a
+// backtick terminates: server/manifest.go uses a Go raw string and
+// webapp/src/manifest.ts a JavaScript template literal. So a backtick anywhere
+// in plugin.json breaks BOTH builds, and it breaks them hundreds of lines from
+// the cause, in files nobody edits and git does not track.
+//
+// Markdown fences in help text are the way this happens, since a fenced block
+// is exactly what an admin reading about Cursor on Target wants described.
+func TestPluginManifestCarriesNoBacktick(t *testing.T) {
+	raw, err := os.ReadFile("../plugin.json")
+	if err != nil {
+		t.Fatalf("could not read plugin.json: %v", err)
+	}
+
+	if before, _, found := bytes.Cut(raw, []byte("`")); found {
+		t.Errorf("plugin.json carries a backtick on line %d; both generated manifests embed "+
+			"this file inside a literal it terminates, so it breaks the Go and the webapp "+
+			"build at once. Describe a fenced block in words instead",
+			1+bytes.Count(before, []byte("\n")))
+	}
 }

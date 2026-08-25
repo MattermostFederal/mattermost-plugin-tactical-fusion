@@ -75,7 +75,37 @@ func referenceTime(post *model.Post) time.Time {
 // nil is the documented "allow without modification" value. The second return
 // value of the hook is always the empty string: a bug in here must never stop
 // somebody from posting.
-func (p *Plugin) decoratePost(post *model.Post, ref time.Time) (result *model.Post) {
+func (p *Plugin) decoratePost(post *model.Post, ref time.Time) *model.Post {
+	if post == nil {
+		return nil
+	}
+
+	// A stamped post is finished: the card owns the body, so decoration must not
+	// also rewrite the text underneath it.
+	//
+	// A STRIPPED one is not. cotStamp hands back a clone with a forged type
+	// removed, and that clone is an ordinary message again: returning it here
+	// would cost it its decoration for no reason other than somebody having
+	// spoofed a type on it.
+	result, stamped := p.cotStamp(post)
+	if stamped {
+		return result
+	}
+	if result != nil {
+		post = result
+	}
+
+	// decorateMessage answers nil for "nothing changed", so the strip has to be
+	// handed back itself when decoration finds nothing. Returning its nil would
+	// mean "no change" to the hook and put the forged type straight back on.
+	if decorated := p.decorateMessage(post, ref); decorated != nil {
+		return decorated
+	}
+
+	return result
+}
+
+func (p *Plugin) decorateMessage(post *model.Post, ref time.Time) (result *model.Post) {
 	// Capture the API before the deferred call. If a nil or broken API was what
 	// panicked in the first place, logging through p.API inside the recover
 	// would panic again from within the deferred function, which escapes the
@@ -92,7 +122,7 @@ func (p *Plugin) decoratePost(post *model.Post, ref time.Time) (result *model.Po
 		}
 	}()
 
-	if post == nil || post.Message == "" {
+	if post.Message == "" {
 		return nil
 	}
 	if p.decorators == nil {

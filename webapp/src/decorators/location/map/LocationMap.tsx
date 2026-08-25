@@ -7,10 +7,13 @@ import {loadBasemap, loadPackages} from './basemap';
 import {
     OSM_CREDIT,
     SEAM_CAPPED_LAYERS,
-    buildStyle, cellFeature, coveredBy, emptyCollection, hasWebGL2, loadMapLibre,
+    MARKER_PIXEL_RATIO,
+    accuracyFeature,
+    buildStyle, cellFeature, coveredBy, crosshairImage, emptyCollection, hasWebGL2, loadMapLibre,
+    markedPoints, markerImageID,
     mapColors, pointFeature, syncGlobalReach,
 } from './maplibre';
-import {MAX_ZOOM, cellBounds, isRenderable, zoomForSpan} from './span';
+import {MAX_ZOOM, cellBounds, fitPadding, isRenderable, zoomForSpan} from './span';
 import type {View} from './view';
 
 import {loadPackageNames} from '../../../packages/store';
@@ -117,6 +120,48 @@ interface Props extends View {
      * one thing a glance is asking: where.
      */
     preview?: boolean;
+
+    /**
+     * A stated circular error, in metres, drawn on the ground around the pin.
+     *
+     * Absent means the source stated no accuracy, and nothing is drawn: a
+     * default radius would be one this component invented. Every location
+     * surface omits it, so a coordinate's own precision keeps being carried by
+     * the cell rather than by a circle.
+     */
+    accuracyMeters?: number;
+
+    /**
+     * How the accuracy reads, already rendered by whoever stated it.
+     *
+     * Taken rather than formatted here so the label and the row a reader sees
+     * beside it cannot say different things: rounding metres a second time
+     * turned a stated 0.4 into "within 0 metres", which is a claim of a perfect
+     * fix made only to a screen reader.
+     */
+    accuracyLabel?: string;
+
+    /**
+     * Every point to mark, each in its own colour, which also asks for the
+     * reticle shape rather than the plain dot.
+     *
+     * Absent on every location surface, which keeps the single pin they have
+     * always drawn from `lat` and `lon`. A Cursor on Target card passes one per
+     * event, so a block of them draws each track in its own affiliation's
+     * colour, and `lat` and `lon` stay the primary position that decides
+     * whether there is anything to draw at all.
+     */
+    markers?: ReadonlyArray<{lat: number; lon: number; color: string}>;
+
+    /**
+     * What the marker IS, in words.
+     *
+     * Required alongside `markerColor` in practice, because the colour is
+     * carrying a meaning and a colour cannot be the only way to read one: the
+     * affiliation hues are near enough in luminance that red and green are the
+     * same mark to a good share of readers. This is the other channel.
+     */
+    markerLabel?: string;
 }
 
 const styles: Record<string, React.CSSProperties> = {
@@ -198,7 +243,8 @@ const styles: Record<string, React.CSSProperties> = {
 };
 
 const LocationMap: React.FC<Props> = ({
-    lat, lon, cellDegLat, cellDegLon, region, pageHref, pending, fill, preview,
+    lat, lon, cellDegLat, cellDegLon, region, pageHref, pending, fill, preview, accuracyMeters,
+    accuracyLabel, markers, markerLabel,
 }) => {
     const container = useRef<HTMLDivElement | null>(null);
     const map = useRef<MapLibreMap | null>(null);
@@ -242,6 +288,12 @@ const LocationMap: React.FC<Props> = ({
     const view = useRef<View>({lat, lon, cellDegLat, cellDegLon});
     view.current = {lat, lon, cellDegLat, cellDegLon};
 
+    const radius = useRef<number | undefined>(accuracyMeters);
+    radius.current = accuracyMeters;
+
+    const drawn = useRef<Props['markers']>(markers);
+    drawn.current = markers;
+
     const applyView = useCallback(() => {
         const instance = map.current;
         if (!instance || !ready.current) {
@@ -250,6 +302,7 @@ const LocationMap: React.FC<Props> = ({
 
         const pin = instance.getSource<GeoJSONSource>('pin');
         const cell = instance.getSource<GeoJSONSource>('cell');
+        const accuracy = instance.getSource<GeoJSONSource>('accuracy');
         const current = view.current;
 
         // A stale pin is worse than no pin. Clicking a grid coordinate while an
@@ -259,20 +312,36 @@ const LocationMap: React.FC<Props> = ({
         if (current.lat === null || current.lon === null || outsideMercator(current.lat)) {
             pin?.setData(emptyCollection());
             cell?.setData(emptyCollection());
+            accuracy?.setData(emptyCollection());
             return;
         }
 
         const width = container.current?.clientWidth || DEFAULT_WIDTH_PX;
+        const height = container.current?.clientHeight || MAP_MIN_HEIGHT_PX;
 
         // jumpTo, never flyTo: a world-crossing animation on every click is a
         // vestibular risk and says nothing in a box this size.
-        instance.jumpTo({
-            center: [current.lon, current.lat],
-            zoom: zoomForSpan(current.lat, width),
-        });
+        //
+        // Several markers frame all of them instead, because a block of events
+        // opening on the first one would put the rest off screen with nothing
+        // to say they were there.
+        const spread = spreadOf(drawn.current);
+        if (spread === null) {
+            instance.jumpTo({
+                center: [current.lon, current.lat],
+                zoom: zoomForSpan(current.lat, width),
+            });
+        } else {
+            instance.fitBounds(spread, {
+                padding: fitPadding(width, height, !previewRef.current),
+                animate: false,
+                maxZoom: MAX_ZOOM,
+            });
+        }
 
-        pin?.setData(pointFeature(current.lat, current.lon));
+        pin?.setData(drawableMarkers(drawn.current, current.lat, current.lon));
         cell?.setData(drawableCell(current));
+        accuracy?.setData(drawableAccuracy(current.lat, current.lon, radius.current));
     }, []);
 
     // A verdict belongs to the coordinate that produced it, so a change of
@@ -366,7 +435,10 @@ const LocationMap: React.FC<Props> = ({
             const opening: Bounds = [
                 start.lon ?? 0, start.lat ?? 0, start.lon ?? 0, start.lat ?? 0,
             ];
-            const style = buildStyle(basemap, details, mapColors(), !coveredBy(details, opening));
+            const style = buildStyle(
+                basemap, details, mapColors(), !coveredBy(details, opening),
+                radius.current !== undefined, hasMarkers(drawn.current),
+            );
 
             let instance: MapLibreMap | undefined;
             try {
@@ -473,6 +545,11 @@ const LocationMap: React.FC<Props> = ({
                 if (map.current !== instance) {
                     return;
                 }
+
+                // Before the first applyView, so the symbol layer has its image
+                // the moment it has a feature to draw.
+                addMarkerImages(instance, drawn.current);
+
                 ready.current = true;
                 setLoaded(true);
 
@@ -506,7 +583,7 @@ const LocationMap: React.FC<Props> = ({
     // sources change.
     useEffect(() => {
         applyView();
-    }, [applyView, lat, lon, cellDegLat, cellDegLon]);
+    }, [applyView, lat, lon, cellDegLat, cellDegLon, accuracyMeters]);
 
     // Torn down on unmount only. Browsers cap live WebGL contexts at about
     // sixteen, and the panel outlives any one coordinate.
@@ -562,7 +639,7 @@ const LocationMap: React.FC<Props> = ({
                 {note === null && !preview && zoomLevel !== null && (
                     <p style={styles.zoomLevel}>{`z${zoomLevel.toFixed(1)}`}</p>
                 )}
-                <span style={styles.srOnly}>{label(region, note)}</span>
+                <span style={styles.srOnly}>{label(region, note, accuracyLabel, markerLabel, markers?.length ?? 1)}</span>
             </div>
             {!preview && (credited || (!fill && pageHref !== undefined)) && (
                 <div style={styles.caption}>
@@ -640,6 +717,99 @@ function drawableCell(current: View): FeatureCollection {
 }
 
 /**
+ * What to draw at the marked points, or the single pin when nothing asked for
+ * markers, which is every location surface.
+ */
+function drawableMarkers(
+    markers: Props['markers'], lat: number, lon: number,
+): FeatureCollection {
+    if (!hasMarkers(markers)) {
+        return pointFeature(lat, lon);
+    }
+
+    return markedPoints((markers ?? []).map((marker) => ({
+        lat: marker.lat,
+        lon: marker.lon,
+        icon: markerImageID(marker.color),
+    })));
+}
+
+/**
+ * The box every marker fits in, or null when there is nothing to frame that the
+ * single-position camera does not already handle.
+ */
+function spreadOf(markers: Props['markers']): [[number, number], [number, number]] | null {
+    if (markers === undefined || markers.length < 2) {
+        return null;
+    }
+
+    const lats = markers.map((marker) => marker.lat);
+    const lons = markers.map((marker) => marker.lon);
+
+    return [
+        [Math.min(...lons), Math.min(...lats)],
+        [Math.max(...lons), Math.max(...lats)],
+    ];
+}
+
+function hasMarkers(markers: Props['markers']): boolean {
+    return markers !== undefined && markers.length > 0;
+}
+
+/**
+ * Registers one reticle per colour the markers ask for.
+ *
+ * Per colour rather than per marker, so a block of twenty friendly tracks costs
+ * one image. Nothing to do for a map with no markers, which is every location
+ * surface: those draw the circle layer and never reference an image.
+ */
+function addMarkerImages(instance: MapLibreMap, markers: Props['markers']): void {
+    if (!hasMarkers(markers)) {
+        return;
+    }
+
+    const edge = mapColors().pinEdge;
+    for (const color of new Set((markers ?? []).map((marker) => marker.color))) {
+        const id = markerImageID(color);
+        const image = crosshairImage(color, edge);
+
+        if (instance.hasImage(id)) {
+            instance.updateImage(id, image);
+        } else {
+            instance.addImage(id, image, {pixelRatio: MARKER_PIXEL_RATIO});
+        }
+    }
+}
+
+function drawableAccuracy(lat: number, lon: number, meters: number | undefined): FeatureCollection {
+    if (meters === undefined || !(meters > 0)) {
+        return emptyCollection();
+    }
+
+    return accuracyFeature(lat, lon, meters);
+}
+
+function accuracyClause(reading: string | undefined): string {
+    if (reading === undefined || reading === '') {
+        return '';
+    }
+
+    return ` The stated circular error is ${reading}.`;
+}
+
+function markerClause(what: string | undefined, marked: number): string {
+    if (what === undefined || what === '') {
+        return '';
+    }
+
+    if (marked > 1) {
+        return ` The markers are ${what}.`;
+    }
+
+    return ` The marker is ${what}.`;
+}
+
+/**
  * The accessible label, which is the only place the country reaches a reader.
  *
  * The Region row was retired, so this string is it: with the map hidden, or
@@ -649,16 +819,24 @@ function drawableCell(current: View): FeatureCollection {
  * The basemap is not named. The region's own value carries its citation, and
  * naming the source again here printed it twice in one line.
  */
-function label(region: string, note: string | null): string {
+function label(
+    region: string, note: string | null, reading?: string, what?: string, marked = 1,
+): string {
     if (note !== null) {
         return note;
     }
 
-    if (region === '') {
-        return 'World map with the position marked.';
+    const clauses = `${markerClause(what, marked)}${accuracyClause(reading)}`;
+
+    if (marked > 1) {
+        return `World map with ${marked} positions marked.${clauses}`;
     }
 
-    return `World map. The marked position is in ${region}.`;
+    if (region === '') {
+        return `World map with the position marked.${clauses}`;
+    }
+
+    return `World map. The marked position is in ${region}.${clauses}`;
 }
 
 export default LocationMap;

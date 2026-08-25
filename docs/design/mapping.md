@@ -680,7 +680,7 @@ things this gets right that a radius does not: `resolutionAt` returns a cell
 the token names; and a ring around a point reads as a range ring to this
 audience, and contradicts the page's own note that a grid reference names a
 square. Each axis uses `axisResolutionDegrees`, so a mixed-precision pair like
-`34.0561N,118.2W` is not squared off to its coarser half. For MGRS and UTM the
+`21.3353N,157.9W` is not squared off to its coarser half. For MGRS and UTM the
 rectangle **bounds** the grid square rather than being it: an MGRS square is
 axis-aligned in UTM space and rotated by the grid convergence, which is
 invisible at this scale.
@@ -1251,6 +1251,15 @@ worth its own change with its own whole-policy test.
 
 ### The map under a post
 
+**Two surfaces reach this now**, not one: a coordinate-only post, and a Cursor
+on Target card. Both read `features.mapInline`, both respect `INLINE_ID`, and
+both pay the `Post.Type` costs below. The CoT card additionally passes
+`accuracyMeters`, which draws the event's stated circular error as a geodesic
+polygon around the pin; `LocationMap` takes it as an optional prop and every
+location surface omits it, so a coordinate's own precision keeps being carried by
+the cell rather than by a circle. See [`cot.md`](cot.md), "The CE circle", for
+why the vertices are geodesic and why an unstated accuracy draws nothing.
+
 When a posted message is **only** a coordinate, the server stamps the post with a
 custom type and props, and the webapp renders that post's body itself: the link
 exactly as before, plus the map under it. Everything else is unchanged, which is
@@ -1259,12 +1268,12 @@ what makes this additive rather than a second rendering path.
 **The verdict is the tagger's, not a regex over the decorated text.**
 `DecorateWithResult` returns a `Result` beside the string, and `SoleToken` is
 `len(accepted) == 1` **and** that candidate's `match` covering the message apart
-from surrounding whitespace. Both halves are needed: `see MGRS: 18SUJ2347806483`
+from surrounding whitespace. Both halves are needed: `see MGRS: 4QFJ0906059620`
 also accepts exactly one candidate. It is `match` rather than `replace`, because
 a pattern may match more than it rewrites: the airfield pattern sets
 `ReplaceGroup` so the `//` a USMTF set line ends with stays in the message, and
 `replace` therefore stops short of it. Measuring `replace` would refuse
-`DEPLOC:KIND//`, which is the ordinary military spelling and the case this
+`DEPLOC:PHNL//`, which is the ordinary military spelling and the case this
 exists for. Guards are zero-width by construction, so `match` is the token, or
 the label and the token, and nothing else. The verdict is taken **before** `applyReplacements`, which
 re-sorts `accepted` in place.
@@ -1359,12 +1368,15 @@ The body renders the label as text and the token as a plain
 `<a href={href}>{label}</a>`. Two of the three things a decorated link normally
 does come back for nothing, because neither is tied to Mattermost's renderer: the
 teal chip is the stylesheet's `a[href^=…]` rule, and the sidebar is the
-document-level capture click handler. **The hover card is expected not to
-survive, and that is unverified.** `registerLinkTooltipComponent` is wired into
-Mattermost's own markdown link rendering and this anchor does not go through it.
-It costs little worth having, since the hover is the map and the map is already
-on screen underneath, but confirm it on a running server and record the answer
-here.
+document-level capture click handler. **The hover card does not survive, which is now verified rather than expected.**
+`registerLinkTooltipComponent` is wired into Mattermost's own markdown link
+rendering, and it only ever offers a link that renderer drew, so an anchor a
+plugin draws inside its own post body is never offered and gets no card.
+
+It costs little here, because the hover is the map and the map is already on
+screen underneath. It cost more on the Cursor on Target card, whose linked times
+carry a countdown that is deliberately NOT on screen, so that surface renders the
+card itself through `decorators/HoverLink.tsx`. See `cot.md`.
 
 The qualifying test the component runs on the message is
 `soleDecoratorLink` in `decorators/inline.ts`, and its label is matched as a
@@ -1434,3 +1446,117 @@ over the map is exposed the same way.
 The reader hides it with `INLINE_ID` / `SectionInline`, its own id beside the
 panel map's, and everything the panel map's id says applies here too.
 
+## Framing a block of events
+
+`fitBounds` frames every marker rather than opening on the first, and the
+padding it is given is **asymmetric**, from `fitPadding` in `span.ts`.
+
+It used to be one uniform 32px, and every corner of this map has chrome in it:
+the Reset button top left, MapLibre's zoom buttons top right, the zoom readout
+bottom left, and the scale bar bottom right. A number small enough not to waste
+the canvas is smaller than the tallest of them, so a block of events opened with
+markers underneath the controls.
+
+**Corner chrome only has to be cleared on one axis, and which one is chosen by
+cost.** The zoom buttons are 29 wide and 58 tall, so clearing them sideways
+costs 12% of a 320px width where clearing them downwards costs 34% of a 200px
+height. The Reset button and the readout are the other way round, wide and
+short, so they are cleared vertically. That is why the four numbers are not
+symmetrical and must not be tidied into one.
+
+Each carries half a marker on top of the control's own reach, because a
+crosshair is `MARKER_SIZE` across and drawn centred on its point. That is not a
+rounding allowance: at 40px the top edge of a marker landed exactly on the
+bottom edge of the Reset button.
+
+`MAX_PADDING_SHARE` is a half rather than something more comfortable. The panel
+map is 200px tall at its minimum and the chrome plus its marker allowance wants
+88 of them, so a lower ceiling would scale the padding back down into the
+controls it exists to clear. Past the share both edges of an axis scale
+**together**, keeping the wide edge wide; clipping each to a ceiling separately
+would flatten the asymmetry that is the whole point.
+
+### Why the browser test mounts at 360px
+
+`no marker opens underneath a control` projects each marker onto the canvas and
+checks it against the rectangles the chrome occupies, rather than asserting a
+zoom number: a zoom assertion passes for a padding that zoomed out and still put
+a marker under the scale bar, which was the actual complaint.
+
+It mounts inside a fixed 360px wrapper because **left to fill the component-test
+page the canvas is about 1264px wide**, where the four corners are so far apart
+that nothing can reach the chrome and the test passes against any padding at
+all. It has to check the marker's extent rather than its centre for the same
+reason: a marker whose centre clears the scale bar by 4px still has its bottom
+third under it. Both of those were found by reverting the fix and watching the
+test pass.
+
+## The location pin is violet, and deliberately not red
+
+These maps draw two different kinds of thing, and only one of them is making a
+claim. A Cursor on Target marker's colour says what a track IS: red is hostile
+and suspect, blue is friend, green is neutral, amber is unknown and pending. A
+location is a place somebody typed into a message. It has no affiliation, and a
+pin wearing one of those hues asserts something about a coordinate that nothing
+in the coordinate said, in the most loaded colour available.
+
+The pin was `#c92a2a` / `#ff6b6b`. It is now `#8d0da0` / `#e070e0`, an orchid.
+
+**Purple through magenta is the only window there is.** Holding 45 degrees of
+hue from all four affiliations leaves **252 to 321 degrees and nothing else**:
+the gaps between red and amber, amber and green, and green and blue are each
+too narrow for anything to stand in. That is worth stating because it looks like
+a preference and is not one, and because it means a future request for a
+different-looking pin has only this window to choose from.
+
+The pin's contrast contract is on its **edge**, which is what
+`TestMapPaletteCarriesItsContrast` gates, and that is what frees the fill to be
+chosen for what it means rather than for its own contrast.
+
+### Why not simply a different hue
+
+The reason this pin was ever changed is that red claims something. The reason
+this PARTICULAR hue was chosen is a second question, and it was answered by
+measurement rather than by eye.
+
+The pin's real neighbour is the **cell outline**, which is blue and is drawn on
+the same map on every location panel. Under deuteranopia the whole 252-321
+window collapses toward blue, so a sweep of that window (hue by saturation by
+lightness) found the best achievable separation from the cell was about 12
+against the violet's 10.4. **Hue is not the lever**; nothing in the legal window
+meaningfully fixes that particular collision.
+
+What the choice was made on instead is the **worst case against everything the
+map draws** (labels, roads, railways, urban fill, admin lines, the cell, the
+airfield, the land): 21.8 normal and 12.1 deuteranopic, where the violet was
+17.1 and 10.4. It costs land contrast, 2.16 against the violet's 2.58, which the
+edge-based contract absorbs.
+
+**Achromatic was tried and rejected.** White scored best on every axis that was
+being optimised, was uniquely stable across all three CVD types, and could not
+be confused with an affiliation at all since it has no hue. It is disqualified
+by a neighbour the earlier analysis had not looked at: it sits **5.5 from the
+map's own label colour**, so a white pin reads as a place name. It would also
+have made the hue test misfire, since `hueOf('#ffffff')` is 0 and 0 is hostile
+red's hue.
+
+The light half of the pair is dormant while `ALWAYS_DARK` is true. It was still
+chosen by the same measurement rather than by eye-matching the dark one, because
+the two themes do not behave alike: at this hue the light value had to be pushed
+to `#8d0da0` to beat the violet it replaced under deuteranopia at all.
+
+### The test compares hue, not hex
+
+`the location pin wears no affiliation colour` in `style.spec.ts` reads the
+built style's pin fill and holds it 45 degrees of hue away from every colour
+`affiliationColor` returns.
+
+Equality would not have caught this. The old pin was `#c92a2a` and hostile is
+`#c0392b`: different values, six degrees apart, both unmistakably red. An
+equality check calls that a pass and the reader still sees a hostile marker over
+every coordinate anybody types. What a reader perceives is the hue, so the hue
+is what is asserted.
+
+The affiliation colours are read out of `affiliationColor` rather than copied
+into the test, so an affiliation added in a violet hue fails here rather than
+shipping.

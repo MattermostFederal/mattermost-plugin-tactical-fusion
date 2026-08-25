@@ -2,6 +2,7 @@ package dtg
 
 import (
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -173,6 +174,31 @@ func (d DTG) canonical() string {
 		return base
 	}
 	return fmt.Sprintf("%s%s%02d", base, strings.ToUpper(d.Month.String()[:3]), d.Year%100)
+}
+
+// ParamsForZulu returns the decorator link params for an instant, rendered as
+// the same Zulu DTG FormatZulu produces.
+//
+// It goes out through the package's own grammar rather than assembling the four
+// values by hand, because the page re-derives everything from the canonical
+// token and refuses a set that does not round trip. FormatZulu drops seconds,
+// so a hand-built "t" taken from the caller's instant would disagree with the
+// "dtg" beside it and the link would open on a refusal.
+//
+// ok=false only for an instant this package's grammar cannot spell, which is
+// one outside 2000-2099.
+func ParamsForZulu(t time.Time) (url.Values, bool) {
+	// Checked here rather than left to the round trip, which does not catch it:
+	// a two-digit year is read as 2000-2099, so 1999 formats as 010000ZJAN99,
+	// parses back cleanly as 2099 and produces a link a century away from the
+	// instant it was asked about.
+	if year := t.UTC().Year(); year < minYear || year > maxYear {
+		return nil, false
+	}
+
+	token := FormatZulu(t)
+
+	return (&Decorator{}).Parse(token, t)
 }
 
 // FormatZulu renders an instant as a Zulu long-form DTG, e.g. 091630ZAUG26.

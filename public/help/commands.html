@@ -48,7 +48,7 @@
                 </tr>
                 <tr>
                     <td><a href="#example-details"><code>/tactical-fusion example-details</code></a></td>
-                    <td>Posts every format, every edge case and every near miss that is deliberately declined, one message per decorator</td>
+                    <td>Posts every format, every edge case and every near miss that is deliberately declined, one message per set</td>
                     <td><strong>Everyone in the channel</strong></td>
                 </tr>
                 <tr>
@@ -65,7 +65,7 @@
                 <code>examples</code> and <code>example-details</code> create real posts that
                 everybody can see and that stay in the channel. Only <code>check</code> is
                 <strong>ephemeral</strong>. Run the first two where you mean to: the short
-                one is a handful of rows, the detailed one is a post per decorator.
+                one is a handful of rows, the detailed one is five posts.
             </p>
         </div>
 
@@ -89,8 +89,8 @@
         </p>
 
         <pre><code>Date/Time: `121411ZAUG26` &rarr; 121411ZAUG26 - 5 minutes out, so the countdown opens flagged as imminent
-MGRS: `18S UJ 23478 06483` &rarr; 18S UJ 23478 06483
-GEOREF: `GEOREF:GJNJ5753` &rarr; GEOREF:GJNJ5753 - the label is required, and longitude comes first</code></pre>
+MGRS: `4Q FJ 0906 5962` &rarr; 4Q FJ 0906 5962
+GEOREF: `GEOREF:XGKP55803503` &rarr; GEOREF:XGKP55803503 - the label is required, longitude comes first, and this one is on Guam</code></pre>
 
         <p>
             The GEOREF row shows the other thing worth noticing: a coordinate field label is
@@ -139,7 +139,7 @@ GEOREF: `GEOREF:GJNJ5753` &rarr; GEOREF:GJNJ5753 - the label is required, and lo
 
         <h3>Arguments</h3>
 
-        <p>None. It shows every decorator.</p>
+        <p>None. It shows every decorator, and Cursor on Target.</p>
 
         <p>
             This is the exhaustive one. Where <a href="#examples"><code>examples</code></a>
@@ -150,17 +150,24 @@ GEOREF: `GEOREF:GJNJ5753` &rarr; GEOREF:GJNJ5753 - the label is required, and lo
         </p>
 
         <div class="alert alert-info">
-            <p class="alert-title">It posts one message per decorator.</p>
+            <p class="alert-title">It posts one message per set, and then a live card.</p>
             <p>
-                Two separate posts: one for <strong>date-time groups</strong> and one for
-                <strong>coordinates</strong>. Not a thread, because each is a reference you
-                come back to rather than a remark about the one before it. Together they run
-                to around 17,500 characters, which is more than a single post can hold.
+                Five separate posts: <strong>date-time groups</strong>,
+                <strong>coordinates</strong>, <strong>airfields</strong>,
+                <strong>Cursor on Target</strong>, and last a real event that renders as a
+                card. Not a thread, because each is a reference you come back to rather than
+                a remark about the one before it. Together they run to around 25,000
+                characters, which is more than a single post can hold.
             </p>
             <p>
-                On a server with a smaller post size limit a decorator's own examples split
+                The event is last and is alone in its post because a
+                <a href="formats.html#cot">card owns the whole post body</a>: anything
+                sharing a post with one would render as plain text underneath it.
+            </p>
+            <p>
+                On a server with a smaller post size limit a set's own examples split
                 further, and the heading is numbered <em>(1 of 3)</em> when that happens. An
-                unnumbered heading means the whole of that decorator is in the post you are
+                unnumbered heading means the whole of that set is in the post you are
                 reading. Nothing is ever truncated.
             </p>
         </div>
@@ -227,7 +234,7 @@ GEOREF: `GEOREF:GJNJ5753` &rarr; GEOREF:GJNJ5753 - the label is required, and lo
             Decoration cannot explain itself. A coordinate that is recognized turns into a
             link and is obviously working; one that is declined does nothing at all, and
             nothing about the non-event says which rule decided it.
-            <code>34.0561, -118.2500</code> is linked and <code>34.0561, -118.25</code> is
+            <code>21.3353, -157.9483</code> is linked and <code>21.3353, -157.95</code> is
             not, and the difference is two characters that nobody would think to count.
         </p>
 

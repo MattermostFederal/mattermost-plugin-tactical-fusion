@@ -1,0 +1,365 @@
+package main
+
+import (
+	"math"
+	"strconv"
+	"strings"
+	"testing"
+
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
+
+	"github.com/mattermost/mattermost/server/public/model"
+
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/cot"
+)
+
+func TestTheExampleEventIsOneThisBuildReads(t *testing.T) {
+	if !cotExampleIsStampable() {
+		t.Fatal("the example event does not parse, so both commands demonstrate nothing")
+	}
+}
+
+func TestExamplesMentionCursorOnTarget(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	response := p.examplesResponse()
+	if !strings.Contains(response.Text, "Cursor on Target") {
+		t.Errorf("the examples post never mentions the feature:\n%s", response.Text)
+	}
+}
+
+// The hazard the inline code exists for.
+//
+// This command writes a real post full of markdown. An unprotected event
+// anywhere in it would be recognized, the post would be stamped, the card would
+// own the body, and every other row would reach the reader as the plain text of
+// its own markup. A code span is a protected range, which is what stops the
+// demonstration eating the demonstration.
+func TestTheExamplesPostIsNeverItselfStamped(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	response := p.examplesResponse()
+
+	stamped := p.decoratePost(&model.Post{Message: response.Text, UserId: "u1"}, hookRef)
+	if stamped != nil && stamped.Type == cot.PostType {
+		t.Fatal("the examples post was stamped as an event, so every other row " +
+			"renders as plain text")
+	}
+}
+
+func TestTheExamplesRowKeepsTheEventInCode(t *testing.T) {
+	line := cotExampleLine()
+
+	if !strings.Contains(line, "`") {
+		t.Error("the event is not in a code span, so it can stamp the post it is shown in")
+	}
+	if strings.Contains(line, "```") {
+		t.Error("a fenced block would be read as the post's event")
+	}
+}
+
+func TestExamplesSayNothingAboutCotWhenItIsOff(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	config := *p.getConfiguration()
+	config.EnableCot = false
+	p.setConfiguration(&config)
+
+	if strings.Contains(p.examplesResponse().Text, "Cursor on Target") {
+		t.Error("the examples post offers a feature the admin switched off")
+	}
+}
+
+// The details command posts a real event, so a reader meets a card rather than
+// a description of one.
+func TestDetailsPostTheEventAsACard(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	api := p.API.(*fakeAPI)
+
+	p.exampleDetailsResponse(&model.CommandArgs{UserId: "u1", ChannelId: "c1"})
+
+	var found *model.Post
+	for _, post := range api.created {
+		if post.Type == cot.PostType {
+			found = post
+		}
+	}
+
+	if found == nil {
+		t.Fatal("no post was stamped, so the details show no card")
+	}
+	if !strings.Contains(found.Message, "<event") {
+		t.Error("the stamped post does not carry the event")
+	}
+	if _, ok := found.GetProps()[cot.PropsKey]; !ok {
+		t.Error("the stamped post carries no event props, so the card cannot render")
+	}
+}
+
+// Its own post, because a card owns the whole body: an event sharing a post
+// with the other examples would render them as plain text.
+//
+// The question asked is RECOGNITION, not whether the text holds "<event".
+// The Cursor on Target examples put real events in the details posts, inside
+// inline code where nothing reads them, so a substring is no longer evidence of
+// anything. cotSource is the function that decides, so it is the one asked.
+func TestTheEventExampleIsAPostOfItsOwn(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	api := p.API.(*fakeAPI)
+
+	p.exampleDetailsResponse(&model.CommandArgs{UserId: "u1", ChannelId: "c1"})
+
+	for _, post := range api.created {
+		if post.Type != cot.PostType {
+			if _, found := p.cotSource(post); found {
+				t.Errorf("an unstamped post would be read as an event:\n%s", first(post.Message))
+			}
+			continue
+		}
+
+		if strings.Contains(post.Message, "####") {
+			t.Error("the event shares its post with a details heading")
+		}
+	}
+}
+
+// With the feature off nothing can be stamped, so the thing worth asserting is
+// that the command still posts nothing that WOULD be a card were it on: a bare
+// event in a channel with no renderer behind it is raw XML in somebody's feed.
+func TestDetailsPostNoEventWhenCotIsOff(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	config := *p.getConfiguration()
+	config.EnableCot = false
+	p.setConfiguration(&config)
+
+	api := p.API.(*fakeAPI)
+	p.exampleDetailsResponse(&model.CommandArgs{UserId: "u1", ChannelId: "c1"})
+
+	for _, post := range api.created {
+		if _, found := p.cotSource(post); found {
+			t.Errorf("a post that would be a card was written with the feature off:\n%s",
+				first(post.Message))
+		}
+	}
+}
+
+// The events the details section shows are real, and are what their notes say
+// they are.
+//
+// A row promising "several events" that carries one, or a link row whose link
+// does not parse, teaches the wrong thing and cannot be caught by reading it.
+func TestTheDetailEventsAreWhatTheirRowsClaim(t *testing.T) {
+	multi, err := cot.Parse([]byte(cotDetailMultiEvent))
+	if err != nil {
+		t.Fatalf("the multi-event example does not parse: %v", err)
+	}
+	if len(multi) < 2 {
+		t.Errorf("the multi-event example carries %d events, so it shows nothing", len(multi))
+	}
+
+	linked, err := cot.Parse([]byte(cotDetailLinked))
+	if err != nil {
+		t.Fatalf("the linked example does not parse: %v", err)
+	}
+	if len(linked) != 1 {
+		t.Fatalf("the linked example carries %d events, not one", len(linked))
+	}
+	if len(linked[0].Detail.Links) == 0 {
+		t.Error("the linked example declares no link, which is the whole of what its row shows")
+	}
+	if linked[0].Detail.Links[0].ParentCallsign == "" {
+		t.Error("the linked example's link names no parent, so the card has no Sent by row")
+	}
+}
+
+// Every event in the details section resolves to a named type, since the row
+// beside it is what a reader compares their own event against.
+func TestTheDetailEventsCarryNamedTypes(t *testing.T) {
+	for _, source := range []string{cotExampleEvent, cotDetailMultiEvent, cotDetailLinked} {
+		events, err := cot.Parse([]byte(source))
+		if err != nil {
+			t.Fatalf("an example does not parse: %v", err)
+		}
+
+		for _, event := range events {
+			props := cot.Props([]cot.Event{event}, cot.Source{})
+			rows, _ := props["events"].([]any)
+			if len(rows) != 1 {
+				t.Fatalf("props carried %d events for one", len(rows))
+			}
+			row, _ := rows[0].(map[string]any)
+			if row["type_label"] == "" {
+				t.Errorf("%q resolves to no type name", event.Type)
+			}
+		}
+	}
+}
+
+// The examples row quotes the label the card would show, and cannot drift from
+// it: the row exists to demonstrate that a raw type becomes readable English,
+// so a row naming a different reading than the card is worse than no row.
+func TestTheExampleRowQuotesTheCardsOwnLabel(t *testing.T) {
+	label := cotExampleTypeLabel()
+	if label == "" {
+		t.Fatal("the example's type resolves to no label, so the row cannot quote one")
+	}
+
+	if !strings.Contains(cotExampleLine(), label) {
+		t.Errorf("the examples row does not carry %q:\n%s", label, cotExampleLine())
+	}
+
+	events, err := cot.Parse([]byte(cotExampleEvent))
+	if err != nil {
+		t.Fatalf("the example does not parse: %v", err)
+	}
+
+	props := cot.Props(events, cot.Source{})
+	row := props["events"].([]any)[0].(map[string]any)
+	if row["type_label"] != label {
+		t.Errorf("the row says %q and the card says %q", label, row["type_label"])
+	}
+}
+
+// The example is a hostile contact, which is what the crosshair's colour and
+// the whole point of showing a card in a channel rest on.
+//
+// It also carries no __group: that element is the sender's team, and on a
+// hostile contact a Team row reads as the target being on it.
+func TestTheExampleIsAHostileContact(t *testing.T) {
+	events, err := cot.Parse([]byte(cotExampleEvent))
+	if err != nil {
+		t.Fatalf("the example does not parse: %v", err)
+	}
+
+	row := cot.Props(events, cot.Source{})["events"].([]any)[0].(map[string]any)
+
+	if row["affiliation"] != "hostile" {
+		t.Errorf("the example is %q, not hostile", row["affiliation"])
+	}
+	if row["group"] != nil || row["role"] != nil {
+		t.Errorf("the example carries a sender team (%v/%v), which a contact should not",
+			row["group"], row["role"])
+	}
+	if row["parent"] == "" || row["parent"] == nil {
+		t.Error("the example names nobody who reported it, so the card has no Sent by row")
+	}
+}
+
+// The file row shows the event the reader just met, not a second one that could
+// drift away from it.
+func TestTheFileExampleIsTheCardsOwnEvent(t *testing.T) {
+	file, err := cot.Parse([]byte(cotDetailFile()))
+	if err != nil {
+		t.Fatalf("the file example does not parse: %v", err)
+	}
+	card, err := cot.Parse([]byte(cotExampleEvent))
+	if err != nil {
+		t.Fatalf("the card example does not parse: %v", err)
+	}
+
+	if len(file) != 1 || len(card) != 1 {
+		t.Fatalf("expected one event each, got %d and %d", len(file), len(card))
+	}
+	if file[0].UID != card[0].UID || file[0].Type != card[0].Type {
+		t.Errorf("the file row shows %s/%s and the card shows %s/%s",
+			file[0].UID, file[0].Type, card[0].UID, card[0].Type)
+	}
+	if !strings.HasPrefix(cotDetailFile(), "<?xml") {
+		t.Error("the file row does not show the XML declaration it claims to")
+	}
+}
+
+// The multi-link row's claim: every uid joins Relates to, and only the link
+// carrying a parent_callsign becomes Sent by.
+func TestTheMultiLinkExampleIsWhatItsRowClaims(t *testing.T) {
+	events, err := cot.Parse([]byte(cotDetailMultiLink))
+	if err != nil {
+		t.Fatalf("the multi-link example does not parse: %v", err)
+	}
+	if len(events) != 1 || len(events[0].Detail.Links) < 2 {
+		t.Fatalf("the row promises several links and carries %d", len(events[0].Detail.Links))
+	}
+
+	row := cot.Props(events, cot.Source{})["events"].([]any)[0].(map[string]any)
+
+	for _, link := range events[0].Detail.Links {
+		if !strings.Contains(row["related"].(string), link.UID) {
+			t.Errorf("link %q is missing from Relates to (%v)", link.UID, row["related"])
+		}
+	}
+
+	// The row says the parent comes from the link that carries one, so a link
+	// without a parent_callsign must not be able to supply it.
+	if row["parent"] != "ALPHA" {
+		t.Errorf("Sent by is %v, not the callsign the only parent-bearing link names", row["parent"])
+	}
+}
+
+// Links past the cap are DROPPED and the event still renders, which is the
+// opposite of the event cap and is what an examples row tells readers.
+func TestTheLinkCapDropsRatherThanRefuses(t *testing.T) {
+	links := strings.Repeat(`<link uid="X" relation="p-p"/>`, cot.MaxLinks+4)
+	source := `<event version="2.0" uid="U" type="a-f-G" how="m-g" time="2026-08-09T16:30:00Z">` +
+		`<point lat="21.0" lon="-157.0"/><detail>` + links + `</detail></event>`
+
+	events, err := cot.Parse([]byte(source))
+	if err != nil {
+		t.Fatalf("a source past the link cap was refused, so the examples row is wrong: %v", err)
+	}
+	if len(events[0].Detail.Links) != cot.MaxLinks {
+		t.Errorf("kept %d links, not the %d the row states", len(events[0].Detail.Links), cot.MaxLinks)
+	}
+}
+
+// The example sits on Hickam, at the coordinate this plugin's own airfield
+// database gives for PHIK.
+//
+// Pearl Harbor is the name that comes to mind first and the middle of it is
+// open water, which put the crosshair in East Loch. Reading the value back out
+// of the airfield database rather than restating it is what keeps the pin and
+// the ICAO:PHIK example naming one place.
+func TestTheExampleSitsOnTheAirfieldItClaims(t *testing.T) {
+	field, ok := airport.Describe("PHIK")
+	if !ok {
+		t.Fatal("PHIK is missing from the airfield database")
+	}
+
+	events, err := cot.Parse([]byte(cotExampleEvent))
+	if err != nil {
+		t.Fatalf("the example does not parse: %v", err)
+	}
+
+	lat, err := strconv.ParseFloat(events[0].Point.Lat, 64)
+	if err != nil {
+		t.Fatalf("the example's latitude does not read as a number: %v", err)
+	}
+	lon, err := strconv.ParseFloat(events[0].Point.Lon, 64)
+	if err != nil {
+		t.Fatalf("the example's longitude does not read as a number: %v", err)
+	}
+
+	fieldLat, fieldLon, ok := positionOf(t, field)
+	if !ok {
+		t.Fatal("PHIK carries no position, so the example cannot be held to it")
+	}
+
+	if math.Abs(lat-fieldLat) > 0.0001 || math.Abs(lon-fieldLon) > 0.0001 {
+		t.Errorf("the example is at %.4f,%.4f and PHIK is at %.4f,%.4f",
+			lat, lon, fieldLat, fieldLon)
+	}
+}
+
+func positionOf(t *testing.T, field airport.Details) (lat, lon float64, ok bool) {
+	t.Helper()
+
+	if !field.HasPosition {
+		return 0, 0, false
+	}
+
+	parsed, ok := location.Parse(location.Format(field.Format), field.Token)
+	if !ok {
+		return 0, 0, false
+	}
+
+	return parsed.Point()
+}

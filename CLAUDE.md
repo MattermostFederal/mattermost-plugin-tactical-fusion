@@ -7,7 +7,8 @@ geospatial data, CoT, time zones, IP intelligence, CVEs, and other operational
 information. The server is Go, the webapp TypeScript/React.
 
 Shipped today: the decorator framework and three decorators, DTG, Location and
-Airfields, plus the bundled offline map. The rest is not implemented.
+Airfields, plus the bundled offline map and the Cursor on Target renderer. The
+rest is not implemented.
 
 A decorator finds a token in a posted message, rewrites it in
 `MessageWillBePosted` into a markdown link whose query string carries the
@@ -33,6 +34,7 @@ right-hand sidebar, and a standalone server-rendered page.
 | `decorators/dtg/` | Date-time groups and RFC 3339 timestamps |
 | `decorators/location/` | Coordinate grammars, geodesy, MGRS, rendering, conversion; `mapdata/` holds the generated country polygons |
 | `decorators/airport/` | ICAO airfields; `data/` holds the embedded CSV and its provenance |
+| `cot/` | Cursor on Target: the bounded XML parse, the type tables, the post props |
 
 ### `webapp/`
 
@@ -41,6 +43,7 @@ right-hand sidebar, and a standalone server-rendered page.
 | `src/index.tsx` | `initialize()`, registration, the disposer list run by `uninitialize()` |
 | `src/decorators/` | Framework: registry, click handler, styles, selection store, theme, `Tooltip` |
 | `src/decorators/{dtg,location,airport}/` | Panels, hovers, and per-decorator clients |
+| `src/cot/` | The Cursor on Target post body, its card and its map |
 | `src/decorators/location/map/` | `LocationMap`, MapLibre loading, the basemap reader, span arithmetic |
 | `src/page/` | Standalone pages' entry point, built by a second webpack config into `public/app/page.js` |
 | `src/components/rhs/` | `RhsView` and `RhsTitle` |
@@ -66,9 +69,10 @@ there rather than here or in a comment.
 | [`docs/design/decorators.md`](docs/design/decorators.md) | The framework, the DTG grammars, the tagger and protected spans, `siteURLPath`, page CSP, the slash command, adding a decorator, the post size limit |
 | [`docs/design/location.md`](docs/design/location.md) | Every coordinate grammar, boundary guards, rendering and resolution, geodesy, `/api/v1/convert`, copy buttons, prior art |
 | [`docs/design/airfields.md`](docs/design/airfields.md) | The label-only ICAO grammar, the embedded database, `/api/v1/airport`, the page and panel |
+| [`docs/design/cot.md`](docs/design/cot.md) | Cursor on Target: why it is not a decorator, the exclusivity rule, the props budget, `edit_at` over a digest, the parser's refusals, the CE circle |
 | [`docs/design/mapping.md`](docs/design/mapping.md) | The vector basemap, the OpenStreetMap detail tier and its seam, detail map packages, `PageStatic` vs `PageMapping`, the page bundle, zoom numbers, the country lookup, `Conversion`, the map page, the panel map, turning maps off, the map under a post |
 | [`docs/design/preferences.md`](docs/design/preferences.md) | The KV store, both caches, the location hover, the location rows, the zone picker and ordering |
-| [`docs/design/admin-settings.md`](docs/design/admin-settings.md) | The twenty switches, the two map-package settings, the four sections, why `EnableLocationUTM` ships off |
+| [`docs/design/admin-settings.md`](docs/design/admin-settings.md) | The twenty-two switches, the two map-package settings, the five sections, why `EnableLocationUTM` ships off |
 | [`docs/design/help-and-errors.md`](docs/design/help-and-errors.md) | `public/help/` and the `TF-NNNN` catalog |
 | [`docs/design/unverified.md`](docs/design/unverified.md) | Claims that need a running server or a phone and have never been checked |
 
@@ -121,8 +125,21 @@ and `connect-src 'self'` and makes escaping the only defence on a route that
 echoes author text. `ScriptSrc` must be relative.
 
 **Setting `Post.Type` costs the post its Elasticsearch/OpenSearch matches**,
-its auto-translation and its embeds. Only the inline map does it, and
-`EnableLocationMapInline` is how an install opts out.
+its auto-translation, its embeds and its file attachment list. The inline map
+and the Cursor on Target card are the only two things that do it;
+`EnableLocationMapInline` and `EnableCot` are how an install opts out of each.
+
+**A stamped post is never decorated, and the stamp is atomic.** CoT is tried
+first and wins, because the card renders the text around an event as plain text
+and a decorator link written into that text could not render there. The type and
+the props are committed together on a clone, after the whole props map has been
+measured against `PostPropsMaxUserRunes`: a half-stamp costs the post its search
+matches forever, and props sized off the event alone can have the server refuse
+the post outright.
+
+**`plugin.json` may not contain a backtick.** Both generated manifests embed it
+inside a literal a backtick terminates, so one breaks the Go and the webapp build
+at once, hundreds of lines from the cause.
 
 **The post size limit cannot be read from the API.** `decoratePost` uses the
 floor (`safePostRunes`), the slash commands use the default and
@@ -156,6 +173,8 @@ side moves alone. Change both halves together.
 | The package name grammar: `packageNamePattern` and `PACKAGE_NAME` | `TestWebappPackageNameGrammarMatches` |
 | The same grammar again, as the `case` in the Makefile's bundle guard | `TestBundleGuardAcceptsExactlyWhatDiscoveryDoes`, which compares behavior rather than text and holds the guard to `LC_ALL=C` |
 | The `data-packages` attribute and its separator | `TestWebappPackagesAttributeMatches` |
+| The CoT post type, props key and props version | `TestWebappCotPostTypeMatches` |
+| The CoT props shape: every key Go writes and the webapp reads | `TestWebappCotShapeMatches` |
 | The package list's 60 second lifetime | `TestWebappPackageCacheLifetimeMatches` |
 | The map schema: `mapSchemaVersion` and `schemaPrefix`, and `MAP_SCHEMA` and `SCHEMA_PREFIX` in `build/maposm/build.sh` | `TestMapSchemaMatchesTheGenerator` |
 | Rendering fixtures | `format_test.go` and `format.spec.ts` hold the same table |

@@ -101,54 +101,54 @@
             </thead>
             <tbody>
                 <tr>
-                    <td><code>34.05, -118.25</code> did nothing, but <code>34.0561, -118.2500</code> works</td>
+                    <td><code>21.34, -157.95</code> did nothing, but <code>21.3353, -157.9483</code> works</td>
                     <td>Signed decimal degrees needs at least four decimals on both values.</td>
-                    <td>Write the full precision, or add hemisphere letters: <code>34.05 N, 118.25 W</code> is accepted.</td>
+                    <td>Write the full precision, or add hemisphere letters: <code>21.34 N, 157.95 W</code> is accepted.</td>
                 </tr>
                 <tr>
                     <td>A coordinate at the end of a sentence did nothing</td>
                     <td>A full stop or comma directly against the last digit is indistinguishable from a range or a list at the point the check runs.</td>
-                    <td>Put a space before the punctuation, or accept it. This is a deliberate trade against rewriting the middle of <code>-118.2500..-118.2600</code>.</td>
+                    <td>Put a space before the punctuation, or accept it. This is a deliberate trade against rewriting the middle of <code>-157.9483..-157.9583</code>.</td>
                 </tr>
                 <tr>
-                    <td><code>35N079W</code> did nothing</td>
+                    <td><code>21N157W</code> did nothing</td>
                     <td>The shortest USMTF shape is only matched behind a field label.</td>
-                    <td>Write <code>LATD:35N079W</code>.</td>
+                    <td>Write <code>LATD:21N157W</code>.</td>
                 </tr>
                 <tr>
-                    <td><code>18suj2347806483</code> did nothing, but <code>18SUJ2347806483</code> works</td>
+                    <td><code>4qfj0906059620</code> did nothing, but <code>4QFJ0906059620</code> works</td>
                     <td>A run-together grid reference has to be upper case. Lower-case hexadecimal of that shape is what a short git commit hash looks like, and about one in 3,900 of them is a valid grid reference.</td>
                     <td>Write it in upper case, space it out, or write <code>MGRS:</code> in front.</td>
                 </tr>
                 <tr>
-                    <td><code>18SUJ2306</code> did nothing, but <code>18SUJ234064</code> works</td>
+                    <td><code>4QFJ0959</code> did nothing, but <code>4QFJ090596</code> works</td>
                     <td>A run-together reference needs at least three digits per axis, a 100 m square. Shorter runs are what part numbers look like: <code>26HMA1997</code> is a valid grid reference, and about one uppercase run in 75,000 collides at two digits.</td>
-                    <td>Space it as <code>18S UJ 23 06</code>, or write <code>MGRS:18SUJ2306</code>.</td>
+                    <td>Space it as <code>4Q FJ 09 59</code>, or write <code>MGRS:4QFJ0959</code>.</td>
                 </tr>
                 <tr>
-                    <td><code>33U2910005628000</code> did nothing, but <code>33U 291000 5628000</code> works</td>
+                    <td><code>4Q6090602359620</code> did nothing, but <code>4Q 609060 2359620</code> works</td>
                     <td>UTM run together has no letters to check: after the zone and band it is thirteen bare digits.</td>
                     <td>Space it out, or write <code>UTMO:</code> in front.</td>
                 </tr>
                 <tr>
-                    <td><code>GJNJ5753</code> did nothing, but <code>GEOREF:GJNJ5753</code> works</td>
+                    <td><code>XGKP5535</code> did nothing, but <code>GEOREF:XGKP5535</code> works</td>
                     <td>GEOREF is matched behind its label and never bare. Four letters and four digits has nothing in it that a part number does not.</td>
                     <td>Write <code>GEOREF:</code> in front. <a href="admin.html#enable-location-moniker"><code>EnableLocationMoniker</code></a> also has to be on, or the label is not read either.</td>
                 </tr>
                 <tr>
-                    <td><code>006AG39</code> did nothing, but <code>GARS:006AG39</code> works</td>
+                    <td><code>045KG14</code> did nothing, but <code>GARS:045KG14</code> works</td>
                     <td>GARS is label-only too, and it is the weaker of the two: seven alphanumerics whose only structural check is that a third of the letter pairs name no band.</td>
                     <td>Write <code>GARS:</code> in front, and check <a href="admin.html#enable-location-moniker"><code>EnableLocationMoniker</code></a> is on.</td>
                 </tr>
                 <tr>
-                    <td><code>849vcwc8+r9</code> did nothing, but <code>849VCWC8+R9</code> works</td>
+                    <td><code>73h483p2+4m</code> did nothing, but <code>73H483P2+4M</code> works</td>
                     <td>A bare Plus Code has to be upper case. A lower-case run of that shape is what a version string with build metadata looks like, and roughly one in 50,000 of those is a well-formed code.</td>
                     <td>Write it in upper case, which is how Plus Codes are normally written, or put <code>PLUSCODE:</code> or <code>OLC:</code> in front.</td>
                 </tr>
                 <tr>
                     <td><code>CWC8+R9</code> did nothing</td>
                     <td>That is a <strong>short</strong> Plus Code. It only means anything relative to a nearby place, which this plugin has no way of knowing.</td>
-                    <td>Use the full code, <code>849VCWC8+R9</code>. Google Maps shows the full form beside the short one.</td>
+                    <td>Use the full code, <code>73H483P2+4M</code>. Google Maps shows the full form beside the short one.</td>
                 </tr>
                 <tr>
                     <td>A UTM position did nothing, but MGRS and lat/lon work</td>
@@ -162,7 +162,7 @@
                 </tr>
                 <tr>
                     <td>A grid reference with plausible-looking letters did nothing</td>
-                    <td>Only eight of the twenty-four 100 km column letters are legal in any given zone, and the row letters are staggered in even-numbered zones. <code>32WDL123123</code> names no real square.</td>
+                    <td>Only eight of the twenty-four 100 km column letters are legal in any given zone, and the row letters are staggered in even-numbered zones. <code>4QJJ123123</code> names no real square.</td>
                     <td>Check the letters against the zone. <code>check</code> will confirm.</td>
                 </tr>
                 <tr>
@@ -224,15 +224,15 @@
                 <tr>
                     <td><code>KIND</code> on its own did nothing</td>
                     <td>There is no bare grammar, permanently. Of the airfield codes this plugin ships, 343 are ordinary English words: <code>FACT</code> is Cape Town International, <code>USCG</code> is an airfield in Russia, <code>LIMA</code> is in Turin. Reading them bare would rewrite ordinary prose.</td>
-                    <td>Write a <a href="formats.html#airfield">USMTF field label</a> in front: <code>ICAO:KIND</code>, <code>LOC:</code>, <code>DEPLOC:</code> or <code>ARRLOC:</code>.</td>
+                    <td>Write a <a href="formats.html#airfield">USMTF field label</a> in front: <code>ICAO:PHNL</code>, <code>LOC:</code>, <code>DEPLOC:</code> or <code>ARRLOC:</code>.</td>
                 </tr>
                 <tr>
-                    <td><code>icao:kind</code> did nothing, but <code>ICAO:KIND</code> works</td>
+                    <td><code>icao:phnl</code> did nothing, but <code>ICAO:PHNL</code> works</td>
                     <td>The label and the code are both matched in upper case only. Coordinate labels accept any case because their tokens carry digits; four letters do not, and <code>loc: fast turnaround on the ramp</code> would link <code>FAST</code>.</td>
                     <td>Write both in upper case, which is how USMTF writes them.</td>
                 </tr>
                 <tr>
-                    <td><code>ICAO: KIND</code> did nothing, but <code>ICAO:KIND</code> works</td>
+                    <td><code>ICAO: PHNL</code> did nothing, but <code>ICAO:PHNL</code> works</td>
                     <td>Nothing may follow the colon. A space there would let the label reach the next word of an ordinary sentence, and this traffic is often written in capitals: <code>LOC: FAST TURNAROUND ON THE RAMP</code> would rewrite <code>FAST</code> into a link to an airfield in South Africa, permanently.</td>
                     <td>Write the code directly against the colon, which is how a USMTF field is written. A space <em>before</em> the colon is still fine.</td>
                 </tr>
@@ -242,14 +242,14 @@
                     <td>Check the code. If it is right and simply new, a later plugin build may hold it: the database ships with the plugin.</td>
                 </tr>
                 <tr>
-                    <td><code>ICAO:KIN</code> or <code>ICAO:KINDX</code> did nothing</td>
+                    <td><code>ICAO:PHN</code> or <code>ICAO:PHNLX</code> did nothing</td>
                     <td>An ICAO ident is exactly four letters. Three is an IATA code, which this plugin does not read.</td>
                     <td>Write the four-letter ICAO ident. The IATA code is shown in the panel for a field that has one.</td>
                 </tr>
                 <tr>
-                    <td><code>logs/ICAO:KIND</code> did nothing</td>
+                    <td><code>logs/ICAO:PHNL</code> did nothing</td>
                     <td>A slash on either side declines the match, so a label inside a path is not read as a field label. Rewriting the middle of a path is exactly what that guard exists to prevent.</td>
-                    <td>Nothing to do. A genuine set line ending <code>DEPLOC:KIND//</code> does decorate: the trailing <code>//</code> is matched and left in the message.</td>
+                    <td>Nothing to do. A genuine set line ending <code>DEPLOC:PHNL//</code> does decorate: the trailing <code>//</code> is matched and left in the message.</td>
                 </tr>
                 <tr>
                     <td>The label was consumed and only the code is left</td>
@@ -300,6 +300,63 @@
                 </tr>
             </tbody>
         </table>
+
+        <h2 id="cot-not-rendered">A Cursor on Target event was left as plain text</h2>
+
+        <p>
+            An event that cannot be rendered is never refused: the post goes out with the
+            XML as ordinary text, which is exactly what you typed. When the event was in a
+            block you labelled <code>cot</code> the plugin also sends you a message,
+            visible only to you, saying which of the two happened.
+        </p>
+
+        <p>
+            <strong>Only a <code>cot</code> block gets that message.</strong> A block
+            labelled <code>xml</code>, a bare event with no fence, and an attachment all
+            fail silently, because plenty of XML is not Cursor on Target and a message on
+            every one of those would fire constantly on ordinary posts. Labelling a block
+            <code>cot</code> is how you say you meant it, and asking is what earns you the
+            answer.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>The Cursor on Target event you just posted could not be read, so it was left as ordinary text.</code></td>
+                    <td>The XML did not parse, or it parsed into something this plugin refuses: a document type declaration, a processing instruction other than the XML declaration, an event with no <code>uid</code>, <code>type</code> or <code>time</code>, more than 32 events, or text that is not valid UTF-8. Code <a href="error-codes.html#hooks"><code>TF-11005</code></a>.</td>
+                    <td>Check the event against <a href="formats.html#cot-limits">what is and is not rendered</a>. The message text is unchanged, so nothing was lost.</td>
+                </tr>
+                <tr>
+                    <td><code>The Cursor on Target event you just posted carries too much detail to render, so it was left as ordinary text.</code></td>
+                    <td>The event parsed, but the card's data would have been larger than the space a post has for it. A very long <code>remarks</code>, or a large block of events, is the usual reason. Code <a href="error-codes.html#hooks"><code>TF-11004</code></a>.</td>
+                    <td>Shorten the remarks, or split the block across two posts. The whole event is still in the message.</td>
+                </tr>
+                <tr>
+                    <td>An attached <code>.cot</code> or <code>.xml</code> file did nothing, and nothing said why</td>
+                    <td><strong>Attachments fail silently</strong>, for the reason above. What reaches the server log depends on where it stopped: <a href="error-codes.html#hooks"><code>TF-11003</code></a> when the file could not be read at all; <a href="error-codes.html#hooks"><code>TF-11006</code></a> when it was read but is not yours, is already on another post, or has been deleted; <a href="error-codes.html#hooks"><code>TF-11005</code></a> when it was read but its contents did not parse; <a href="error-codes.html#hooks"><code>TF-11004</code></a> when it parsed but carried too much detail. A file whose name does not end <code>.cot</code> or <code>.xml</code>, and one over 64 KB, are passed over with nothing logged at all.</td>
+                    <td>Check the rules in <a href="formats.html#cot-file">as an attached file</a>: exactly one file, under 64 KB, one you attached to this post. A file your integration uploaded through the plugin API also counts, since those are credited to the server rather than to a person. Pasting the same event into a <code>cot</code> fence gives you the reason directly, which is faster than asking an administrator to read the log.</td>
+                </tr>
+                <tr>
+                    <td>The event renders for me but not for a colleague</td>
+                    <td>The card is drawn by the webapp. A client that has not loaded the plugin's bundle, or has an older one, falls back to the post's text. Mobile shows the text for the same reason.</td>
+                    <td>Reload. The text is always there underneath, so nobody sees nothing.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-info">
+            <p class="alert-title">Editing the post removes the card for good.</p>
+            <p>
+                The card is drawn from data captured when the post was made, and there is
+                no hook that recaptures it on an edit. Once a post carrying an event has
+                been edited, the event is shown as text from then on. This is deliberate:
+                a card that kept claiming readings the edited message no longer contains
+                would be worse than no card.
+            </p>
+        </div>
 
         <h2 id="only-me">Nobody else sees the link, or only some clients do</h2>
 

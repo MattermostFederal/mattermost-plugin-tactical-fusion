@@ -1,5 +1,6 @@
 import type {Decorator} from './types';
 
+import {registerPanel, _resetPanelsForTesting as resetPanels} from '../panels';
 import {pluginBaseUrl} from '../plugin_url';
 
 /*
@@ -27,6 +28,14 @@ export function register(decorator: AnyDecorator): void {
     }
     byType.set(decorator.type, decorator);
     ordered.push(decorator);
+
+    // Here rather than at each call site, so a decorator cannot be registered
+    // and then be missing from the sidebar.
+    registerPanel(decorator.type, {
+        Panel: decorator.Panel,
+        Title: decorator.Title,
+        summary: decorator.summary,
+    });
 }
 
 /** All registered decorators, in registration order. */
@@ -148,4 +157,5 @@ export function parseDecoratorHref(href: string): {type: string; params: URLSear
 export function _resetForTesting(): void { // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
     ordered.length = 0;
     byType.clear();
+    resetPanels();
 }

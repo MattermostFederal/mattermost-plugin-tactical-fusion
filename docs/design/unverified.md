@@ -2,8 +2,27 @@
 
 > Design rationale for Tactical Fusion. See [CLAUDE.md](../../CLAUDE.md) for the rules that govern day-to-day work; this file records the measurements, the defects that produced the current shape, and the contracts a later change would silently break.
 
-Two prerequisites from the implementation plan need a running server and have
-**not** been checked:
+Prerequisites that need a running server and have **not** been checked.
+
+### Cursor on Target
+
+- **Does `plugin.API.GetFile` succeed inside `MessageWillBePosted`**, before the
+  file is attached to the post? Expected yes: the upload has already written the
+  `FileInfo` and the filestore object, and only `PostId` is unset. If it does
+  not, the file path has to move to `MessageHasBeenPosted` plus `UpdatePost`,
+  which is a visible edit and a different design. The fenced-block path does no
+  file IO and is unaffected either way.
+- **Does an ephemeral sent from inside `MessageWillBePosted` arrive after the
+  post it is about?** The refusal notice is worded to stand alone either way,
+  since it carries no `PostId` and cannot point at anything, but if it arrives
+  first it will read oddly.
+- **Does `ShowMore` clamp a Cursor on Target card at 600px?**
+  `FULL_HEIGHT_POST_TYPES` is a one-entry allowlist for `custom_spillage_report`
+  rather than a `custom_` prefix rule, so it probably does. The card is taller
+  than a coordinate-only post, so decide whether it fits.
+
+### From the original plan
+
 
 - Whether Mattermost's search still matches a DTG once the message contains
   `[091630ZAUG26](/plugins/...)`. If the indexer splits on brackets, decorated

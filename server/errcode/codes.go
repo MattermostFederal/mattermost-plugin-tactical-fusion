@@ -58,6 +58,35 @@ const (
 	// undecorated rather than rejected.
 	HooksDecorationTooLong = 11001
 
+	// HooksCotPanic is a warn recording that recognizing a Cursor on Target
+	// event panicked. The post was left exactly as it arrived, and decoration
+	// still had its turn.
+	HooksCotPanic = 11002
+
+	// HooksCotFileUnreadable is a warn recording that an attached file could
+	// not be read or described. The post was left as an ordinary one.
+	HooksCotFileUnreadable = 11003
+
+	// HooksCotPropsTooLarge is a warn recording that the parsed event would
+	// have pushed the post's whole props map over what the server accepts, so
+	// nothing was stamped rather than risking a post the server refuses.
+	HooksCotPropsTooLarge = 11004
+
+	// HooksCotFileNotOwned is a warn recording that an attached file was not
+	// the poster's own, so it was left unread.
+	//
+	// Its own code rather than HooksCotFileUnreadable, because the two say
+	// opposite things to an operator: that one means the filestore did not
+	// answer, and this one means it answered and the answer was somebody else's
+	// file. Folding them together filed the only line that would ever betray an
+	// attempted disclosure under a code whose guidance is to check that storage
+	// is reachable.
+	HooksCotFileNotOwned = 11006
+
+	// HooksCotUnreadable is the code an author is given when a fence they
+	// explicitly labeled cot could not be read as a Cursor on Target event.
+	HooksCotUnreadable = 11005
+
 	// server/http.go (12000-12999)
 
 	// HTTPMethodNotAllowed is returned for anything other than GET on the
@@ -286,6 +315,11 @@ var AllCodes = []int{
 
 	HooksDecoratePanic,
 	HooksDecorationTooLong,
+	HooksCotPanic,
+	HooksCotFileUnreadable,
+	HooksCotFileNotOwned,
+	HooksCotPropsTooLarge,
+	HooksCotUnreadable,
 
 	HTTPMethodNotAllowed,
 	HTTPDecoratePathInvalid,

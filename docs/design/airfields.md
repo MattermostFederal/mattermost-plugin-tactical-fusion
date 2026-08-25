@@ -111,8 +111,8 @@ Somerset East, `SITE` a helipad in Sao Paulo, `LIMA` is Torino-Aeritalia). That
 is the `EnableLocationUTM` failure mode this decorator's whole design exists to
 avoid, one layer in, behind the label.
 
-Dropping the trailing `[ \t]*` costs `ICAO: KIND` a decoration and costs a
-genuine `DEPLOC:KIND` nothing, which is the trade this repository makes
+Dropping the trailing `[ \t]*` costs `ICAO: PHNL` a decoration and costs a
+genuine `DEPLOC:PHNL` nothing, which is the trade this repository makes
 everywhere: a missed decoration is a feature gap and a rewrite is corruption.
 The leading `[ \t]*` stays, since a space *before* the colon cannot separate a
 following word from the label.
@@ -162,17 +162,17 @@ grammar.
 
 ### The `//` is matched, not permitted
 
-A USMTF set line ends `//`, and `DEPLOC:KIND//` is the traffic this feature
+A USMTF set line ends `//`, and `DEPLOC:PHNL//` is the traffic this feature
 opens with. `BadNeighbor` rejects `/` on both sides, so the line would decline;
 loosening the guard to allow a trailing `/` would fix that and reopen something
-worse, because `ICAO:KIND/foo` is path-shaped and rewriting the middle of a path
+worse, because `ICAO:PHNL/foo` is path-shaped and rewriting the middle of a path
 is the failure the guard exists for.
 
 `Pattern.boundaryOK` is handed the runes flanking the **whole match** while
 `ReplaceGroup` narrows only what is rewritten, so the terminator goes in the
-pattern instead: `...([A-Z]{4})(?://)?`. `DEPLOC:KIND//` matches with the `//`
+pattern instead: `...([A-Z]{4})(?://)?`. `DEPLOC:PHNL//` matches with the `//`
 inside the match, the guard looks past it, and only the ident is linked.
-`ICAO:KIND/foo` cannot match the optional group, so the match ends at the ident
+`ICAO:PHNL/foo` cannot match the optional group, so the match ends at the ident
 and the guard still sees `/`. **The guard itself is byte-identical to
 Location's**, with no asymmetry anywhere.
 
@@ -187,7 +187,7 @@ The link's stored text is the author's own token, with the field label consumed
 in front of it, exactly as a coordinate moniker and `DTG:` are. The sibling plugin renders
 `Name (IDENT)`, and that argument does not transfer: it decorates client-side
 where nothing is stored, while `MessageWillBePosted` here rewrites the **stored
-message**. Putting `Indianapolis Intl (KIND)` in stored text edits what somebody
+message**. Putting `Honolulu Intl (PHNL)` in stored text edits what somebody
 wrote, using data that changes between builds, and survives uninstall. The name
 belongs in the hover, the panel and the page.
 
@@ -464,13 +464,13 @@ rewritten to carry the field's details as a markdown table under the author's
 own line:
 
 ```text
-| Airfield | [Indianapolis International Airport](/plugins/<id>/decorate/airport?v=KIND) |
+| Airfield | [Daniel K Inouye International Airport](/plugins/<id>/decorate/airport?v=PHNL) |
 |:--|:--|
-| Code | KIND |
-| Place | Indianapolis, IN, US |
+| Code | PHNL |
+| Place | Honolulu, Oahu, HI, US |
 | Type | Large Airport |
-| Elevation | 797 ft |
-| IATA | IND |
+| Elevation | 13 ft |
+| IATA | HNL |
 ```
 
 **A markdown table in the stored message, not a custom post type.** The
@@ -491,7 +491,7 @@ What writing it into the message buys:
 
 What it costs, and both are permanent:
 
-- **The rewrite is much larger than a link.** An author who types `ICAO:KIND`
+- **The rewrite is much larger than a link.** An author who types `ICAO:PHNL`
   has eight lines of markdown in their stored message. They see all of it when
   they edit the post, and it is in every export. They can also change or delete
   it, which a post-type body does not allow.
@@ -529,7 +529,7 @@ destination comes from `Tagger.URLFor`, which is exported for exactly this kind
 of caller. That deleted a `splitLink` helper along with its coupling to
 `labelEscaper` and to how `buildURL` encodes a destination, and it fixed a bug
 for free: the helper recovered the trail by slicing after the link, so it also
-picked up the message's trailing whitespace and rendered `KIND ` in the Code
+picked up the message's trailing whitespace and rendered `PHNL ` in the Code
 row. `match.end` is already the trimmed end, so `Trail` cannot carry any.
 
 Recording the claim that helper made, because it was wrong and is the kind of

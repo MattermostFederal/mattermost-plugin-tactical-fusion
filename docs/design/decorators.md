@@ -356,11 +356,33 @@ leaves alone is how a whole format once sat in that list decorating nothing, and
 a "declined" row it rewrites would advertise a near miss as safe. That test
 reads the row out of the posted output rather than calling the tagger, and
 scopes each check to the row, because the output deliberately carries an example
-beside its own labeled variant and `LATD:35N079W` contains `35N079W`.
+beside its own labeled variant and `LATD:21N157W` contains `21N157W`.
 
 UTM has a group of its own, headed with the fact that it ships off, because on a
 default install every row in it renders with no link and under a generic grid
 heading that reads as a bug.
+
+**The rows sit in Hawaii and on Guam**, because those are the two detail map
+packages this plugin bundles. Every example is something a reader clicks, and a
+coordinate outside the bundled coverage opens on the global tier's coastline
+outline: the reader's first encounter with the feature then shows the map at its
+worst, on a default install, with nothing wrong. Hickam carries the Hawaii
+rows and Andersen and Apra carry the Guam ones, which also gives the eastern
+hemisphere and a second UTM zone for free.
+
+**Hickam rather than Pearl Harbor**, and the difference is not cosmetic. Pearl
+Harbor is the name that comes to mind first and the middle of it is open water,
+so a marker placed there sits in East Loch on every surface that draws one. The
+value used is the airfield reference point `PHIK` carries in this plugin's own
+airfield database, which also means the coordinate rows and the `ICAO:PHIK` row
+name the same place and cannot drift apart.
+
+Five rows deliberately stay outside that coverage, because their subject is
+arithmetic no in-theater position can demonstrate: the pole and the antimeridian,
+Null Island, a south-and-east pair, the south polar GARS cell, and the UTM band
+trio. Hawaii is band Q and Guam is band P, so neither can show that `N` and `S`
+in a UTM token are latitude bands rather than hemispheres, which is the whole
+content of those three rows.
 
 **"Drawn as a map in the channel" is the one group whose claim is per row rather
 than per group**, carried by `detailExample.inline`. Every row in it decorates,
@@ -484,3 +506,21 @@ to discover a limit it is not told.
 `TestDetailsPostWhateverTheServerAccepts` runs the whole command at 16,383,
 5,000 and 4,000 and requires every message to fit and nothing to be dropped.
 
+### `SoleFencedBlock`, and its relationship to protected spans
+
+`SoleFencedBlock` answers "is this message exactly one closed fenced block, and
+what is around it". It lives here, beside `blockRanges`, and is built from the
+same `fenceWidthOf` / `closesFence` / `isIndentedCode` primitives, because a
+second fence scanner elsewhere in the tree is exactly the drift this package
+writes tests against.
+
+It returns the info string as well as the body. An info string is fence syntax,
+not the caller's syntax, so it belongs to whatever parses fences.
+
+`TestSoleFencedBlockIsAlwaysProtected` holds it to `findProtectedRanges`: any
+block this function accepts lies inside a range that one reports. That is what
+guarantees no tagger candidate is ever found inside a fence, so the decoration
+step and the Cursor on Target step can never disagree about the same characters.
+
+It is **not** what keeps those two steps apart. Prose outside the fence is
+decoratable, and the exclusivity rule in [`cot.md`](cot.md) is what settles that.

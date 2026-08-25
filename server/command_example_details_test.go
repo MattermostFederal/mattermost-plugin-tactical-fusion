@@ -84,7 +84,7 @@ func TestEveryDetailDoesWhatItsGroupClaims(t *testing.T) {
 					// something, so its presence is the outcome. Read off the
 					// row rather than the whole message: several rows are the
 					// labeled form of a row that is declined bare, and
-					// "LATD:35N079W" contains "35N079W".
+					// "LATD:21N157W" contains "21N157W".
 					changed := strings.Contains(row, " → ")
 
 					if group.decorates && !changed {
@@ -545,14 +545,18 @@ func TestDetailsKeepGoingWhenAPostFails(t *testing.T) {
 	if !strings.Contains(response.Text, "TF-16006") {
 		t.Fatalf("the warning does not carry its code:\n%s", response.Text)
 	}
-	if !strings.Contains(response.Text, "2 of 4") {
+	// Three of five, not two of four: the event example is one of the things
+	// this command posts, it is refused here alongside the others, and a count
+	// that leaves it out reports more success than there was.
+	if !strings.Contains(response.Text, "3 of 5") {
 		t.Fatalf("the warning does not say how much is missing:\n%s", response.Text)
 	}
 
 	// One log line per refused post, not one for the batch: an operator chasing
-	// a rate limit wants to know how many times it fired.
-	if len(api.errors) != 2 {
-		t.Errorf("logged %d errors for 2 refused posts", len(api.errors))
+	// a rate limit wants to know how many times it fired. The event example is
+	// refused alongside them and logs its own.
+	if len(api.errors) != 3 {
+		t.Errorf("logged %d errors for 3 refused posts", len(api.errors))
 	}
 }
 
@@ -587,7 +591,17 @@ func TestDetailsSurviveTheMessageHook(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 
 	for i, message := range runDetails(t, p) {
-		if again := p.decoratePost(&model.Post{Message: message}, hookRef); again != nil {
+		again := p.decoratePost(&model.Post{Message: message}, hookRef)
+		if again == nil {
+			continue
+		}
+
+		// The MESSAGE is the invariant, not the return value. The Cursor on
+		// Target example is meant to be stamped, and stamping sets the type and
+		// the props while leaving the text exactly as written; what must never
+		// happen is the text coming back rewritten, which is what would nest a
+		// link inside a real one.
+		if again.Message != message {
 			t.Fatalf("the hook rewrote post %d:\n%s", i+1, again.Message)
 		}
 	}

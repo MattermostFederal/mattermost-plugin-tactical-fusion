@@ -165,6 +165,36 @@ function wasRemoved(map: MapLibreMap | null): boolean {
     return Boolean((map as {_removed?: boolean} | null)?._removed);
 }
 
+/**
+ * Where each marker actually lands on the canvas, in CSS pixels, with the size
+ * of the canvas it landed on.
+ *
+ * The geometry of what counts as obscured lives in the spec rather than here:
+ * this reports where MapLibre put things, and the test owns the rectangles the
+ * chrome occupies. A harness that decided "clear" for itself would be asserting
+ * against its own copy of the thing under test.
+ */
+function projectedPins(
+    map: MapLibreMap | null,
+    markers: ReadonlyArray<{lat: number; lon: number}> | undefined,
+): string {
+    if (map === null || wasRemoved(map) || markers === undefined) {
+        return '';
+    }
+
+    const canvas = map.getCanvas();
+    const at = markers.map((marker) => {
+        const point = map.project([marker.lon, marker.lat]);
+        return [Math.round(point.x), Math.round(point.y)];
+    });
+
+    return JSON.stringify({
+        w: Math.round(canvas.clientWidth),
+        h: Math.round(canvas.clientHeight),
+        at,
+    });
+}
+
 interface Props {
 
     /** Which of the named views to open on. */
@@ -183,10 +213,20 @@ interface Props {
 
     /** Renders the card-sized map: no controls, no gestures, no readout. */
     preview?: boolean;
+
+    /** A block of events, which the map frames all of rather than opening on one. */
+    markers?: ReadonlyArray<{lat: number; lon: number; color: string}>;
+
+    /** What the marker or markers are, for the accessible label. */
+    markerLabel?: string;
+
+    accuracyMeters?: number;
+    accuracyLabel?: string;
 }
 
 const LocationMapHarness: React.FC<Props> = ({
-    start = 'Los Angeles', region = '', pending = false, pageHref, fill, noWebGL, preview,
+    start = 'Los Angeles', region = '', pending = false, pageHref, fill, noWebGL, preview, markers,
+    markerLabel, accuracyMeters, accuracyLabel,
 }) => {
     // Assigned during render, never installed during render: the patch above is
     // already in place, so this only has to be decided before the child probes
@@ -206,6 +246,7 @@ zoom: -1,
         tiles: 'pending',
 center: 'none',
 removed: false,
+        pins: '',
     });
 
     // The last instance, kept past the observer's null so the unmount test can
@@ -237,6 +278,7 @@ removed: false,
             center: at ? `${at.lat.toFixed(3)},${at.lng.toFixed(3)}` : 'none',
             zoom: map && !wasRemoved(map) ? Number(map.getZoom().toFixed(2)) : -1,
             removed: wasRemoved(map),
+            pins: projectedPins(map, markers),
         });
     };
 
@@ -255,6 +297,10 @@ removed: false,
                     pageHref={pageHref}
                     fill={fill}
                     preview={preview}
+                    markers={markers}
+                    markerLabel={markerLabel}
+                    accuracyMeters={accuracyMeters}
+                    accuracyLabel={accuracyLabel}
                 />
             )}
             {Object.keys(VIEWS).map((key) => (
@@ -295,6 +341,7 @@ removed: false,
             <output data-testid='camera'>{reading.center}</output>
             <output data-testid='zoom'>{String(reading.zoom)}</output>
             <output data-testid='removed'>{reading.removed ? 'yes' : 'no'}</output>
+            <output data-testid='pins'>{reading.pins}</output>
         </div>
     );
 };

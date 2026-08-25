@@ -235,7 +235,7 @@
             </thead>
             <tbody>
                 <tr><td><a href="#enable-location"><code>EnableLocation</code></a></td><td>Coordinate decoration as a whole</td><td>On</td></tr>
-                <tr><td><a href="#enable-location-dd-signed"><code>EnableLocationDDSigned</code></a></td><td><code>34.0561, -118.2500</code></td><td>On</td></tr>
+                <tr><td><a href="#enable-location-dd-signed"><code>EnableLocationDDSigned</code></a></td><td><code>21.3353, -157.9483</code></td><td>On</td></tr>
                 <tr><td><a href="#enable-location-lat-lon"><code>EnableLocationLatLon</code></a></td><td>Hemisphere-bearing latitude and longitude</td><td>On</td></tr>
                 <tr><td><a href="#enable-location-usmtf"><code>EnableLocationUSMTF</code></a></td><td>The fixed-width USMTF shapes</td><td>On</td></tr>
                 <tr><td><a href="#enable-location-mgrs"><code>EnableLocationMGRS</code></a></td><td>Military grid references (MGRS)</td><td>On</td></tr>
@@ -275,7 +275,7 @@
             <tbody>
                 <tr><td>Type</td><td>Boolean</td></tr>
                 <tr><td>Default</td><td>On</td></tr>
-                <tr><td>Matches</td><td><code>34.0561, -118.2500</code></td></tr>
+                <tr><td>Matches</td><td><code>21.3353, -157.9483</code></td></tr>
                 <tr><td>Requires</td><td><a href="#enable-location"><code>EnableLocation</code></a></td></tr>
             </tbody>
         </table>
@@ -289,7 +289,7 @@
         <p>
             What holds it apart from ordinary text is a requirement of at least four
             decimal places on both values, which is about 11 m and is what real
-            coordinate sources emit. The cost is that <code>34.05, -118.25</code> is
+            coordinate sources emit. The cost is that <code>21.34, -157.95</code> is
             deliberately left alone. See
             <a href="formats.html#location-declined">the declined list</a>.
         </p>
@@ -300,7 +300,7 @@
             <tbody>
                 <tr><td>Type</td><td>Boolean</td></tr>
                 <tr><td>Default</td><td>On</td></tr>
-                <tr><td>Matches</td><td><code>34.0561 N, 118.2500 W</code>, <code>34&deg;03'22"N 118&deg;15'00"W</code>, <code>34&deg;03.366'N 118&deg;15.000'W</code></td></tr>
+                <tr><td>Matches</td><td><code>21.3353 N, 157.9483 W</code>, <code>21&deg;20'07"N 157&deg;56'53"W</code>, <code>21&deg;20.118'N 157&deg;56.898'W</code></td></tr>
                 <tr><td>Requires</td><td><a href="#enable-location"><code>EnableLocation</code></a></td></tr>
             </tbody>
         </table>
@@ -318,14 +318,14 @@
             <tbody>
                 <tr><td>Type</td><td>Boolean</td></tr>
                 <tr><td>Default</td><td>On</td></tr>
-                <tr><td>Matches</td><td><code>3510N07901W</code>, <code>400948N1221400W</code>, <code>331000.0N1183000.0W</code>, <code>3510N9-07901W7</code></td></tr>
+                <tr><td>Matches</td><td><code>2120N15757W</code>, <code>212007N1575654W</code>, <code>212007.1N1575653.9W</code>, <code>2120N9-15757W7</code></td></tr>
                 <tr><td>Requires</td><td><a href="#enable-location"><code>EnableLocation</code></a></td></tr>
             </tbody>
         </table>
 
         <p>
             The fixed-width shapes used in ATO and USMTF traffic. The shortest of them,
-            <code>35N079W</code>, is matched only behind a field label: seven characters
+            <code>21N157W</code>, is matched only behind a field label: seven characters
             resolving to a 111 km square is not something to detect on its own.
         </p>
 
@@ -335,7 +335,7 @@
             <tbody>
                 <tr><td>Type</td><td>Boolean</td></tr>
                 <tr><td>Default</td><td>On</td></tr>
-                <tr><td>Matches</td><td><code>18S UJ 23478 06483</code>, <code>18SUJ2347806483</code>, <code>32U MV 12 34</code></td></tr>
+                <tr><td>Matches</td><td><code>4Q FJ 09060 59620</code>, <code>4QFJ0906059620</code>, <code>55P BR 76 02</code></td></tr>
                 <tr><td>Requires</td><td><a href="#enable-location"><code>EnableLocation</code></a></td></tr>
             </tbody>
         </table>
@@ -379,7 +379,7 @@
             <tbody>
                 <tr><td>Type</td><td>Boolean</td></tr>
                 <tr><td>Default</td><td><strong>Off</strong>, and the only format that ships disabled</td></tr>
-                <tr><td>Matches</td><td><code>33U 291000 5628000</code>, <code>11S 384640E 3769080N</code>, and run together only behind a <code>UTMO:</code> or <code>UTMT:</code> label</td></tr>
+                <tr><td>Matches</td><td><code>4Q 609060 2359620</code>, <code>55P 276020E 1502660N</code>, and run together only behind a <code>UTMO:</code> or <code>UTMT:</code> label</td></tr>
                 <tr><td>Requires</td><td><a href="#enable-location"><code>EnableLocation</code></a></td></tr>
             </tbody>
         </table>
@@ -397,7 +397,7 @@
 
         <p>
             <strong>The letter after the zone number is read as a latitude band.</strong>
-            <code>11S 384640E 3769080N</code> is band S, so it resolves to 34&deg; north.
+            <code>55P 276020E 1502660N</code> is band S, so it resolves to 34&deg; north.
             Somebody using the civilian convention writes the same characters to mean "zone
             11, southern hemisphere", which is 56&deg; south. The same text, two readings,
             90&deg; of latitude apart, and nothing in the token says which was meant.
@@ -452,7 +452,7 @@
             <tbody>
                 <tr><td>Type</td><td>Boolean</td></tr>
                 <tr><td>Default</td><td>On</td></tr>
-                <tr><td>Matches</td><td><code>GEOREF:GJNJ5753</code>, <code>GEOREF:GJNJ575337</code> and <code>GEOREF:GJNJ57533752</code>, behind the label only</td></tr>
+                <tr><td>Matches</td><td><code>GEOREF:XGKP5535</code>, <code>GEOREF:XGKP553350</code> and <code>GEOREF:XGKP55803503</code>, behind the label only</td></tr>
                 <tr><td>Requires</td><td><a href="#enable-location"><code>EnableLocation</code></a> and <a href="#enable-location-moniker"><code>EnableLocationMoniker</code></a></td></tr>
             </tbody>
         </table>
@@ -467,9 +467,9 @@
         <p>
             <strong>GEOREF is written longitude first</strong>, which is the opposite of
             every other format here and is the standard's own order. In
-            <code>GJNJ5753</code> the <code>G</code> and the <code>N</code> are longitude and
-            the <code>57</code> is its minutes; <code>J</code>, <code>J</code> and
-            <code>53</code> are latitude.
+            <code>XGKP5535</code> the <code>X</code> and the <code>K</code> are longitude and
+            the <code>55</code> is its minutes; <code>G</code>, <code>P</code> and
+            <code>35</code> are latitude.
         </p>
 
         <p>
@@ -494,7 +494,7 @@
             <tbody>
                 <tr><td>Type</td><td>Boolean</td></tr>
                 <tr><td>Default</td><td>On</td></tr>
-                <tr><td>Matches</td><td><code>GARS:206LT</code>, <code>GARS:206LT2</code> and <code>GARS:006AG39</code>, behind the label only</td></tr>
+                <tr><td>Matches</td><td><code>GARS:045KG</code>, <code>GARS:045KG1</code> and <code>GARS:045KG14</code>, behind the label only</td></tr>
                 <tr><td>Requires</td><td><a href="#enable-location"><code>EnableLocation</code></a> and <a href="#enable-location-moniker"><code>EnableLocationMoniker</code></a></td></tr>
             </tbody>
         </table>
@@ -508,7 +508,7 @@
 
         <p>
             <strong>Label only, and this is the stronger case of the two.</strong>
-            <code>006AG39</code> is seven alphanumerics whose only structural check is that
+            <code>045KG14</code> is seven alphanumerics whose only structural check is that
             just over a third of the possible letter pairs name no band at all. There is nothing
             else in it to tell a coordinate from a part number.
         </p>
@@ -519,7 +519,7 @@
             <tbody>
                 <tr><td>Type</td><td>Boolean</td></tr>
                 <tr><td>Default</td><td>On</td></tr>
-                <tr><td>Matches</td><td><code>849VCWC8+R9</code>, <code>849VCWC8+R9C</code> and the padded <code>849V0000+</code>. Bare in upper case; lower case behind a <code>PLUSCODE:</code> or <code>OLC:</code> label</td></tr>
+                <tr><td>Matches</td><td><code>73H483P2+4M</code>, <code>73H483P2+4MG</code> and the padded <code>73H40000+</code>. Bare in upper case; lower case behind a <code>PLUSCODE:</code> or <code>OLC:</code> label</td></tr>
                 <tr><td>Requires</td><td><a href="#enable-location"><code>EnableLocation</code></a>. The labeled lower-case form also needs <a href="#enable-location-moniker"><code>EnableLocationMoniker</code></a>; the bare upper-case form does not</td></tr>
             </tbody>
         </table>
@@ -678,13 +678,19 @@
             surface.
         </p>
 
-        <h3 id="enable-location-map-inline" data-setting="EnableLocationMapInline">Map under a coordinate-only post <code>EnableLocationMapInline</code></h3>
+        <h3 id="enable-location-map-inline" data-setting="EnableLocationMapInline">Map under a post <code>EnableLocationMapInline</code></h3>
+
+        <p>
+            This switch governs every map this plugin draws in the channel itself: the one
+            under a coordinate-only post, and the one on a <a href="#cot-switches">Cursor on
+            Target</a> card. It does not affect the sidebar, the hover card or the map page.
+        </p>
 
         <table class="field-table">
             <tbody>
                 <tr><td>Type</td><td>Boolean</td></tr>
                 <tr><td>Default</td><td>On</td></tr>
-                <tr><td>Effect when off</td><td>A message whose whole text is one coordinate stays an ordinary post: the link is decorated as usual and no map is drawn beneath it.</td></tr>
+                <tr><td>Effect when off</td><td>A message whose whole text is one coordinate stays an ordinary post: the link is decorated as usual and no map is drawn beneath it. A Cursor on Target card is still rendered, without its map.</td></tr>
                 <tr><td>Requires</td><td><a href="#enable-location"><code>EnableLocation</code></a> and <a href="#enable-location-map"><code>EnableLocationMap</code></a></td></tr>
             </tbody>
         </table>
@@ -927,7 +933,7 @@
 
         <p>
             When a message contains nothing but one <em>labeled</em> airfield reference,
-            such as <code>ICAO:KIND</code> or a set line ending <code>DEPLOC:KIND//</code>,
+            such as <code>ICAO:PHNL</code> or a set line ending <code>DEPLOC:PHNL//</code>,
             it is replaced with a small table of the field's details: its name, the code the author typed, where
             it is, what kind of field it is, its elevation and its IATA code. The name is
             the link that opens the panel, which is where the map and the coordinate
@@ -965,6 +971,62 @@
             <a href="commands.html#check"><code>/tactical-fusion check</code></a> answers
             the same question about one specific message, which is what to reach for when
             somebody reports that a coordinate was not linked.
+        </p>
+
+        <h2 id="cot-switches">The Cursor on Target switches</h2>
+
+        <h3 id="enable-cot" data-setting="EnableCot">Render Cursor on Target events <code>EnableCot</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>A pasted event stays an ordinary fenced code block. Posts already rendered keep their card.</td></tr>
+                <tr><td>Requires</td><td>Nothing</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            A Cursor on Target event written in a <code>cot</code> or <code>xml</code> fenced
+            block is read as it is posted, and the post is rendered as a card: the callsign
+            and decoded type, the position, the timing, and how accurately the position is
+            known. Text written around the block is kept and shown with the card.
+        </p>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">Rendered posts are missing from Elasticsearch and OpenSearch results.</p>
+            <p>
+                To render a card the plugin marks the post with a custom type as it is
+                created. Elasticsearch and OpenSearch match only ordinary posts, so a marked
+                post is indexed and then never found, and it is absent from Recent Mentions
+                as well. Installs that search through PostgreSQL are unaffected.
+            </p>
+            <p>
+                Marking also drops link previews, image embeds, the file attachment list and
+                automatic translation for that post, and any Markdown written around the
+                event renders as plain text. Turning this switch off restores all of it for
+                new posts.
+            </p>
+        </div>
+
+        <h3 id="enable-cot-file" data-setting="EnableCotFile">Read a Cursor on Target file attached to a post <code>EnableCotFile</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>An attached <code>.cot</code> or <code>.xml</code> file is left as an ordinary attachment. A pasted fenced block still renders.</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-cot"><code>EnableCot</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            When a post carries exactly one attachment whose name ends <code>.cot</code> or
+            <code>.xml</code>, the file is read as the post is created and the event inside
+            it is rendered. This is the only setting in the plugin that reads a file while a
+            message is being posted. An install whose file storage is slow or remote may
+            prefer to turn it off and keep the fenced block, which costs nothing extra.
+            Files over 64 KB are ignored either way.
         </p>
 
         <h2>Reader settings are not admin settings</h2>

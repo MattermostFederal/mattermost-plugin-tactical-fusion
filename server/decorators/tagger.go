@@ -627,3 +627,157 @@ func (t *Tagger) buildURL(typ string, params url.Values) string {
 
 	return t.URLPrefix + "/" + typ + "?" + query
 }
+
+type FencedBlock struct {
+	Info  string
+	Body  string
+	Lead  string
+	Trail string
+}
+
+func SoleFencedBlock(message string) (FencedBlock, bool) {
+	var found FencedBlock
+	count := 0
+
+	fenceStart, bodyStart, fenceChar, fenceWidth, info := -1, 0, byte(0), 0, ""
+
+	for offset := 0; offset < len(message); {
+		end := strings.IndexByte(message[offset:], '\n')
+		lineEnd := len(message)
+		if end >= 0 {
+			lineEnd = offset + end
+		}
+		line := message[offset:lineEnd]
+
+		trimmed := strings.TrimLeft(line, " ")
+		indent := len(line) - len(trimmed)
+
+		switch {
+		case fenceStart >= 0:
+			if indent <= 3 && closesFence(trimmed, fenceChar, fenceWidth) {
+				count++
+				found = FencedBlock{
+					Info:  info,
+					Body:  trimFinalNewline(message[bodyStart:offset]),
+					Lead:  message[:fenceStart],
+					Trail: message[lineEnd:],
+				}
+				fenceStart, fenceChar, fenceWidth, info = -1, 0, 0, ""
+			}
+
+		case indent <= 3 && fenceWidthOf(trimmed, '`') >= 3:
+			fenceChar, fenceWidth = '`', fenceWidthOf(trimmed, '`')
+			fenceStart, bodyStart, info = offset, min(lineEnd+1, len(message)), infoString(trimmed, fenceWidth)
+
+		case indent <= 3 && fenceWidthOf(trimmed, '~') >= 3:
+			fenceChar, fenceWidth = '~', fenceWidthOf(trimmed, '~')
+			fenceStart, bodyStart, info = offset, min(lineEnd+1, len(message)), infoString(trimmed, fenceWidth)
+		}
+
+		if end < 0 {
+			break
+		}
+		offset = lineEnd + 1
+	}
+
+	if fenceStart >= 0 || count != 1 {
+		return FencedBlock{}, false
+	}
+
+	return found, true
+}
+
+func infoString(trimmed string, width int) string {
+	return strings.TrimSpace(trimmed[width:])
+}
+
+func trimFinalNewline(body string) string {
+	body = strings.TrimSuffix(body, "\n")
+	return strings.TrimSuffix(body, "\r")
+}
+
+// SoleElementSpan finds the span an XML element occupies in a message, so a
+// caller can read it without a fence around it.
+//
+// It lives here, beside SoleFencedBlock, because the span has to be tested
+// against the code ranges, and a caller that could not see those would happily
+// read an element the author had explicitly marked as code.
+//
+// CODE ranges, not the whole protected set, and the difference is the point.
+// findProtectedRanges also protects inline HTML, because a decorator link
+// written into an attribute would corrupt it, and a bare XML element IS inline
+// HTML: testing against the full set would refuse every element this function
+// exists to find. Nothing here rewrites the message, so that half of the
+// protection is answering a question this is not asking. What does carry over
+// is the author's own statement that a span is code, which is exactly the
+// fenced, indented and backtick ranges.
+//
+// The span runs from the first opening tag to the last closing tag, so several
+// sibling elements come back as one body. Where the element is self-closing and
+// no closing tag exists at all, it runs to the first "/>". A message that mixes
+// the two forms, closing one element and self-closing a later one, therefore
+// stops at the last closing tag and leaves the rest in Trail. That is a real
+// limit and a rare shape; the alternative is a second XML scanner here, which
+// is the thing this package refuses to grow.
+func SoleElementSpan(message, name string) (FencedBlock, bool) {
+	start := elementStart(message, name)
+	if start < 0 {
+		return FencedBlock{}, false
+	}
+
+	end, ok := elementEnd(message, name, start)
+	if !ok {
+		return FencedBlock{}, false
+	}
+
+	if overlapsAny(byteRange{start, end}, codeRanges(message)) {
+		return FencedBlock{}, false
+	}
+
+	return FencedBlock{
+		Body:  message[start:end],
+		Lead:  message[:start],
+		Trail: message[end:],
+	}, true
+}
+
+// codeRanges is every span the author marked as code: fenced, indented and
+// inline. A subset of findProtectedRanges, which additionally protects links,
+// URLs and inline HTML against being rewritten.
+func codeRanges(message string) []byteRange {
+	return mergeRanges(append(blockRanges(message), codeSpanRanges(message)...))
+}
+
+// elementStart finds the first "<name" that is really that element, rather than
+// the start of a longer name: "<eventual" is not an "<event".
+func elementStart(message, name string) int {
+	open := "<" + name
+
+	for at := 0; ; {
+		found := strings.Index(message[at:], open)
+		if found < 0 {
+			return -1
+		}
+		found += at
+
+		after := found + len(open)
+		if after >= len(message) || strings.ContainsRune(" \t\r\n/>", rune(message[after])) {
+			return found
+		}
+
+		at = after
+	}
+}
+
+func elementEnd(message, name string, start int) (int, bool) {
+	closing := "</" + name + ">"
+	if at := strings.LastIndex(message, closing); at > start {
+		return at + len(closing), true
+	}
+
+	if at := strings.Index(message[start:], "/>"); at >= 0 {
+		return start + at + 2, true
+	}
+
+	return 0, false
+}

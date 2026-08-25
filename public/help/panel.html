@@ -162,7 +162,7 @@
                 <tr><td>DMS</td><td>Degrees, minutes and seconds.</td></tr>
                 <tr><td>DDM</td><td>Degrees and decimal minutes.</td></tr>
                 <tr><td>MGRS</td><td>The military grid reference, at the resolution the original text carried. It follows the three angular readings rather than opening the table, so the notations that read the same way sit together.</td></tr>
-                <tr><td>USMTF</td><td>The fixed-width compact form, for pasting into an ATO or a USMTF field. The shape follows the resolution: <code>35N079W</code> for a degrees-only coordinate, <code>3510N07901W</code> at whole minutes, <code>400948N1221400W</code> at whole seconds, and <code>331000.0N1183000.0W</code> finer than that. Sized from the <a href="#location-resolution">pair</a> rather than per axis, because it is one shape covering both halves. It never carries <a href="formats.html#location-usmtf">confidence digits</a>: those say how well a position is known, which a derived reading cannot claim.</td></tr>
+                <tr><td>USMTF</td><td>The fixed-width compact form, for pasting into an ATO or a USMTF field. The shape follows the resolution: <code>21N157W</code> for a degrees-only coordinate, <code>2120N15757W</code> at whole minutes, <code>212007N1575654W</code> at whole seconds, and <code>212007.1N1575653.9W</code> finer than that. Sized from the <a href="#location-resolution">pair</a> rather than per axis, because it is one shape covering both halves. It never carries <a href="formats.html#location-usmtf">confidence digits</a>: those say how well a position is known, which a derived reading cannot claim.</td></tr>
                 <tr><td>UTM</td><td>Zone, band, easting and northing, rounded to the same resolution.</td></tr>
                 <tr><td>GEOREF</td><td>A <a href="formats.html#location-area">World Geographic Reference System</a> code, at the coarsest of its four widths that is no coarser than the original text. Written longitude first, which is that standard's own order.</td></tr>
                 <tr><td>GARS</td><td>A <a href="formats.html#location-area">Global Area Reference System</a> cell: 30, 15 or 5 minutes, again chosen by the resolution.</td></tr>
@@ -246,9 +246,9 @@
             straight into the channel underneath it, so you do not have to click anything
             to see where it is. The coordinate still appears as the same link it always
             was, and clicking it still opens the panel with every reading. A label in
-            front of it is fine: <code>MGRS: 18SUJ2347806483</code> on its own counts, and
-            so does a plain <code>34.0561N,118.2500W</code>. A coordinate with anything
-            else around it, such as <code>target at 34.0561N,118.2500W</code>, or a
+            front of it is fine: <code>MGRS: 4QFJ0906059620</code> on its own counts, and
+            so does a plain <code>21.3353N,157.9483W</code>. A coordinate with anything
+            else around it, such as <code>target at 21.3353N,157.9483W</code>, or a
             message with two coordinates in it, gets the link on its own as before.
         </p>
 
@@ -413,7 +413,7 @@
             it, and one written to a metre with a rectangle so small it reads as the dot
             alone until you zoom in. The rectangle is the area the
             original text actually names, so a coarse coordinate looks coarse. Without it
-            <code>35N079W</code>, which names a square about 111 km across, would be
+            <code>21N157W</code>, which names a square about 111 km across, would be
             indistinguishable from a ten-figure grid reference that names a square one
             metre across.
         </p>
@@ -493,26 +493,26 @@
 
         <p>
             Every other row is rendered at that same resolution. A coordinate written to
-            two decimals shows <code>34.06&deg; N</code>, and one written to whole degrees
-            shows <code>35&deg;N</code> rather than <code>35&deg;00'00"N</code>. Padding a
+            two decimals shows <code>21.34&deg; N</code>, and one written to whole degrees
+            shows <code>21&deg;N</code> rather than <code>21&deg;00'00"N</code>. Padding a
             field the author never wrote would be a claim they did not make.
         </p>
 
         <p>
             When the two halves were written to <strong>different</strong> precision, each
-            half keeps its own. <code>34.0561N,118.2W</code> shows
-            <code>34.0561&deg; N, 118.2&deg; W</code>, and the resolution row reads
+            half keeps its own. <code>21.3353N,157.9W</code> shows
+            <code>21.3353&deg; N, 157.9&deg; W</code>, and the resolution row reads
             <em>about 11.1 km</em>, which is what the coarser half is worth. The two are
             not in conflict: the resolution describes how well the <em>pair</em> is known,
             while each value shows every digit its author actually typed. Rendering the
-            latitude at the longitude's single decimal would move it 4.9 km north, which
+            latitude at the longitude's single decimal would move it 3.9 km south, which
             is a loss of real information rather than a refusal to overstate.
         </p>
 
         <h3 id="location-grid-rows">Grid references name squares</h3>
 
         <p>
-            <code>32U MV 12 34</code> is a 1 km square, and the latitude and longitude shown
+            <code>55P BR 76 02</code> is a 1 km square, and the latitude and longitude shown
             for it are that square's <strong>center</strong>. The resolution row says so.
             Read as a corner instead, a 10 km reference would put a reader 7 km from where
             the grid points.
@@ -773,11 +773,11 @@
 
         <p>
             When a message is <strong>nothing but one labeled airfield reference</strong>,
-            such as <code>ICAO:KIND</code>, the plugin replaces it with a small table of the field's details: its name, the code you
+            such as <code>ICAO:PHNL</code>, the plugin replaces it with a small table of the field's details: its name, the code you
             typed, where it is, what kind of field it is, its elevation and its IATA code.
             The <strong>name is the link</strong> that opens this panel, which is where
             the map and every coordinate reading are. A message with anything else around
-            the code, such as <code>divert to ICAO:KIND if the weather holds</code>, gets
+            the code, such as <code>divert to ICAO:PHNL if the weather holds</code>, gets
             the link on its own instead. A line ending <code>//</code>, as a USMTF set
             line does, still counts, and the terminator stays with the code.
         </p>
@@ -796,6 +796,76 @@
             <a href="admin.html#enable-airport-table"><code>EnableAirportTable</code></a>.
             Airfield codes still become links; only the table goes, and only on messages
             posted after the change.
+        </p>
+
+        <h2 id="cot-panel">The Cursor on Target panel</h2>
+
+        <p>
+            A <a href="formats.html#cot">Cursor on Target event</a> is not a link, so
+            this panel is not reached by clicking one. The card under the post carries an
+            <strong>Open details</strong> button, and that is the only way in. What opens
+            is the full detail of every event the post carried, where the card itself
+            shows a summary.
+        </p>
+
+        <p>
+            <strong>A block gets one section per event</strong>, in the order they were
+            written, separated by a rule. Each opens with the callsign, or the uid when
+            the event carried no callsign, and under it the type in plain words with the
+            raw type beside it in parentheses. Both are shown because the words are this
+            plugin's reading of the code and the code is what the author actually sent.
+        </p>
+
+        <p>
+            The readings under that are the event's own: position, altitude, accuracy,
+            speed and course when they were stated, the three times, the team and role,
+            who sent it, what it relates to, how the position was obtained, and the uid.
+            A field the event did not carry has no row, rather than a row reading
+            <code>0</code> or <code>unknown</code>.
+        </p>
+
+        <p>
+            <strong>The position and the times are links.</strong> They open the
+            <a href="#location-panel">coordinate</a> and
+            <a href="#hover">date-time</a> readings for the same value, so the eleven
+            notations, the copy buttons and your own row choices are one click away rather
+            than reprinted here. Pointing at one shows the same hover card the channel
+            shows, which is drawn by the card rather than by Mattermost, because a plugin
+            that draws its own text gets no tooltip from the markdown renderer.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">The countdown is the one reading that uses your clock.</p>
+            <p>
+                Under the readings, an event that states a stale time gets a live
+                countdown to it. Everything else on this panel is a fixed value rendered
+                when the post was made; this one is counted against the device you are
+                reading on. Field kit and workstations drift, so a countdown that
+                disagrees with the stale time above it is telling you about the clocks
+                rather than about the event.
+            </p>
+            <p>
+                The card in the channel deliberately has no countdown. A ticking clock
+                behind every post in a busy channel reads as a live feed, which a posted
+                event is not.
+            </p>
+        </div>
+
+        <p>
+            <strong>Remarks are shown as written</strong>, with the author's own line
+            breaks kept and no markdown applied, for the same reason the card does not
+            format them: the text came off the wire and is not something anybody typed
+            into Mattermost.
+        </p>
+
+        <p>
+            <strong>Below that is the event as it was posted.</strong> The panel prints
+            the source XML in a scrollable pane, so the readings above can be checked
+            against what actually arrived rather than trusted. That pane is the reason
+            the card does not need to repeat the XML, and it is what makes the plain
+            words above it honest: anything this plugin could not name is still visible
+            in the source. When the event came from an attachment, the file it came from
+            is named above the pane and links to itself.
         </p>
 
         <h2 id="customize">Customize your view</h2>

@@ -96,6 +96,31 @@
                     <td><code>HooksDecorationTooLong</code> <span class="level">Warn</span></td>
                     <td>Decorating would have pushed the message over the maximum post size, so it was posted undecorated. See <a href="troubleshooting.html#not-linked">why a time was not linked</a>.</td>
                 </tr>
+                <tr>
+                    <td><code>TF-11002</code></td>
+                    <td><code>HooksCotPanic</code> <span class="level">Warn</span></td>
+                    <td>Reading a Cursor on Target event panicked. The panic was recovered, the post was left exactly as written, and ordinary decoration still ran.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-11003</code></td>
+                    <td><code>HooksCotFileUnreadable</code> <span class="level">Warn</span></td>
+                    <td>An attached file could not be described or read, so the post was left as an ordinary message. Check that file storage is reachable.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-11006</code></td>
+                    <td><code>HooksCotFileNotOwned</code> <span class="level">Warn</span></td>
+                    <td>An attached file was read from storage but does not belong to the post: somebody else uploaded it, it is already carried by another post, or it has been deleted. It was left unread and the post went out as an ordinary message. The line carries the file id and the poster, because unlike <code>TF-11003</code> this is not an infrastructure failure and repeated occurrences are worth looking at.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-11004</code></td>
+                    <td><code>HooksCotPropsTooLarge</code> <span class="level">Warn</span></td>
+                    <td>The parsed event, together with whatever else was already attached to the post, would have exceeded what the server accepts, so nothing was rendered rather than risking a post the server would refuse.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-11005</code></td>
+                    <td><code>HooksCotUnreadable</code> <span class="level">Warn</span></td>
+                    <td>A fenced block the author labelled <code>cot</code> could not be read as a Cursor on Target event, so it was left as an ordinary code block. The author is told, and nobody else sees the notice.</td>
+                </tr>
             </tbody>
         </table>
 

@@ -49,20 +49,25 @@ var exampleLiveRows = []struct {
 // which can be as long as it needs to be. This one is a single post that
 // everybody in the channel reads, so it answers one question only: what does
 // this plugin do to a message?
+//
+// The positions are in Hawaii and Guam, which is where the detail map packages
+// this plugin bundles cover. A reader clicking through meets streets and
+// coastline rather than the global tier's outline, which is the difference
+// between a map that looks finished and one that looks broken.
 var exampleFixedRows = []exampleRow{
 	{label: "Date/Time", text: "091630ZAUG26", note: "the military date-time group"},
 	{label: "RFC 3339", text: "2026-08-09T16:30:00Z"},
-	{label: "Lat/lon", text: "34.0561, -118.2500"},
-	{label: "Lat/lon", text: "34.0561 N, 118.2500 W", note: "hemisphere letters instead of signs"},
-	{label: "DMS", text: "34°03'22\"N 118°15'00\"W"},
-	{label: "DDM", text: "34°03.366'N 118°15.000'W"},
-	{label: "USMTF", text: "3510N07901W", note: "degrees and whole minutes"},
-	{label: "MGRS", text: "18S UJ 23478 06483"},
-	{label: "UTM", text: "33U 291000 5628000", note: "off by default; an admin turns it on"},
-	{label: "GEOREF", text: "GEOREF:GJNJ5753", note: "the label is required, and longitude comes first"},
-	{label: "GARS", text: "GARS:206LT26", note: "the label is required; this one is a 5 minute cell"},
-	{label: "Plus Code", text: "849VCWC8+R9", note: "matched without a label"},
-	{label: "Airfield", text: "ICAO:KIND", note: "the label is required, in upper case"},
+	{label: "Lat/lon", text: "21.3353, -157.9483", note: "Hickam Air Force Base"},
+	{label: "Lat/lon", text: "21.3353 N, 157.9483 W", note: "hemisphere letters instead of signs"},
+	{label: "DMS", text: "21°20'07.1\"N 157°56'53.9\"W"},
+	{label: "DDM", text: "21°20.118'N 157°56.898'W"},
+	{label: "USMTF", text: "2120N15757W", note: "degrees and whole minutes"},
+	{label: "MGRS", text: "4Q FJ 0906 5962"},
+	{label: "UTM", text: "4Q 609060E 2359620N", note: "off by default; an admin turns it on"},
+	{label: "GEOREF", text: "GEOREF:XGKP55803503", note: "the label is required, longitude comes first, and this one is on Guam"},
+	{label: "GARS", text: "GARS:045KG14", note: "the label is required"},
+	{label: "Plus Code", text: "73H483P2+4MG", note: "matched without a label"},
+	{label: "Airfield", text: "ICAO:PHNL", note: "the label is required, in upper case"},
 }
 
 // examplesResponse posts a short live demonstration to the channel.
@@ -106,6 +111,14 @@ func (p *Plugin) examplesResponse() *model.CommandResponse {
 
 	for _, line := range lines {
 		b.WriteString(line)
+	}
+
+	// Appended rather than packed into the rows above, because those are built
+	// by running the tagger and keeping what it changed, and a Cursor on Target
+	// event is not a token the tagger has ever seen. It is recognized by the
+	// post hook instead, which is also why this row cannot show its own output.
+	if p.cotEnabled() {
+		b.WriteString(cotExampleLine())
 	}
 
 	b.WriteString("\nRun `/" + commandTrigger + " example-details` for every recognized format and " +

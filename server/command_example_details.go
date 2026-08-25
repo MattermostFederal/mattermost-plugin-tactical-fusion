@@ -145,7 +145,7 @@ var dtgDetailGroups = []detailGroup{{
 		{text: "window opens 090600ZAUG26 and closes 091800ZAUG26", note: "two on one line"},
 		{text: "[the plan](https://example.com) says 091630ZAUG26", note: "the link is untouched"},
 		{text: "run `status --now` at 091630ZAUG26", note: "the code is untouched"},
-		{text: "091630ZAUG26 at 34.0561, -118.2500", note: "two decorators on one line"},
+		{text: "091630ZAUG26 at 21.3353, -157.9483", note: "two decorators on one line"},
 	},
 }, {
 	heading:   "Declined: impossible dates and times",
@@ -211,47 +211,47 @@ var locationDetailGroups = []detailGroup{{
 	heading:   "Decimal degrees",
 	decorates: true,
 	examples: []detailExample{
-		{text: "34.0561, -118.2500", note: "signed, and four decimals on both is the minimum"},
-		{text: "34.0561,-118.2500", note: "the space is optional"},
+		{text: "21.3353, -157.9483", note: "signed, and four decimals on both is the minimum"},
+		{text: "21.3353,-157.9483", note: "the space is optional"},
 		{text: "-33.8688, 151.2093", note: "south and east"},
-		{text: "34.0561 N, 118.2500 W", note: "hemisphere letters instead of signs"},
-		{text: "34.0561N,118.2500W", note: "run together"},
-		{text: "34.0561N 118.2W", note: "mixed precision: each axis renders at its own"},
+		{text: "21.3353 N, 157.9483 W", note: "hemisphere letters instead of signs"},
+		{text: "21.3353N,157.9483W", note: "run together"},
+		{text: "21.3353N 157.9W", note: "mixed precision: each axis renders at its own"},
 		{text: "90.0000, 180.0000", note: "the pole and the antimeridian"},
 	},
 }, {
 	heading:   "Degrees, minutes and seconds",
 	decorates: true,
 	examples: []detailExample{
-		{text: "34°03'22\"N 118°15'00\"W", note: "the typewriter quote and double quote"},
-		{text: "34°03′22″N 118°15′00″W", note: "and the typographic prime and double prime"},
-		{text: "34 03 22 N 118 15 00 W", note: "spaces instead of symbols"},
-		{text: "34°03.366'N 118°15.000'W", note: "degrees and decimal minutes"},
-		{text: "34°03.366′N 118°15.000′W"},
+		{text: "21°21'53\"N 157°57'00\"W", note: "the typewriter quote and double quote"},
+		{text: "21°20′07″N 157°56′53″W", note: "and the typographic prime and double prime"},
+		{text: "21 20 07 N 157 56 53 W", note: "spaces instead of symbols"},
+		{text: "21°20.118'N 157°56.898'W", note: "degrees and decimal minutes"},
+		{text: "21°20.118′N 157°56.898′W"},
 	},
 }, {
 	heading:   "USMTF compact",
 	decorates: true,
 	examples: []detailExample{
-		{text: "3510N07901W", note: "LATM, degrees and whole minutes"},
-		{text: "400948N1221400W", note: "LATS, with seconds"},
-		{text: "331000.0N1183000.0W", note: "LATDS, a fractional second"},
-		{text: "3510N9-07901W7", note: "verified, and the confidence digits are kept"},
+		{text: "2120N15757W", note: "LATM, degrees and whole minutes"},
+		{text: "212007N1575654W", note: "LATS, with seconds"},
+		{text: "212007.1N1575653.9W", note: "LATDS, a fractional second"},
+		{text: "2120N9-15757W7", note: "verified, and the confidence digits are kept"},
 		{text: "LATM:2130N15730W", note: "the field label is kept, not consumed"},
-		{text: "LATD:35N079W", note: "the shortest shape, which is reachable only behind a label"},
-		{text: "GEOK:3403.366N11815.000W"},
-		{text: "DMPID:400948.5N1221400.5W"},
-		{text: "VLATM:3510N9-07901W7"},
+		{text: "LATD:21N157W", note: "the shortest shape, which is reachable only behind a label"},
+		{text: "GEOK:2120.118N15756.898W"},
+		{text: "DMPID:133502.0N1445548.0E"},
+		{text: "VLATM:2120N9-15757W7"},
 	},
 }, {
 	heading:   "Grid references (MGRS)",
 	decorates: true,
 	examples: []detailExample{
-		{text: "18S UJ 23478 06483", note: "MGRS at 1 m, spaced into its parts"},
-		{text: "18SUJ2347806483", note: "and run together, in upper case with three digits an axis"},
-		{text: "32U MV 12 34", note: "a 1 km square rather than a point"},
-		{text: "11S LT 12345 67890"},
-		{text: "MGRS:18SUJ2306", note: "coarser than 100 m needs its label"},
+		{text: "4Q FJ 09060 59620", note: "MGRS at 1 m, spaced into its parts"},
+		{text: "4QFJ0906059620", note: "and run together, in upper case with five digits an axis"},
+		{text: "55P BR 76 02", note: "a 1 km square rather than a point"},
+		{text: "5Q KB 80970 82920"},
+		{text: "MGRS:4QFJ0959", note: "coarser than 100 m needs its label"},
 	},
 }, {
 	// Its own group because it is the only format that ships disabled, so on a
@@ -261,11 +261,11 @@ var locationDetailGroups = []detailGroup{{
 	heading:   "UTM (off by default: an admin turns on EnableLocationUTM)",
 	decorates: true,
 	examples: []detailExample{
-		{text: "33U 291000 5628000", note: "zone, band, easting, northing"},
-		{text: "11S 384640E 3769080N", note: "the axis letters are optional, and may carry a metre unit"},
+		{text: "4Q 609060 2359620", note: "zone, band, easting, northing"},
+		{text: "55P 276020E 1502660N", note: "the axis letters are optional, and may carry a metre unit"},
 		{text: "11S 385000 3769000", note: "N and S are read as latitude bands, not as hemispheres"},
-		{text: "UTMO:33U291000 5628000", note: "the USMTF grid labels"},
-		{text: "UTMT:33UTS9099928000", note: "run together, which is label-only for UTM"},
+		{text: "UTMO:4Q609060 2359620", note: "the USMTF grid labels"},
+		{text: "UTMT:4Q6090602359620", note: "run together, which is label-only for UTM"},
 	},
 }, {
 	// The three notations that name a cell of the graticule rather than a
@@ -275,46 +275,46 @@ var locationDetailGroups = []detailGroup{{
 	heading:   "Area references (GEOREF, GARS, Plus Codes)",
 	decorates: true,
 	examples: []detailExample{
-		{text: "GEOREF:GJNJ5753", note: "longitude first: zone, band, degree, then minutes"},
-		{text: "GEOREF:GJNJ575337", note: "tenths of a minute"},
-		{text: "GEOREF:GJNJ57533752", note: "and hundredths"},
-		{text: "GARS:206LT", note: "a 30 minute cell"},
-		{text: "GARS:206LT2", note: "quadrant 2 of it, 15 minutes"},
-		{text: "GARS:206LT29", note: "and keypad cell 9 of that, 5 minutes"},
+		{text: "GEOREF:XGKP5535", note: "longitude first: zone, band, degree, then minutes"},
+		{text: "GEOREF:XGKP553350", note: "tenths of a minute"},
+		{text: "GEOREF:XGKP55803503", note: "and hundredths"},
+		{text: "GARS:045KG", note: "a 30 minute cell"},
+		{text: "GARS:045KG1", note: "quadrant 1 of it, 15 minutes"},
+		{text: "GARS:045KG14", note: "and keypad cell 4 of that, 5 minutes"},
 		{text: "GARS:006AG39", note: "the same shape near the south pole"},
-		{text: "849VCWC8+R9", note: "a Plus Code, matched without a label"},
-		{text: "849VCWC8+R9C", note: "one character finer"},
-		{text: "849V0000+", note: "padded, which is how the notation writes a coarse cell"},
-		{text: "PLUSCODE:849vcwc8+r9", note: "lower case needs the label"},
+		{text: "73H483P2+4M", note: "a Plus Code, matched without a label"},
+		{text: "73H483P2+4MG", note: "one character finer"},
+		{text: "73H40000+", note: "padded, which is how the notation writes a coarse cell"},
+		{text: "PLUSCODE:73h483p2+4m", note: "lower case needs the label"},
 	},
 }, {
 	heading:   inlineDetailHeading,
 	decorates: true,
 	examples: []detailExample{
-		{text: "34.0561, -118.2500", inline: true, note: "a message that is only a coordinate draws its map below it"},
-		{text: "MGRS: 18SUJ2347806483", inline: true, note: "a field label in front of it still counts"},
-		{text: "3510N07901W", inline: true, note: "any grammar, so long as it is the whole message"},
-		{text: "target at 32U MV 12 34", note: "anything else in the message and it is the link alone"},
-		{text: "18S UJ 23478 06483 32U MV 12 34", note: "two coordinates, so neither one is the message"},
+		{text: "21.3353, -157.9483", inline: true, note: "a message that is only a coordinate draws its map below it"},
+		{text: "MGRS: 4QFJ0906059620", inline: true, note: "a field label in front of it still counts"},
+		{text: "2120N15757W", inline: true, note: "any grammar, so long as it is the whole message"},
+		{text: "target at 55P BR 76 02", note: "anything else in the message and it is the link alone"},
+		{text: "4Q FJ 09060 59620 55P BR 76 02", note: "two coordinates, so neither one is the message"},
 	},
 }, {
 	heading:   "In a sentence",
 	decorates: true,
 	examples: []detailExample{
-		{text: "34.0561, -118.2500 34.0562, -118.2501", note: "two on one line, both linked"},
-		{text: "18S UJ 23478 06483 and 32U MV 12 34"},
-		{text: "part 5 of 34.0561, -118.2500 and more"},
-		{text: "a `code` span then 3510N07901W", note: "the span is protected, the rest is not"},
+		{text: "21.3353, -157.9483 21.3354, -157.9484", note: "two on one line, both linked"},
+		{text: "4Q FJ 09060 59620 and 55P BR 76 02"},
+		{text: "part 5 of 21.3353, -157.9483 and more"},
+		{text: "a `code` span then 2120N15757W", note: "the span is protected, the rest is not"},
 	},
 }, {
 	heading:   "Declined: not a coordinate",
 	decorates: false,
 	examples: []detailExample{
-		{text: "34.05, -118.25", note: "fewer than four decimals"},
-		{text: "34.0561 -118.2500", note: "no comma, so not a pair"},
+		{text: "21.34, -157.95", note: "fewer than four decimals"},
+		{text: "21.3353 -157.9483", note: "no comma, so not a pair"},
 		{text: "Load 12 N, 5 W", note: "newtons and watts"},
 		{text: "0.1234, 0.5678, 0.9012", note: "part of a numeric list"},
-		{text: "-118.2500..-118.2600", note: "a range, not a position"},
+		{text: "-157.9483..-157.9583", note: "a range, not a position"},
 		{text: "0.0000, 0.0000", note: "Null Island: a pair of exact zeroes is an unset field"},
 		{text: "0000N00000E", note: "the same pair written in USMTF"},
 	},
@@ -325,7 +325,7 @@ var locationDetailGroups = []detailGroup{{
 		{text: "9999N99999W", note: "latitude 99"},
 		{text: "LATM:9999N99999W", note: "the label vouches for nothing"},
 		{text: "91.0000, 181.0000", note: "past the pole and the antimeridian"},
-		{text: "32WDL123123", note: "D is not a 100 km column letter in zone 32"},
+		{text: "4QJJ123123", note: "J is not a 100 km column letter in zone 4"},
 		{text: "11N 385000 3769000", note: "that northing is 34 north, which is band S and not band N"},
 		{text: "33C 291000 5628000", note: "nor is it in the band, the other way round"},
 	},
@@ -333,24 +333,24 @@ var locationDetailGroups = []detailGroup{{
 	heading:   "Declined: needs a label or spacing",
 	decorates: false,
 	examples: []detailExample{
-		{text: "35N079W", note: "seven characters for a 111 km square"},
-		{text: "18SUJ2306", note: "coarser than 100 m, too short to detect unlabeled"},
-		{text: "18suj2347806483", note: "a lower-case run of that shape is a short commit hash"},
-		{text: "GJNJ5753", note: "GEOREF: four letters and four digits is also a part number"},
-		{text: "006AG39", note: "GARS: seven alphanumerics with almost nothing to check"},
-		{text: "849vcwc8+r9", note: "a lower-case Plus Code is what a version string looks like"},
-		{text: "CWC8+R9", note: "a short Plus Code needs a reference location we do not have"},
-		{text: "LOC:3510N07901W", note: "LOC introduces an airfield code, so the coordinate behind it is not read as one"},
-		{text: "34.0561, -118.2500.", note: "ending a sentence: at the guard this and a range look alike"},
+		{text: "21N157W", note: "seven characters for a 111 km square"},
+		{text: "4QFJ0959", note: "coarser than 100 m, too short to detect unlabeled"},
+		{text: "4qfj0906059620", note: "a lower-case run of that shape is a short commit hash"},
+		{text: "XGKP5535", note: "GEOREF: four letters and four digits is also a part number"},
+		{text: "045KG14", note: "GARS: seven alphanumerics with almost nothing to check"},
+		{text: "73h483p2+4m", note: "a lower-case Plus Code is what a version string looks like"},
+		{text: "9372+X2", note: "a short Plus Code needs a reference location we do not have"},
+		{text: "LOC:2120N15757W", note: "LOC introduces an airfield code, so the coordinate behind it is not read as one"},
+		{text: "21.3353, -157.9483.", note: "ending a sentence: at the guard this and a range look alike"},
 	},
 }, {
 	heading:   "Left exactly as written",
 	decorates: false,
 	examples: []detailExample{
-		{text: "the grid is `3510N07901W`", note: "inside code"},
-		{text: "see https://example.com/g/3510N07901W", note: "inside a URL"},
-		{text: "![map 3510N07901W](https://example.com/m.png)", note: "inside an image"},
-		{text: "[ref]: https://example.com/3510N07901W", note: "a reference definition"},
+		{text: "the grid is `2120N15757W`", note: "inside code"},
+		{text: "see https://example.com/g/2120N15757W", note: "inside a URL"},
+		{text: "![map 2120N15757W](https://example.com/m.png)", note: "inside an image"},
+		{text: "[ref]: https://example.com/2120N15757W", note: "a reference definition"},
 	},
 }}
 
@@ -364,11 +364,11 @@ var airportDetailGroups = []detailGroup{{
 	heading:   "Recognized behind a USMTF field label",
 	decorates: true,
 	examples: []detailExample{
-		{text: "ICAO:KIND", note: "Indianapolis International"},
-		{text: "LOC:EGLL", note: "London Heathrow"},
-		{text: "DEPLOC:KLAX", note: "the departure airfield of a USMTF air movement"},
+		{text: "ICAO:PHNL", note: "Daniel K. Inouye International, Honolulu"},
+		{text: "LOC:PGUM", note: "Antonio B. Won Pat International, Guam"},
+		{text: "DEPLOC:PHTO", note: "the departure airfield of a USMTF air movement"},
 		{text: "ARRLOC:PHIK", note: "and the arrival airfield"},
-		{text: "DEPLOC:RJTT//", note: "a set line ends //, which is kept out of the link"},
+		{text: "DEPLOC:PGUA//", note: "a set line ends //, which is kept out of the link"},
 		{text: "ICAO :NZSP", note: "a space before the colon is optional"},
 	},
 }, {
@@ -536,10 +536,24 @@ func (p *Plugin) postRemainingDetails(args *model.CommandArgs, messages []string
 		}
 	}
 
+	// Last, and on its own, because a card owns the whole post body: an event
+	// sharing a post with anything else would render that as plain text.
+	//
+	// Counted like the rest. It is the likeliest of the set to be refused, since
+	// it is the only one carrying a post type and a props map, and reporting
+	// success having posted four of five is the one answer that helps nobody.
+	total := len(messages)
+	if p.cotEnabled() {
+		total++
+	}
+	if !p.postCotExample(args) {
+		failed++
+	}
+
 	if failed > 0 {
 		return ephemeralResponse(errcode.WithCode(errcode.CommandDetailsPostFailed,
 			fmt.Sprintf("%d of %d messages could not be posted, so the examples are incomplete.",
-				failed, len(messages))))
+				failed, total)))
 	}
 
 	// Nothing to add: the posts are the output, and an ephemeral "posted" would
@@ -609,12 +623,11 @@ func continued(text string) string { return text + " (continued)" }
 func (p *Plugin) packDetails(tagger *decorators.Tagger, ref time.Time, budget int) []string {
 	var all []string
 
-	for _, typ := range detailSetOrder {
-		set := detailSets[typ]
-		messages := packChunks(p.detailChunks(set, tagger, ref), budget)
+	for _, set := range p.detailMessageSets(tagger, ref) {
+		messages := packChunks(set.chunks, budget)
 
 		// Numbered only when the set needed more than one message, since the
-		// heading alone already says which decorator this is.
+		// heading alone already says which set this is.
 		for i := range messages {
 			heading := capitalize(set.name)
 			if len(messages) > 1 {
@@ -627,6 +640,33 @@ func (p *Plugin) packDetails(tagger *decorators.Tagger, ref time.Time, budget in
 	}
 
 	return all
+}
+
+// detailMessageSet is one post's worth of examples and the name above them.
+type detailMessageSet struct {
+	name   string
+	chunks []detailChunk
+}
+
+// detailMessageSets is every set this command posts, in order.
+//
+// The catalog, so a test asking "which post does this heading belong to" reads
+// it rather than listing the decorators and silently ignoring anything that is
+// not one. Cursor on Target is the reason that distinction exists: it earns a
+// post here without being a decorator, since it stamps a post type rather than
+// rewriting a token and has nothing to run through the tagger.
+func (p *Plugin) detailMessageSets(tagger *decorators.Tagger, ref time.Time) []detailMessageSet {
+	sets := make([]detailMessageSet, 0, len(detailSetOrder)+1)
+
+	for _, typ := range detailSetOrder {
+		set := detailSets[typ]
+		sets = append(sets, detailMessageSet{name: set.name, chunks: p.detailChunks(set, tagger, ref)})
+	}
+
+	return append(sets, detailMessageSet{
+		name:   cotDetailSetName,
+		chunks: cotDetailChunks(p.cotEnabled(), p.cotFilesEnabled()),
+	})
 }
 
 // packChunks fills messages up to budget runes with one decorator's chunks.

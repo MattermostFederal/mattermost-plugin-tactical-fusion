@@ -1,0 +1,760 @@
+package main
+
+import (
+	"slices"
+	"strings"
+	"testing"
+
+	"github.com/mattermost/mattermost/server/public/model"
+
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/cot"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
+)
+
+// Valid Mattermost ids, because cotFileSource now checks the shape of the id and
+// that the file belongs to the poster before it reads anything.
+const (
+	testFileID      = "cotfileaaaaaaaaaaaaaaaaaaa"
+	testOtherFileID = "cotfilebbbbbbbbbbbbbbbbbbb"
+)
+
+const cotEventXML = `<event version="2.0" uid="ANDROID-1" type="a-f-G-U-C" how="m-g" ` +
+	`time="2026-08-23T11:43:38Z" start="2026-08-23T11:43:38Z" stale="2026-08-23T11:45:38Z">` +
+	`<point lat="30.009027" lon="-85.957874" hae="-42.6" ce="45.3" le="99.5"/>` +
+	`<detail><contact callsign="DELTA1"/></detail></event>`
+
+func cotFence(info, body string) string {
+	return "```" + info + "\n" + body + "\n```"
+}
+
+func cotBlob(t *testing.T, post *model.Post) map[string]any {
+	t.Helper()
+
+	if post == nil {
+		t.Fatal("the post was not stamped")
+	}
+	blob, ok := post.GetProps()[cot.PropsKey].(map[string]any)
+	if !ok {
+		t.Fatalf("props carry no %s blob: %#v", cot.PropsKey, post.GetProps())
+	}
+	return blob
+}
+
+func TestCotStampsAFencedEvent(t *testing.T) {
+	for _, info := range []string{"cot", "xml", "CoT", "XML"} {
+		t.Run(info, func(t *testing.T) {
+			p := newTestPlugin(t, "https://example.com", true)
+			post := &model.Post{Message: cotFence(info, cotEventXML), UserId: testUserID}
+
+			updated := p.decoratePost(post, hookRef)
+			if updated == nil {
+				t.Fatalf("a %s fence carrying a valid event was not stamped", info)
+			}
+			if updated.Type != cot.PostType {
+				t.Errorf("Type = %q, want %q", updated.Type, cot.PostType)
+			}
+
+			blob := cotBlob(t, updated)
+			if blob["source"] != cot.SourceFence {
+				t.Errorf("source = %v, want %q", blob["source"], cot.SourceFence)
+			}
+			if blob["src"] != cotEventXML {
+				t.Error("the stored source does not match the fence body")
+			}
+		})
+	}
+}
+
+func TestCotLeavesTheMessageExactlyAsWritten(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	message := "latest PLI\n" + cotFence("cot", cotEventXML) + "\nfrom ALPHA"
+
+	updated := p.decoratePost(&model.Post{Message: message, UserId: testUserID}, hookRef)
+	if updated == nil {
+		t.Fatal("the post was not stamped")
+	}
+	if updated.Message != message {
+		t.Errorf("the stored message was rewritten:\n got %q\nwant %q", updated.Message, message)
+	}
+
+	blob := cotBlob(t, updated)
+	if blob["lead"] != "latest PLI\n" {
+		t.Errorf("lead = %q", blob["lead"])
+	}
+	if blob["trail"] != "\nfrom ALPHA" {
+		t.Errorf("trail = %q", blob["trail"])
+	}
+}
+
+// A CoT post is never decorated. The card renders lead and trail as plain text,
+// so a decorator link written into either would reach the reader as literal
+// markdown.
+func TestCotSuppressesDecorationOfTheTextAroundIt(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	message := "target at 34.0561,-118.2500 now\n" + cotFence("cot", cotEventXML)
+
+	updated := p.decoratePost(&model.Post{Message: message, UserId: testUserID}, hookRef)
+	if updated == nil {
+		t.Fatal("the post was not stamped")
+	}
+	if updated.Message != message {
+		t.Errorf("the coordinate beside the event was decorated:\n%q", updated.Message)
+	}
+	if strings.Contains(updated.Message, "/decorate/") {
+		t.Error("a decorator link reached a post whose body the card owns")
+	}
+
+	blob := cotBlob(t, updated)
+	if !strings.Contains(blob["lead"].(string), "34.0561,-118.2500") {
+		t.Errorf("the coordinate did not survive verbatim in lead: %q", blob["lead"])
+	}
+}
+
+func TestAMessageWithNoEventIsStillDecorated(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	updated := p.decoratePost(&model.Post{Message: "target at 34.0561,-118.2500", UserId: testUserID}, hookRef)
+	if updated == nil {
+		t.Fatal("an ordinary coordinate post was not decorated")
+	}
+	if updated.Type != "" {
+		t.Errorf("Type = %q, want empty; only a CoT post is stamped", updated.Type)
+	}
+	if !strings.Contains(updated.Message, "/decorate/location") {
+		t.Errorf("the coordinate was not decorated: %q", updated.Message)
+	}
+}
+
+func TestCotRefusesWhatItCannotRead(t *testing.T) {
+	cases := map[string]string{
+		"not xml at all":     cotFence("xml", "just words"),
+		"not a cot event":    cotFence("xml", "<note><to>you</to></note>"),
+		"no uid":             cotFence("cot", `<event type="a-f" time="2026-08-23T11:43:38Z"/>`),
+		"doctype":            cotFence("cot", `<!DOCTYPE event []><event uid="u" type="a-f" time="t"/>`),
+		"two fences":         cotFence("cot", cotEventXML) + "\n" + cotFence("cot", cotEventXML),
+		"unterminated fence": "```cot\n" + cotEventXML,
+		"wrong info string":  cotFence("json", cotEventXML),
+	}
+
+	for name, message := range cases {
+		t.Run(name, func(t *testing.T) {
+			p := newTestPlugin(t, "https://example.com", true)
+
+			updated := p.decoratePost(&model.Post{Message: message, UserId: testUserID}, hookRef)
+			if updated != nil && updated.Type == cot.PostType {
+				t.Errorf("a post was stamped for %s", name)
+			}
+		})
+	}
+}
+
+func TestCotLeavesAnotherIntegrationsPostAlone(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	post := &model.Post{
+		Message: cotFence("cot", cotEventXML),
+		Type:    "custom_something_else",
+		UserId:  testUserID,
+	}
+
+	if updated := p.decoratePost(post, hookRef); updated != nil {
+		t.Errorf("a post already carrying a custom type was rewritten to %q", updated.Type)
+	}
+}
+
+func TestCotIsSilentWhenTheAdminTurnedItOff(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	config := *p.getConfiguration()
+	config.EnableCot = false
+	p.setConfiguration(&config)
+
+	post := &model.Post{Message: cotFence("cot", cotEventXML), UserId: testUserID}
+	if updated := p.decoratePost(post, hookRef); updated != nil && updated.Type == cot.PostType {
+		t.Error("a post was stamped with the feature switched off")
+	}
+
+	api := p.API.(*fakeAPI)
+	if len(api.ephemeral) != 0 {
+		t.Error("an author was told about a setting that is not theirs to change")
+	}
+}
+
+func TestCotKeepsAnotherIntegrationsProps(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	post := &model.Post{Message: cotFence("cot", cotEventXML), UserId: testUserID}
+	post.AddProp("from_webhook", "true")
+
+	updated := p.decoratePost(post, hookRef)
+	if updated == nil {
+		t.Fatal("the post was not stamped")
+	}
+	if updated.GetProps()["from_webhook"] != "true" {
+		t.Error("stamping discarded another integration's props")
+	}
+	if _, ok := updated.GetProps()[cot.PropsKey]; !ok {
+		t.Error("the event blob is missing")
+	}
+}
+
+func TestCotRefusesRatherThanRiskingAPostTheServerWouldReject(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	post := &model.Post{Message: cotFence("cot", cotEventXML), UserId: testUserID}
+	post.AddProp("bulky", strings.Repeat("x", model.PostPropsMaxUserRunes))
+
+	updated := p.decoratePost(post, hookRef)
+	if updated != nil && updated.Type == cot.PostType {
+		t.Fatal("the post was stamped past the props budget, which the server would refuse")
+	}
+
+	api := p.API.(*fakeAPI)
+	if len(api.warnings) == 0 {
+		t.Error("nothing was logged about the refusal")
+	}
+}
+
+func TestAnEventBesideAnOrdinaryPropsBlobStillPosts(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	post := &model.Post{Message: cotFence("cot", cotEventXML), UserId: testUserID}
+	post.AddProp("attachments", strings.Repeat("y", 4096))
+
+	updated := p.decoratePost(post, hookRef)
+	if updated == nil || updated.Type != cot.PostType {
+		t.Fatal("an ordinary foreign props blob blocked stamping")
+	}
+}
+
+func TestCotReadsASoleAttachment(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	api := p.API.(*fakeAPI)
+	api.files = map[string]*model.FileInfo{
+		testFileID: {Id: testFileID, CreatorId: testUserID, Name: "event.cot", Size: int64(len(cotEventXML))},
+	}
+	api.fileContent = map[string][]byte{testFileID: []byte(cotEventXML)}
+
+	post := &model.Post{Message: "", FileIds: model.StringArray{testFileID}, UserId: testUserID}
+
+	updated := p.decoratePost(post, hookRef)
+	if updated == nil {
+		t.Fatal("a sole .cot attachment was not stamped")
+	}
+
+	blob := cotBlob(t, updated)
+	if blob["source"] != cot.SourceFile {
+		t.Errorf("source = %v, want %q", blob["source"], cot.SourceFile)
+	}
+	if blob["file_id"] != testFileID || blob["file_name"] != "event.cot" {
+		t.Errorf("the file is not named in the props: %#v", blob)
+	}
+}
+
+func TestCotReadsAnAttachmentBesideACoveringNote(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	api := p.API.(*fakeAPI)
+	api.files = map[string]*model.FileInfo{
+		testFileID: {Id: testFileID, CreatorId: testUserID, Name: "event.xml", Size: int64(len(cotEventXML))},
+	}
+	api.fileContent = map[string][]byte{testFileID: []byte(cotEventXML)}
+
+	post := &model.Post{Message: "latest PLI", FileIds: model.StringArray{testFileID}, UserId: testUserID}
+
+	updated := p.decoratePost(post, hookRef)
+	if updated == nil {
+		t.Fatal("an attachment with a covering note was not stamped")
+	}
+	if blob := cotBlob(t, updated); blob["lead"] != "latest PLI" {
+		t.Errorf("lead = %v, want the covering note", blob["lead"])
+	}
+}
+
+func TestCotSurvivesAFilestoreThatWillNotAnswer(t *testing.T) {
+	cases := map[string]func(*fakeAPI){
+		"GetFileInfo fails": func(a *fakeAPI) { a.fileInfoErr = &model.AppError{Message: "down"} },
+		"GetFile fails": func(a *fakeAPI) {
+			a.files = map[string]*model.FileInfo{testFileID: {Id: testFileID, CreatorId: testUserID, Name: "event.cot", Size: 10}}
+			a.fileErr = &model.AppError{Message: "down"}
+		},
+		"file too large": func(a *fakeAPI) {
+			a.files = map[string]*model.FileInfo{testFileID: {Id: testFileID, CreatorId: testUserID, Name: "event.cot", Size: cot.MaxSourceBytes + 1}}
+		},
+		"wrong extension": func(a *fakeAPI) {
+			a.files = map[string]*model.FileInfo{testFileID: {Id: testFileID, CreatorId: testUserID, Name: "photo.jpg", Size: 10}}
+		},
+	}
+
+	for name, setup := range cases {
+		t.Run(name, func(t *testing.T) {
+			p := newTestPlugin(t, "https://example.com", true)
+			setup(p.API.(*fakeAPI))
+
+			post := &model.Post{Message: "", FileIds: model.StringArray{testFileID}, UserId: testUserID}
+
+			updated := p.decoratePost(post, hookRef)
+			if updated != nil && updated.Type == cot.PostType {
+				t.Errorf("a post was stamped despite %s", name)
+			}
+		})
+	}
+}
+
+func TestCotIgnoresAttachmentsWhenTheFileSwitchIsOff(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	config := *p.getConfiguration()
+	config.EnableCotFile = false
+	p.setConfiguration(&config)
+
+	api := p.API.(*fakeAPI)
+	api.files = map[string]*model.FileInfo{testFileID: {Id: testFileID, CreatorId: testUserID, Name: "event.cot", Size: 10}}
+	api.fileContent = map[string][]byte{testFileID: []byte(cotEventXML)}
+
+	post := &model.Post{Message: "", FileIds: model.StringArray{testFileID}, UserId: testUserID}
+	if updated := p.decoratePost(post, hookRef); updated != nil {
+		t.Error("an attachment was read with the file switch off")
+	}
+}
+
+func TestCotIgnoresMoreThanOneAttachment(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	post := &model.Post{Message: "", FileIds: model.StringArray{testFileID, testOtherFileID}, UserId: testUserID}
+	if updated := p.decoratePost(post, hookRef); updated != nil {
+		t.Error("a post with two attachments was stamped")
+	}
+}
+
+func TestTheFenceWinsWhenAPostCarriesBoth(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	api := p.API.(*fakeAPI)
+	api.files = map[string]*model.FileInfo{testFileID: {Id: testFileID, CreatorId: testUserID, Name: "other.cot", Size: 10}}
+	api.fileContent = map[string][]byte{testFileID: []byte(cotEventXML)}
+
+	post := &model.Post{
+		Message: cotFence("cot", cotEventXML),
+		FileIds: model.StringArray{testFileID},
+		UserId:  testUserID,
+	}
+
+	updated := p.decoratePost(post, hookRef)
+	if updated == nil {
+		t.Fatal("the post was not stamped")
+	}
+	if blob := cotBlob(t, updated); blob["source"] != cot.SourceFence {
+		t.Errorf("source = %v, want the visible fence to win", blob["source"])
+	}
+}
+
+func TestAnExplicitCotFenceThatFailsTellsItsAuthor(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	post := &model.Post{Message: cotFence("cot", "<event/>"), UserId: testUserID, ChannelId: "c1"}
+
+	p.decoratePost(post, hookRef)
+
+	api := p.API.(*fakeAPI)
+	if len(api.ephemeral) != 1 {
+		t.Fatalf("the author was told nothing; %d ephemeral posts", len(api.ephemeral))
+	}
+	if !strings.Contains(api.ephemeral[0].Message, "TF-11005") {
+		t.Errorf("the notice carries no error code: %q", api.ephemeral[0].Message)
+	}
+	if strings.Contains(api.ephemeral[0].Message, "this post") {
+		t.Error("the notice points at a post it cannot identify")
+	}
+}
+
+func TestAnXMLFenceThatFailsIsSilent(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	post := &model.Post{Message: cotFence("xml", "<note>hello</note>"), UserId: testUserID}
+
+	p.decoratePost(post, hookRef)
+
+	if api := p.API.(*fakeAPI); len(api.ephemeral) != 0 {
+		t.Error("an ambiguous xml fence produced a notice")
+	}
+}
+
+func TestCotNeverCommitsAHalfStamp(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	post := &model.Post{Message: cotFence("cot", cotEventXML), UserId: testUserID}
+
+	updated := p.decoratePost(post, hookRef)
+	if updated == nil {
+		t.Fatal("the post was not stamped")
+	}
+
+	stampedType := updated.Type == cot.PostType
+	_, stampedProps := updated.GetProps()[cot.PropsKey]
+	if stampedType != stampedProps {
+		t.Errorf("half a stamp landed: type=%v props=%v", stampedType, stampedProps)
+	}
+
+	if post.Type != "" {
+		t.Error("the caller's post was mutated rather than a clone")
+	}
+	if _, ok := post.GetProps()[cot.PropsKey]; ok {
+		t.Error("the caller's post received props rather than a clone")
+	}
+}
+
+func TestCotSurvivesAPanicWithoutCostingTheDecoration(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	p.SetAPI(nil)
+
+	post := &model.Post{Message: cotFence("cot", cotEventXML), UserId: testUserID}
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("a panic escaped the hook: %v", r)
+		}
+	}()
+
+	p.MessageWillBePosted(nil, post)
+}
+
+func TestCotAndDecorationAreExclusive(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	message := "DTG: 091630ZAUG26 and 34.0561,-118.2500\n" + cotFence("cot", cotEventXML)
+
+	updated := p.decoratePost(&model.Post{Message: message, UserId: testUserID}, hookRef)
+	if updated == nil {
+		t.Fatal("the post was not stamped")
+	}
+	if updated.Message != message {
+		t.Errorf("decoration ran on a stamped post:\n%q", updated.Message)
+	}
+	if _, ok := updated.GetProps()[decorators.PostPropsKey]; ok {
+		t.Error("a decorator payload was written beside the event blob")
+	}
+}
+
+func TestTheHookStillAllowsAPostItCannotHandle(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	post, reason := p.MessageWillBePosted(nil, &model.Post{Message: cotFence("cot", "<event/>"), UserId: testUserID})
+	if reason != "" {
+		t.Errorf("the hook refused a post: %q", reason)
+	}
+	_ = post
+}
+
+// Post.IsValid accepts any custom_ type from an ordinary client, so anyone who
+// can post could otherwise hand a reader a card whose rows and whose own XML
+// pane were both authored to agree with each other, which is exactly what a
+// reader opens the pane to rule out.
+func TestAForgedPostTypeIsStripped(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	post := &model.Post{Message: "nothing to see", Type: cot.PostType, UserId: testUserID}
+	post.AddProp(cot.PropsKey, map[string]any{
+		"version": 1,
+		"source":  "fence",
+		"src":     `<event uid="X" type="a-h-G-U-C"/>`,
+		"event":   map[string]any{"uid": "X", "affiliation": "friend", "type_label": "Friend ground"},
+	})
+
+	updated := p.decoratePost(post, hookRef)
+	if updated == nil {
+		t.Fatal("a forged post was left exactly as it arrived")
+	}
+	if updated.Type != "" {
+		t.Errorf("Type = %q, want the forged type stripped", updated.Type)
+	}
+	if _, ok := updated.GetProps()[cot.PropsKey]; ok {
+		t.Error("the forged event blob survived")
+	}
+	if updated.Message != "nothing to see" {
+		t.Errorf("the message was altered: %q", updated.Message)
+	}
+}
+
+// Stripping must not cost a real event its card: the message is re-read and
+// re-stamped on its own merits.
+func TestAForgedTypeOverARealEventIsRestamped(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	post := &model.Post{Message: cotFence("cot", cotEventXML), Type: cot.PostType, UserId: testUserID}
+	post.AddProp(cot.PropsKey, map[string]any{"version": 1, "source": "fence", "event": map[string]any{"uid": "LIE"}})
+
+	updated := p.decoratePost(post, hookRef)
+	if updated == nil || updated.Type != cot.PostType {
+		t.Fatal("a real event lost its card because the type arrived set")
+	}
+
+	blob := cotBlob(t, updated)
+	rendered, _ := blob["events"].([]any)
+	if len(rendered) != 1 {
+		t.Fatalf("blob carries %d events, want 1", len(rendered))
+	}
+	inner, _ := rendered[0].(map[string]any)
+	if inner["uid"] != "ANDROID-1" {
+		t.Errorf("uid = %v, want the value re-read from the message", inner["uid"])
+	}
+}
+
+// Stamping is the plugin's alone, but another integration's custom type is real
+// mission content and must survive untouched.
+func TestAnotherIntegrationsTypeIsStillLeftAlone(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	post := &model.Post{Message: cotFence("cot", cotEventXML), Type: "custom_something", UserId: testUserID}
+	if updated := p.decoratePost(post, hookRef); updated != nil {
+		t.Errorf("a foreign custom type was rewritten to %q", updated.Type)
+	}
+}
+
+// The recover has to be entered, not merely present. Nothing else on the CoT
+// path can be made to panic from a test, so the filestore is the injection
+// point, and this is the only test that proves the deferred function runs.
+func TestCotRecoversFromARealPanic(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	api := p.API.(*fakeAPI)
+	api.panicOnFileInfo = true
+
+	post := &model.Post{
+		Message: "target at 34.0561,-118.2500",
+		FileIds: model.StringArray{testFileID},
+		UserId:  testUserID,
+	}
+
+	updated := p.decoratePost(post, hookRef)
+
+	if len(api.warnings) == 0 {
+		t.Fatal("the recover did not run; nothing was logged")
+	}
+	if post.Type != "" {
+		t.Error("the caller's post was left stamped after a panic")
+	}
+
+	// Decoration still gets its turn, which is the whole reason CoT recovers
+	// separately rather than sharing decoratePost's.
+	if updated == nil || !strings.Contains(updated.Message, "/decorate/location") {
+		t.Error("a panic in recognition cost the author their decoration")
+	}
+}
+
+// A panic after the forged type was stripped must still hand back the stripped
+// post. Returning nil there would put the forgery back.
+func TestAPanicAfterStrippingStillReturnsTheStrippedPost(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	api := p.API.(*fakeAPI)
+	api.panicOnFileInfo = true
+
+	post := &model.Post{
+		Message: "",
+		Type:    cot.PostType,
+		FileIds: model.StringArray{testFileID},
+		UserId:  testUserID,
+	}
+	post.AddProp(cot.PropsKey, map[string]any{"version": 1, "source": "fence", "event": map[string]any{"uid": "LIE"}})
+
+	updated := p.decoratePost(post, hookRef)
+	if updated == nil {
+		t.Fatal("a panic put the forged post back")
+	}
+	if updated.Type != "" {
+		t.Errorf("Type = %q, want the forged type still stripped after a panic", updated.Type)
+	}
+	if _, ok := updated.GetProps()[cot.PropsKey]; ok {
+		t.Error("the forged blob survived a panic")
+	}
+}
+
+// A bare event, with no fence around it.
+func TestCotStampsABareEvent(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	message := "latest PLI " + cotEventXML + " out"
+
+	updated := p.decoratePost(&model.Post{Message: message, UserId: testUserID}, hookRef)
+	if updated == nil {
+		t.Fatal("a bare event was not stamped")
+	}
+	if updated.Message != message {
+		t.Errorf("the stored message was rewritten:\n%q", updated.Message)
+	}
+
+	blob := cotBlob(t, updated)
+	if blob["lead"] != "latest PLI " || blob["trail"] != " out" {
+		t.Errorf("lead = %v, trail = %v", blob["lead"], blob["trail"])
+	}
+}
+
+// An author who fenced an event without labelling the fence has said it is
+// code. Reading it anyway would be the corruption protected ranges exist to
+// stop, and it is the one thing the bare scan must not do.
+func TestABareScanNeverReachesIntoCode(t *testing.T) {
+	cases := map[string]string{
+		"unlabelled fence": "```\n" + cotEventXML + "\n```",
+		"inline code":      "`" + cotEventXML + "`",
+		"indented code":    "    " + cotEventXML,
+	}
+
+	for name, message := range cases {
+		t.Run(name, func(t *testing.T) {
+			p := newTestPlugin(t, "https://example.com", true)
+
+			updated := p.decoratePost(&model.Post{Message: message, UserId: testUserID}, hookRef)
+			if updated != nil && updated.Type == cot.PostType {
+				t.Errorf("a post was stamped from %s", name)
+			}
+		})
+	}
+}
+
+// A fence around an event is read as a fence, so the info string still decides.
+func TestAFencedEventIsStillReadAsAFence(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	updated := p.decoratePost(&model.Post{Message: cotFence("cot", cotEventXML), UserId: testUserID}, hookRef)
+	if updated == nil || updated.Type != cot.PostType {
+		t.Fatal("a labelled fence stopped being read")
+	}
+
+	if blob := cotBlob(t, updated); blob["lead"] != "" {
+		t.Errorf("lead = %v; the fence markers leaked into it", blob["lead"])
+	}
+}
+
+func TestABareEventThatIsNotOneIsLeftAlone(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	for _, message := range []string{
+		"the <eventual> plan",
+		"<event>nothing useful</event>",
+		"see <events><a/></events>",
+	} {
+		updated := p.decoratePost(&model.Post{Message: message, UserId: testUserID}, hookRef)
+		if updated != nil && updated.Type == cot.PostType {
+			t.Errorf("a post was stamped from %q", message)
+		}
+	}
+}
+
+func TestCotStampsSeveralEventsInOneBlock(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	body := `<event uid="a" type="a-f-G-U-C" time="2026-08-23T11:43:38Z">` +
+		`<point lat="30.009027" lon="-85.957874"/></event>` +
+		`<event uid="b" type="a-h-A-M-F" time="2026-08-23T11:44:00Z">` +
+		`<point lat="31.009027" lon="-86.957874"/></event>`
+
+	updated := p.decoratePost(&model.Post{Message: cotFence("cot", body), UserId: testUserID}, hookRef)
+	if updated == nil {
+		t.Fatal("a two-event block was not stamped")
+	}
+
+	blob := cotBlob(t, updated)
+	rendered, ok := blob["events"].([]any)
+	if !ok || len(rendered) != 2 {
+		t.Fatalf("blob carries %v, want two events", blob["events"])
+	}
+	if rendered[0].(map[string]any)["uid"] != "a" {
+		t.Error("the events are out of order")
+	}
+}
+
+// A forged type is stripped AND the message underneath it still decorates.
+//
+// The strip used to end the post's journey: cotStamp returned the stripped
+// clone, decoratePost treated any non-nil answer as final, and the message went
+// out undecorated. Spoofing a type on a post was therefore a way to turn
+// decoration off for it.
+func TestAStrippedPostStillReachesTheDecorators(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	post := &model.Post{Message: "meet at 21.3353, -157.9483", Type: cot.PostType, UserId: testUserID}
+	post.AddProp(cot.PropsKey, map[string]any{"version": 1})
+
+	updated := p.decoratePost(post, hookRef)
+	if updated == nil {
+		t.Fatal("the forged post came back unchanged, so the type was not stripped")
+	}
+	if updated.Type != "" {
+		t.Errorf("Type = %q, want the forged type stripped", updated.Type)
+	}
+	if !strings.Contains(updated.Message, "](") {
+		t.Errorf("the coordinate was not decorated:\n%s", updated.Message)
+	}
+}
+
+// The file the hook reads has to be the poster's own.
+//
+// post.FileIds arrives from the client and this hook runs before Mattermost
+// binds files to posts, so nothing else has checked that the sender may read
+// the id they named. Quoting somebody else's file id would copy that file's
+// text into props anyone who can read the attacker's post can read.
+func TestCotRefusesAnAttachmentThatIsNotThePostersOwn(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		info *model.FileInfo
+	}{
+		{"another user's file", &model.FileInfo{Id: testFileID, CreatorId: "someone-else", Name: "event.cot"}},
+		{"a file already on a post", &model.FileInfo{Id: testFileID, CreatorId: testUserID, PostId: "p9", Name: "event.cot"}},
+		{"a deleted file", &model.FileInfo{Id: testFileID, CreatorId: testUserID, DeleteAt: 1, Name: "event.cot"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := newTestPlugin(t, "https://example.com", true)
+			api := p.API.(*fakeAPI)
+			tc.info.Size = int64(len(cotEventXML))
+			api.files = map[string]*model.FileInfo{testFileID: tc.info}
+			api.fileContent = map[string][]byte{testFileID: []byte(cotEventXML)}
+
+			post := &model.Post{Message: "", FileIds: model.StringArray{testFileID}, UserId: testUserID}
+			if updated, stamped := p.cotStamp(post); stamped {
+				t.Errorf("the attachment was read anyway: %v", updated.GetProps()[cot.PropsKey])
+			}
+
+			// The CODE, not just that something was logged. This refusal and a
+			// filestore outage both write one warning, and the code is the only
+			// thing that tells an operator which happened. Asserting only that
+			// warnings is non-empty is what let this call site keep the
+			// unreadable code after it had stopped meaning that.
+			if !slices.Contains(api.warnCodes, errcode.HooksCotFileNotOwned) {
+				t.Errorf("logged %v, want a %d saying the file is not the poster's",
+					api.warnCodes, errcode.HooksCotFileNotOwned)
+			}
+			if slices.Contains(api.warnCodes, errcode.HooksCotFileUnreadable) {
+				t.Error("the refusal was filed as a filestore failure, which it is not")
+			}
+		})
+	}
+}
+
+// A file an integration uploaded is read, even though nobody owns it.
+//
+// plugin.API.UploadFile takes no user id, so the server credits those to
+// model.UploadNoUserID and they can never equal a post's author. Refusing them
+// silently ignored every attachment a companion plugin posted, which for a
+// Cursor on Target plugin is the likeliest producer of .cot files there is.
+func TestCotReadsAnAttachmentUploadedByAPlugin(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	api := p.API.(*fakeAPI)
+
+	api.files = map[string]*model.FileInfo{
+		testFileID: {
+			Id:        testFileID,
+			CreatorId: model.UploadNoUserID,
+			Name:      "event.cot",
+			Size:      int64(len(cotEventXML)),
+		},
+	}
+	api.fileContent = map[string][]byte{testFileID: []byte(cotEventXML)}
+
+	post := &model.Post{Message: "", FileIds: model.StringArray{testFileID}, UserId: testUserID}
+	if _, stamped := p.cotStamp(post); !stamped {
+		t.Fatalf("a plugin-uploaded attachment was refused: %v", api.warnCodes)
+	}
+}
+
+// A malformed file id is refused before the filestore is asked anything.
+func TestCotRefusesAFileIdThatIsNotOne(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	api := p.API.(*fakeAPI)
+
+	post := &model.Post{Message: "", FileIds: model.StringArray{"f1"}, UserId: testUserID}
+	if _, stamped := p.cotStamp(post); stamped {
+		t.Error("a post naming a malformed file id was stamped")
+	}
+	if api.fileInfoCalls != 0 {
+		t.Errorf("the filestore was asked about a malformed id %d times", api.fileInfoCalls)
+	}
+}

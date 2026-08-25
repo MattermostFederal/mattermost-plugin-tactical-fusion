@@ -133,35 +133,42 @@ func TestCheckBeforeActivationSaysSo(t *testing.T) {
 	}
 }
 
-// One post per decorator, in order.
+// One post per set, in order, and then the Cursor on Target example.
 //
-// The decorator is the unit a reader thinks in, so it is the unit a post is:
-// one for date-time groups, one for coordinates. Both fit at the ordinary post
-// limit, which is what makes this the shape rather than an aspiration.
+// The set is the unit a reader thinks in, so it is the unit a post is: one for
+// date-time groups, one for coordinates, one for Cursor on Target. All of them
+// fit at the ordinary post limit, which is what makes this the shape rather
+// than an aspiration.
+//
+// The event is last and belongs to no set: a card owns the whole body, so it
+// cannot share a post with anything else.
 func TestDetailsPostOnePostPerDecorator(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
+	tagger := &decorators.Tagger{Registry: p.decorators, URLPrefix: p.decorateURLPrefix()}
+	sets := p.detailMessageSets(tagger, hookRef)
 
 	messages := runDetails(t, p)
 
-	if len(messages) != len(detailSetOrder) {
-		t.Fatalf("got %d messages for %d decorators", len(messages), len(detailSetOrder))
+	if len(messages) != len(sets)+1 {
+		t.Fatalf("got %d messages for %d example sets plus the event example",
+			len(messages), len(sets))
 	}
 
-	for i, typ := range detailSetOrder {
-		want := "#### " + capitalize(detailSets[typ].name)
+	for i, set := range sets {
+		want := "#### " + capitalize(set.name)
 
 		if !strings.HasPrefix(messages[i], want) {
 			t.Errorf("message %d does not start %q:\n%s", i+1, want, first(messages[i]))
 		}
 
-		// Nothing else belongs in it. A decorator sharing a post with the next
-		// one is the thing this shape exists to prevent.
-		for _, other := range detailSetOrder {
-			if other == typ {
+		// Nothing else belongs in it. A set sharing a post with the next one is
+		// the thing this shape exists to prevent.
+		for _, other := range sets {
+			if other.name == set.name {
 				continue
 			}
-			if strings.Contains(messages[i], "#### "+capitalize(detailSets[other].name)) {
-				t.Errorf("message %d carries the %q section as well", i+1, other)
+			if strings.Contains(messages[i], "#### "+capitalize(other.name)) {
+				t.Errorf("message %d carries the %q section as well", i+1, other.name)
 			}
 		}
 	}
@@ -229,13 +236,13 @@ func TestDetailsSplitWhenAMessageRunsOutOfRoom(t *testing.T) {
 				}
 
 				owner := ""
-				for _, typ := range detailSetOrder {
-					if strings.HasPrefix(message, "#### "+capitalize(detailSets[typ].name)) {
-						owner = typ
+				for _, set := range p.detailMessageSets(tagger, hookRef) {
+					if strings.HasPrefix(message, "#### "+capitalize(set.name)) {
+						owner = set.name
 					}
 				}
 				if owner == "" {
-					t.Errorf("message %d belongs to no decorator: %s", i+1, first(message))
+					t.Errorf("message %d belongs to no example set: %s", i+1, first(message))
 					continue
 				}
 				counts[owner]++
@@ -252,35 +259,29 @@ func TestDetailsSplitWhenAMessageRunsOutOfRoom(t *testing.T) {
 
 			// And a group whose rows were split says so, rather than repeating
 			// a heading that reads as a fresh start.
-			if len(messages) > len(detailSetOrder) {
+			if len(messages) > len(p.detailMessageSets(tagger, hookRef)) {
 				if !strings.Contains(strings.Join(messages, "\n"), "(continued)") {
 					t.Error("rows were split across messages with no (continued) heading")
 				}
 			}
 
 			// However it splits, nothing is dropped: not a row, not the heading
-			// that says what a run of rows is showing, and not the decorator
-			// name above them.
+			// that says what a run of rows is showing, and not the set name
+			// above them. Read off the catalog, so a set that is not a
+			// decorator is covered by the same assertion.
 			all := strings.Join(messages, "")
-			for _, typ := range detailSetOrder {
-				if !strings.Contains(all, "#### "+capitalize(detailSets[typ].name)) {
-					t.Errorf("the %q heading went missing in the split", typ)
+			for _, set := range p.detailMessageSets(tagger, hookRef) {
+				if !strings.Contains(all, "#### "+capitalize(set.name)) {
+					t.Errorf("the %q heading went missing in the split", set.name)
 				}
 
-				for _, group := range detailSets[typ].groups {
-					if !strings.Contains(all, group.heading) {
-						t.Errorf("the %q heading went missing in the split", group.heading)
+				for _, chunk := range set.chunks {
+					if !strings.Contains(all, chunk.heading) {
+						t.Errorf("the %q heading went missing in the split", chunk.heading)
 					}
-					// A live group's rows are generated from the command's own
-					// clock, so there is no fixed text to look for here.
-					// TestDetailsIncludeLiveTimes covers those.
-					if group.live != nil {
-						continue
-					}
-
-					for _, example := range group.examples {
-						if !strings.Contains(all, inlineCode(example.text)) {
-							t.Errorf("%q went missing in the split", example.text)
+					for _, line := range chunk.lines {
+						if !strings.Contains(all, strings.TrimSuffix(line, "\n")) {
+							t.Errorf("a row under %q went missing in the split", chunk.heading)
 						}
 					}
 				}
