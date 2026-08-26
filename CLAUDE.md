@@ -88,7 +88,7 @@ recover logs through an API handle captured before the deferred call. There is
 no `MessageWillBeUpdated` hook and a test asserts it stays absent.
 
 **`findProtectedRanges` is the entire safety story.** Anything it fails to
-recognise is a corruption bug. Widen it only with a regression test per
+recognize is a corruption bug. Widen it only with a regression test per
 construct, and never let overlapping spans be discarded rather than merged.
 
 **Boundary guards live in `Pattern.Boundary`, never in the regex.** A pattern
@@ -121,7 +121,7 @@ exception and the `Formats` doc comment names it.
 
 **`Page.Capability` decides the whole CSP.** `PageStatic` is what a page should
 want; `PageMapping` gives back `script-src 'self'`, `worker-src`, `img-src data:`
-and `connect-src 'self'` and makes escaping the only defence on a route that
+and `connect-src 'self'` and makes escaping the only defense on a route that
 echoes author text. `ScriptSrc` must be relative.
 
 **Setting `Post.Type` costs the post its Elasticsearch/OpenSearch matches**,
@@ -269,3 +269,33 @@ or pin. See [`docs/SECURITY.md`](docs/SECURITY.md).
 GitHub Actions are pinned to full commit SHAs with a `# vX.Y.Z` comment. Resolve
 the tag to its SHA when adding or bumping one, and keep the comment accurate.
 Never use floating tags.
+
+
+## Dependency Licensing
+
+The plugin bundle ships to customers, so **no copyleft dependencies in
+anything that ends up in the bundle** (Go modules in `go.mod`, npm packages in
+`webapp/package.json`, or vendored code under `public/`).
+
+- Forbidden: GPL (v2/v3), AGPL (v3), SSPL, CC BY-SA, and other strong or
+  network copyleft licenses.
+- Weak copyleft (LGPL, MPL 2.0, EPL) is off limits by default. Ask before
+  adding one.
+- Preferred: MIT, BSD-2/3-Clause, Apache 2.0, ISC, Unlicense, CC0.
+- Check the license before adding any dependency, including transitive ones.
+  Unclear or unstated license means treat it as forbidden and ask.
+- `make license-check` enforces this from the SBOMs, and `make sbom-audit`
+  runs it alongside the CVE scan. Both run in CI on every PR, so a copyleft
+  dependency fails the build rather than being caught by review.
+- An unavoidable exception goes in `.licenses.json`, keyed to one component and
+  one license, with a reason. `docs/SECURITY.md` explains what is already there
+  and why.
+- `make bundle` writes `THIRD-PARTY-NOTICES.txt` into every bundle from the
+  dependencies' own license files, and fails on one that ships no license text.
+  Adding a dependency that publishes none means recording what it does declare
+  under `noticeFallbacks`.
+- If a copyleft library seems unavoidable, present alternatives and tradeoffs
+  instead of adding it.
+
+Copyleft is fine in tooling that never ships: scripts under `scripts/`, dev
+containers, CI workflows, and test-only tooling that stays out of the bundle.

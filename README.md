@@ -212,7 +212,9 @@ own running server instead, via the bundled `pluginctl`.
 | `make check-style` | Lint Go and webapp code |
 | `make test` | Run tests |
 | `make coverage` | Backend and frontend coverage summary |
-| `make sbom-audit` | SBOM + CVE scan, fails on HIGH/CRITICAL |
+| `make license-check` | Enforces `.licenses.json` over the shipped dependencies (after `make sbom`) |
+| `make bundle` | Also writes `THIRD-PARTY-NOTICES.txt` into the bundle |
+| `make sbom-audit` | SBOM + CVE scan + license policy |
 | `make release` | The full security-gated pipeline CI runs on a tag |
 
 CI runs the same targets: `pr.yml` (style, tests, build), `security.yml` (SBOM +

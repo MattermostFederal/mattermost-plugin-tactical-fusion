@@ -88,7 +88,7 @@ release-bundle:
 	@echo "Including SBOMs and security reports in release bundle..."
 	@if [ -d dist/sbom ]; then \
 		cp -r dist/sbom dist/$(PLUGIN_ID)/; \
-		echo "SBOMs included in bundle"; \
+		echo "SBOMs and the license report included in bundle"; \
 	else \
 		echo "WARNING: No SBOMs found to include"; \
 	fi
@@ -352,7 +352,7 @@ ifneq ($(HAS_PUBLIC),)
 	done
 	@# SIL OFL 1.1 requires the notice to travel with the font software, and SDF
 	@# ranges generated from a TTF are a Modified Version of it. Shipping the
-	@# fonts without this file is a licence violation, not an untidy bundle.
+	@# fonts without this file is a license violation, not an untidy bundle.
 	@if [ ! -f "dist/$(PLUGIN_ID)/public/map/fonts/LICENSE.txt" ]; then \
 		echo "ERROR: the glyph ranges ship without public/map/fonts/LICENSE.txt."; \
 		echo "SIL OFL 1.1 requires the notice to travel with them."; \
@@ -391,6 +391,28 @@ ifneq ($(HAS_PUBLIC),)
 		fi; \
 	done
 endif
+	@# MIT and BSD require their copyright notices be retained, Apache 2.0
+	@# requires NOTICE propagation, and MPL 2.0 requires its text travel with the
+	@# files it covers. The bundle is distributed, so all three attach to it.
+	@# Generated here rather than in release-bundle so that EVERY bundle carries
+	@# them, the same way the font and map notices already do.
+	@cd build/notices && $(GO) build -o ../bin/notices
+	@$(GO) list -deps -f '{{if .Module}}{{.Module.Path}}|{{.Module.Version}}|{{.Module.Dir}}{{end}}' ./server/... \
+		| sort -u > dist/notices-go.txt
+	@cd webapp && npm ls --omit=dev --all --parseable 2>/dev/null \
+		| grep '/node_modules/' | sort -u > ../dist/notices-npm.txt
+	build/bin/notices \
+		-policy .licenses.json \
+		-go dist/notices-go.txt \
+		-npm dist/notices-npm.txt \
+		-title "$(PLUGIN_ID) $(PLUGIN_VERSION)" \
+		-out dist/$(PLUGIN_ID)/THIRD-PARTY-NOTICES.txt
+	@rm -f dist/notices-go.txt dist/notices-npm.txt
+	@if [ ! -s "dist/$(PLUGIN_ID)/THIRD-PARTY-NOTICES.txt" ]; then \
+		echo "ERROR: the bundle ships without THIRD-PARTY-NOTICES.txt."; \
+		echo "Its dependencies' licenses require the notices to travel with it."; \
+		exit 1; \
+	fi
 ifneq ($(HAS_SERVER),)
 	mkdir -p dist/$(PLUGIN_ID)/server
 	cp -r server/dist dist/$(PLUGIN_ID)/server/
@@ -735,7 +757,7 @@ deploy-local: dist
 .PHONY: install-sbom-tools
 install-sbom-tools:
 	@echo "Installing SBOM generation tools..."
-	$(GO) install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest
+	$(GO) install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.12.0
 
 ## Install Grype vulnerability scanner
 .PHONY: install-grype
@@ -754,14 +776,32 @@ sbom: install-sbom-tools
 	@mkdir -p dist/sbom
 ifneq ($(HAS_SERVER),)
 	@echo "Generating Go SBOM..."
-	$(GOBIN)/cyclonedx-gomod mod -json -output dist/sbom/server-sbom.json
+	$(GOBIN)/cyclonedx-gomod mod -json -licenses -assert-licenses -output dist/sbom/server-sbom.json
+	@$(GO) list -deps -f '{{if .Module}}{{.Module.Path}}{{end}}' ./server/... | sort -u > dist/sbom/server-shipped.txt
 endif
 ifneq ($(HAS_WEBAPP),)
 	@echo "Generating Node.js SBOM..."
 	cd webapp && npx @cyclonedx/cyclonedx-npm --ignore-npm-errors --output-file ../dist/sbom/webapp-sbom.json
+	cd webapp && npx @cyclonedx/cyclonedx-npm --ignore-npm-errors --omit dev --output-file ../dist/sbom/webapp-runtime-sbom.json
 endif
 	@echo "SBOMs generated in dist/sbom/"
 	@ls -la dist/sbom/
+
+## Check every shipped dependency against the license policy in .licenses.json
+.PHONY: license-check
+license-check:
+	@if [ ! -d dist/sbom ]; then \
+		echo "No SBOMs found. Run 'make sbom' first."; \
+		exit 1; \
+	fi
+	@echo "Checking shipped dependency licenses against .licenses.json..."
+	@cd build/licensecheck && $(GO) build -o ../bin/licensecheck
+	build/bin/licensecheck \
+		-policy .licenses.json \
+		-go-sbom dist/sbom/server-sbom.json \
+		-go-shipped dist/sbom/server-shipped.txt \
+		-npm-sbom dist/sbom/webapp-runtime-sbom.json \
+		-report dist/sbom/licenses.json
 
 ## Scan SBOMs for vulnerabilities using Grype (fails on high or critical)
 .PHONY: sbom-scan
@@ -779,9 +819,9 @@ ifneq ($(HAS_WEBAPP),)
 	$(GOBIN)/grype sbom:dist/sbom/webapp-sbom.json --output table --fail-on high
 endif
 
-## Generate SBOMs and scan for vulnerabilities
+## Generate SBOMs, scan for vulnerabilities, and enforce the license policy
 .PHONY: sbom-audit
-sbom-audit: sbom sbom-scan
+sbom-audit: sbom sbom-scan license-check
 
 # ====================================================================================
 # CodeQL Security Analysis

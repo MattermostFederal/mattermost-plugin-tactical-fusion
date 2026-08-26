@@ -1,0 +1,101 @@
+{
+  "_comment": [
+    "Dependency license policy for everything that SHIPS in the plugin bundle.",
+    "The policy itself is argued in CLAUDE.md 'Dependency Licensing' and in",
+    "docs/SECURITY.md. This file is what enforces it: build/licensecheck reads",
+    "it against the SBOMs make sbom writes, and make license-check fails the",
+    "build on a violation.",
+    "",
+    "Build-only dependencies are not judged here. The Go side is narrowed to",
+    "what go list -deps says is linked into the server binary, and the npm side",
+    "is generated with --omit dev, so the eslint, webpack, babel and playwright",
+    "toolchain never reaches this file. Copyleft there is fine and deliberate.",
+    "",
+    "Every exception carries a reason, the same convention .grype.yaml uses for",
+    "vulnerability suppressions. An exception names one component AND one",
+    "license: a module that relicenses to something worse fails rather than",
+    "staying quietly excused, and an exception that stops matching anything is",
+    "itself an error, so this list cannot rot into modules that left years ago."
+  ],
+  "allowed": [
+    "0BSD",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BlueOak-1.0.0",
+    "CC0-1.0",
+    "ISC",
+    "MIT",
+    "MIT-0",
+    "Python-2.0",
+    "Unlicense",
+    "Zlib"
+  ],
+  "denied": [
+    "AGPL",
+    "CC-BY-SA",
+    "CDDL",
+    "CPL",
+    "EPL",
+    "EUPL",
+    "GPL",
+    "LGPL",
+    "MPL",
+    "OSL",
+    "SSPL"
+  ],
+  "exceptions": [
+    {
+      "component": "github.com/hashicorp/go-plugin",
+      "license": "MPL-2.0",
+      "reason": "The RPC transport every Mattermost plugin uses, reached through mattermost/server/public. There is no plugin without it, so this one is not a choice. MPL 3.3 permits distributing covered files inside a proprietary Larger Work; the obligation is the notice and source availability for HashiCorp's own files, not for ours."
+    },
+    {
+      "component": "github.com/hashicorp/yamux",
+      "license": "MPL-2.0",
+      "reason": "go-plugin's stream multiplexer, pulled in with it. Same terms and the same argument."
+    },
+    {
+      "component": "github.com/hashicorp/errwrap",
+      "license": "MPL-2.0",
+      "reason": "Transitive under go-multierror. Same terms and the same argument."
+    },
+    {
+      "component": "github.com/hashicorp/go-multierror",
+      "license": "MPL-2.0",
+      "reason": "Transitive under mattermost/server/public. Same terms and the same argument."
+    },
+    {
+      "component": "github.com/hashicorp/golang-lru/v2",
+      "license": "MPL-2.0",
+      "reason": "The one MPL module that is ours rather than inherited: a direct require, used in exactly one place, expirable.LRU in server/preferences_cache.go. Roughly forty lines of stdlib would replace it and retire this entry. Recorded here so that stays visible rather than being rediscovered."
+    },
+    {
+      "component": "github.com/tinylib/msgp",
+      "license": "UNDETECTED",
+      "reason": "MIT, but its LICENSE file sits below cyclonedx-gomod's 0.85 detection confidence, so the SBOM carries no license for it and the unstated-means-forbidden rule catches it. Verified by reading github.com/tinylib/msgp's LICENSE in the module cache. Re-check on upgrade."
+    }
+  ],
+  "_noticeComment": [
+    "Components whose upstream package ships no LICENSE, COPYING or NOTICE file.",
+    "build/notices refuses to write a notices file that silently omits a",
+    "component, so each one needs its text recorded here by hand.",
+    "",
+    "Everything in a 'text' block below is either quoted from the package's own",
+    "metadata or is a statement about what the package does and does not",
+    "contain. No copyright line is invented: where upstream publishes none, the",
+    "entry says so and points at where the text is published instead."
+  ],
+  "noticeFallbacks": [
+    {
+      "component": "murmurhash-js",
+      "license": "MIT",
+      "text": "Declared license (package.json): MIT\nDeclared author (package.json): Gary Court\nAdditional author named in the source headers: Austin Appleby\nRepository: git://github.com/mikolalysenko/murmurhash-js.git\n\nThe published npm package contains no LICENSE file and no copyright\nline. The MIT terms it declares are reproduced by the project at the\nrepository above."
+    },
+    {
+      "component": "pmtiles",
+      "license": "BSD-3-Clause",
+      "text": "Declared license (package.json): BSD-3-Clause\nDeclared author (package.json): Brandon Liu\nHomepage: https://github.com/protomaps/pmtiles\n\nThe published npm package contains no LICENSE file and no copyright\nline. The BSD-3-Clause terms it declares are reproduced by the project\nat the homepage above."
+    }
+  ]
+}

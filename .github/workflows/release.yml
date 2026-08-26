@@ -173,6 +173,7 @@ jobs:
             dist/${{ steps.plugin_info.outputs.bundle_name }}.sig
             dist/sbom/server-sbom.json
             dist/sbom/webapp-sbom.json
+            dist/sbom/licenses.json
             dist/codeql-go.sarif
             dist/codeql-js.sarif
           fail_on_unmatched_files: false
@@ -209,6 +210,7 @@ jobs:
             ### Supply-chain artifacts
 
             - **SBOM** (CycloneDX JSON): `server-sbom.json` / `webapp-sbom.json` list every dependency in the shipped bundle. Also embedded under `sbom/` inside the tarball.
+            - **License report**: `licenses.json` gives the resolved license of every shipped dependency and the verdict the license gate reached on it. Also embedded under `sbom/` inside the tarball.
             - **CodeQL SARIF**: `codeql-go.sarif` / `codeql-js.sarif` are the static-analysis results that gated this build. Also embedded under `security/` inside the tarball.
 
             ### Auto-generated changelog
