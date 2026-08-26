@@ -40,6 +40,7 @@
     --alert-tip: #38a169;
     --alert-warning: #d69e2e;
     --alert-danger: #e53e3e;
+    --alert-note: #718096;
 }
 
 * {
@@ -134,6 +135,7 @@ body {
     padding: 40px 48px;
     max-width: 1140px;
     width: 100%;
+    min-width: 0;
 }
 
 /* Breadcrumb */
@@ -326,6 +328,11 @@ pre code {
 .alert-danger {
     background: #fff5f5;
     border-color: var(--alert-danger);
+}
+
+.alert-note {
+    background: #f7fafc;
+    border-color: var(--alert-note);
 }
 
 .alert-title {
