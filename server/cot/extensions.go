@@ -15,10 +15,16 @@ const (
 )
 
 const (
-	unitMeters  = "m"
+	unitMeters  = " m"
 	unitDegrees = "°"
 	unitPercent = "%"
 	unitColor   = "#"
+	unitDbm     = " dBm"
+
+	// unitHashCount reads a JSON array of content hashes and yields how many
+	// there are. The hashes themselves are longer than a field, so storing them
+	// raw truncates mid-hash into a value that looks like a hash and is not.
+	unitHashCount = "[]"
 )
 
 const presenceValue = "stated"
@@ -187,6 +193,75 @@ var extensions = []Extension{
 		},
 	},
 	{
+		Element: "__chatReceipt",
+		Parent:  detailElement,
+		Prefix:  "chat_receipt",
+		Attrs: []Attr{
+			{Name: "id", Key: "id"},
+			{Name: "chatroom", Key: "room"},
+			{Name: "ackuid", Key: "ack"},
+			{Name: "senderCallsign", Key: "sender"},
+		},
+	},
+	{
+		Element: "__serverdestination",
+		Parent:  detailElement,
+		Prefix:  "destination",
+		Attrs:   []Attr{{Name: "destinations", Key: "servers"}},
+	},
+	{
+		Element: "_radio",
+		Parent:  detailElement,
+		Prefix:  "radio",
+		Attrs: []Attr{
+			{Name: "rssi", Key: "rssi", Unit: unitDbm},
+			{Name: "gps", Key: "gps"},
+		},
+	},
+	{
+		Element: "__geofence",
+		Parent:  detailElement,
+		Prefix:  "geofence",
+		Attrs: []Attr{
+			{Name: "monitor", Key: "monitor"},
+			{Name: "trigger", Key: "trigger"},
+			{Name: "tracking", Key: "tracking"},
+			{Name: "elevationMonitored", Key: "elevation"},
+			{Name: "minElevation", Key: "min", Unit: unitMeters},
+			{Name: "maxElevation", Key: "max", Unit: unitMeters},
+			{Name: "boundingSphere", Key: "sphere", Unit: unitMeters},
+		},
+	},
+	{
+		Element: "attachment_list",
+		Parent:  detailElement,
+		Prefix:  "attachments",
+		Attrs:   []Attr{{Name: "hashes", Key: "count", Unit: unitHashCount}},
+	},
+	{
+		Element: "TakControl",
+		Parent:  detailElement,
+		Prefix:  "takcontrol",
+	},
+	{
+		Element: "TakProtocolSupport",
+		Parent:  "TakControl",
+		Prefix:  "takcontrol_support",
+		Attrs:   []Attr{{Name: "version", Key: "version"}},
+	},
+	{
+		Element: "TakRequest",
+		Parent:  "TakControl",
+		Prefix:  "takcontrol_request",
+		Attrs:   []Attr{{Name: "version", Key: "version"}},
+	},
+	{
+		Element: "TakResponse",
+		Parent:  "TakControl",
+		Prefix:  "takcontrol_response",
+		Attrs:   []Attr{{Name: "status", Key: "status"}},
+	},
+	{
 		Element: "_medevac_",
 		Parent:  detailElement,
 		Prefix:  "medevac",
@@ -327,6 +402,12 @@ func fixtureValue(attr Attr) string {
 		return "87"
 	case unitColor:
 		return "-65536"
+	case unitDbm:
+		return "-71"
+	case unitHashCount:
+		// Escaped, because the fixture writes this inside a double quoted XML
+		// attribute and JSON needs its own quotes back after decoding.
+		return "[&quot;a&quot;,&quot;b&quot;]"
 	default:
 		return "v-" + attr.Key
 	}

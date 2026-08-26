@@ -101,13 +101,25 @@ function ColorRow({event}: {event: CotEvent}) {
  * keyboard-reachable and announced without any ARIA of its own.
  */
 function ProcessingPath({event}: {event: CotEvent}) {
-    if (event.flow.length === 0) {
+    const d = event.detail;
+    const routing = present([
+        ['Destinations', d.destinationServers],
+        ['TAK control', d.takcontrol === '' ? '' : 'The event carries a protocol exchange'],
+        ['Protocol supported', d.takcontrolSupportVersion],
+        ['Protocol requested', d.takcontrolRequestVersion],
+        ['Protocol response', d.takcontrolResponseStatus],
+    ]);
+
+    if (event.flow.length === 0 && routing.length === 0) {
         return null;
     }
 
+    const heading = event.flow.length === 0 ? 'Routing' : `Processing path (${event.flow.length})`;
+
     return (
         <details>
-            <summary style={styles.summary}>{`Processing path (${event.flow.length})`}</summary>
+            <summary style={styles.summary}>{heading}</summary>
+            {routing.length > 0 && <Rows readings={routing}/>}
             <table style={styles.flowTable}>
                 <tbody>
                     {event.flow.map((hop, index) => (
@@ -216,6 +228,8 @@ export const DetailGroups: React.FC<{event: CotEvent}> = ({event}) => {
         ['Readiness', d.statusReadiness],
         ['Network endpoint', d.contactEndpoint],
         ['Icon', d.usericonIconsetpath],
+        ['Radio signal', d.radioRssi],
+        ['Radio GPS', d.radioGps],
         ['Archive', d.archive === '' ? '' : 'The event asks to be kept'],
     ]);
 
@@ -255,6 +269,10 @@ export const DetailGroups: React.FC<{event: CotEvent}> = ({event}) => {
 
     const chat: Reading[] = [
         ['Stated sender', d.chatSender],
+        ['Receipt for', d.chatReceiptId],
+        ['Receipt room', d.chatReceiptRoom],
+        ['Receipt from', d.chatReceiptSender],
+        ['Acknowledged', d.chatReceiptAck],
         ['Room', d.chatRoom],
         ['Thread id', d.chatId],
         ['Parent', d.chatParent],
@@ -284,7 +302,23 @@ export const DetailGroups: React.FC<{event: CotEvent}> = ({event}) => {
         ['Medline remarks', d.medevacMedlineRemarks],
     ];
 
-    const payload = present([...sensor, ...video, ...chat, ...medevac]).length > 0;
+    const geofence: Reading[] = [
+        ['Monitoring', d.geofenceMonitor],
+        ['Trigger', d.geofenceTrigger],
+        ['Tracking', d.geofenceTracking],
+        ['Elevation monitored', d.geofenceElevation],
+        ['Minimum elevation', d.geofenceMin],
+        ['Maximum elevation', d.geofenceMax],
+        ['Bounding sphere', d.geofenceSphere],
+    ];
+
+    const attachments: Reading[] = [
+        ['Files referenced', d.attachmentsCount],
+    ];
+
+    const payload = present([
+        ...sensor, ...video, ...chat, ...medevac, ...geofence, ...attachments,
+    ]).length > 0;
     const hasColor = d.colorArgb !== '';
 
     return (
@@ -329,6 +363,14 @@ export const DetailGroups: React.FC<{event: CotEvent}> = ({event}) => {
                     <Block
                         label='MEDEVAC'
                         readings={medevac}
+                    />
+                    <Block
+                        label='Geofence'
+                        readings={geofence}
+                    />
+                    <Block
+                        label='Attachments'
+                        readings={attachments}
                     />
                 </>
             )}

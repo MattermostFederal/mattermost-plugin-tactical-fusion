@@ -279,7 +279,9 @@ func TestAFlowHopWithAnUnreadableTimeIsKept(t *testing.T) {
 // Once the panel enumerates blocks, an event with none reads as "carried
 // nothing" rather than "we did not recognise what it carried".
 func TestDetailUnknownCountsWhatThisBuildDidNotRead(t *testing.T) {
-	props := detailProps(t, `<takv platform="ATAK"/><checklist/><__geofence/><mystery-thing/>`)
+	// Deliberately the elements this build still defers, so the fixture goes
+	// stale only when one of them is actually implemented.
+	props := detailProps(t, `<takv platform="ATAK"/><checklist/><checklistColumn/><mystery-thing/>`)
 
 	if props["detail_unknown"] != "3" {
 		t.Errorf("detail_unknown is %v, want 3", props["detail_unknown"])
@@ -757,5 +759,112 @@ func TestANamespacedRootIsRefused(t *testing.T) {
 
 	if _, err := Parse([]byte(source)); err != ErrNotEvent {
 		t.Errorf("Parse returned %v, want ErrNotEvent", err)
+	}
+}
+
+// A hash is longer than a field, so the list truncates mid-hash into something
+// that looks like a hash and is not. The count is the part a reader can act on.
+func TestAttachmentsAreCountedRatherThanPrinted(t *testing.T) {
+	hashes := `[&quot;` + strings.Repeat("a", 64) + `&quot;,&quot;` + strings.Repeat("b", 64) + `&quot;]`
+	props := detailProps(t, `<attachment_list hashes="`+hashes+`"/>`)
+
+	if props["attachments_count"] != "2" {
+		t.Errorf("attachments_count is %v, want 2", props["attachments_count"])
+	}
+
+	for key, value := range props {
+		if text, ok := value.(string); ok && strings.Contains(text, strings.Repeat("a", 20)) {
+			t.Errorf("%s carries a hash: %q", key, text)
+		}
+	}
+}
+
+func TestAnUnreadableAttachmentListIsNotCounted(t *testing.T) {
+	for _, raw := range []string{"garbage", "", "{}", `[&quot;a&quot;`, "[1,2]"} {
+		props := detailProps(t, `<attachment_list hashes="`+raw+`"/>`)
+		if held, ok := props["attachments_count"]; ok {
+			t.Errorf("hashes %q produced a count of %v", raw, held)
+		}
+	}
+}
+
+// An unlabelled -71 is the derived-claim failure in reverse: the reader
+// supplies the unit instead of the plugin.
+func TestARadioSignalCarriesItsUnit(t *testing.T) {
+	props := detailProps(t, `<_radio rssi="-71" gps="3"/>`)
+
+	if props["radio_rssi"] != "-71 dBm" {
+		t.Errorf("radio_rssi is %v, want -71 dBm", props["radio_rssi"])
+	}
+	if props["radio_gps"] != "3" {
+		t.Errorf("radio_gps is %v", props["radio_gps"])
+	}
+}
+
+// TakControl carries nothing itself and its children carry everything, which is
+// the nested-parent rule chatgrp and ConnectionEntry already established.
+func TestTakControlReadsItsChildren(t *testing.T) {
+	props := detailProps(t, `<TakControl><TakProtocolSupport version="1"/>`+
+		`<TakRequest version="1"/><TakResponse status="true"/></TakControl>`)
+
+	checks := map[string]string{
+		"takcontrol":                 presenceValue,
+		"takcontrol_support_version": "1",
+		"takcontrol_request_version": "1",
+		"takcontrol_response_status": "true",
+	}
+
+	for key, want := range checks {
+		if props[key] != want {
+			t.Errorf("%s is %v, want %s", key, props[key], want)
+		}
+	}
+}
+
+// The same instance rule the other nested children get: a protocol child whose
+// TakControl was never accepted is not the event's own.
+func TestATakControlChildNeedsItsParent(t *testing.T) {
+	props := detailProps(t, `<TakProtocolSupport version="9"/>`)
+
+	if held, ok := props["takcontrol_support_version"]; ok {
+		t.Errorf("takcontrol_support_version is %v without a TakControl around it", held)
+	}
+}
+
+func TestTheLongTailIsNoLongerUnrecognised(t *testing.T) {
+	detail := `<__chatReceipt id="r1" chatroom="Ops" ackuid="a1" senderCallsign="ALPHA"/>` +
+		`<__serverdestination destinations="server-a"/>` +
+		`<_radio rssi="-71"/>` +
+		`<__geofence monitor="Friendly" trigger="Entry" boundingSphere="500"/>` +
+		`<attachment_list hashes="[&quot;a&quot;]"/>` +
+		`<TakControl><TakProtocolSupport version="1"/></TakControl>`
+
+	props := detailProps(t, detail)
+
+	if held, ok := props["detail_unknown"]; ok {
+		t.Errorf("detail_unknown is %v; every element above is read now", held)
+	}
+}
+
+func TestARadioSignalRefusesWhatIsNotAReading(t *testing.T) {
+	for _, rssi := range []string{"abc", "", "9999999", "-9999999"} {
+		t.Run(fmt.Sprintf("rssi %q", rssi), func(t *testing.T) {
+			props := detailProps(t, `<_radio rssi="`+rssi+`" gps="3"/>`)
+
+			if value, ok := props["radio_rssi"]; ok {
+				t.Errorf("rssi=%q was rendered as %v; it is not a reading", rssi, value)
+			}
+			if props["radio_gps"] != "3" {
+				t.Errorf("gps is %v, so the refusal took the whole element with it", props["radio_gps"])
+			}
+		})
+	}
+}
+
+func TestARadioSignalKeepsItsSignAndUnit(t *testing.T) {
+	props := detailProps(t, `<_radio rssi="-72.5" gps="3"/>`)
+
+	if props["radio_rssi"] != "-72.5 dBm" {
+		t.Errorf("rssi rendered as %v, want %q", props["radio_rssi"], "-72.5 dBm")
 	}
 }

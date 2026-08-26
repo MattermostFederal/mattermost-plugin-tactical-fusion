@@ -640,6 +640,15 @@
                 <tr><td><code>link_attr</code></td><td><code>detail</code></td><td><code>routetype</code>, <code>planningmethod</code>, <code>method</code>, <code>direction</code>, <code>order</code></td><td>Shape group</td></tr>
                 <tr><td><code>_medevac_</code></td><td><code>detail</code></td><td>17 attributes, including <code>urgent</code>, <code>priority</code>, <code>routine</code>, <code>litter</code>, <code>ambulatory</code></td><td>Payload, MEDEVAC</td></tr>
                 <tr><td><code>_flow-tags_</code></td><td><code>detail</code></td><td>the attribute <em>names</em> are the data</td><td>Processing path</td></tr>
+                <tr><td><code>__chatReceipt</code></td><td><code>detail</code></td><td><code>id</code>, <code>chatroom</code>, <code>ackuid</code>, <code>senderCallsign</code></td><td>Payload, GeoChat</td></tr>
+                <tr><td><code>__serverdestination</code></td><td><code>detail</code></td><td><code>destinations</code></td><td>Processing path</td></tr>
+                <tr><td><code>_radio</code></td><td><code>detail</code></td><td><code>rssi</code>, <code>gps</code></td><td>Device group</td></tr>
+                <tr><td><code>__geofence</code></td><td><code>detail</code></td><td><code>monitor</code>, <code>trigger</code>, <code>tracking</code>, <code>elevationMonitored</code>, <code>minElevation</code>, <code>maxElevation</code>, <code>boundingSphere</code></td><td>Payload, Geofence</td></tr>
+                <tr><td><code>attachment_list</code></td><td><code>detail</code></td><td><code>hashes</code>, read as a <strong>count</strong></td><td>Payload, Attachments</td></tr>
+                <tr><td><code>TakControl</code></td><td><code>detail</code></td><td>container</td><td>Processing path</td></tr>
+                <tr><td><code>TakProtocolSupport</code></td><td><code>TakControl</code></td><td><code>version</code></td><td>Processing path</td></tr>
+                <tr><td><code>TakRequest</code></td><td><code>TakControl</code></td><td><code>version</code></td><td>Processing path</td></tr>
+                <tr><td><code>TakResponse</code></td><td><code>TakControl</code></td><td><code>status</code></td><td>Processing path</td></tr>
                 <tr><td><code>shape</code></td><td><code>detail</code></td><td>container</td><td>See <a href="#cot-geometry">geometry</a></td></tr>
             </tbody>
         </table>
@@ -655,7 +664,9 @@
             <p class="alert-title">Some rows are convention rather than specification.</p>
             <p>
                 <code>pdop</code>, <code>hdop</code>, <code>vdop</code> and
-                <code>readiness</code> are rendered exactly as stated because no specification
+                <code>readiness</code>, <code>__serverdestination</code>, <code>_radio</code>
+                and the <code>__geofence</code> vocabularies
+                are rendered exactly as stated because no specification
                 this build could check pins them down. The same is true of the whole of
                 <a href="#cot-geometry">geometry</a>. Where a value is shown as stated, the card
                 is repeating the event rather than vouching for it.
@@ -679,6 +690,25 @@
                 <tr><td>Route</td><td><code>link</code> elements carrying <code>point="lat,lon"</code></td><td>An ordered list of points.</td></tr>
             </tbody>
         </table>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">The ellipse reading has not been checked against a real emitter.</p>
+            <p>
+                Two things about <code>&lt;ellipse&gt;</code> are read the way ATAK is
+                understood to write them, and neither has been confirmed against a device:
+                whether <code>major</code> and <code>minor</code> are <strong>semi</strong>-axes
+                or full axes, and whether <code>angle</code> is measured clockwise from north.
+            </p>
+            <p>
+                This one is worth knowing about because it is the only geometry error that
+                stays quiet. Get a shape element wrong and nothing is drawn: the element is
+                counted as unrecognised and the panel says so. Get the semi-axis reading
+                wrong and the circle still draws, at half or twice the radius intended, with
+                nothing on the map to say it is the wrong size. Treat a drawn ring as an
+                indication rather than a measurement until you have checked one against its
+                source.
+            </p>
+        </div>
 
         <div class="alert alert-info">
             <p class="alert-title">A <code>&lt;link&gt;</code> is told apart by what it carries.</p>
@@ -781,6 +811,59 @@
         &lt;vertex lat="21.333900" lon="-157.946500"/&gt;
       &lt;/polyline&gt;
     &lt;/shape&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;</code></pre>
+
+        <h3 id="cot-example-routing">Receipts, routing and protocol</h3>
+
+        <p>
+            What a TAK server adds on the way through: a GeoChat receipt naming the
+            message it acknowledges, the servers the event was addressed to, a radio's
+            signal strength, the attachments the event references, and a protocol
+            exchange. None of it reaches the card; it is all in the sidebar under
+            Payload and Processing path.
+        </p>
+
+        <p>
+            The attachments are <strong>counted, not printed</strong>. A content hash is
+            longer than a field, so the list would truncate mid-hash into something that
+            looks like a hash and is not, and nothing here resolves a hash to a file:
+            Mattermost file ids bear no relationship to them.
+        </p>
+
+<pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-21" type="b-t-f" how="m-g"
+       time="2026-08-09T16:45:00Z" start="2026-08-09T16:45:00Z" stale="2026-08-09T16:47:00Z"&gt;
+  &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="9.5" le="15.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="ALPHA-1"/&gt;
+    &lt;__chatReceipt id="t1" chatroom="Operations" ackuid="ANDROID-22" senderCallsign="BRAVO-2"/&gt;
+    &lt;__serverdestination destinations="takserver-hi:8089:tcp"/&gt;
+    &lt;_radio rssi="-71" gps="3"/&gt;
+    &lt;attachment_list hashes="[&amp;quot;9f2a1c7b&amp;quot;,&amp;quot;4e8d0a13&amp;quot;]"/&gt;
+    &lt;TakControl&gt;
+      &lt;TakProtocolSupport version="1"/&gt;
+      &lt;TakRequest version="1"/&gt;
+      &lt;TakResponse status="true"/&gt;
+    &lt;/TakControl&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;</code></pre>
+
+        <h3 id="cot-example-geofence">A geofence</h3>
+
+        <p>
+            A geofence is behaviour attached to a shape rather than a shape of its own.
+            The circle is what is drawn; the fence says what crossing it means.
+        </p>
+
+<pre class="copyable"><code>&lt;event version="2.0" uid="FENCE-1" type="u-d-c-c" how="h-g"
+       time="2026-08-09T16:46:00Z" start="2026-08-09T16:46:00Z" stale="2026-08-09T17:46:00Z"&gt;
+  &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="9999999.0" le="9999999.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="RESTRICTED"/&gt;
+    &lt;shape&gt;&lt;ellipse major="500" minor="500" angle="0"/&gt;&lt;/shape&gt;
+    &lt;__geofence monitor="All" trigger="Entry" tracking="true"
+                elevationMonitored="true" minElevation="0" maxElevation="300"
+                boundingSphere="500"/&gt;
   &lt;/detail&gt;
 &lt;/event&gt;</code></pre>
 
@@ -1107,12 +1190,12 @@
             </thead>
             <tbody>
                 <tr><td>Goes stale</td><td>The live countdown, and a note that it is counted against this device's clock.</td></tr>
-                <tr><td>Device</td><td>Platform, device, operating system, TAK version, device id, battery, readiness, network endpoint, icon, archive, and the stated display colour.</td></tr>
+                <tr><td>Device</td><td>Platform, device, operating system, TAK version, device id, battery, readiness, network endpoint, icon, archive, radio signal and GPS, and the stated display colour.</td></tr>
                 <tr><td>Position quality</td><td>Position source, altitude source, PDOP, HDOP, VDOP.</td></tr>
                 <tr><td>Orientation</td><td>Yaw, pitch, roll, slope.</td></tr>
-                <tr><td>Payload</td><td>Sensor, Video, GeoChat and MEDEVAC, each as its own block.</td></tr>
+                <tr><td>Payload</td><td>Sensor, Video, GeoChat, MEDEVAC, Geofence and Attachments, each as its own block. GeoChat carries any receipt rows.</td></tr>
                 <tr><td>Shape</td><td>Kind, route attributes, point count, axes and orientation, and the reason a shape was not drawn.</td></tr>
-                <tr><td>Processing path</td><td>A collapsed table of system and time.</td></tr>
+                <tr><td>Processing path</td><td>A collapsed table of system and time, plus routing: the servers the event was addressed to and any TAK protocol exchange. Headed <em>Routing</em> when there are no hops.</td></tr>
                 <tr><td>As posted</td><td>The event exactly as it was posted, scrollable.</td></tr>
             </tbody>
         </table>

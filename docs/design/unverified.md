@@ -21,6 +21,14 @@ surfaces rather than producing a wrong outline. The reading most likely to be
 wrong is the ellipse's: whether `major`/`minor` are semi-axes or full axes, and
 whether `angle` is measured clockwise from north.
 
+**`__network` was suggested and not added.** The Phase 1 domain review said
+`__network` is ATAK's standard element for device telemetry and that `_radio` is
+specific to certain radio integrations. `_radio` has a source this repository
+already cites for `Attitude` and `_medevac_`; `__network` has none that names
+its attributes. Adding it would have meant inventing attribute names, which
+produces rows that never populate while claiming knowledge this build does not
+have. If a real event turns up carrying one, the registry row is four lines.
+
 **No real ATAK output has been through the registry.** Every fixture in the test
 suite is hand-written or built from the registry itself, so the parser has never
 met an event a device actually produced. The shapes most likely to be wrong are

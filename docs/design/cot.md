@@ -271,6 +271,33 @@ hostile track in a friendly colour, and an image is registered once per colour
 rather than once per marker. The accuracy circle is drawn only for a single
 event: a ring per track reads as overlapping blobs rather than as positions.
 
+**The panel could not be tested with two events until it was.** For most of this
+work `CotPanelHarness` hard-coded `events: [{...}]`, a single event over an
+all-empty baseline, and `events` was not a prop. The count header, the rule
+between one event and the next, and `CotTitle`'s count-rather-than-callsign
+title were therefore not merely untested but unreachable from a test, on the
+one component that renders exactly what the "several events in one source" work
+above is about. Line coverage hid it: the file read 91% of lines and 51% of
+branches. The harness now takes an optional `events` array, mapped over the same
+baseline, the way `CotPostBodyHarness` already did.
+
+**The rule between events is asserted by its margin, not its border.**
+`styles.later` is `1px solid rgba(var(--center-channel-color-rgb), 0.16)` plus a
+`20px` top margin. The harness defines no theme, so the variable is undefined,
+the colour is invalid, and the browser drops the whole `border-top` shorthand:
+`getComputedStyle` reports `0px` for a border React really did apply. The margin
+in the same style computes normally and is the separation a reader sees, so it
+is what the test counts. Counting the separated events rather than checking the
+second one is deliberate: it fails both when the rule is dropped and when it is
+given to every event.
+
+**Every optional row shares one shape**, `x !== '' && <Row label='...'>{x}</Row>`,
+repeated about a dozen times, and the harness baseline leaves them all empty.
+Nothing about that shape stops a row being wired to its neighbour's field, and
+no test would have caught it, so one test populates the whole set and reads the
+`<dl>` back as label/value pairs rather than asserting the values are somewhere
+on the page.
+
 **The props version is 2**, and the webapp reads 1 as well, because posts
 stamped before the array exist and still render. A bundle older than the bump
 meets a version it does not know and falls back to the post's own text, which is
@@ -1071,14 +1098,38 @@ row rather than drawing the same string twice.
 ### What the registry does and does not decode
 
 `Unit` on an attribute is the whole formatting vocabulary. Empty means the
-sanitised stated string; `m`, `°`, `%` and `m/s` parse the number and append the
-unit, inheriting the `9999999.0` sentinel handling from `knownNumber`.
+sanitised stated string; the rest parse the number and append the unit,
+inheriting the `9999999.0` sentinel handling from `knownNumber`.
+
+**A `Unit` that is appended IS its suffix, spacing included.** `unitMeters` was
+`"m"` for most of this work while every renderer that used it hardcoded `" m"`
+separately, so the constant and the string it stood for had quietly diverged.
+Collapsing the renderers made them meet, and passing the constant where the
+suffix was meant rendered `400m`. Two existing tests caught it, which is the
+argument for the collapse rather than against it. `unitColor` and
+`unitHashCount` select a decoder rather than name a suffix and are the exception.
+
+**There are three numeric renderers, and the third is not redundant.**
+
+| Renderer | Rule | Why |
+|---|---|---|
+| `signedText(raw, unit)` | any number the sentinel allows | pitch, roll, slope and sensor elevation are legitimately negative, and so is a radio signal in dBm |
+| `positiveText(raw, unit)` | must be above zero | it describes an extent, and an ellipse axis of zero is no axis at all |
+| `percentText(raw)` | non-negative, zero kept | a battery of `0` is a real reading |
+
+`positiveText` and `percentText` differ only on zero, which is exactly the
+distinction worth keeping visible: one field's zero is a measurement and the
+other's is a malformed shape.
 
 **`courseText` could not be reused for degrees.** It rejects anything below
 zero, which is right for a course and wrong for `Attitude/@pitch` and `@roll`,
 `track/@slope` and `sensor/@elevation`, all of which are legitimately negative.
-Reusing it would have silently dropped every negative attitude. `signedDegrees`
-is the one new formatter in this work.
+Reusing it would have silently dropped every negative attitude.
+
+These three replaced six near-identical functions that had accumulated one at a
+time, the last of them named `numberText2`. They differed only in a string, and
+`numberText2` was already the general form of two of the others. The collapse
+changed no behaviour, which is what the existing suite passing unchanged says.
 
 **`Attitude/@yaw` renders as "Yaw", not "Heading".** Yaw is orientation about
 the vertical axis; `track/@course` is the event's own word for direction of
@@ -1234,10 +1285,44 @@ than as a decode, which needs no second code path: `Unit == ""` already means
 | `shape` / `polyline` / `vertex` | ATAK-CIV drawing tools. **Unverified**: the nesting and the `closed` attribute are convention |
 | `ellipse` | ATAK-CIV. **Unverified**: `major`/`minor` read as semi-axes in metres and `angle` as a bearing clockwise from north |
 | `link/@point` as a route vertex | ATAK-CIV routes. **Unverified**: read as `lat,lon` or `lat,lon,hae` |
+| `__chatReceipt` | ATAK-CIV GeoChat, beside `__chat` |
+| `__serverdestination` | TAK Server routing. **Unverified** |
+| `_radio` | FreeTAKServer's model, the same source as `Attitude`. **Unverified** |
+| `__geofence` | ATAK-CIV. **Unverified**: the elevation and trigger vocabularies are convention |
+| `attachment_list` | ATAK-CIV. Only the number of hashes is read, never the hashes |
+| `TakControl` and its three children | The ATAK protocol negotiation documentation |
 
 Two things this table is for. It says which rows a maintainer may tighten
 without new evidence, and it says which ones a bug report should be believed
 about first.
+
+### The long tail, and what is not resolved
+
+`attachment_list` is **counted, not printed, and never resolved.**
+
+Phase 1 said resolution would come later and reuse `cotFileOwnedBy`. That
+promise cannot be kept and should not be. ATAK writes content hashes; Mattermost
+file ids bear no relationship to them, and no index exists between the two. The
+only way to match would be to fetch and hash every file on the post inside
+`MessageWillBePosted`, on the filestore path `unverified.md` records as never
+tested against a running server, to produce a row nobody can click.
+
+Printing the hashes is refused for a second, independent reason: a content hash
+is longer than `maxFieldRunes`, so a two-hash list truncates mid-hash into a
+value that looks like a hash and is not. That is the failure `_flow-tags_`
+already answers by dropping rather than truncating. The count is the part a
+reader can act on, and the list itself is still under "As posted".
+
+**A radio signal carries its unit.** An unlabelled `-71` is the derived-claim
+failure running the other way: the reader supplies the wrong unit instead of the
+plugin supplying it.
+
+**`TakControl` is read now, and still gets no class.** Phase 1 cut it because
+the nested binding it needed did not exist and a control class would have bought
+one version string. The binding exists now, from `chatgrp` and
+`ConnectionEntry`, so the element costs four registry rows and nothing else. The
+class argument is unchanged: a control event already renders correctly, because
+`0,0` is never linkable and `t-x-takp-v` already has a label.
 
 ## Geometry
 

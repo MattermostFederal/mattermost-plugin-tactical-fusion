@@ -97,6 +97,172 @@ test('the panel links a position the server could spell', async ({mount}) => {
     ).toHaveAttribute('href', /\/decorate\/location\?f=dd&v=/);
 });
 
+test.describe('a post carrying several events', () => {
+    const three = [
+        {callsign: 'ALPHA', remarks: 'Holding at the bridge'},
+        {callsign: 'BRAVO'},
+        {callsign: 'CHARLIE'},
+    ];
+
+    test('says how many, where one event says nothing', async ({mount}) => {
+        const component = await mount(<CotPanelHarness events={three}/>);
+
+        await component.getByRole('button', {name: 'Open details'}).click();
+
+        await expect(component.getByTestId('rhs')).toContainText('3 events in this post');
+    });
+
+    test('a single event is not counted at the reader', async ({mount}) => {
+        const component = await mount(<CotPanelHarness event={{callsign: 'ALPHA'}}/>);
+
+        await component.getByRole('button', {name: 'Open details'}).click();
+
+        await expect(component.getByTestId('rhs')).not.toContainText('events in this post');
+    });
+
+    test('the sidebar title counts the events rather than naming the first', async ({mount}) => {
+        const component = await mount(<CotPanelHarness events={three}/>);
+
+        await component.getByRole('button', {name: 'Open details'}).click();
+
+        await expect(component.getByTestId('rhs-title')).toContainText('3 events');
+        await expect(component.getByTestId('rhs-title')).not.toContainText('ALPHA');
+    });
+
+    test('every event is drawn, not just the first', async ({mount}) => {
+        const component = await mount(<CotPanelHarness events={three}/>);
+
+        await component.getByRole('button', {name: 'Open details'}).click();
+
+        const rhs = component.getByTestId('rhs');
+        await expect(rhs.getByRole('group', {name: /^Readings for the/})).toHaveCount(3);
+        await expect(rhs).toContainText('BRAVO');
+        await expect(rhs).toContainText('Holding at the bridge');
+    });
+
+    test('each event after the first is ruled off from the one above', async ({mount}) => {
+        const component = await mount(<CotPanelHarness events={three}/>);
+
+        await component.getByRole('button', {name: 'Open details'}).click();
+
+        const separated = await component.getByTestId('rhs').locator('div').evaluateAll(
+            (nodes) => nodes.filter((node) => getComputedStyle(node).marginTop === '20px').length,
+        );
+
+        expect(separated).toBe(2);
+    });
+});
+
+test('every reading the event carried is labelled with its own value', async ({mount}) => {
+    const component = await mount(
+        <CotPanelHarness
+            event={{
+                hae: '1250 m',
+                ce: '12 m',
+                le: '30 m',
+                speed: '4.5 m/s',
+                course: '270°',
+                group: 'Cyan',
+                role: 'Team Lead',
+                parent: 'ANDROID-9',
+                related: 'ANDROID-7',
+                timeAt: '1000000',
+                staleAt: '1003600',
+                stale: '231245ZAUG26',
+            }}
+        />,
+    );
+
+    await component.getByRole('button', {name: 'Open details'}).click();
+
+    const pairs = await component.getByTestId('rhs').
+        getByRole('group', {name: /^Readings for the/}).
+        evaluate((list) => {
+            const out: Record<string, string> = {};
+            const terms = list.querySelectorAll('dt');
+            terms.forEach((term) => {
+                out[term.textContent ?? ''] = term.nextElementSibling?.textContent ?? '';
+            });
+            return out;
+        });
+
+    expect(pairs).toMatchObject({
+        'Altitude (HAE)': '1250 m',
+        Accuracy: '12 m circular, 30 m vertical',
+        Speed: '4.5 m/s',
+        Course: '270°',
+        Team: 'Cyan',
+        Role: 'Team Lead',
+        'Sent by': 'ANDROID-9',
+        'Relates to': 'ANDROID-7',
+        UID: 'ANDROID-1',
+    });
+
+    expect(pairs.Stale).toContain('valid for');
+});
+
+test('an event whose type this build does not recognise says so', async ({mount}) => {
+    const component = await mount(
+        <CotPanelHarness event={{typeLabel: '', cotType: 'z-z-z'}}/>,
+    );
+
+    await component.getByRole('button', {name: 'Open details'}).click();
+
+    await expect(component.getByTestId('rhs')).toContainText('Unrecognized event type');
+    await expect(component.getByTestId('rhs')).toContainText('(z-z-z)');
+});
+
+test('a position the build will not stand behind carries its note, unlinked', async ({mount}) => {
+    const component = await mount(
+        <CotPanelHarness
+            event={{lat: '0.0000', lon: '0.0000', positionNote: 'This event states no position.'}}
+        />,
+    );
+
+    await component.getByRole('button', {name: 'Open details'}).click();
+
+    const rhs = component.getByTestId('rhs');
+    await expect(rhs).toContainText('This event states no position.');
+    await expect(rhs.getByRole('link', {name: '0.0000, 0.0000'})).toHaveCount(0);
+    await expect(rhs).toContainText('0.0000, 0.0000');
+});
+
+test.describe('a time the panel was given', () => {
+    test('is a link to the date-time group when the server could spell it', async ({mount}) => {
+        const component = await mount(
+            <CotPanelHarness
+                event={{
+                    time: '231943Z AUG 26',
+                    timeQuery: 'v=231943ZAUG26',
+                    start: '231943Z AUG 26',
+                    startQuery: 'v=231943ZAUG26',
+                }}
+            />,
+        );
+
+        await component.getByRole('button', {name: 'Open details'}).click();
+
+        const rhs = component.getByTestId('rhs');
+        await expect(rhs).toContainText('Valid from');
+        await expect(rhs.getByRole('link', {name: '231943Z AUG 26'}).first()).toHaveAttribute(
+            'href',
+            /\/decorate\/dtg\?v=231943ZAUG26$/,
+        );
+    });
+
+    test('is plain text when the server could not', async ({mount}) => {
+        const component = await mount(
+            <CotPanelHarness event={{time: '2026-08-23T11:43:38Z', timeQuery: ''}}/>,
+        );
+
+        await component.getByRole('button', {name: 'Open details'}).click();
+
+        const rhs = component.getByTestId('rhs');
+        await expect(rhs).toContainText('2026-08-23T11:43:38Z');
+        await expect(rhs.getByRole('link', {name: '2026-08-23T11:43:38Z'})).toHaveCount(0);
+    });
+});
+
 test('the panel shows the source as posted, reachable without a pointer', async ({mount}) => {
     const component = await mount(<CotPanelHarness src='<event uid="X"/>'/>);
 
@@ -360,5 +526,61 @@ test.describe('the shape an event describes', () => {
 
         await component.getByRole('button', {name: 'Open details'}).click();
         await expect(component.getByTestId('rhs').getByRole('heading', {name: 'Shape'})).toHaveCount(0);
+    });
+});
+
+test.describe('the long tail', () => {
+    test('a radio reading carries its unit, under Device', async ({mount}) => {
+        const component = await mount(
+            <CotPanelHarness detail={{radioRssi: '-71 dBm', radioGps: '3'}}/>,
+        );
+
+        await component.getByRole('button', {name: 'Open details'}).click();
+        const rhs = component.getByTestId('rhs');
+
+        await expect(rhs.getByRole('heading', {name: 'Device'})).toBeVisible();
+        await expect(rhs).toContainText('-71 dBm');
+    });
+
+    test('a geofence and an attachment count sit under Payload', async ({mount}) => {
+        const component = await mount(
+            <CotPanelHarness detail={{geofenceMonitor: 'All', geofenceSphere: '500 m', attachmentsCount: '2'}}/>,
+        );
+
+        await component.getByRole('button', {name: 'Open details'}).click();
+        const rhs = component.getByTestId('rhs');
+
+        await expect(rhs.getByRole('heading', {name: 'Geofence'})).toBeVisible();
+        await expect(rhs.getByRole('heading', {name: 'Attachments'})).toBeVisible();
+        await expect(rhs).toContainText('500 m');
+        await expect(rhs).toContainText('2');
+    });
+
+    // Routing and protocol say how the message travelled, which is what the
+    // processing path already is, so they share its collapsed section.
+    test('routing and protocol are filed with the processing path', async ({mount}) => {
+        const component = await mount(
+            <CotPanelHarness
+                detail={{destinationServers: 'takserver-hi:8089:tcp', takcontrol: 'stated', takcontrolSupportVersion: '1'}}
+            />,
+        );
+
+        await component.getByRole('button', {name: 'Open details'}).click();
+        const rhs = component.getByTestId('rhs');
+
+        await expect(rhs.getByText('Routing')).toBeVisible();
+        await rhs.getByText('Routing').click();
+        await expect(rhs).toContainText('takserver-hi:8089:tcp');
+        await expect(rhs).toContainText('protocol exchange');
+    });
+
+    test('an event with no routing draws no section for it', async ({mount}) => {
+        const component = await mount(<CotPanelHarness/>);
+
+        await component.getByRole('button', {name: 'Open details'}).click();
+        const rhs = component.getByTestId('rhs');
+
+        await expect(rhs.getByText('Routing')).toHaveCount(0);
+        await expect(rhs.getByRole('heading', {name: 'Geofence'})).toHaveCount(0);
     });
 });

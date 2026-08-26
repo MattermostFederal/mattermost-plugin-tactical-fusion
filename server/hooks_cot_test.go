@@ -769,33 +769,11 @@ func TestCotRefusesAFileIdThatIsNotOne(t *testing.T) {
 func TestABatchOfMaximalEventsStillStamps(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 
-	// As many maximal events as a source can actually carry, computed rather
-	// than assumed. The registry has outgrown MaxEvents: one event carrying
-	// every extension is about 2 KB, so 32 of them are past the 64 KiB source
-	// cap and Parse refuses the batch before the budget ladder ever sees it.
-	// Hard-coding MaxEvents here measured a post nobody can make.
-	var events strings.Builder
-	count := 0
-	for i := range cot.MaxEvents {
-		event := fmt.Sprintf(`<event version="2.0" uid="UID-%d" type="a-f-G-U-C-I" how="m-g" `+
-			`time="2026-08-23T11:43:38Z" start="2026-08-23T11:43:38Z" stale="2026-08-23T11:45:38Z">`+
-			`<point lat="34.056100" lon="-118.250000" hae="-42.6" ce="45.3" le="99.5"/>`+
-			`<detail>%s</detail></event>`, i, cot.FixtureDetail())
-
-		if events.Len()+len(event) > cot.MaxSourceBytes {
-			break
-		}
-		events.WriteString(event)
-		count++
-	}
-
-	if count < 2 {
-		t.Fatalf("only %d maximal events fit a source; the fixture has outgrown a batch entirely", count)
-	}
+	source, count := maximalBatch(t)
 
 	note := strings.Repeat("n", 65536)
 	post := &model.Post{
-		Message: note + "\n" + cotFence("cot", events.String()) + "\n" + note,
+		Message: note + "\n" + cotFence("cot", source) + "\n" + note,
 		UserId:  testUserID,
 	}
 
@@ -836,20 +814,14 @@ func TestABatchOfMaximalEventsStillStamps(t *testing.T) {
 func TestOverBudgetTheDetailIsDroppedBeforeTheCardIs(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 
-	var events strings.Builder
-	for i := range cot.MaxEvents {
-		fmt.Fprintf(&events, `<event version="2.0" uid="UID-%d" type="a-f-G-U-C-I" how="m-g" `+
-			`time="2026-08-23T11:43:38Z" stale="2026-08-23T11:45:38Z">`+
-			`<point lat="34.056100" lon="-118.250000" hae="-42.6" ce="45.3" le="99.5"/>`+
-			`<detail>%s</detail></event>`, i, cot.FixtureDetail())
-	}
+	events, _ := maximalBatch(t)
 
-	post := &model.Post{Message: cotFence("cot", events.String()), UserId: testUserID}
+	post := &model.Post{Message: cotFence("cot", events), UserId: testUserID}
 
 	// Sized so the full blob cannot fit and the degraded one can. Measured
 	// rather than guessed, since both blobs move as the registry grows.
-	full := len(mustJSON(t, cot.Props(mustParse(t, events.String()), cot.Source{Kind: cot.SourceFence, Text: events.String()})))
-	lean := len(mustJSON(t, cot.PropsWithoutDetail(mustParse(t, events.String()), cot.Source{Kind: cot.SourceFence, Text: events.String()})))
+	full := len(mustJSON(t, cot.Props(mustParse(t, events), cot.Source{Kind: cot.SourceFence, Text: events})))
+	lean := len(mustJSON(t, cot.PropsWithoutDetail(mustParse(t, events), cot.Source{Kind: cot.SourceFence, Text: events})))
 	if lean >= full {
 		t.Fatal("dropping the detail did not make the blob smaller")
 	}
@@ -937,6 +909,39 @@ func TestAShapeIsBoundedByTheElementBudgetNotTheByteCap(t *testing.T) {
 	if geometry["note"] == nil {
 		t.Error("an undrawn shape says nothing about why")
 	}
+}
+
+// maximalBatch is as many events carrying every registry entry as a source can
+// hold, computed rather than assumed.
+//
+// The registry outgrew MaxEvents: one maximal event is about two kilobytes, so
+// thirty-two are past the 64 KiB source cap and Parse refuses the batch before
+// the budget ladder ever sees it. Hard-coding MaxEvents measured a post nobody
+// can make, and the number falls again every time an extension is added.
+func maximalBatch(t *testing.T) (string, int) {
+	t.Helper()
+
+	var events strings.Builder
+	count := 0
+
+	for i := range cot.MaxEvents {
+		event := fmt.Sprintf(`<event version="2.0" uid="UID-%d" type="a-f-G-U-C-I" how="m-g" `+
+			`time="2026-08-23T11:43:38Z" start="2026-08-23T11:43:38Z" stale="2026-08-23T11:45:38Z">`+
+			`<point lat="34.056100" lon="-118.250000" hae="-42.6" ce="45.3" le="99.5"/>`+
+			`<detail>%s</detail></event>`, i, cot.FixtureDetail())
+
+		if events.Len()+len(event) > cot.MaxSourceBytes {
+			break
+		}
+		events.WriteString(event)
+		count++
+	}
+
+	if count < 2 {
+		t.Fatalf("only %d maximal events fit a source; the fixture has outgrown a batch entirely", count)
+	}
+
+	return events.String(), count
 }
 
 func mustParse(t *testing.T, source string) []cot.Event {

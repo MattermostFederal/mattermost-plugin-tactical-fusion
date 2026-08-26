@@ -1,6 +1,7 @@
 package cot
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"regexp"
@@ -195,13 +196,13 @@ func geometryProps(geometry Geometry) map[string]any {
 		props["closed"] = presenceValue
 	}
 
-	putIfSet(props, "major", positiveMeters(geometry.Major))
-	putIfSet(props, "minor", positiveMeters(geometry.Minor))
-	putIfSet(props, "angle", signedDegrees(geometry.Angle))
+	putIfSet(props, "major", positiveText(geometry.Major, unitMeters))
+	putIfSet(props, "minor", positiveText(geometry.Minor, unitMeters))
+	putIfSet(props, "angle", signedText(geometry.Angle, unitDegrees))
 
-	putIfSet(props, "major_m", positiveNumber(geometry.Major))
-	putIfSet(props, "minor_m", positiveNumber(geometry.Minor))
-	putIfSet(props, "angle_deg", signedNumber(geometry.Angle))
+	putIfSet(props, "major_m", positiveText(geometry.Major, ""))
+	putIfSet(props, "minor_m", positiveText(geometry.Minor, ""))
+	putIfSet(props, "angle_deg", signedText(geometry.Angle, ""))
 
 	if geometry.Undrawable != "" {
 		props["note"] = geometry.Undrawable
@@ -266,11 +267,15 @@ func renderAttr(raw, unit string) string {
 	case unitMeters:
 		return metersText(raw, false)
 	case unitDegrees:
-		return signedDegrees(raw)
+		return signedText(raw, unitDegrees)
 	case unitPercent:
 		return percentText(raw)
 	case unitColor:
 		return colorText(raw)
+	case unitDbm:
+		return signedText(raw, unitDbm)
+	case unitHashCount:
+		return hashCount(raw)
 	default:
 		return sanitize(raw, maxFieldRunes)
 	}
@@ -433,45 +438,39 @@ func courseText(raw string) string {
 	return numberText(value, "°")
 }
 
-// signedDegrees is courseText for the angles that are legitimately negative.
+// hashCount is how many attachments an event references, not which.
 //
-// courseText rejects anything below zero, which is right for a course and wrong
-// for pitch, roll, slope and sensor elevation. Reusing it dropped every negative
-// attitude silently.
-func signedDegrees(raw string) string {
+// A content hash is longer than a field, so the list truncates mid-hash into
+// something that looks like a hash and is not. The count is the part a reader
+// can act on, and the whole list is still under "As posted".
+func hashCount(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return ""
+	}
+
+	var hashes []string
+	if err := json.Unmarshal([]byte(trimmed), &hashes); err != nil {
+		return ""
+	}
+
+	return countText(len(hashes))
+}
+
+func signedText(raw, unit string) string {
 	value, ok := knownNumber(raw, false)
 	if !ok {
 		return ""
 	}
-	return numberText(value, "°")
+	return numberText(value, unit)
 }
 
-// positiveMeters is metersText for a measurement describing an extent, so zero
-// is as useless as a negative one.
-func positiveMeters(raw string) string {
+func positiveText(raw, unit string) string {
 	value, ok := knownNumber(raw, true)
 	if !ok || value <= 0 {
 		return ""
 	}
-	return numberText(value, " m")
-}
-
-// The axes travel as numbers as well as readings, the way ce_meters sits beside
-// ce, so the map never parses a rendered string back.
-func positiveNumber(raw string) string {
-	value, ok := knownNumber(raw, true)
-	if !ok || value <= 0 {
-		return ""
-	}
-	return numberText(value, "")
-}
-
-func signedNumber(raw string) string {
-	value, ok := knownNumber(raw, false)
-	if !ok {
-		return ""
-	}
-	return numberText(value, "")
+	return numberText(value, unit)
 }
 
 func percentText(raw string) string {
@@ -514,7 +513,7 @@ func metersText(raw string, nonNegative bool) string {
 	if !ok {
 		return ""
 	}
-	return numberText(value, " m")
+	return numberText(value, unitMeters)
 }
 
 func knownMeters(raw string) string {

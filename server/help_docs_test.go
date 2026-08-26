@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/cot"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
@@ -339,6 +340,31 @@ func TestEveryCotExampleIsDocumented(t *testing.T) {
 	for name, source := range sources {
 		if !strings.Contains(page, escapeForHelp(strings.TrimSpace(source))) {
 			t.Errorf("cot.html does not carry the %q example", name)
+		}
+	}
+}
+
+// The registry is the list of <detail> elements this build claims to read, so a
+// reader meets it as a table on the page. It grew from sixteen entries to
+// twenty-six in one phase with nothing telling anybody to document the new ones,
+// which is the same hole TestEveryCodeIsDocumented and TestEverySettingIsDocumented
+// already close for codes and settings.
+//
+// One direction only, unlike the code test. The reverse is not checkable here:
+// the page is full of <code> spans naming attributes, XML fragments and prose
+// terms, so "a code span that is not a registry element" is the normal case
+// rather than a defect.
+func TestEveryRegisteredExtensionIsDocumented(t *testing.T) {
+	page := readHelpFile(t, "cot.html")
+
+	extensions := cot.Extensions()
+	if len(extensions) == 0 {
+		t.Fatal("the registry is empty; it is not being read")
+	}
+
+	for _, ext := range extensions {
+		if !strings.Contains(page, "<code>"+ext.Element+"</code>") {
+			t.Errorf("the registry reads <%s> but cot.html never names it", ext.Element)
 		}
 	}
 }

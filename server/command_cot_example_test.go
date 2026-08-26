@@ -535,6 +535,8 @@ func cotExampleSources() map[string]string {
 		"circle":     cotDetailCircle,
 		"route":      cotDetailRoute,
 		"bad shape":  cotDetailBadShape,
+		"routing":    cotDetailRouting,
+		"fence":      cotDetailFence,
 		"file":       cotDetailFile(),
 	}
 }

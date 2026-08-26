@@ -62,6 +62,25 @@ export interface CotDetail {
     medevacTitle: string;
     medevacUrgent: string;
     medevacZoneProtSelection: string;
+    chatReceiptAck: string;
+    chatReceiptId: string;
+    chatReceiptRoom: string;
+    chatReceiptSender: string;
+    destinationServers: string;
+    radioRssi: string;
+    radioGps: string;
+    geofenceElevation: string;
+    geofenceMax: string;
+    geofenceMin: string;
+    geofenceMonitor: string;
+    geofenceSphere: string;
+    geofenceTracking: string;
+    geofenceTrigger: string;
+    attachmentsCount: string;
+    takcontrol: string;
+    takcontrolRequestVersion: string;
+    takcontrolResponseStatus: string;
+    takcontrolSupportVersion: string;
     routeType: string;
     routePlanning: string;
     routeMethod: string;
@@ -343,6 +362,25 @@ export function emptyDetail(): CotDetail {
     medevacTitle: '',
     medevacUrgent: '',
     medevacZoneProtSelection: '',
+    chatReceiptAck: '',
+    chatReceiptId: '',
+    chatReceiptRoom: '',
+    chatReceiptSender: '',
+    destinationServers: '',
+    radioRssi: '',
+    radioGps: '',
+    geofenceElevation: '',
+    geofenceMax: '',
+    geofenceMin: '',
+    geofenceMonitor: '',
+    geofenceSphere: '',
+    geofenceTracking: '',
+    geofenceTrigger: '',
+    attachmentsCount: '',
+    takcontrol: '',
+    takcontrolRequestVersion: '',
+    takcontrolResponseStatus: '',
+    takcontrolSupportVersion: '',
     routeType: '',
     routePlanning: '',
     routeMethod: '',
@@ -416,6 +454,25 @@ function readDetail(event: Record<string, unknown>): CotDetail {
         medevacTitle: text(event, 'medevac_title'),
         medevacUrgent: text(event, 'medevac_urgent'),
         medevacZoneProtSelection: text(event, 'medevac_zone_prot_selection'),
+        chatReceiptAck: text(event, 'chat_receipt_ack'),
+        chatReceiptId: text(event, 'chat_receipt_id'),
+        chatReceiptRoom: text(event, 'chat_receipt_room'),
+        chatReceiptSender: text(event, 'chat_receipt_sender'),
+        destinationServers: text(event, 'destination_servers'),
+        radioRssi: text(event, 'radio_rssi'),
+        radioGps: text(event, 'radio_gps'),
+        geofenceElevation: text(event, 'geofence_elevation'),
+        geofenceMax: text(event, 'geofence_max'),
+        geofenceMin: text(event, 'geofence_min'),
+        geofenceMonitor: text(event, 'geofence_monitor'),
+        geofenceSphere: text(event, 'geofence_sphere'),
+        geofenceTracking: text(event, 'geofence_tracking'),
+        geofenceTrigger: text(event, 'geofence_trigger'),
+        attachmentsCount: text(event, 'attachments_count'),
+        takcontrol: text(event, 'takcontrol'),
+        takcontrolRequestVersion: text(event, 'takcontrol_request_version'),
+        takcontrolResponseStatus: text(event, 'takcontrol_response_status'),
+        takcontrolSupportVersion: text(event, 'takcontrol_support_version'),
         routeType: text(event, 'route_type'),
         routePlanning: text(event, 'route_planning'),
         routeMethod: text(event, 'route_method'),

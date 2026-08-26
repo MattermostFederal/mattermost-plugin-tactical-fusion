@@ -331,6 +331,35 @@ const (
   </detail>
 </event>`
 
+	cotDetailRouting = `<event version="2.0" uid="ANDROID-21" type="b-t-f" how="m-g"
+       time="2026-08-09T16:45:00Z" start="2026-08-09T16:45:00Z" stale="2026-08-09T16:47:00Z">
+  <point lat="21.335300" lon="-157.948300" hae="4.0" ce="9.5" le="15.0"/>
+  <detail>
+    <contact callsign="ALPHA-1"/>
+    <__chatReceipt id="t1" chatroom="Operations" ackuid="ANDROID-22" senderCallsign="BRAVO-2"/>
+    <__serverdestination destinations="takserver-hi:8089:tcp"/>
+    <_radio rssi="-71" gps="3"/>
+    <attachment_list hashes="[&quot;9f2a1c7b&quot;,&quot;4e8d0a13&quot;]"/>
+    <TakControl>
+      <TakProtocolSupport version="1"/>
+      <TakRequest version="1"/>
+      <TakResponse status="true"/>
+    </TakControl>
+  </detail>
+</event>`
+
+	cotDetailFence = `<event version="2.0" uid="FENCE-1" type="u-d-c-c" how="h-g"
+       time="2026-08-09T16:46:00Z" start="2026-08-09T16:46:00Z" stale="2026-08-09T17:46:00Z">
+  <point lat="21.335300" lon="-157.948300" hae="4.0" ce="9999999.0" le="9999999.0"/>
+  <detail>
+    <contact callsign="RESTRICTED"/>
+    <shape><ellipse major="500" minor="500" angle="0"/></shape>
+    <__geofence monitor="All" trigger="Entry" tracking="true"
+                elevationMonitored="true" minElevation="0" maxElevation="300"
+                boundingSphere="500"/>
+  </detail>
+</event>`
+
 	cotDetailUnknown = `<event version="2.0" uid="ANDROID-13" type="a-f-G-U-C" how="m-g"
        time="2026-08-09T16:40:30Z" start="2026-08-09T16:40:30Z" stale="2026-08-09T16:42:30Z">
   <point lat="21.335300" lon="-157.948300" hae="4.0" ce="9.5" le="15.0"/>
@@ -492,6 +521,18 @@ func cotExtensionChunks() []detailChunk {
 			},
 		}), cotShapeLines()...),
 	}, {
+		heading: "Receipts, routing and protocol",
+		lines: append(cotFenceAtom([]cotFencedExample{
+			{
+				note:   "What a TAK server adds on the way through: a GeoChat receipt naming the message it acknowledges, the servers the event was addressed to, a radio's signal strength, the attachments the event references, and a protocol exchange. All of it sits in the sidebar under Payload and Processing path, and none of it reaches the card.",
+				source: cotDetailRouting, info: cotFenceInfo,
+			},
+			{
+				note:   "A geofence, which is behaviour attached to a shape rather than a shape of its own: the circle is what is drawn, and the fence says what crossing it means.",
+				source: cotDetailFence, info: cotFenceInfo,
+			},
+		}), cotRoutingLines()...),
+	}, {
 		heading: "Processing path, and what is not recognised",
 		lines: append(cotFenceAtom([]cotFencedExample{
 			{
@@ -534,6 +575,21 @@ func cotFenceAtom(examples []cotFencedExample) []string {
 
 func cotFenced(source, info string) string {
 	return "```" + info + "\n" + source + "\n```\n"
+}
+
+// cotRoutingLines are the rules the two examples above cannot show.
+func cotRoutingLines() []string {
+	return []string{
+		"- An `attachment_list` is **counted, not printed**. A content hash is longer " +
+			"than a field, so the list would truncate mid-hash into something that " +
+			"looks like a hash and is not, and nothing here resolves a hash to a file: " +
+			"Mattermost file ids bear no relationship to them.\n",
+		"- A radio signal carries its unit. An unlabelled `-71` is a number a reader " +
+			"has to guess the meaning of, which is the same failure as this plugin " +
+			"guessing it.\n",
+		"- `checklist` is still read by nothing, and is counted as unrecognised along " +
+			"with anything else this build does not know.\n",
+	}
 }
 
 // cotShapeLines are the rules a reader cannot infer from the shapes above.

@@ -13,6 +13,9 @@ import {registerCotPanel} from './index';
 interface Props {
     event?: Record<string, unknown>;
 
+    /** Several events, each merged over the same baseline. Overrides `event`. */
+    events?: Array<Record<string, unknown>>;
+
     /** Registry keys, camelCased, merged over an empty block. */
     detail?: Record<string, string>;
     source?: string;
@@ -30,6 +33,7 @@ interface Props {
  */
 const CotPanelHarness: React.FC<Props> = ({
     event = {},
+    events,
     detail = {},
     source = 'fence',
     fileName = '',
@@ -49,8 +53,8 @@ const CotPanelHarness: React.FC<Props> = ({
         src,
         fileId: '',
         fileName,
-        events: [{
-            uid: 'ANDROID-1',
+        events: (events ?? [event]).map((each, index) => ({
+            uid: `ANDROID-${index + 1}`,
             cotClass: '',
             detailUnknown: '',
             detailDropped: '',
@@ -87,8 +91,8 @@ const CotPanelHarness: React.FC<Props> = ({
             remarks: '',
             parent: '',
             related: '',
-            ...event,
-        }],
+            ...each,
+        })),
     };
 
     return (
