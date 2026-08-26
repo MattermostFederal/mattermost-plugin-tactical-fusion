@@ -59,11 +59,18 @@ heading structure.
 
 #### Layout
 
+The bundle is organised **by feature**: one page per decorator, covering it end
+to end. `formats.html` and `panel.html` hold only what is shared.
+
 | File | Covers | Kept in sync with |
 |---|---|---|
 | `help.html` | Landing page, what a decorator is, the consequences of server-side decoration, nav cards | The overall surface |
-| `formats.html` | Recognised grammars, the declined list and its reasons, protected spans | `server/decorators/dtg/{dtg,parse}.go`, `server/decorators/tagger.go` |
-| `panel.html` | The sidebar, the hover card, the standalone page, Customize your view, the zone picker, row ordering | `webapp/src/decorators/dtg/` |
+| `dtg.html` | Date and time grammars, zone letters, the declined list, the panel | `server/decorators/dtg/` |
+| `location.html` | The twelve coordinate grammars, the rows, the map, the declined list, the panel | `server/decorators/location/` |
+| `airfields.html` | The label-only grammar, the database, the table expansion, the panel | `server/decorators/airport/` |
+| `cot.html` | The schema, the type tables, limits and refusals, worked examples, card, panel, map | `server/cot/`, `server/hooks_cot.go`, `webapp/src/cot/` |
+| `formats.html` | The index, and the shared rules: boundaries, consumed labels, protected spans | `server/decorators/{tagger,boundary}.go` |
+| `panel.html` | What a hover, a click and a standalone page are; preferences and row ordering | `webapp/src/decorators/` |
 | `admin.html` | One section per switch, and what a switch does not do | `plugin.json` `settings_schema.settings` |
 | `commands.html` | `/tactical-fusion examples`, bare and unknown subcommands | `server/command.go`, `server/command_examples.go` |
 | `troubleshooting.html` | Symptom, cause and fix, quoting the exact user-facing strings | Every message the server can produce |
@@ -75,12 +82,22 @@ heading structure.
 | What changed | Pages to update |
 |---|---|
 | New or renamed setting in `plugin.json` | `admin.html`: a section with `id` **and** `data-setting="<Key>"`, plus a row in the summary table |
-| New or changed token grammar | `formats.html`, in the recognised or the declined table. A declined entry must say **why** |
-| New protected span in the tagger | `formats.html#protected` |
+| New or changed token grammar | That decorator's page (`dtg`, `location`, `airfields`), in the recognised or the declined table. A declined entry must say **why** |
+| New row in `detailSets` or a new CoT example constant | The matching decorator page. `TestEveryCommandExampleIsDocumented` and `TestEveryCotExampleIsDocumented` **fail until you do** |
+| New `<detail>` extension or CoT type | `cot.html`, in the extension table or the type tables |
+| New protected span or boundary rule in the tagger | `formats.html#protected` or `formats.html#shared-rules` |
 | New or renamed slash subcommand | `commands.html`, plus the "Other input" table if the unknown-subcommand text changed |
-| New panel or editor behaviour | `panel.html` |
+| New panel behaviour for one decorator | That decorator's page |
+| New panel behaviour shared by all of them | `panel.html` |
 | New error code | `error-codes.html` in that file's section, **and** `troubleshooting.html` if a reader can see it |
 | Changed user-facing message text | `troubleshooting.html`, which quotes them verbatim |
+
+**Examples come from the slash commands.** The decorator pages teach from the
+same corpus `example-details` posts (`detailSets` in
+`server/command_example_details.go`, and the CoT documents in
+`server/command_cot_example.go`). Copy the literal from there rather than
+inventing one, so a reader meets the same token in both places. A page may show
+more than the command does, never less.
 
 There is intentionally no `api.html`. The JSON API is an implementation detail
 of the sidebar, and its failures are documented as messages in
@@ -106,7 +123,8 @@ of the sidebar, and its failures are documented as messages in
 
 1. Copy the shell from an existing page: `<head>`, the `<aside class="sidebar">`
    nav, and the breadcrumb. Move `class="active"` onto the new entry.
-2. Add the new page to the nav block of **all** the other pages.
+2. Add the new page to the nav block of **all** the other pages. The block is
+   byte-identical everywhere except for which entry carries `class="active"`.
 3. Add its filename to `helpPages` in `server/help_docs_test.go`.
 4. Add a nav card in `help.html`.
 
@@ -149,7 +167,9 @@ Summarize which pages changed and why, and anything intentionally left alone.
 - Documenting a failure message in `admin.html` instead of
   `troubleshooting.html`. Admin is the happy path; troubleshooting is the home
   for every user-facing failure string.
-- Adding a page but forgetting the other six navigation blocks, or `helpPages`.
+- Adding a page but forgetting the other navigation blocks, or `helpPages`.
+- Writing an example by hand when the slash command already has one. Use its
+  literal; a test enforces that every catalog row appears somewhere.
 - Using em dashes. The repo convention forbids them in docs and code.
 - Hardcoding the plugin id. It belongs in `plugin.json` only; the webapp uses
   `docsUrl()` in `webapp/src/plugin_url.ts`. If a Go helper is ever needed it

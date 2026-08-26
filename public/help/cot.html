@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cursor on Target - Tactical Fusion</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <h2>Tactical Fusion</h2>
+            <span class="version">Plugin Documentation</span>
+        </div>
+        <nav>
+            <span class="nav-section">Documentation</span>
+            <a href="help.html">Overview</a>
+            <span class="nav-section">Decorators</span>
+            <a href="dtg.html">Date-Time Groups</a>
+            <a href="location.html">Coordinates</a>
+            <a href="airfields.html">Airfields</a>
+            <a href="cot.html" class="active">Cursor on Target</a>
+            <span class="nav-section">Guides</span>
+            <a href="formats.html">Recognized Formats</a>
+            <a href="panel.html">The Sidebar Panel</a>
+            <a href="admin.html">Admin Settings</a>
+            <a href="commands.html">Slash Commands</a>
+            <span class="nav-section">Reference</span>
+            <a href="troubleshooting.html">Troubleshooting</a>
+            <a href="error-codes.html">Error Codes</a>
+        </nav>
+    </aside>
+
+    <main class="content">
+        <div class="breadcrumb">
+            <a href="help.html">Docs</a>
+            <span class="separator">/</span>
+            Cursor on Target
+        </div>
+
+        <h1>Cursor on Target</h1>
+        <p class="tagline">The schema this build reads, what it refuses, and worked examples of every kind of event.</p>
+
+        <div class="alert alert-info">
+            <p>
+                Settings: <a href="admin.html#enable-cot"><code>EnableCot</code></a> and
+                <a href="admin.html#enable-cot-file"><code>EnableCotFile</code></a>. Every example
+                on this page is one this build's own
+                <a href="commands.html#example-details"><code>/tactical-fusion example-details</code></a>
+                posts, so what you read here is what your server will do.
+            </p>
+        </div>
+
+        <p>
+            A Cursor on Target event is rendered as a <strong>card</strong> rather than linked:
+            the callsign and what the event says it is, the position, when it was taken and when
+            it goes stale, and how accurately the position is known. The position is drawn on a
+            map with its stated circular error around it, so a three metre fix and a nine
+            kilometre fix do not look alike.
+        </p>
+
+        <h2 id="cot-posting">Posting an event</h2>
+
+        <h3 id="cot-fence">In a fenced code block</h3>
+
+        <p>Paste the event into a fence labelled <code>cot</code> or <code>xml</code>:</p>
+
+        <pre class="copyable"><code>&lt;event version="2.0" uid="TGT-9F2A1C7B" type="a-h-G-U-C-A" how="h-e"
+       time="2026-08-09T16:30:00Z" start="2026-08-09T16:30:00Z" stale="2026-08-09T16:32:00Z"&gt;
+  &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="45.0" le="60.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="TGT01"/&gt;
+    &lt;link uid="ANDROID-88" relation="p-p" parent_callsign="ALPHA"/&gt;
+    &lt;remarks&gt;two vehicles, stationary&lt;/remarks&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;</code></pre>
+
+        <p>
+            Both labels are read the same way. Use <code>cot</code> when you mean it: a block
+            labelled <code>xml</code> that turns out not to be an event is left alone silently,
+            because plenty of XML is not Cursor on Target, while a block you labelled
+            <code>cot</code> tells you why it was not rendered.
+        </p>
+
+        <h3 id="cot-bare">Without a fence</h3>
+
+        <p>
+            An event written on <strong>one line</strong> needs no fence at all:
+        </p>
+
+        <pre class="copyable"><code>&lt;event version="2.0" uid="TGT-9F2A1C7B" type="a-h-G-U-C-A" how="h-e" time="2026-08-09T16:30:00Z" start="2026-08-09T16:30:00Z" stale="2026-08-09T16:32:00Z"&gt;&lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="45.0" le="60.0"/&gt;&lt;detail&gt;&lt;contact callsign="TGT01"/&gt;&lt;link uid="ANDROID-88" relation="p-p" parent_callsign="ALPHA"/&gt;&lt;remarks&gt;two vehicles, stationary&lt;/remarks&gt;&lt;/detail&gt;&lt;/event&gt;</code></pre>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">Only the flat form is found without a fence.</p>
+            <p>
+                An indented event is not. Four spaces of indentation is markdown's own syntax for
+                a code block, and the plugin will not reach inside one. The indented example above
+                is recognized because it is fenced, not in spite of it.
+            </p>
+        </div>
+
+        <h3 id="cot-file">As an attached file</h3>
+
+        <p>Setting: <a href="admin.html#enable-cot-file"><code>EnableCotFile</code></a></p>
+
+        <p>
+            A single attached file ending <code>.cot</code> or <code>.xml</code> is read, and it
+            may carry an XML declaration:
+        </p>
+
+        <pre class="copyable"><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;event version="2.0" uid="TGT-9F2A1C7B" type="a-h-G-U-C-A" how="h-e"
+       time="2026-08-09T16:30:00Z" start="2026-08-09T16:30:00Z" stale="2026-08-09T16:32:00Z"&gt;
+  &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="45.0" le="60.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="TGT01"/&gt;
+    &lt;link uid="ANDROID-88" relation="p-p" parent_callsign="ALPHA"/&gt;
+    &lt;remarks&gt;two vehicles, stationary&lt;/remarks&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;</code></pre>
+
+        <p>Conditions, all of which must hold:</p>
+
+        <table>
+            <thead>
+                <tr><th>Condition</th><th>Why</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Exactly one attachment</td><td>Two files give no basis for choosing which one is the event.</td></tr>
+                <tr><td>64 KB or smaller</td><td>The same limit the fenced path uses.</td></tr>
+                <tr><td>Uploaded by the poster</td><td>Checked before the file store is touched, so a post cannot be made to read somebody else's upload.</td></tr>
+                <tr><td>Not already attached elsewhere</td><td>A file that already belongs to another post is not re-read.</td></tr>
+            </tbody>
+        </table>
+
+        <p>Two events in one file are read as a batch:</p>
+
+        <pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-5" type="a-f-G-U-C" how="m-g"
+       time="2026-08-09T16:33:00Z" start="2026-08-09T16:33:00Z" stale="2026-08-09T16:35:00Z"&gt;
+  &lt;point lat="21.318700" lon="-157.922400" hae="6.0" ce="8.0" le="12.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="ECHO1"/&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;
+&lt;event version="2.0" uid="ANDROID-6" type="a-f-G-U-C" how="m-g"
+       time="2026-08-09T16:33:02Z" start="2026-08-09T16:33:02Z" stale="2026-08-09T16:35:02Z"&gt;
+  &lt;point lat="21.319900" lon="-157.921100" hae="6.0" ce="8.0" le="12.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="ECHO2"/&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;</code></pre>
+
+        <h2 id="cot-event">The <code>&lt;event&gt;</code> element</h2>
+
+        <table>
+            <thead>
+                <tr><th>Attribute</th><th>Required</th><th>Read as</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>uid</code></td><td><span class="pill pill-yes">yes</span></td><td>The event's identity. Shown on the card, always.</td></tr>
+                <tr><td><code>type</code></td><td><span class="pill pill-yes">yes</span></td><td>Decoded into a label. See <a href="#cot-type">decoding the type</a>.</td></tr>
+                <tr><td><code>time</code></td><td><span class="pill pill-yes">yes</span></td><td>When the event was taken. Must be RFC 3339.</td></tr>
+                <tr><td><code>start</code></td><td><span class="pill pill-optional">optional</span></td><td>When it becomes valid. Shown on the card only when it differs from <code>time</code>.</td></tr>
+                <tr><td><code>stale</code></td><td><span class="pill pill-optional">optional</span></td><td>When it expires. Drives the validity window and the countdown.</td></tr>
+                <tr><td><code>how</code></td><td><span class="pill pill-optional">optional</span></td><td>How the position was arrived at. See <a href="#cot-how">the how table</a>.</td></tr>
+                <tr><td><code>version</code></td><td><span class="pill pill-no">ignored</span></td><td>Accepted and never read.</td></tr>
+                <tr><td><code>access</code></td><td><span class="pill pill-no">ignored</span></td><td>Accepted and never read.</td></tr>
+                <tr><td><code>qos</code></td><td><span class="pill pill-no">ignored</span></td><td>Accepted and never read.</td></tr>
+                <tr><td><code>opex</code></td><td><span class="pill pill-no">ignored</span></td><td>Accepted and never read.</td></tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">Four attributes are accepted and ignored.</p>
+            <p>
+                <code>version</code>, <code>access</code>, <code>qos</code> and <code>opex</code>
+                are legal input and this build has no code path for any of them. They are never
+                stored and never rendered. They are visible only in the <strong>As posted</strong>
+                pane, which shows the event exactly as you wrote it. Nothing on the card is
+                gated on <code>access</code>, so do not rely on it to mark an event restricted.
+            </p>
+        </div>
+
+        <p>
+            An event missing a <code>uid</code>, a <code>type</code> or a <code>time</code> is
+            refused, and refusing it refuses the whole source. A duplicate attribute takes its
+            <strong>first</strong> occurrence.
+        </p>
+
+        <h2 id="cot-point">The <code>&lt;point&gt;</code> element</h2>
+
+        <table>
+            <thead>
+                <tr><th>Attribute</th><th>Range</th><th>Rendered as</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>lat</code></td><td>-90 to 90</td><td>Position, and a link to the coordinate tools.</td></tr>
+                <tr><td><code>lon</code></td><td>-180 to 180</td><td>Position.</td></tr>
+                <tr><td><code>hae</code></td><td>Any, including negative</td><td>Altitude (HAE), in metres.</td></tr>
+                <tr><td><code>ce</code></td><td>Non-negative</td><td>Accuracy, circular. Drawn on the map as a circle.</td></tr>
+                <tr><td><code>le</code></td><td>Non-negative</td><td>Accuracy, vertical.</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Coordinates must be written as <strong>plain decimals</strong>. Go accepts
+            hexadecimal and exponent notation where a browser's <code>Number</code> does not, and
+            a value that validated on the server and read as <code>NaN</code> in the browser would
+            leave the card and the map disagreeing.
+        </p>
+
+        <p>What the card says about a position, in the order it decides:</p>
+
+        <table>
+            <thead>
+                <tr><th>The event says</th><th>The card shows</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>No <code>lat</code>/<code>lon</code>, or not a plain decimal</td><td>"The event states no position."</td></tr>
+                <tr><td>Outside the range of the earth</td><td>"The event reports a position outside the range of the earth."</td></tr>
+                <tr><td><code>0,0</code></td><td>The numbers, and a note that this is the value for a position that was never set. No pin.</td></tr>
+                <tr><td>Fewer than four decimal places</td><td>The numbers, and a note that it is too coarse to link. No pin.</td></tr>
+                <tr><td>A good position</td><td>The numbers, a link to the coordinate tools, and a pin.</td></tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-info">
+            <p class="alert-title">9999999.0 means "not known".</p>
+            <p>
+                Any value at or beyond it is treated as unstated and its row is left out entirely
+                rather than printed as a very large number. Shape events use it routinely for
+                <code>ce</code> and <code>le</code>.
+            </p>
+        </div>
+
+        <h2 id="cot-type">Decoding the type</h2>
+
+        <p>
+            A type such as <code>a-h-G-U-C-A</code> is read left to right. The leading
+            <code>a</code> means an atom, the next character is the affiliation, and everything
+            after it is a path into the type table:
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Segment</th><th>Means</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>a</code></td><td>An atom, that is, a thing rather than an event about a thing.</td></tr>
+                <tr><td><code>h</code></td><td>Hostile.</td></tr>
+                <tr><td><code>G</code></td><td>Ground Track.</td></tr>
+                <tr><td><code>G-U</code></td><td>Ground Unit.</td></tr>
+                <tr><td><code>G-U-C</code></td><td>Ground Combat Unit.</td></tr>
+                <tr><td><code>G-U-C-A</code></td><td>Armor Unit.</td></tr>
+            </tbody>
+        </table>
+
+        <p>The card reads out the longest path that matches, in front of the affiliation: <strong>Hostile Armor Unit</strong>.</p>
+
+        <h3 id="cot-affiliation">Affiliation</h3>
+
+        <table>
+            <thead>
+                <tr><th>Character</th><th>Label</th><th>Colour on the map</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>f</code></td><td>Friendly</td><td>Blue</td></tr>
+                <tr><td><code>a</code></td><td>Assumed Friendly</td><td>Blue</td></tr>
+                <tr><td><code>n</code></td><td>Neutral</td><td>Green</td></tr>
+                <tr><td><code>h</code></td><td>Hostile</td><td>Red</td></tr>
+                <tr><td><code>s</code></td><td>Suspect</td><td>Red</td></tr>
+                <tr><td><code>p</code></td><td>Pending</td><td>Amber</td></tr>
+                <tr><td><code>u</code></td><td>Unknown</td><td>Amber</td></tr>
+                <tr><td><code>j</code></td><td>Joker</td><td>Grey</td></tr>
+                <tr><td><code>k</code></td><td>Faker</td><td>Grey</td></tr>
+                <tr><td><code>o</code></td><td>Unaffiliated</td><td>Grey</td></tr>
+                <tr><td><code>x</code></td><td>Other</td><td>Grey</td></tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">Colour is the only affiliation channel on the map.</p>
+            <p>
+                The marker is a crosshair whose colour carries the affiliation, and the hues are
+                close in luminance. Shape coding, as MIL-STD-2525 does it, is the real fix and
+                this build does not do it. Read the card rather than the pin where it matters.
+            </p>
+        </div>
+
+        <h3 id="cot-atoms">The atom path</h3>
+
+        <p>Five branches at the top:</p>
+
+        <table>
+            <thead>
+                <tr><th>Path</th><th>Label</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>A</code></td><td>Air Track</td></tr>
+                <tr><td><code>G</code></td><td>Ground Track</td></tr>
+                <tr><td><code>S</code></td><td>Sea Surface Track</td></tr>
+                <tr><td><code>U</code></td><td>Subsurface Track</td></tr>
+                <tr><td><code>X</code></td><td>Other</td></tr>
+            </tbody>
+        </table>
+
+        <p>Sixteen below them:</p>
+
+        <table>
+            <thead>
+                <tr><th>Path</th><th>Label</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>A-C</code></td><td>Civil Aircraft</td></tr>
+                <tr><td><code>A-M</code></td><td>Military Aircraft</td></tr>
+                <tr><td><code>A-W</code></td><td>Air Weapon</td></tr>
+                <tr><td><code>G-E</code></td><td>Ground Equipment</td></tr>
+                <tr><td><code>G-I</code></td><td>Ground Installation</td></tr>
+                <tr><td><code>G-U</code></td><td>Ground Unit</td></tr>
+                <tr><td><code>S-C</code></td><td>Surface Combatant</td></tr>
+                <tr><td><code>S-G</code></td><td>Navy Group</td></tr>
+                <tr><td><code>S-N</code></td><td>Surface Noncombatant</td></tr>
+                <tr><td><code>S-O</code></td><td>Own Track</td></tr>
+                <tr><td><code>S-S</code></td><td>Sea Station</td></tr>
+                <tr><td><code>S-X</code></td><td>Non Military Surface</td></tr>
+                <tr><td><code>U-N</code></td><td>Non Submarine</td></tr>
+                <tr><td><code>U-S</code></td><td>Submarine</td></tr>
+                <tr><td><code>U-W</code></td><td>Underwater Weapon</td></tr>
+                <tr><td><code>X-i</code></td><td>Incident</td></tr>
+            </tbody>
+        </table>
+
+        <p>Air, third level:</p>
+
+        <table>
+            <thead>
+                <tr><th>Path</th><th>Label</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>A-C-F</code></td><td>Civil Fixed Wing Aircraft</td></tr>
+                <tr><td><code>A-C-H</code></td><td>Civil Rotary Wing Aircraft</td></tr>
+                <tr><td><code>A-C-L</code></td><td>Civil Lighter than Air</td></tr>
+                <tr><td><code>A-M-F</code></td><td>Military Fixed Wing Aircraft</td></tr>
+                <tr><td><code>A-M-H</code></td><td>Military Rotary Wing Aircraft</td></tr>
+                <tr><td><code>A-M-L</code></td><td>Military Lighter than Air</td></tr>
+                <tr><td><code>A-W-D</code></td><td>Air Decoy</td></tr>
+                <tr><td><code>A-W-M</code></td><td>Missile In Flight</td></tr>
+            </tbody>
+        </table>
+
+        <p>Ground, third level:</p>
+
+        <table>
+            <thead>
+                <tr><th>Path</th><th>Label</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>G-E-S</code></td><td>Sensor</td></tr>
+                <tr><td><code>G-E-V</code></td><td>Ground Vehicle</td></tr>
+                <tr><td><code>G-E-W</code></td><td>Weapon</td></tr>
+                <tr><td><code>G-E-X</code></td><td>Special Equipment</td></tr>
+                <tr><td><code>G-I-B</code></td><td>Military Base/Facility</td></tr>
+                <tr><td><code>G-I-E</code></td><td>Equipment Manufacture</td></tr>
+                <tr><td><code>G-I-G</code></td><td>Government Leadership</td></tr>
+                <tr><td><code>G-I-M</code></td><td>Military Materiel Facility</td></tr>
+                <tr><td><code>G-I-P</code></td><td>Processing Facility</td></tr>
+                <tr><td><code>G-I-R</code></td><td>Raw Material Production/Storage</td></tr>
+                <tr><td><code>G-I-T</code></td><td>Transport Facility</td></tr>
+                <tr><td><code>G-I-U</code></td><td>Service, Research, Utility Facility</td></tr>
+                <tr><td><code>G-I-X</code></td><td>Medical Facility</td></tr>
+                <tr><td><code>G-I-c</code></td><td>Civilian</td></tr>
+                <tr><td><code>G-I-i</code></td><td>IM Facilities</td></tr>
+                <tr><td><code>G-I-r</code></td><td>Road</td></tr>
+                <tr><td><code>G-U-C</code></td><td>Ground Combat Unit</td></tr>
+                <tr><td><code>G-U-H</code></td><td>Special C2 Headquarters Component</td></tr>
+                <tr><td><code>G-U-S</code></td><td>Combat Service Support Unit</td></tr>
+                <tr><td><code>G-U-U</code></td><td>Ground Support Unit</td></tr>
+                <tr><td><code>G-U-i</code></td><td>Incident Management Resources</td></tr>
+            </tbody>
+        </table>
+
+        <p>Sea surface and subsurface:</p>
+
+        <table>
+            <thead>
+                <tr><th>Path</th><th>Label</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>S-C-A</code></td><td>Amphibious Warfare Ship</td></tr>
+                <tr><td><code>S-C-H</code></td><td>Combatant Hovercraft</td></tr>
+                <tr><td><code>S-C-L</code></td><td>Line</td></tr>
+                <tr><td><code>S-C-M</code></td><td>Mine Warfare Vessel</td></tr>
+                <tr><td><code>S-C-P</code></td><td>Patrol</td></tr>
+                <tr><td><code>S-G-C</code></td><td>Convoy</td></tr>
+                <tr><td><code>S-G-G</code></td><td>Navy Task Group</td></tr>
+                <tr><td><code>S-G-T</code></td><td>Navy Task Force</td></tr>
+                <tr><td><code>S-G-U</code></td><td>Navy Task Unit</td></tr>
+                <tr><td><code>S-N-F</code></td><td>Fleet Support</td></tr>
+                <tr><td><code>S-N-H</code></td><td>Noncombatant Hovercraft</td></tr>
+                <tr><td><code>S-N-I</code></td><td>Intelligence</td></tr>
+                <tr><td><code>S-N-M</code></td><td>Hospital Ship</td></tr>
+                <tr><td><code>S-N-N</code></td><td>Surface Station</td></tr>
+                <tr><td><code>S-N-R</code></td><td>Underway Replenishment</td></tr>
+                <tr><td><code>S-N-S</code></td><td>Service/Support Harbor</td></tr>
+                <tr><td><code>S-S-A</code></td><td>ASW Ship</td></tr>
+                <tr><td><code>S-S-P</code></td><td>Picket</td></tr>
+                <tr><td><code>S-X-F</code></td><td>Fishing</td></tr>
+                <tr><td><code>S-X-H</code></td><td>Non Military Hovercraft</td></tr>
+                <tr><td><code>S-X-L</code></td><td>Law Enforcement Vessel</td></tr>
+                <tr><td><code>S-X-M</code></td><td>Merchant</td></tr>
+                <tr><td><code>S-X-R</code></td><td>Leisure Craft</td></tr>
+                <tr><td><code>U-N-D</code></td><td>Diver</td></tr>
+                <tr><td><code>U-S-C</code></td><td>Submarine Conventional Propulsion</td></tr>
+                <tr><td><code>U-S-N</code></td><td>Submarine Nuclear Propulsion</td></tr>
+                <tr><td><code>U-S-O</code></td><td>Other Submersible</td></tr>
+                <tr><td><code>U-S-S</code></td><td>Submarine Station</td></tr>
+                <tr><td><code>U-S-U</code></td><td>Unmanned Underwater Vehicle (UUV)</td></tr>
+                <tr><td><code>U-W-D</code></td><td>Underwater Decoy</td></tr>
+                <tr><td><code>U-W-M</code></td><td>Sea Mine</td></tr>
+                <tr><td><code>U-W-T</code></td><td>Torpedo</td></tr>
+            </tbody>
+        </table>
+
+        <p>Incidents:</p>
+
+        <table>
+            <thead>
+                <tr><th>Path</th><th>Label</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>X-i-c</code></td><td>CBRNE</td></tr>
+                <tr><td><code>X-i-e</code></td><td>Pollution and other Environmental</td></tr>
+                <tr><td><code>X-i-f</code></td><td>Incident Fire</td></tr>
+                <tr><td><code>X-i-f-h</code></td><td>Incident Fire Hot Spot</td></tr>
+                <tr><td><code>X-i-f-n</code></td><td>Incident Fire Non-residential</td></tr>
+                <tr><td><code>X-i-f-n-h</code></td><td>Incident Fire Non-residential Special Need</td></tr>
+                <tr><td><code>X-i-f-n-s</code></td><td>Incident Fire Non-residential School</td></tr>
+                <tr><td><code>X-i-f-o</code></td><td>Incident Fire Origin</td></tr>
+                <tr><td><code>X-i-f-p</code></td><td>Incident Fire Special Needs</td></tr>
+                <tr><td><code>X-i-f-r</code></td><td>Incident Fire Residential</td></tr>
+                <tr><td><code>X-i-f-s</code></td><td>Incident Fire Smoke</td></tr>
+                <tr><td><code>X-i-f-w</code></td><td>Incident Fire Wild</td></tr>
+                <tr><td><code>X-i-g</code></td><td>Geophysical</td></tr>
+                <tr><td><code>X-i-g-a</code></td><td>Geophysical Avalanche</td></tr>
+                <tr><td><code>X-i-g-e</code></td><td>Geophysical Earthquake</td></tr>
+                <tr><td><code>X-i-g-e-a</code></td><td>Geophysical Earthquake Aftershock</td></tr>
+                <tr><td><code>X-i-g-e-e</code></td><td>Geophysical Earthquake Epicenter</td></tr>
+                <tr><td><code>X-i-g-l</code></td><td>Geophysical Landslide</td></tr>
+                <tr><td><code>X-i-g-s</code></td><td>Geophysical Subsistance</td></tr>
+                <tr><td><code>X-i-g-v</code></td><td>Geophysical Volcano</td></tr>
+                <tr><td><code>X-i-g-v-e</code></td><td>Geophysical Volcano Eruption</td></tr>
+                <tr><td><code>X-i-g-v-t</code></td><td>Geophysical Volcano Threat</td></tr>
+                <tr><td><code>X-i-h</code></td><td>Medical and Public Health</td></tr>
+                <tr><td><code>X-i-i</code></td><td>Infrastructure</td></tr>
+                <tr><td><code>X-i-l</code></td><td>Security</td></tr>
+                <tr><td><code>X-i-l-c</code></td><td>Security Civil Disturbance</td></tr>
+                <tr><td><code>X-i-l-c-d</code></td><td>Security Civil Disturbance Demonstration</td></tr>
+                <tr><td><code>X-i-l-c-p</code></td><td>Security Civil Disturbance Displaced Population</td></tr>
+                <tr><td><code>X-i-l-c-r</code></td><td>Security Civil Disturbance Rioting</td></tr>
+                <tr><td><code>X-i-l-l</code></td><td>Security Law Enforcement Activity</td></tr>
+                <tr><td><code>X-i-l-l-b</code></td><td>Security Law Enforcement Activity Bombing</td></tr>
+                <tr><td><code>X-i-l-l-b-e</code></td><td>Security Law Enforcement Activity Bombing Explosion</td></tr>
+                <tr><td><code>X-i-l-l-b-t</code></td><td>Security Law Enforcement Activity Bombing Threat</td></tr>
+                <tr><td><code>X-i-l-l-l</code></td><td>Security Law Enforcement Activity Looting</td></tr>
+                <tr><td><code>X-i-l-l-p</code></td><td>Security Law Enforcement Activity Poisoning</td></tr>
+                <tr><td><code>X-i-l-l-s</code></td><td>Security Law Enforcement Activity Shooting</td></tr>
+                <tr><td><code>X-i-m</code></td><td>Meteorological Incident</td></tr>
+                <tr><td><code>X-i-m-a</code></td><td>Meteorological Sandstorm</td></tr>
+                <tr><td><code>X-i-m-c</code></td><td>Meteorological Cyclone</td></tr>
+                <tr><td><code>X-i-m-d</code></td><td>Meteorological Drought</td></tr>
+                <tr><td><code>X-i-m-f</code></td><td>Meteorological Flood</td></tr>
+                <tr><td><code>X-i-m-g</code></td><td>Meteorological Fog</td></tr>
+                <tr><td><code>X-i-m-h</code></td><td>Meteorological Hail</td></tr>
+                <tr><td><code>X-i-m-i</code></td><td>Meteorological Inversion</td></tr>
+                <tr><td><code>X-i-m-n</code></td><td>Meteorological Tsunami</td></tr>
+                <tr><td><code>X-i-m-r</code></td><td>Meteorological Rain</td></tr>
+                <tr><td><code>X-i-m-s</code></td><td>Meteorological Snow</td></tr>
+                <tr><td><code>X-i-m-t</code></td><td>Meteorological Tornado</td></tr>
+                <tr><td><code>X-i-m-u</code></td><td>Meteorological Thunderstorm</td></tr>
+                <tr><td><code>X-i-m-z</code></td><td>Meteorological Drizzle</td></tr>
+                <tr><td><code>X-i-o</code></td><td>Other Incident</td></tr>
+                <tr><td><code>X-i-r</code></td><td>Rescue Incident</td></tr>
+                <tr><td><code>X-i-s</code></td><td>Safety</td></tr>
+                <tr><td><code>X-i-t</code></td><td>Public and Private transportation</td></tr>
+                <tr><td><code>X-i-t-a</code></td><td>Public and Private transportation Air Incident</td></tr>
+                <tr><td><code>X-i-t-a-a</code></td><td>Public and Private transportation Air Accident</td></tr>
+                <tr><td><code>X-i-t-a-h</code></td><td>Public and Private transportation Air Hijacking</td></tr>
+                <tr><td><code>X-i-t-m</code></td><td>Public and Private transportation Maritime Incident</td></tr>
+                <tr><td><code>X-i-t-m-a</code></td><td>Public and Private transportation Maritime Accident</td></tr>
+                <tr><td><code>X-i-t-m-h</code></td><td>Public and Private transportation Maritime Hijacking</td></tr>
+                <tr><td><code>X-i-t-r</code></td><td>Public and Private transportation Rail Incident</td></tr>
+                <tr><td><code>X-i-t-r-a</code></td><td>Public and Private transportation Rail Accident</td></tr>
+                <tr><td><code>X-i-t-r-h</code></td><td>Public and Private transportation Rail Hijacking</td></tr>
+                <tr><td><code>X-i-t-v</code></td><td>Public and Private transportation Vehicle Incident</td></tr>
+                <tr><td><code>X-i-t-v-a</code></td><td>Public and Private transportation Vehicle Accident</td></tr>
+                <tr><td><code>X-i-t-v-h</code></td><td>Public and Private transportation Vehicle Hijacking</td></tr>
+            </tbody>
+        </table>
+
+        <p>The two branches a reader meets most often, at their fourth level:</p>
+
+        <table>
+            <thead>
+                <tr><th>Path</th><th>Label</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>G-E-V-A</code></td><td>Armor (Gun)</td></tr>
+                <tr><td><code>G-E-V-C</code></td><td>Civilian Vehicle</td></tr>
+                <tr><td><code>G-E-V-E</code></td><td>Engineer Vehicle</td></tr>
+                <tr><td><code>G-E-V-T</code></td><td>Locomotive</td></tr>
+                <tr><td><code>G-E-V-U</code></td><td>Utility Vehicle</td></tr>
+                <tr><td><code>G-E-V-m</code></td><td>Ambulance</td></tr>
+                <tr><td><code>G-U-C-A</code></td><td>Armor Unit</td></tr>
+                <tr><td><code>G-U-C-D</code></td><td>Air Defense Unit</td></tr>
+                <tr><td><code>G-U-C-E</code></td><td>Engineer Unit</td></tr>
+                <tr><td><code>G-U-C-F</code></td><td>Field Artillery Unit</td></tr>
+                <tr><td><code>G-U-C-I</code></td><td>Infantry Unit</td></tr>
+                <tr><td><code>G-U-C-M</code></td><td>Missile (Surf Surf)</td></tr>
+                <tr><td><code>G-U-C-R</code></td><td>Reconnaissance Unit</td></tr>
+                <tr><td><code>G-U-C-S</code></td><td>Internal Security Forces</td></tr>
+                <tr><td><code>G-U-C-V</code></td><td>Army Aviation Unit</td></tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-info">
+            <p class="alert-title">The table is deeper than this page.</p>
+            <p>
+                It carries 1,006 paths, as deep as seven segments, and the full list lives beside
+                the code in <code>server/cot/data/types.csv</code> rather than here. The paths
+                above are the ones almost every event uses. A path this build does not hold falls
+                back to the affiliation alone, so <code>a-f-A-Z-Z</code> reads simply
+                <strong>Friendly</strong>.
+            </p>
+        </div>
+
+        <p>
+            <strong>The path is case sensitive.</strong> <code>G-I-r</code> is Road and
+            <code>G-I-R</code> is Raw Material Production or Storage. They are different rows.
+        </p>
+
+        <h3 id="cot-whole-types">Types that are not atoms</h3>
+
+        <p>
+            An event <em>about</em> something, rather than a thing, is matched whole. A longer
+            code falls back to the longest of these it starts with, so <code>b-t-f-r</code> is a
+            Chat Message.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Type</th><th>Label</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>b-t-f</code></td><td>Chat Message</td></tr>
+                <tr><td><code>b-m-p-s-p-i</code></td><td>Designated Point</td></tr>
+                <tr><td><code>b-m-p-s-m</code></td><td>Survey Point</td></tr>
+                <tr><td><code>b-m-p-w</code></td><td>Waypoint</td></tr>
+                <tr><td><code>b-m-r</code></td><td>Route</td></tr>
+                <tr><td><code>b-a-o-tbl</code></td><td>Emergency Alert</td></tr>
+                <tr><td><code>b-a-o-can</code></td><td>Emergency Cancelled</td></tr>
+                <tr><td><code>b-a-g</code></td><td>Geofence Breach</td></tr>
+                <tr><td><code>b-r-f-h-c</code></td><td>Casualty Evacuation Request</td></tr>
+                <tr><td><code>b-l-p-c</code></td><td>Sensor Point of Interest</td></tr>
+                <tr><td><code>u-d-f</code></td><td>Drawn Shape</td></tr>
+                <tr><td><code>u-d-c-c</code></td><td>Drawn Circle</td></tr>
+                <tr><td><code>u-r-b-bullseye</code></td><td>Bullseye</td></tr>
+                <tr><td><code>t-x-takp-v</code></td><td>TAK Client Version</td></tr>
+                <tr><td><code>t-x-c-t</code></td><td>Ping</td></tr>
+                <tr><td><code>t-x-c-t-r</code></td><td>Ping Response</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            A type this build cannot decode is not an error. The card says
+            <strong>Unrecognized event type</strong> and prints the raw code beside it, so nothing
+            the event stated is lost.
+        </p>
+
+        <h2 id="cot-how">The <code>how</code> attribute</h2>
+
+        <p>Rendered on the card as <strong>Source</strong>, written method first:</p>
+
+        <table>
+            <thead>
+                <tr><th><code>how</code></th><th>Reads as</th><th><code>how</code></th><th>Reads as</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>m-g</code></td><td>Machine, GPS</td><td><code>h-e</code></td><td>Human, Estimated</td></tr>
+                <tr><td><code>m-p</code></td><td>Machine, Measured</td><td><code>h-c</code></td><td>Human, Calculated</td></tr>
+                <tr><td><code>m-i</code></td><td>Machine, Inertial</td><td><code>h-t</code></td><td>Human, Transcribed</td></tr>
+                <tr><td><code>m-f</code></td><td>Machine, Fused</td><td><code>h-g</code></td><td>Human, Map Plotted</td></tr>
+                <tr><td><code>m-c</code></td><td>Machine, Configured</td><td><code>h-p</code></td><td>Human, Precision Plotted</td></tr>
+                <tr><td><code>m-r</code></td><td>Machine, Relayed</td><td><code>h-i</code></td><td>Human, Mensurated</td></tr>
+                <tr><td><code>m-a</code></td><td>Machine, Derived</td><td></td><td></td></tr>
+                <tr><td><code>m-s</code></td><td>Machine, Simulated</td><td></td><td></td></tr>
+                <tr><td><code>m-n</code></td><td>Machine, Not Stated</td><td></td><td></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            A longer code that is not in the table but begins <code>m-</code> or <code>h-</code>
+            falls back to the method alone. ATAK's GeoChat writes <code>how="h-g-i-g-o"</code>,
+            which reads as <strong>Human</strong> rather than as Map Plotted, because this build
+            will not guess at the rest.
+        </p>
+
+        <h2 id="cot-detail">The <code>&lt;detail&gt;</code> block</h2>
+
+        <p>
+            <code>&lt;detail&gt;</code> is an open container. There is no schema for it: ATAK, TAK
+            Server, FreeTAKServer and third party plugins each write their own conventions into
+            it. This build reads the ones it knows and leaves the rest alone, so an element it
+            does not recognise costs you nothing.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Element</th><th>Inside</th><th>Attributes read</th><th>Shown as</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>contact</code></td><td><code>detail</code></td><td><code>callsign</code>, <code>endpoint</code></td><td>The card's title, and Network endpoint</td></tr>
+                <tr><td><code>__group</code></td><td><code>detail</code></td><td><code>name</code>, <code>role</code></td><td>Team and Role</td></tr>
+                <tr><td><code>track</code></td><td><code>detail</code></td><td><code>speed</code>, <code>course</code>, <code>slope</code></td><td>Track, and Slope under Orientation</td></tr>
+                <tr><td><code>remarks</code></td><td><code>detail</code></td><td>text content</td><td>Remarks</td></tr>
+                <tr><td><code>link</code></td><td><code>detail</code></td><td><code>uid</code>, <code>relation</code>, <code>parent_callsign</code>, <code>point</code></td><td>Sent by and Relates to, or a <a href="#cot-geometry">route vertex</a></td></tr>
+                <tr><td><code>uid</code></td><td><code>detail</code></td><td><code>Droid</code></td><td>Device id</td></tr>
+                <tr><td><code>takv</code></td><td><code>detail</code></td><td><code>device</code>, <code>platform</code>, <code>os</code>, <code>version</code></td><td>Device group</td></tr>
+                <tr><td><code>precisionlocation</code></td><td><code>detail</code></td><td><code>geopointsrc</code>, <code>altsrc</code>, <code>pdop</code>, <code>hdop</code>, <code>vdop</code></td><td>Position quality group</td></tr>
+                <tr><td><code>status</code></td><td><code>detail</code></td><td><code>battery</code>, <code>readiness</code></td><td>Device group</td></tr>
+                <tr><td><code>archive</code></td><td><code>detail</code></td><td>presence only</td><td>"The event asks to be kept"</td></tr>
+                <tr><td><code>usericon</code></td><td><code>detail</code></td><td><code>iconsetpath</code></td><td>Icon, as text</td></tr>
+                <tr><td><code>color</code></td><td><code>detail</code></td><td><code>argb</code></td><td>Stated display colour, a swatch and a hex value</td></tr>
+                <tr><td><code>Attitude</code></td><td><code>detail</code></td><td><code>roll</code>, <code>pitch</code>, <code>yaw</code></td><td>Orientation group</td></tr>
+                <tr><td><code>sensor</code></td><td><code>detail</code></td><td><code>azimuth</code>, <code>elevation</code>, <code>range</code>, <code>fov</code>, <code>vfov</code>, <code>roll</code>, <code>model</code></td><td>Payload, Sensor</td></tr>
+                <tr><td><code>__video</code></td><td><code>detail</code></td><td><code>uid</code>, <code>url</code></td><td>Payload, Video</td></tr>
+                <tr><td><code>ConnectionEntry</code></td><td><code>__video</code></td><td><code>address</code>, <code>port</code>, <code>protocol</code>, <code>path</code></td><td>Payload, Video</td></tr>
+                <tr><td><code>__chat</code></td><td><code>detail</code></td><td><code>senderCallsign</code>, <code>chatroom</code>, <code>id</code>, <code>parent</code>, <code>groupOwner</code></td><td>Payload, GeoChat</td></tr>
+                <tr><td><code>chatgrp</code></td><td><code>__chat</code></td><td><code>uid0</code>, <code>uid1</code>, <code>id</code></td><td>Payload, GeoChat</td></tr>
+                <tr><td><code>link_attr</code></td><td><code>detail</code></td><td><code>routetype</code>, <code>planningmethod</code>, <code>method</code>, <code>direction</code>, <code>order</code></td><td>Shape group</td></tr>
+                <tr><td><code>_medevac_</code></td><td><code>detail</code></td><td>17 attributes, including <code>urgent</code>, <code>priority</code>, <code>routine</code>, <code>litter</code>, <code>ambulatory</code></td><td>Payload, MEDEVAC</td></tr>
+                <tr><td><code>_flow-tags_</code></td><td><code>detail</code></td><td>the attribute <em>names</em> are the data</td><td>Processing path</td></tr>
+                <tr><td><code>shape</code></td><td><code>detail</code></td><td>container</td><td>See <a href="#cot-geometry">geometry</a></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            A repeated element takes its <strong>first</strong> occurrence, and a nested child is
+            read only if that instance of its parent was accepted. An element under
+            <code>detail</code> that is none of these is counted and reported, never dropped
+            silently.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">Some rows are convention rather than specification.</p>
+            <p>
+                <code>pdop</code>, <code>hdop</code>, <code>vdop</code> and
+                <code>readiness</code> are rendered exactly as stated because no specification
+                this build could check pins them down. The same is true of the whole of
+                <a href="#cot-geometry">geometry</a>. Where a value is shown as stated, the card
+                is repeating the event rather than vouching for it.
+            </p>
+        </div>
+
+        <h2 id="cot-geometry">Shapes, circles and routes</h2>
+
+        <p>
+            Three kinds of event have content that is not a point. Their geometry is read and
+            drawn on the map.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Kind</th><th>Written as</th><th>Read as</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Drawn outline</td><td><code>shape &gt; polyline &gt; vertex</code>, each with <code>lat</code> and <code>lon</code></td><td>An ordered list of points. <code>closed</code> on the polyline makes it a ring.</td></tr>
+                <tr><td>Circle or ellipse</td><td><code>shape &gt; ellipse</code> with <code>major</code>, <code>minor</code>, <code>angle</code></td><td>Semi-axes in metres, and a bearing clockwise from north.</td></tr>
+                <tr><td>Route</td><td><code>link</code> elements carrying <code>point="lat,lon"</code></td><td>An ordered list of points.</td></tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-info">
+            <p class="alert-title">A <code>&lt;link&gt;</code> is told apart by what it carries.</p>
+            <p>
+                A link with a <code>point</code> is a route vertex. A link with a <code>uid</code>
+                is a relation. They have separate budgets, so a long route cannot cost you the
+                "Sent by" row and a relation cannot cost you a vertex.
+            </p>
+        </div>
+
+        <h3 id="cot-example-area">A drawn area</h3>
+
+        <p>Four vertices, closed, with a stated display colour.</p>
+
+        <pre class="copyable"><code>&lt;event version="2.0" uid="AREA-1" type="u-d-f" how="h-g"
+       time="2026-08-09T16:41:00Z" start="2026-08-09T16:41:00Z" stale="2026-08-09T17:41:00Z"&gt;
+  &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="9999999.0" le="9999999.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="RAMP CLOSURE"/&gt;
+    &lt;shape&gt;
+      &lt;polyline closed="true"&gt;
+        &lt;vertex lat="21.336800" lon="-157.950100"/&gt;
+        &lt;vertex lat="21.336800" lon="-157.946500"/&gt;
+        &lt;vertex lat="21.333900" lon="-157.946500"/&gt;
+        &lt;vertex lat="21.333900" lon="-157.950100"/&gt;
+      &lt;/polyline&gt;
+    &lt;/shape&gt;
+    &lt;color argb="-65536"/&gt;
+    &lt;remarks&gt;ramp closed to all traffic&lt;/remarks&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;</code></pre>
+
+        <h3 id="cot-example-circle">A circle</h3>
+
+        <p>Semi-axes and an orientation, with no vertex list at all.</p>
+
+        <pre class="copyable"><code>&lt;event version="2.0" uid="RING-1" type="u-d-c-c" how="h-g"
+       time="2026-08-09T16:42:00Z" start="2026-08-09T16:42:00Z" stale="2026-08-09T17:42:00Z"&gt;
+  &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="9999999.0" le="9999999.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="KEEP OUT"/&gt;
+    &lt;shape&gt;&lt;ellipse major="400" minor="250" angle="30"/&gt;&lt;/shape&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;</code></pre>
+
+        <h3 id="cot-example-route">A route</h3>
+
+        <p>Three route points, the route attributes, and one genuine relation alongside them.</p>
+
+        <pre class="copyable"><code>&lt;event version="2.0" uid="ROUTE-1" type="b-m-r" how="h-e"
+       time="2026-08-09T16:43:00Z" start="2026-08-09T16:43:00Z" stale="2026-08-09T17:43:00Z"&gt;
+  &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="9999999.0" le="9999999.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="MSR AMBER"/&gt;
+    &lt;link point="21.335300,-157.948300,4.0"/&gt;
+    &lt;link point="21.339000,-157.943000,4.0"/&gt;
+    &lt;link point="21.344000,-157.938000,4.0"/&gt;
+    &lt;link_attr routetype="Infil" planningmethod="Infil" method="Driving"
+               direction="Infil" order="Ascending Check Points"/&gt;
+    &lt;link uid="ANDROID-88" relation="p-p" parent_callsign="ALPHA"/&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;</code></pre>
+
+        <div class="alert alert-info">
+            <p class="alert-title">A shape may cross the date line.</p>
+            <p>
+                A shape that crosses 180 arrives as a jump from 179 to -179. It is drawn as one
+                unbroken outline rather than as a line straight back across the whole map, and the
+                map opens on the couple of degrees the shape actually occupies rather than on the
+                whole planet. A route that circles the globe is the one case that cannot be framed
+                more tightly than the world, and the map opens on the whole of it.
+            </p>
+        </div>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">A shape is drawn, or it is not drawn and the sidebar says why.</p>
+            <p>
+                There is no third option. A shape with more than 512 points would otherwise be
+                shown as a line stopping somewhere the shape does not, and a shape with a point
+                not written as a plain decimal would be shown missing a corner. Both are a
+                different shape rather than a partial one, so neither is drawn. Everything else
+                about the event, the callsign, the position, the times and the accuracy, is
+                unaffected.
+            </p>
+        </div>
+
+        <h3 id="cot-example-badshape">A shape that is not drawn</h3>
+
+        <p>One vertex is written as <code>0x1p+3</code>, which is a number Go accepts and a browser does not. The whole shape is refused rather than drawn with three corners out of four.</p>
+
+        <pre class="copyable"><code>&lt;event version="2.0" uid="AREA-2" type="u-d-f" how="h-g"
+       time="2026-08-09T16:44:00Z" start="2026-08-09T16:44:00Z" stale="2026-08-09T17:44:00Z"&gt;
+  &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="9999999.0" le="9999999.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="BAD CORNER"/&gt;
+    &lt;shape&gt;
+      &lt;polyline closed="true"&gt;
+        &lt;vertex lat="21.336800" lon="-157.950100"/&gt;
+        &lt;vertex lat="0x1p+3" lon="-157.946500"/&gt;
+        &lt;vertex lat="21.333900" lon="-157.946500"/&gt;
+      &lt;/polyline&gt;
+    &lt;/shape&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;</code></pre>
+
+        <h2 id="cot-limits">What this build refuses</h2>
+
+        <table>
+            <thead>
+                <tr><th>Limit</th><th>Value</th><th>Past it</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Source size</td><td>64 KB</td><td>The source is refused.</td></tr>
+                <tr><td>Nesting depth</td><td>32</td><td>The source is refused.</td></tr>
+                <tr><td>Elements and attributes</td><td>4,096 together</td><td>The source is refused.</td></tr>
+                <tr><td>Events in one source</td><td>32</td><td>The source is refused, never truncated. A card showing 32 of 200 events would be quietly wrong about what was posted.</td></tr>
+                <tr><td>Relations per event</td><td>16</td><td>The extras are dropped and the event is kept.</td></tr>
+                <tr><td>Vertices in a shape</td><td>512</td><td>The shape is not drawn and the event is kept.</td></tr>
+                <tr><td>Processing path hops</td><td>16</td><td>The oldest hops are dropped.</td></tr>
+                <tr><td>A field's length</td><td>128 characters</td><td>Truncated, visibly.</td></tr>
+                <tr><td>Remarks</td><td>1,024 characters</td><td>Truncated, visibly.</td></tr>
+            </tbody>
+        </table>
+
+        <p>Three different answers there, and the difference is deliberate. A dropped relation costs one entry in a row that has already told you who sent the event. A truncated route draws a line that ends somewhere real routes do not. A partial batch misrepresents the post.</p>
+
+        <h3 id="cot-refusals">Sources that are refused outright</h3>
+
+        <table>
+            <thead>
+                <tr><th>Input</th><th>Why</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>&lt;!DOCTYPE event SYSTEM "cot.dtd"&gt;</code></td><td>A document type declaration. Refused even behind a comment, and even inside <code>&lt;remarks&gt;</code>.</td></tr>
+                <tr><td>A processing instruction</td><td>Anything other than a single leading <code>&lt;?xml ...?&gt;</code>.</td></tr>
+                <tr><td><code>&amp;boom;</code></td><td>There is no entity map, so an undefined entity is a syntax error. Entity expansion is impossible by construction.</td></tr>
+                <tr><td><code>encoding="UTF-16"</code></td><td>No character set reader is registered. UTF-8 only.</td></tr>
+                <tr><td><code>&lt;events&gt;&lt;event/&gt;&lt;/events&gt;</code></td><td>The root must be <code>event</code>. Several events are written as siblings, with no wrapper.</td></tr>
+                <tr><td><code>&lt;event/&gt;</code></td><td>No <code>uid</code>, <code>type</code> or <code>time</code>.</td></tr>
+                <tr><td><code>Not a real event: &lt;event .../&gt;</code></td><td>Prose outside the root, on either side of it.</td></tr>
+                <tr><td><code>&lt;event xmlns="urn:cot"&gt;</code></td><td>Everything read must be in no namespace.</td></tr>
+                <tr><td>Invalid UTF-8</td><td>Refused before parsing.</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            An ordinary XML comment is fine, including inside remarks. When a source is refused
+            and you labelled the fence <code>cot</code>, the plugin tells you why, privately. A
+            fence labelled <code>xml</code> is left alone silently.
+        </p>
+
+        <h2 id="cot-examples">Worked examples</h2>
+
+        <p>Each of these is a complete, postable event.</p>
+
+        <h3 id="cot-example-multi">Several events in one post</h3>
+
+        <p>Sibling <code>&lt;event&gt;</code> elements with no wrapper. The card lists them; the sidebar details them.</p>
+
+        <pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-1" type="a-f-G-U-C" how="m-g"
+       time="2026-08-09T16:30:00Z" start="2026-08-09T16:30:00Z" stale="2026-08-09T16:32:00Z"&gt;
+  &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="9.5" le="15.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="DELTA1"/&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;
+&lt;event version="2.0" uid="ANDROID-2" type="a-h-G-U-C-I" how="m-g"
+       time="2026-08-09T16:30:04Z" start="2026-08-09T16:30:04Z" stale="2026-08-09T16:32:04Z"&gt;
+  &lt;point lat="19.729700" lon="-155.090000" hae="9.0" ce="30.0" le="45.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="BRAVO2"/&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;</code></pre>
+
+        <h3 id="cot-example-linked">An event that names its parent</h3>
+
+        <p>A <code>link</code> with a <code>parent_callsign</code> becomes the "Sent by" row.</p>
+
+        <pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-3" type="a-f-A-M-F-Q" how="m-g"
+       time="2026-08-09T16:31:00Z" start="2026-08-09T16:31:00Z" stale="2026-08-09T16:33:00Z"&gt;
+  &lt;point lat="13.583900" lon="144.930000" hae="188.0" ce="12.0" le="20.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="REAPER1"/&gt;
+    &lt;link uid="ANDROID-1" relation="p-p" parent_callsign="DELTA1"/&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;</code></pre>
+
+        <h3 id="cot-example-multilink">Two relations</h3>
+
+        <p>Only the link carrying a <code>parent_callsign</code> becomes "Sent by". The <code>relation</code> attribute itself is parsed and never read, so <code>p-c</code> contributes exactly what <code>p-p</code> does.</p>
+
+        <pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-4" type="a-f-G-U-C-R" how="m-g"
+       time="2026-08-09T16:32:00Z" start="2026-08-09T16:32:00Z" stale="2026-08-09T16:34:00Z"&gt;
+  &lt;point lat="21.483600" lon="-158.038600" hae="256.0" ce="10.0" le="15.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="SCOUT1"/&gt;
+    &lt;link uid="ANDROID-88" relation="p-p" parent_callsign="ALPHA"/&gt;
+    &lt;link uid="TGT-9F2A1C7B" relation="p-c"/&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;</code></pre>
+
+        <h3 id="cot-example-chat">GeoChat</h3>
+
+        <p>The sender is what the event states, which is not the same as the Mattermost account that posted it. The card says "Event states sender" for exactly that reason, and never styles it as a real message.</p>
+
+        <pre class="copyable"><code>&lt;event version="2.0" uid="GeoChat.ANDROID-1.Operations.t1" type="b-t-f" how="h-g-i-g-o"
+       time="2026-08-09T16:34:00Z" start="2026-08-09T16:34:00Z" stale="2026-08-09T16:39:00Z"&gt;
+  &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="45.0" le="60.0"/&gt;
+  &lt;detail&gt;
+    &lt;__chat senderCallsign="ALPHA-1" chatroom="Operations" id="t1"
+            parent="RootContactGroup" groupOwner="false"&gt;
+      &lt;chatgrp uid0="ANDROID-1" uid1="ANDROID-2" id="t1"/&gt;
+    &lt;/__chat&gt;
+    &lt;remarks&gt;Moving to checkpoint Bravo.&lt;/remarks&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;</code></pre>
+
+        <h3 id="cot-example-medevac">A casualty evacuation request</h3>
+
+        <p>A stated zero survives: <code>urgent="0"</code> means none urgent, which is not the same as saying nothing about it.</p>
+
+        <pre class="copyable"><code>&lt;event version="2.0" uid="MED-4C1E" type="b-r-f-h-c" how="h-e"
+       time="2026-08-09T16:35:00Z" start="2026-08-09T16:35:00Z" stale="2026-08-09T16:55:00Z"&gt;
+  &lt;point lat="21.341200" lon="-157.939800" hae="5.0" ce="30.0" le="45.0"/&gt;
+  &lt;detail&gt;
+    &lt;_medevac_ title="MEDEVAC 4C1E" urgent="0" priority="1" routine="0"
+               litter="2" ambulatory="1" casevac="false" freq="38.90"
+               security="Possible enemy in area" hlz_marking="Panels"
+               terrain_none="false" equipment_detail="Hoist"
+               equipment_none="false" zone_prot_selection="2"
+               nationality="US Military" nbc="none"
+               medline_remarks="Two casualties, one ambulatory"/&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;</code></pre>
+
+        <h3 id="cot-example-device">Device and status</h3>
+
+        <p>Platform, operating system, battery, and a request to be archived.</p>
+
+        <pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-7" type="a-f-G-U-C" how="m-g"
+       time="2026-08-09T16:36:00Z" start="2026-08-09T16:36:00Z" stale="2026-08-09T16:38:00Z"&gt;
+  &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="9.5" le="15.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="ALPHA1" endpoint="192.168.1.40:4242:tcp"/&gt;
+    &lt;uid Droid="ALPHA1"/&gt;
+    &lt;takv device="SAMSUNG SM-T870" platform="ATAK-CIV" os="34" version="5.1.0"/&gt;
+    &lt;status battery="87" readiness="true"/&gt;
+    &lt;archive/&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;</code></pre>
+
+        <h3 id="cot-example-precision">Position quality</h3>
+
+        <p>Where the fix came from, and the dilution of precision figures, all rendered as stated.</p>
+
+        <pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-8" type="a-f-G-U-C" how="m-g"
+       time="2026-08-09T16:36:30Z" start="2026-08-09T16:36:30Z" stale="2026-08-09T16:38:30Z"&gt;
+  &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="2.5" le="4.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="ALPHA2"/&gt;
+    &lt;precisionlocation geopointsrc="GPS" altsrc="GPS"
+                       pdop="1.4" hdop="0.8" vdop="1.1"/&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;</code></pre>
+
+        <h3 id="cot-example-attitude">Attitude</h3>
+
+        <p>Roll, pitch and yaw. The sidebar calls yaw "Yaw" rather than "Heading", because the event does.</p>
+
+        <pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-9" type="a-f-A-M-F-Q" how="m-g"
+       time="2026-08-09T16:37:00Z" start="2026-08-09T16:37:00Z" stale="2026-08-09T16:39:00Z"&gt;
+  &lt;point lat="21.410000" lon="-157.990000" hae="1220.0" ce="12.0" le="20.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="REAPER2"/&gt;
+    &lt;Attitude roll="-4.5" pitch="2.0" yaw="271.5"/&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;</code></pre>
+
+        <h3 id="cot-example-track">Track</h3>
+
+        <p>Speed and course, which the card combines into one Track row and the sidebar splits into two.</p>
+
+        <pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-10" type="a-f-G-E-V-C" how="m-g"
+       time="2026-08-09T16:37:30Z" start="2026-08-09T16:37:30Z" stale="2026-08-09T16:39:30Z"&gt;
+  &lt;point lat="21.329000" lon="-157.930000" hae="12.0" ce="9.5" le="15.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="CONVOY3"/&gt;
+    &lt;track speed="13.4" course="72.0" slope="-2.5"/&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;</code></pre>
+
+        <h3 id="cot-example-sensor">A sensor</h3>
+
+        <p>Field of view, azimuth, range and model.</p>
+
+        <pre class="copyable"><code>&lt;event version="2.0" uid="SENSOR-1" type="b-l-p-c" how="m-g"
+       time="2026-08-09T16:38:00Z" start="2026-08-09T16:38:00Z" stale="2026-08-09T16:40:00Z"&gt;
+  &lt;point lat="21.352000" lon="-157.960000" hae="30.0" ce="10.0" le="15.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="TOWER-CAM"/&gt;
+    &lt;sensor azimuth="135.0" elevation="-8.0" range="1500" fov="42.0"
+            vfov="24.0" roll="0.0" model="MX-10"/&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;</code></pre>
+
+        <h3 id="cot-example-video">A video stream</h3>
+
+        <p>The address is shown as text and never as a link. The card says only that a stream exists.</p>
+
+        <pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-11" type="b-m-p-s-p-i" how="m-g"
+       time="2026-08-09T16:38:30Z" start="2026-08-09T16:38:30Z" stale="2026-08-09T16:40:30Z"&gt;
+  &lt;point lat="21.352000" lon="-157.960000" hae="30.0" ce="10.0" le="15.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="TOWER-CAM"/&gt;
+    &lt;__video uid="VID-1" url="rtsp://198.51.100.20:554/tower"&gt;
+      &lt;ConnectionEntry address="198.51.100.20" port="554"
+                       protocol="rtsp" path="/tower"/&gt;
+    &lt;/__video&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;</code></pre>
+
+        <h3 id="cot-example-appearance">Appearance</h3>
+
+        <p>An icon path and a display colour. The colour is shown as a swatch and a hex value; it does not colour the map marker, which carries affiliation instead.</p>
+
+        <pre class="copyable"><code>&lt;event version="2.0" uid="MARK-2B" type="b-m-p-s-m" how="h-e"
+       time="2026-08-09T16:39:00Z" start="2026-08-09T16:39:00Z" stale="2026-08-09T16:59:00Z"&gt;
+  &lt;point lat="21.344000" lon="-157.945000" hae="4.0" ce="20.0" le="30.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="RALLY-2B"/&gt;
+    &lt;usericon iconsetpath="COT_MAPPING_2525C/a-f/a-f-G-U-C"/&gt;
+    &lt;color argb="-65536"/&gt;
+    &lt;remarks&gt;rally point, confirm before use&lt;/remarks&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;</code></pre>
+
+        <h3 id="cot-example-group">Team</h3>
+
+        <p>The sender's own team and role.</p>
+
+        <pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-88" type="a-f-G-U-C" how="m-g"
+       time="2026-08-09T16:39:30Z" start="2026-08-09T16:39:30Z" stale="2026-08-09T16:41:30Z"&gt;
+  &lt;point lat="21.336900" lon="-157.950100" hae="4.0" ce="9.5" le="15.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="ALPHA"/&gt;
+    &lt;__group name="Cyan" role="Team Lead"/&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;</code></pre>
+
+        <h3 id="cot-example-flow">Processing path</h3>
+
+        <p>Which systems handled the event and when, in document order. The attribute names are the data here, which is why this element is read by hand rather than through the table above.</p>
+
+        <pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-12" type="a-f-G-U-C" how="m-g"
+       time="2026-08-09T16:40:00Z" start="2026-08-09T16:40:00Z" stale="2026-08-09T16:42:00Z"&gt;
+  &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="9.5" le="15.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="FOXTROT1"/&gt;
+    &lt;_flow-tags_ version="0.2" TAK-Server-Prod="2026-08-23T20:10:00Z"
+                 Gateway-B="2026-08-23T20:10:02Z"/&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;</code></pre>
+
+        <h3 id="cot-example-unknown">Elements this build does not know</h3>
+
+        <p>Two unrecognised elements. Nothing is lost: the sidebar says how many there were and the full event is under "As posted".</p>
+
+        <pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-13" type="a-f-G-U-C" how="m-g"
+       time="2026-08-09T16:40:30Z" start="2026-08-09T16:40:30Z" stale="2026-08-09T16:42:30Z"&gt;
+  &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="9.5" le="15.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="GOLF1"/&gt;
+    &lt;checklist name="pre-flight"/&gt;
+    &lt;fileshare filename="brief.pdf"/&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;</code></pre>
+
+        <h2 id="cot-card">What the card shows</h2>
+
+        <p>
+            A coloured dot for the affiliation, the callsign, what the event says it is, and the
+            raw type in parentheses. Then, each row omitted when the event does not state it:
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Row</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Position</td><td>Linked to the coordinate tools when it is precise enough.</td></tr>
+                <tr><td>Altitude (HAE)</td><td></td></tr>
+                <tr><td>Accuracy</td><td><strong>Always shown</strong>, and says "Not stated" when it is not. An unstated accuracy is information.</td></tr>
+                <tr><td>Track</td><td>Speed, and course where stated.</td></tr>
+                <tr><td>Time</td><td>Linked to the date-time tools.</td></tr>
+                <tr><td>Valid from</td><td>Only when it differs from Time.</td></tr>
+                <tr><td>Stale</td><td>With how long the event was valid for.</td></tr>
+                <tr><td>Freshness</td><td>Whether it was already stale when it was posted.</td></tr>
+                <tr><td>Team, Sent by, Relates to, Source</td><td></td></tr>
+                <tr><td>UID</td><td><strong>Always shown.</strong></td></tr>
+                <tr><td>Remarks</td><td>Suppressed for a chat event, which shows them in its own line.</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Four kinds of event get a one line summary above the detail: a chat event names its
+            sender and room, a MEDEVAC counts its patients, a sensor states its field of view and
+            range, and a video event says a stream exists without printing the address.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">Nothing on the card ticks.</p>
+            <p>
+                Every time on it is absolute Zulu, computed on the server. The one live countdown
+                in this feature is the <strong>Goes stale</strong> row in the sidebar, which is
+                counted against your own device's clock and says so.
+            </p>
+        </div>
+
+        <h2 id="cot-panel">What the sidebar shows</h2>
+
+        <p>Open it from the card's own button. It carries everything the card does, and then:</p>
+
+        <table>
+            <thead>
+                <tr><th>Group</th><th>Contains</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Goes stale</td><td>The live countdown, and a note that it is counted against this device's clock.</td></tr>
+                <tr><td>Device</td><td>Platform, device, operating system, TAK version, device id, battery, readiness, network endpoint, icon, archive, and the stated display colour.</td></tr>
+                <tr><td>Position quality</td><td>Position source, altitude source, PDOP, HDOP, VDOP.</td></tr>
+                <tr><td>Orientation</td><td>Yaw, pitch, roll, slope.</td></tr>
+                <tr><td>Payload</td><td>Sensor, Video, GeoChat and MEDEVAC, each as its own block.</td></tr>
+                <tr><td>Shape</td><td>Kind, route attributes, point count, axes and orientation, and the reason a shape was not drawn.</td></tr>
+                <tr><td>Processing path</td><td>A collapsed table of system and time.</td></tr>
+                <tr><td>As posted</td><td>The event exactly as it was posted, scrollable.</td></tr>
+            </tbody>
+        </table>
+
+        <h2 id="cot-map">The map</h2>
+
+        <p>
+            The marker is a crosshair rather than a dot, because a crosshair says "this point"
+            where a dot says "somewhere around here". Its colour is the affiliation.
+        </p>
+
+        <p>
+            A stated <code>ce</code> is drawn as a circle around the position, sized in metres and
+            redrawn at every zoom so it keeps its size on the ground rather than on the screen.
+            Its label is the same string the card shows, never re-rounded. An event with no
+            <code>ce</code> gets a pin and no circle: no default radius is invented.
+        </p>
+
+        <p>
+            The circle and any geometry are drawn for a <strong>single</strong> event only. A card
+            listing several events shows their positions and no accuracy rings.
+        </p>
+
+        <p>
+            The map obeys <a href="admin.html#enable-location-map-inline"><code>EnableLocationMapInline</code></a>
+            and your own inline-map preference. There is deliberately no Cursor on Target map
+            switch of its own.
+        </p>
+
+        <h2 id="cot-honesty">What the card will not claim</h2>
+
+        <table>
+            <thead>
+                <tr><th>It will not</th><th>Because</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Name the country</td><td>An event states no country. A derived one, printed beside <code>ce</code> and <code>hae</code>, would read as something the event reported.</td></tr>
+                <tr><td>Pin <code>0,0</code></td><td>That is the value for a position that was never set. The numbers are shown; the pin is not.</td></tr>
+                <tr><td>Re-round a reading</td><td>A stated <code>0.4</code> stays <code>0.4 m</code> everywhere, including for a screen reader.</td></tr>
+                <tr><td>Colour the marker from <code>color</code></td><td>The marker carries affiliation. A stated display colour is shown as its own swatch.</td></tr>
+                <tr><td>Link a video address</td><td>Author text is never turned into a link by this card.</td></tr>
+                <tr><td>Reshape an atom from its detail</td><td>A <code>__chat</code> or <code>_medevac_</code> element inside an <code>a-</code> contact report does not turn it into a chat or a MEDEVAC.</td></tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">A card is frozen at the moment it was posted.</p>
+            <p>
+                What it shows was computed when the message arrived and stored with it. A later
+                build with a corrected type table does not reach a card already posted. Editing
+                the message makes the card fall back to showing the text, because the card can no
+                longer vouch for matching it.
+            </p>
+        </div>
+
+        <h2 id="cot-switches">Settings and troubleshooting</h2>
+
+        <table>
+            <thead>
+                <tr><th>Setting</th><th>Governs</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><a href="admin.html#enable-cot"><code>EnableCot</code></a></td><td>Whether an event becomes a card at all.</td></tr>
+                <tr><td><a href="admin.html#enable-cot-file"><code>EnableCotFile</code></a></td><td>Whether an <a href="#cot-file">attached file</a> is read.</td></tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">A card changes what the post is.</p>
+            <p>
+                Rendering an event sets the post's type, and a typed post loses its Elasticsearch
+                and OpenSearch matches, its auto-translation, its embeds and its file attachment
+                list. <a href="admin.html#enable-cot"><code>EnableCot</code></a> is how an install
+                opts out. A post carrying an event is also never decorated, so a coordinate
+                written beside one is not linked.
+            </p>
+        </div>
+
+        <p>
+            If an event you posted did not render, see
+            <a href="troubleshooting.html#cot-not-rendered">Troubleshooting</a>.
+        </p>
+
+    </main>
+</div>
+</body>
+</html>

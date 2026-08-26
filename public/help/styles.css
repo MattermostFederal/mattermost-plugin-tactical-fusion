@@ -396,6 +396,54 @@ pre code {
 
 /* Verdict pills, for the recognised and declined tables */
 
+.copyable {
+    -webkit-user-select: all;
+    user-select: all;
+    position: relative;
+    padding-right: 24px;
+    cursor: pointer;
+}
+
+.copyable::before,
+.copyable::after {
+    content: "";
+    position: absolute;
+    width: 7px;
+    height: 8px;
+    border: 1px solid currentColor;
+    border-radius: 1px;
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+.copyable::before {
+    top: 50%;
+    right: 6px;
+    margin-top: -6px;
+}
+
+.copyable::after {
+    top: 50%;
+    right: 10px;
+    margin-top: -2px;
+    background: var(--inline-code-bg);
+}
+
+.copyable:hover::before,
+.copyable:hover::after,
+.copyable:focus-within::before,
+.copyable:focus-within::after {
+    opacity: 0.9;
+}
+
+pre.copyable {
+    padding-right: 28px;
+}
+
+pre.copyable::after {
+    background: var(--code-bg);
+}
+
 .pill {
     display: inline-block;
     padding: 1px 8px;

@@ -16,6 +16,12 @@
         <nav>
             <span class="nav-section">Documentation</span>
             <a href="help.html">Overview</a>
+            <span class="nav-section">Decorators</span>
+            <a href="dtg.html">Date-Time Groups</a>
+            <a href="location.html">Coordinates</a>
+            <a href="airfields.html">Airfields</a>
+            <a href="cot.html">Cursor on Target</a>
+            <span class="nav-section">Guides</span>
             <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
             <a href="admin.html">Admin Settings</a>
@@ -95,8 +101,8 @@ GEOREF: `GEOREF:XGKP55803503` &rarr; GEOREF:XGKP55803503 - the label is required
         <p>
             The GEOREF row shows the other thing worth noticing: a coordinate field label is
             <strong>consumed</strong>, so the label and the token together become the link.
-            <a href="formats.html#location-area">GEOREF and GARS</a> are matched behind their
-            labels only; a <a href="formats.html#location-area">Plus Code</a> needs none.
+            <a href="location.html#location-area">GEOREF and GARS</a> are matched behind their
+            labels only; a <a href="location.html#location-area">Plus Code</a> needs none.
         </p>
 
         <p>
@@ -161,7 +167,7 @@ GEOREF: `GEOREF:XGKP55803503` &rarr; GEOREF:XGKP55803503 - the label is required
             </p>
             <p>
                 The event is last and is alone in its post because a
-                <a href="formats.html#cot">card owns the whole post body</a>: anything
+                <a href="cot.html">card owns the whole post body</a>: anything
                 sharing a post with one would render as plain text underneath it.
             </p>
             <p>
@@ -189,10 +195,10 @@ GEOREF: `GEOREF:XGKP55803503` &rarr; GEOREF:XGKP55803503 - the label is required
         <table class="field-table">
             <tbody>
                 <tr><td>Live, from the moment you ran this</td><td>Date-time groups generated against the current clock, either side of the flash threshold and one in the past, so the countdown is actually moving.</td></tr>
-                <tr><td>One group per grammar</td><td>Military date-time groups, zone letters, RFC 3339 timestamps, the <code>DTG:</code> moniker, decimal degrees, degrees and minutes and seconds, the USMTF compact family, grid references, UTM, the area references (<a href="formats.html#location-area">GEOREF, GARS and Plus Codes</a>), and <a href="formats.html#airfield">airfield codes</a>.</td></tr>
-                <tr><td>Drawn as a map in the channel</td><td>Which coordinate messages draw their <a href="panel.html#location-inline">map under the post</a> and which get the link alone: a message that is only a coordinate qualifies, with or without a field label, and anything else in the message does not.</td></tr>
+                <tr><td>One group per grammar</td><td>Military date-time groups, zone letters, RFC 3339 timestamps, the <code>DTG:</code> moniker, decimal degrees, degrees and minutes and seconds, the USMTF compact family, grid references, UTM, the area references (<a href="location.html#location-area">GEOREF, GARS and Plus Codes</a>), and <a href="airfields.html#airfield">airfield codes</a>.</td></tr>
+                <tr><td>Drawn as a map in the channel</td><td>Which coordinate messages draw their <a href="location.html#location-inline">map under the post</a> and which get the link alone: a message that is only a coordinate qualifies, with or without a field label, and anything else in the message does not.</td></tr>
                 <tr><td>In a sentence</td><td>Tokens surrounded by ordinary prose, two on one line, and two different decorators on one line.</td></tr>
-                <tr><td>Declined</td><td>The <a href="formats.html#declined">near misses</a>, in groups by what is wrong with them: impossible dates, no single instant, out of range, needs a label or spacing, shapes where a false positive would rewrite the message, and <a href="formats.html#airfield-declined">airfield codes without an upper-case label</a>.</td></tr>
+                <tr><td>Declined</td><td>The <a href="dtg.html#declined">near misses</a>, in groups by what is wrong with them: impossible dates, no single instant, out of range, needs a label or spacing, shapes where a false positive would rewrite the message, and <a href="airfields.html#airfield-declined">airfield codes without an upper-case label</a>.</td></tr>
                 <tr><td>Left exactly as written</td><td>Tokens inside <a href="formats.html#protected">protected spans</a>: code, links, images, autolinks, HTML tags, reference definitions and bare URLs.</td></tr>
                 <tr><td>Standalone page</td><td>A ready-made link that opens the <a href="panel.html#page">server-rendered page</a> rather than the sidebar, so you can check it from a desktop browser.</td></tr>
             </tbody>
@@ -251,7 +257,7 @@ GEOREF: `GEOREF:XGKP55803503` &rarr; GEOREF:XGKP55803503 - the label is required
                 <tr><td>You typed</td><td>The text exactly as supplied.</td></tr>
                 <tr><td>Would be stored as</td><td>The decorated result, when anything matched. Anything still plain in that line was left alone.</td></tr>
                 <tr><td>Nothing would be decorated</td><td>Shown instead, when nothing matched at all.</td></tr>
-                <tr><td>Reasons</td><td>The rules that most often decline a coordinate, with the <a href="formats.html#location-declined">full list</a> linked.</td></tr>
+                <tr><td>Reasons</td><td>The rules that most often decline a coordinate, with the <a href="location.html#location-declined">full list</a> linked.</td></tr>
             </tbody>
         </table>
 

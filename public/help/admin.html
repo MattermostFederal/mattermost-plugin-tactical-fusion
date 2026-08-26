@@ -16,6 +16,12 @@
         <nav>
             <span class="nav-section">Documentation</span>
             <a href="help.html">Overview</a>
+            <span class="nav-section">Decorators</span>
+            <a href="dtg.html">Date-Time Groups</a>
+            <a href="location.html">Coordinates</a>
+            <a href="airfields.html">Airfields</a>
+            <a href="cot.html">Cursor on Target</a>
+            <span class="nav-section">Guides</span>
             <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
             <a href="admin.html" class="active">Admin Settings</a>
@@ -96,7 +102,7 @@
         <h3 id="map">The map has its own section</h3>
 
         <p>
-            Opening a coordinate draws <a href="panel.html#location-map">a small world
+            Opening a coordinate draws <a href="location.html#location-map">a small world
             map</a>, in the sidebar, on the hover card, under a coordinate-only post and
             on the standalone pages. The <a href="#map-switches">Maps</a> section governs
             all of it: one parent and one switch per surface, so an install can drop the
@@ -114,7 +120,7 @@
         <p>
             <strong>Readers can still hide it for themselves</strong>, by unticking
             <em>Map</em> or <em>Map under the post</em> under
-            <a href="panel.html#location-customize">Customize your view</a>. The two are
+            <a href="location.html#location-customize">Customize your view</a>. The two are
             independent: your switch decides what is available, theirs decides what they
             look at. A surface you have turned off is not offered to them at all, and
             turning it back on returns each reader to whatever they had chosen. There is
@@ -138,7 +144,7 @@
         <p>
             The country the map names in its accessible label is worked out the same way,
             from outlines compiled into the plugin. It is
-            <a href="panel.html#location-region">a basemap lookup and not an authority on
+            <a href="location.html#location-region">a basemap lookup and not an authority on
             borders</a>, which is worth reading before anyone treats it as one.
         </p>
 
@@ -173,7 +179,7 @@
 
         <p>
             Full details of what these forms accept are on the
-            <a href="formats.html#military">formats page</a>.
+            <a href="dtg.html#military">Date-Time Groups page</a>.
         </p>
 
         <h3 id="enable-dtg-moniker" data-setting="EnableDTGMoniker">Format: labeled date-time group <code>EnableDTGMoniker</code></h3>
@@ -191,7 +197,7 @@
             This one <strong>composes</strong>: it only labels formats that are themselves
             on. Turning military formats off therefore also stops
             <code>DTG: 091630ZAUG26</code>, and a label with nothing left to label is
-            dropped entirely. See <a href="formats.html#moniker">the formats page</a>.
+            dropped entirely. See <a href="dtg.html#moniker">the Date-Time Groups page</a>.
         </p>
 
         <h3 id="enable-dtg-timestamp" data-setting="EnableDTGTimestamp">Format: RFC 3339 timestamp <code>EnableDTGTimestamp</code></h3>
@@ -291,7 +297,7 @@
             decimal places on both values, which is about 11 m and is what real
             coordinate sources emit. The cost is that <code>21.34, -157.95</code> is
             deliberately left alone. See
-            <a href="formats.html#location-declined">the declined list</a>.
+            <a href="location.html#location-declined">the declined list</a>.
         </p>
 
         <h3 id="enable-location-lat-lon" data-setting="EnableLocationLatLon">Format: latitude and longitude with hemisphere letters <code>EnableLocationLatLon</code></h3>
@@ -665,7 +671,7 @@
 
         <p>
             The hover card goes with the panel map rather than having a switch of its own,
-            because <a href="panel.html#location-hover">that card is the map and nothing
+            because <a href="location.html#location-hover">that card is the map and nothing
             else</a>. With no picture in it there is nothing left to show, so the card is
             suppressed instead of appearing empty. Clicking still opens the sidebar.
         </p>

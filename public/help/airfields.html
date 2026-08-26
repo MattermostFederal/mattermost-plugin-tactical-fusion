@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Airfields - Tactical Fusion</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <h2>Tactical Fusion</h2>
+            <span class="version">Plugin Documentation</span>
+        </div>
+        <nav>
+            <span class="nav-section">Documentation</span>
+            <a href="help.html">Overview</a>
+            <span class="nav-section">Decorators</span>
+            <a href="dtg.html">Date-Time Groups</a>
+            <a href="location.html">Coordinates</a>
+            <a href="airfields.html" class="active">Airfields</a>
+            <a href="cot.html">Cursor on Target</a>
+            <span class="nav-section">Guides</span>
+            <a href="formats.html">Recognized Formats</a>
+            <a href="panel.html">The Sidebar Panel</a>
+            <a href="admin.html">Admin Settings</a>
+            <a href="commands.html">Slash Commands</a>
+            <span class="nav-section">Reference</span>
+            <a href="troubleshooting.html">Troubleshooting</a>
+            <a href="error-codes.html">Error Codes</a>
+        </nav>
+    </aside>
+
+    <main class="content">
+        <div class="breadcrumb">
+            <a href="help.html">Docs</a>
+            <span class="separator">/</span>
+            Airfields
+        </div>
+
+        <h1>Airfields</h1>
+        <p class="tagline">One label-only grammar, an embedded database of 19,012 fields, and the reason a bare code is never linked.</p>
+
+        <div class="alert alert-info">
+            <p>
+                Settings: <a href="admin.html#enable-airport"><code>EnableAirport</code></a> and
+                <a href="admin.html#enable-airport-table"><code>EnableAirportTable</code></a>. To
+                see what your own server does, run
+                <a href="commands.html#example-details"><code>/tactical-fusion example-details</code></a>.
+                Every example below is one of that command's own rows.
+            </p>
+        </div>
+
+        <h2 id="airfield">The grammar</h2>
+
+        <p>
+            Four upper case letters, behind one of four USMTF field labels. That is the whole
+            grammar, and there is no second form:
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Example</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code class="copyable">ICAO:PHNL</code></td><td>Daniel K. Inouye International, Honolulu</td></tr>
+                <tr><td><code class="copyable">LOC:PGUM</code></td><td>Antonio B. Won Pat International, Guam</td></tr>
+                <tr><td><code class="copyable">DEPLOC:PHTO</code></td><td>the departure airfield of a USMTF air movement</td></tr>
+                <tr><td><code class="copyable">ARRLOC:PHIK</code></td><td>and the arrival airfield</td></tr>
+                <tr><td><code class="copyable">DEPLOC:PGUA//</code></td><td>a set line ends //, which is kept out of the link</td></tr>
+                <tr><td><code class="copyable">ICAO :NZSP</code></td><td>a space before the colon is optional</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            The labels are <code>ICAO</code>, <code>LOC</code>, <code>DEPLOC</code> and
+            <code>ARRLOC</code>, sorted longest first so <code>DEPLOC</code> cannot lose to
+            <code>LOC</code>. In USMTF these introduce a facility whose position is looked up
+            rather than computed, which is why the
+            <a href="location.html#location-moniker">coordinate decorator</a> deliberately does
+            not claim them.
+        </p>
+
+        <p>
+            The label is <strong>matched and then dropped</strong>, so only the code becomes the
+            link text. A set line's trailing <code>//</code> is preserved:
+            <code class="copyable">DEPLOC:PGUA//</code> keeps its terminator.
+        </p>
+
+        <h2 id="airfield-bare">Why a bare code is never linked</h2>
+
+        <p>
+            A four letter upper case word is what prose is made of. Of the <strong>19,012</strong>
+            codes this build carries, <strong>343 are ordinary English words</strong>:
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Code</th><th>Is also</th><th>The airfield</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>FACT</code></td><td>a fact</td><td>Cape Town International</td></tr>
+                <tr><td><code>FAST</code></td><td>fast</td><td>Somerset East</td></tr>
+                <tr><td><code>LIMA</code></td><td>the phonetic letter</td><td>Torino-Aeritalia</td></tr>
+                <tr><td><code>UNIT</code></td><td>a unit</td><td>Tura Mountain</td></tr>
+                <tr><td><code>USCG</code></td><td>the Coast Guard</td><td>Chelyabinsk Shagol</td></tr>
+                <tr><td><code>ETIC</code></td><td>estimated time in commission</td><td>Grafenw&#246;hr AAF</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            <code>the USCG cutter is inbound</code> must not become a link to a Russian airfield,
+            and <code>that was a KIND thing to do</code> must not become a link to Indianapolis.
+            Decoration rewrites the stored message permanently, so the label is required rather
+            than merely preferred.
+        </p>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">The label is upper case only.</p>
+            <p>
+                Unlike every coordinate label, which is case insensitive, this one is not.
+                <code>loc: fast turnaround on the ramp</code> would otherwise link the word
+                <code>fast</code>. The trade is that <code>icao:kind</code> is declined, and that
+                is the right way round.
+            </p>
+        </div>
+
+        <h2 id="airfield-lookup">Validation is a lookup, not a shape</h2>
+
+        <p>
+            A code has to be in the database, not merely look like one. That is what makes
+            <code class="copyable">ICAO:FAST</code> a link to Somerset East while
+            <code>ICAO:QZQZ</code> is declined.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">A code this build does not hold still opens its page.</p>
+            <p>
+                The page says the code is not in this build's database rather than returning an
+                error. A refreshed dataset that drops a code must not turn every message naming it
+                into a permanently broken link.
+            </p>
+        </div>
+
+        <h2 id="airfield-declined">Deliberately declined</h2>
+
+        <table>
+            <thead>
+                <tr><th>Example</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>KIND</code></td><td>a bare code is indistinguishable from a word, and KIND is one</td></tr>
+                <tr><td><code>USCG</code></td><td>and this one is Chelyabinsk Shagol, in Russia</td></tr>
+                <tr><td><code>FACT</code></td><td>Cape Town International, which is why nothing bare is read</td></tr>
+                <tr><td><code>icao:kind</code></td><td>a lower-case label would reach words in ordinary prose</td></tr>
+                <tr><td><code>ICAO:QZQZ</code></td><td>four letters this plugin's airfield database does not hold</td></tr>
+                <tr><td><code>ICAO:KIN</code></td><td>an ICAO ident is four letters</td></tr>
+                <tr><td><code>logs/ICAO:KIND</code></td><td>a label inside a path is not a field label</td></tr>
+                <tr><td><code>LOC: FAST</code></td><td>nothing after the colon, or ordinary capitalized prose would be rewritten</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            <code>logs/ICAO:KIND</code> is worth singling out. A label with a path character in
+            front of it is not a field label, and rewriting the middle of a path is exactly what
+            the boundary rules exist to prevent. The same applies to
+            <code>see_ICAO:KIND</code> and <code>x-ICAO:KIND</code>.
+        </p>
+
+        <p>
+            A label cannot reach across a line break either, so
+            <code>Divert to LOC:</code> followed by <code>FAST movers inbound</code> on the next
+            line is left alone.
+        </p>
+
+        <h2 id="airfield-panel">What the panel shows</h2>
+
+        <p>
+            Clicking an airfield code opens the right-hand sidebar. See
+            <a href="panel.html#panel">the sidebar panel</a> for the shared mechanics.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Row</th><th>Shows</th><th>Example</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Code</td><td>The ICAO ident.</td><td><code>KIND</code></td></tr>
+                <tr><td>Place</td><td>Municipality, subdivision and country. <strong>This row is the coordinate link.</strong></td><td><code>Indianapolis, IN, US</code></td></tr>
+                <tr><td>Type</td><td>The size class from the database.</td><td><code>Large Airport</code></td></tr>
+                <tr><td>Elevation</td><td>Feet above sea level, where stated.</td><td><code>797 ft</code></td></tr>
+                <tr><td>IATA</td><td>The three letter code, where the field has one.</td><td><code>IND</code></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            A row with no value is left out entirely rather than shown empty. Elevation is
+            genuinely absent for 1,444 fields, which is why it is distinguished from an elevation
+            of zero.
+        </p>
+
+        <p>
+            The panel draws the position as a map and hands the coordinate to the
+            <a href="location.html#location-panel">coordinate panel</a> for the readings, rather
+            than reprinting them here. Clicking <strong>Place</strong> is what does it.
+        </p>
+
+        <div class="alert alert-note">
+            <p class="alert-title">The position is a reference point.</p>
+            <p>
+                The database gives one position per field, quoted to four decimal places, which is
+                about 11 metres. It is a reference point for the field rather than a surveyed
+                location of the tower, the threshold, or any particular part of it.
+            </p>
+        </div>
+
+        <h2 id="airfield-table">The table under a code-only message</h2>
+
+        <p>Setting: <a href="admin.html#enable-airport-table"><code>EnableAirportTable</code></a></p>
+
+        <p>
+            A message whose whole text is one airfield token is expanded into a markdown table in
+            the stored message:
+        </p>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Airfield</td><td>Indianapolis International Airport</td></tr>
+                <tr><td>Code</td><td>KIND</td></tr>
+                <tr><td>Place</td><td>Indianapolis, IN, US</td></tr>
+                <tr><td>Type</td><td>Large Airport</td></tr>
+                <tr><td>Elevation</td><td>797 ft</td></tr>
+                <tr><td>IATA</td><td>IND</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            The Code row carries the author's own token, including a set line's <code>//</code>,
+            which is what keeps searching for the code finding the post.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">Why a table rather than a card.</p>
+            <p>
+                Writing markdown into the message keeps the post ordinary: it keeps its
+                Elasticsearch and OpenSearch matches, its link previews and its translation, and
+                it renders on clients that never load the plugin's webapp. The cost is that the
+                expansion is permanent and frozen at the moment it was posted, so a later database
+                update does not reach it.
+            </p>
+        </div>
+
+        <h2 id="airfield-data">Where the data comes from</h2>
+
+        <p>
+            The database is compiled into the plugin, so lookups need no network. It carries
+            19,012 fields with an ident, a name, a type, a place, a country, an IATA code where
+            one exists, an elevation where one is stated, and a position. Provenance is recorded
+            beside the data in the repository rather than printed in the panel.
+        </p>
+
+        <h2 id="airfield-settings">Settings and troubleshooting</h2>
+
+        <table>
+            <thead>
+                <tr><th>Setting</th><th>Governs</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><a href="admin.html#enable-airport"><code>EnableAirport</code></a></td><td>The whole decorator. There is no separate label switch, because the grammar is label-only by construction.</td></tr>
+                <tr><td><a href="admin.html#enable-airport-table"><code>EnableAirportTable</code></a></td><td><a href="#airfield-table">The table</a> under a code-only message.</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            If a code you expected to be linked was not, see
+            <a href="troubleshooting.html#airfield-not-linked">Troubleshooting</a>.
+        </p>
+
+    </main>
+</div>
+</body>
+</html>

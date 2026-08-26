@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Date and Time Formats - Tactical Fusion</title>
+    <title>Recognized Formats - Tactical Fusion</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -16,6 +16,12 @@
         <nav>
             <span class="nav-section">Documentation</span>
             <a href="help.html">Overview</a>
+            <span class="nav-section">Decorators</span>
+            <a href="dtg.html">Date-Time Groups</a>
+            <a href="location.html">Coordinates</a>
+            <a href="airfields.html">Airfields</a>
+            <a href="cot.html">Cursor on Target</a>
+            <span class="nav-section">Guides</span>
             <a href="formats.html" class="active">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
             <a href="admin.html">Admin Settings</a>
@@ -34,964 +40,94 @@
         </div>
 
         <h1>Recognized Formats</h1>
-        <p class="tagline">What gets linked, what does not, and why the "does not" list is as long as it is.</p>
+        <p class="tagline">The rules every decorator shares, and where to find each one in full.</p>
 
         <div class="alert alert-info">
             <p>
-                Every format below can be switched off individually in the System Console.
-                See <a href="admin.html">Admin Settings</a>. To see the current behavior of
-                your own server rather than this page, run
+                Each decorator has its own page, listed below and in the sidebar. This page holds
+                what is true of all of them. To see the current behavior of your own server rather
+                than what these pages say, run
                 <a href="commands.html#example-details"><code>/tactical-fusion example-details</code></a>,
                 which runs the real matcher and posts what it did.
             </p>
         </div>
 
-        <h2>The rule everything follows</h2>
-
-        <p>
-            A format is eligible only if it <strong>resolves to a single instant</strong>.
-            The link bakes an instant into its query string and the panel counts down to
-            it, so anything needing a timezone invented for it is out. That single rule
-            explains most of the <a href="#declined">declined</a> list.
-        </p>
-
-        <h2 id="military">Military date-time group</h2>
-
-        <p>Setting: <a href="admin.html#enable-dtg-military"><code>EnableDTGMilitary</code></a></p>
+        <h2 id="index">The four decorators</h2>
 
         <table>
             <thead>
-                <tr><th>Form</th><th>Example</th><th>Notes</th></tr>
+                <tr><th>Page</th><th>Recognizes</th><th>Looks like</th></tr>
             </thead>
             <tbody>
                 <tr>
-                    <td><code>DDHHMM</code> + zone + <code>MMM</code> + <code>YY</code></td>
-                    <td><code>091630ZAUG26</code></td>
-                    <td>Any zone letter except <code>I</code> and <code>J</code>. Month abbreviation is case insensitive.</td>
+                    <td><a href="dtg.html">Date-Time Groups</a></td>
+                    <td>Military date-time groups and RFC 3339 timestamps</td>
+                    <td><code class="copyable">091630ZAUG26</code></td>
                 </tr>
                 <tr>
-                    <td><code>DDHHMM</code> + zone + <code>MMM</code> + <code>YYYY</code></td>
-                    <td><code>091630ZAUG2026</code></td>
-                    <td>Same, with a four digit year.</td>
+                    <td><a href="location.html">Coordinates</a></td>
+                    <td>Twelve grammars, from decimal degrees to Plus Codes</td>
+                    <td><code class="copyable">4Q FJ 09060 59620</code></td>
                 </tr>
                 <tr>
-                    <td><code>DDHHMM</code> + <code>Z</code></td>
-                    <td><code>091630Z</code></td>
-                    <td>Short form. Literal <code>Z</code> only. Month and year are taken from the date the message was posted, and the panel says so.</td>
+                    <td><a href="airfields.html">Airfields</a></td>
+                    <td>ICAO codes behind a field label</td>
+                    <td><code class="copyable">ICAO:PHNL</code></td>
+                </tr>
+                <tr>
+                    <td><a href="cot.html">Cursor on Target</a></td>
+                    <td>Whole events, rendered as a card rather than a link</td>
+                    <td><code>&lt;event uid="..." type="a-f-G-U-C" ...&gt;</code></td>
                 </tr>
             </tbody>
         </table>
 
+        <h2 id="shared-rules">Rules they all follow</h2>
+
+        <h3 id="boundaries">A token needs clean edges</h3>
+
         <p>
-            The year is restricted to <strong>2000 to 2099</strong>, which is exactly the
-            range two year digits can name without ambiguity.
+            A token is recognized only when what sits immediately either side of it is not a
+            letter, a digit, or one of <code>.</code> <code>,</code> <code>-</code>
+            <code>+</code> <code>/</code> <code>:</code> <code>_</code>. The start and the end of
+            a message count as clean.
         </p>
 
-        <div class="alert alert-tip">
-            <p>
-                <code>091630R</code> is <strong>not</strong> a date-time group here. The
-                short form accepts only <code>Z</code>, because a bare six digits followed
-                by a single letter is far too easy to hit by accident. Write
-                <code>091630RAUG26</code> if you mean Romeo.
-            </p>
-        </div>
-
-        <h2 id="moniker">Labeled date-time group</h2>
-
-        <p>Setting: <a href="admin.html#enable-dtg-moniker"><code>EnableDTGMoniker</code></a></p>
-
         <p>
-            Some military formats mark where a time starts with a <code>DTG:</code>
-            label. The label is <strong>matched and then dropped</strong>, so only the
-            token itself becomes the link text:
+            That single rule is why <code>logs/ICAO:KIND</code>, <code>X091630ZAUG26</code>,
+            <code>snapshot_3510N07901W_v2.zip</code> and <code>-118.2500..-118.2600</code> are all
+            left alone. Rewriting the middle of a path, an identifier or a range is the failure
+            these guards exist to prevent.
         </p>
 
-        <table>
-            <thead>
-                <tr><th>You type</th><th>The link text is</th></tr>
-            </thead>
-            <tbody>
-                <tr><td><code>DTG: 091630ZAUG26</code></td><td><code>091630ZAUG26</code></td></tr>
-                <tr><td><code>dtg:091630ZAUG26</code></td><td><code>091630ZAUG26</code></td></tr>
-                <tr><td><code>DTG : 091630ZAUG26</code></td><td><code>091630ZAUG26</code></td></tr>
-            </tbody>
-        </table>
+        <h3 id="labels">A label is consumed, and vouches for nothing</h3>
 
         <p>
-            Spacing either side of the colon is optional and the label is case
-            insensitive. The token keeps its own casing rules.
+            Every decorator here accepts field labels: <code>DTG:</code> for times, the USMTF
+            labels for coordinates, and <code>ICAO:</code>, <code>LOC:</code>,
+            <code>DEPLOC:</code> and <code>ARRLOC:</code> for airfields. The label is
+            <strong>matched and then dropped</strong>, so the link text is the token alone.
         </p>
 
         <div class="alert alert-warning">
-            <p class="alert-title">The label vouches for nothing.</p>
+            <p class="alert-title">A label does not widen what is accepted.</p>
             <p>
-                A token it marks still has to be a real one. <code>DTG: 091630R</code> is
-                declined exactly as <code>091630R</code> is. The label also only applies to
-                formats that are themselves switched on, so turning military formats off
-                also stops <code>DTG: 091630ZAUG26</code>.
+                A token behind a label still has to be a real one.
+                <code>DTG: 091630R</code>, <code>LATM:9999N99999W</code>,
+                <code>GARS:721LT</code> and <code>ICAO:KIN</code> are all declined exactly as they
+                would be without the label. What a label changes is whether a token is
+                <em>looked for</em>, never whether it is valid.
             </p>
         </div>
 
-        <h2 id="timestamp">RFC 3339 timestamp</h2>
-
-        <p>Setting: <a href="admin.html#enable-dtg-timestamp"><code>EnableDTGTimestamp</code></a></p>
-
-        <p>The extended form only, with the hyphens and colons present:</p>
-
-        <table>
-            <thead>
-                <tr><th>Example</th><th>Notes</th></tr>
-            </thead>
-            <tbody>
-                <tr><td><code>2026-08-09T16:30:00Z</code></td><td>UTC.</td></tr>
-                <tr><td><code>2026-08-09T20:30:00+04:00</code></td><td>Any offset up to <code>&plusmn;14:00</code>, including half and quarter hour ones.</td></tr>
-                <tr><td><code>2026-08-09T16:30Z</code></td><td>Seconds are optional.</td></tr>
-                <tr><td><code>2026-08-09T16:30:00.250Z</code></td><td>Fractional seconds are parsed and then discarded.</td></tr>
-                <tr><td><code>2026-08-09t16:30:00z</code></td><td>Lowercase <code>t</code> and <code>z</code> are accepted.</td></tr>
-            </tbody>
-        </table>
+        <h3 id="separators">A label cannot cross a line break</h3>
 
         <p>
-            Military groups and RFC 3339 timestamps share one decorator because once
-            parsed they are the same thing: an instant, plus the offset it was written
-            in. They differ only in how that offset is carried, since an offset of
-            <code>+05:45</code> has no military letter to name it.
+            Only spaces and tabs may sit between a label and its token. A label at the end of one
+            line never claims the first word of the next, so
+            <code>Divert to LOC:</code> followed by <code>FAST movers inbound</code> is left
+            exactly as written.
         </p>
-
-        <h2 id="declined">Deliberately declined</h2>
-
-        <p>
-            These look like times and are not matched. Each one is absent for a reason,
-            and the reason is usually that a false positive here would
-            <strong>corrupt somebody's message</strong>, since decoration rewrites what
-            they wrote.
-        </p>
-
-        <table>
-            <thead>
-                <tr><th>Not matched</th><th>Example</th><th>Why</th></tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Epoch seconds</td>
-                    <td><code>1786293000</code></td>
-                    <td>Any ten digit number would qualify. Order numbers, ticket ids and phone numbers would all become links.</td>
-                </tr>
-                <tr>
-                    <td>12 hour clocks</td>
-                    <td><code>4:30 PM</code></td>
-                    <td>No date and no zone, so it names no instant. It would also match inside ordinary prose constantly.</td>
-                </tr>
-                <tr>
-                    <td>Named zone abbreviations</td>
-                    <td><code>16:30 CST</code></td>
-                    <td><code>CST</code> is three different zones. <code>EST</code> collides with the abbreviation for "estimated".</td>
-                </tr>
-                <tr>
-                    <td>Basic ISO 8601</td>
-                    <td><code>20260809T163000Z</code></td>
-                    <td>With no hyphens there is no word boundary, so it would match inside <code>snapshot-20260809T163000Z.zip</code>.</td>
-                </tr>
-                <tr>
-                    <td>Out of range offsets</td>
-                    <td><code>2026-08-09T16:30:00+15:00</code></td>
-                    <td>No inhabited zone is further than 14 hours from UTC, so a larger offset is a crafted value rather than a place. RFC 3339 permits up to <code>&plusmn;23:59</code>.</td>
-                </tr>
-                <tr>
-                    <td>Dates outside 1970 to 2200</td>
-                    <td><code>1918-11-11T11:00:00Z</code></td>
-                    <td>The panel and the standalone page only render an instant inside that window, so a timestamp outside it would become a link that does not open. Declining it leaves the text as written instead.</td>
-                </tr>
-                <tr>
-                    <td>Bare dates</td>
-                    <td><code>2026-08-09</code></td>
-                    <td>Names a day, not an instant. Which midnight, in which zone?</td>
-                </tr>
-                <tr>
-                    <td>Zoneless times</td>
-                    <td><code>2026-08-09T16:30</code></td>
-                    <td>Same problem. A zone would have to be invented for it.</td>
-                </tr>
-            </tbody>
-        </table>
-
-        <h2 id="location">Coordinates</h2>
-
-        <p>
-            Every coordinate grammar below normalizes to one latitude and longitude, so
-            the panel reads the same whichever notation the author typed. Positions are
-            <strong>WGS 84</strong>, always. A coordinate carrying another datum is
-            declined rather than reinterpreted: NAD 27 and WGS 84 disagree by up to about
-            200 m in the continental United States, which is several grid cells.
-        </p>
-
-        <p>
-            Values are shown at the resolution the original text carried and no finer. A
-            coordinate written to two decimals renders as
-            <code>21.34&deg; N</code>, and a degrees-only coordinate renders degrees only.
-            Padding a field the author never wrote would be a claim about precision they
-            did not make.
-        </p>
-
-        <h3 id="location-decimal">Decimal degrees</h3>
-
-        <table>
-            <thead>
-                <tr><th>Written</th><th>Accepted</th></tr>
-            </thead>
-            <tbody>
-                <tr><td><code>21.3353, -157.9483</code></td><td>Signed. Needs a comma and at least four decimals on both values.</td></tr>
-                <tr><td><code>21.3353 N, 157.9483 W</code></td><td>Hemisphere letters. A decimal point is still required on both.</td></tr>
-                <tr><td><code>21.3353&deg;N 157.9483&deg;W</code></td><td>Degree symbols optional.</td></tr>
-                <tr><td><code>N21.3353 W157.9483</code></td><td>Letters may lead instead of trail.</td></tr>
-            </tbody>
-        </table>
-
-        <p>
-            The four-decimal rule on the signed form is what separates a coordinate from
-            an ordinary pair of numbers, and it is the reason
-            <code>21.34, -157.95</code> is left alone. Four decimals is about 11 m, which
-            is what every real coordinate source emits; version pairs, ratios and
-            tolerances essentially never carry it.
-        </p>
-
-        <h3 id="location-dms">Degrees, minutes and seconds</h3>
-
-        <table>
-            <thead>
-                <tr><th>Written</th><th>Accepted</th></tr>
-            </thead>
-            <tbody>
-                <tr><td><code>21&deg;20'07"N 157&deg;56'53"W</code></td><td>Symbols, with or without spaces.</td></tr>
-                <tr><td><code>21&deg; 20' 07" N, 157&deg; 56' 53" W</code></td><td>Spacing and the comma are both optional.</td></tr>
-                <tr><td><code>21 20 07 N 157 56 53 W</code></td><td>Spaces instead of symbols.</td></tr>
-                <tr><td><code>21&deg;20.118'N 157&deg;56.898'W</code></td><td>Degrees and decimal minutes, with no seconds.</td></tr>
-            </tbody>
-        </table>
-
-        <p>
-            Hemisphere letters are required in every variant. Without them the
-            symbol-less form is six bare integers. Typographic variants are accepted, so a
-            phone that turns an apostrophe into <code>&#8217;</code> or a quote into
-            <code>&#8221;</code> still produces a recognized coordinate.
-        </p>
-
-        <h3 id="location-usmtf">USMTF compact shapes</h3>
-
-        <p>
-            The fixed-width forms used in ATO and USMTF 2004 traffic. An operator working
-            from those messages pastes them unchanged, so they are recognized as written.
-        </p>
-
-        <table>
-            <thead>
-                <tr><th>USMTF name</th><th>Example</th><th>Resolution</th></tr>
-            </thead>
-            <tbody>
-                <tr><td>LATD</td><td><code>21N157W</code></td><td>About 111 km. <strong>Label required</strong>.</td></tr>
-                <tr><td>LATM</td><td><code>2120N15757W</code></td><td>About 1.9 km</td></tr>
-                <tr><td>LATS</td><td><code>212007N1575654W</code></td><td>About 31 m</td></tr>
-                <tr><td>LATDS, DMPID</td><td><code>212007.1N1575653.9W</code></td><td>Sub-meter</td></tr>
-                <tr><td>GEOK</td><td><code>3510.234N07901.123W</code></td><td>Degrees and thousandths of a minute</td></tr>
-                <tr><td>Verified</td><td><code>2120N9-15757W7</code></td><td>As LATM, plus a stated confidence digit per axis</td></tr>
-            </tbody>
-        </table>
-
-        <p>
-            The verified forms carry a confidence digit after each hemisphere letter. Those
-            digits say how well the position is known, not where it is, so they are kept
-            out of the coordinate and shown beside the resolution instead of being
-            discarded.
-        </p>
-
-        <h3 id="location-grid">Military grid references and UTM</h3>
-
-        <p>
-            These two are unlike everything above them: their position is
-            <strong>calculated</strong> rather than read out of the text. Every other
-            grammar here is arithmetic on digits the author typed, while a grid reference
-            is a projection onto the WGS 84 ellipsoid, so it is worth knowing that the
-            latitude and longitude shown for one is derived rather than quoted.
-        </p>
-
-        <div class="alert alert-warning">
-            <p class="alert-title">UTM is off by default. MGRS is on.</p>
-            <p>
-                UTM is the only format in this plugin that ships disabled, because its band
-                letter is ambiguous in a way MGRS's is not: the rows below marked UTM are
-                matched only once an admin has turned
-                <a href="admin.html#enable-location-utm"><code>EnableLocationUTM</code></a>
-                on. This does not affect the <strong>UTM row in the panel</strong>, which is
-                shown for every decorated coordinate either way.
-            </p>
-        </div>
-
-        <table>
-            <thead>
-                <tr><th>Written</th><th>Accepted</th></tr>
-            </thead>
-            <tbody>
-                <tr><td><code>4Q FJ 09060 59620</code></td><td>Yes. A 1 m square</td></tr>
-                <tr><td><code>55P BR 76 02</code></td><td>Yes. A 1 km square</td></tr>
-                <tr><td><code>4QFJ 09060 59620</code></td><td>Yes. The digraph may run into the zone</td></tr>
-                <tr><td><code>4Q 609060 2359620</code></td><td>Yes. UTM zone, band, easting, northing</td></tr>
-                <tr><td><code>4QFJ0906059620</code></td><td>Yes. Run together, in upper case</td></tr>
-                <tr><td><code>4qfj0906059620</code></td><td>No. Lower case is hash-shaped. <strong>Space it or label it</strong></td></tr>
-                <tr><td><code>4QFJ090596</code></td><td>Yes. Three digits per axis is the floor</td></tr>
-                <tr><td><code>4QFJ0959</code></td><td>No. Coarser than 100 m. <strong>Space it or label it</strong></td></tr>
-                <tr><td><code>MGRS:4qfj09</code></td><td>Yes. A label reaches both</td></tr>
-                <tr><td><code>11S 385000 3769000</code></td><td>Yes. S is a latitude band, not a hemisphere</td></tr>
-                <tr><td><code>55P 276020E 1502660N</code></td><td>Yes. The axis letters are optional</td></tr>
-                <tr><td><code>11N 385000 3769000</code></td><td>No. That northing is not in band N</td></tr>
-                <tr><td><code>4QJJ123123</code></td><td>No. J is not a 100 km letter in zone 4</td></tr>
-            </tbody>
-        </table>
-
-        <div class="alert alert-tip">
-            <p class="alert-title">A grid reference names a square, not a point.</p>
-            <p>
-                <code>55P BR 76 02</code> is a 1 km square, and the position shown for it
-                is that square's <strong>center</strong>. Read as a corner instead, a 10 km
-                reference would put a reader 7 km from where the grid points.
-            </p>
-        </div>
-
-        <p>
-            A run-together grid reference is matched on its own, with two restrictions that
-            were chosen by measurement rather than by argument. <strong>It has to be upper
-            case</strong>, because a short git commit hash is seven to twelve lower-case
-            hexadecimal characters and that is exactly this shape: about one in 3,900 of
-            them is a well-formed grid reference. And <strong>it needs at least three
-            digits per axis</strong>, a 100 m square, because a shorter run is what a part
-            number looks like: at two digits per axis <code>26HMA1997</code> and
-            <code>3UTA7623</code> are valid grid references, about one in 75,000 uppercase
-            runs. At three, a sweep of 1.2 million finds none. This is the same rule that
-            keeps <code>21N157W</code> behind a label. Neither restriction puts anything
-            out of reach: space it, or write <code>MGRS:</code>, <code>UTMO:</code> or
-            <code>UTMT:</code> in front, and both work.
-        </p>
-
-        <p>
-            <strong>UTM run together is matched only behind a label</strong>, and that is not
-            an oversight. After the zone and band it is thirteen bare digits with no letters
-            to check, so the only validation available is that the northing lands in the
-            band, which a great many thirteen-digit runs do. There is nothing there to make
-            narrower.
-        </p>
-
-        <p>
-            <strong>The letter after a UTM zone is a latitude band.</strong>
-            <code>11S 385000 3769000</code> is band S, so it resolves to 34 north. It is not
-            read as "zone 11, southern hemisphere", which would put it at 56 south.
-            Nothing in the token says which was meant, so this is a convention: MGRS is the
-            military implementation of UTM, and the third character of a grid zone designator
-            is a latitude band.
-        </p>
-
-        <p>
-            The two letters do not carry the same risk. For <code>N</code>, both readings put
-            the point in the same place, and reading it as a band only adds the requirement
-            that the position be in the first 8 degrees north; it can decline a coordinate but
-            never move one. <code>S</code> is where the difference is real, and what limits it
-            is that <strong>the northing has to land inside the band its letter names</strong>.
-            About 90% of positions written in the hemisphere convention fail that check and
-            are declined rather than relocated.
-        </p>
-
-        <p>
-            <strong>The axis letters are optional.</strong>
-            <code>55P 276020E 1502660N</code> and <code>55P 276020mE 1502660mN</code> are both
-            matched, and mean exactly what the same pair without them means. They must be
-            attached to their digits: a space before one would let the token swallow the first
-            letter of the following word.
-        </p>
-
-        <p>
-            The 100 km letters are checked against the zone. Only eight of the twenty-four
-            possible column letters are legal in any given zone, and the row letters are
-            staggered in even-numbered zones, so a reference whose letters name no real
-            square is declined rather than resolved to whatever the arithmetic produces.
-        </p>
-
-        <p>
-            Above 84&deg; north and below 80&deg; south there is no UTM grid: that is the
-            Universal Polar Stereographic system, which this plugin does not implement. A
-            polar coordinate is still decorated and still shows latitude and longitude, it
-            simply has no grid rows.
-        </p>
-
-        <h3 id="location-area">Area references: GEOREF, GARS and Plus Codes</h3>
-
-        <p>
-            Three notations that name a <strong>cell of the graticule</strong> rather than a
-            point, the way a grid reference names a square. They need no projection, which
-            has one visible consequence: they still render above 84&deg; north and below
-            80&deg; south, where the MGRS and UTM rows are blank.
-        </p>
-
-        <table>
-            <thead>
-                <tr><th>Notation</th><th>Example</th><th>Cell</th></tr>
-            </thead>
-            <tbody>
-                <tr><td>GEOREF</td><td><code>GEOREF:XGKP5535</code></td><td>1 minute</td></tr>
-                <tr><td>GEOREF</td><td><code>GEOREF:XGKP553350</code></td><td>a tenth of a minute</td></tr>
-                <tr><td>GEOREF</td><td><code>GEOREF:XGKP55803503</code></td><td>a hundredth</td></tr>
-                <tr><td>GARS</td><td><code>GARS:045KG</code></td><td>30 minutes</td></tr>
-                <tr><td>GARS</td><td><code>GARS:045KG1</code></td><td>15 minutes</td></tr>
-                <tr><td>GARS</td><td><code>GARS:045KG14</code></td><td>5 minutes</td></tr>
-                <tr><td>Plus Code</td><td><code>73H483P2+4M</code></td><td>about 14 m</td></tr>
-                <tr><td>Plus Code</td><td><code>73H483P2+4MG</code></td><td>about 3 m</td></tr>
-                <tr><td>Plus Code</td><td><code>73H40000+</code></td><td>1 degree, padded</td></tr>
-            </tbody>
-        </table>
-
-        <p>
-            <strong>GEOREF is written longitude first.</strong> That is the standard's own
-            order and the opposite of every other format on this page: in
-            <code>XGKP5535</code>, <code>X</code>, <code>K</code> and <code>55</code> are
-            longitude and <code>G</code>, <code>P</code> and <code>35</code> are latitude.
-        </p>
-
-        <p>
-            <strong>GEOREF and GARS are matched behind their labels and never bare.</strong>
-            <code>XGKP5535</code> is four letters and four digits, and <code>045KG14</code>
-            is seven alphanumerics whose only structural check rules out just over a third of the
-            possible letter pairs. Neither has anything in it a part number does not, so a
-            bare pattern would rewrite ordinary text. This is the same posture
-            <code>LATD</code> is held to.
-        </p>
-
-        <p>
-            <strong>A Plus Code is matched without a label, in upper case.</strong> Its
-            twenty-character alphabet contains no vowel at all, so an eight-character run of
-            it is not a word, and the separator sits at a fixed position in the middle. Lower
-            case needs a <code>PLUSCODE:</code> or <code>OLC:</code> label, because a
-            lower-case run of that shape is what a version string with build metadata looks
-            like and about one in 50,000 of those is a well-formed code.
-        </p>
-
-        <p>
-            Short Plus Codes such as <code>CWC8+R9</code> are left alone. They are meaningless
-            without a nearby reference location, which this plugin does not have.
-        </p>
-
-        <h3 id="location-moniker">Labeled coordinates</h3>
-
-        <p>
-            A field label in front of any enabled grammar is recognized:
-            <code>LATD:</code>, <code>LATM:</code>, <code>LATS:</code>,
-            <code>LATDS:</code>, <code>GEOK:</code>, <code>DMPID:</code>,
-            <code>DEPLATM:</code>, <code>ARRLATM:</code>, the verified variants
-            <code>VLATD:</code>, <code>VLATM:</code>, <code>VLATS:</code> and
-            <code>VGEOT:</code>, the grid labels <code>MGRS:</code>, <code>USNG:</code>,
-            <code>UTMO:</code>, <code>UTMT:</code>, <code>DEPUTMO:</code> and
-            <code>ARRUTMO:</code>, and the area-reference labels
-            <code>GEOREF:</code>, <code>GARS:</code>, <code>PLUSCODE:</code> and
-            <code>OLC:</code>.
-        </p>
-
-        <p>
-            <code>USNG:</code> introduces a <a href="#location-grid">grid reference</a>. The
-            United States National Grid is MGRS on WGS 84, character for character, so it is
-            not a separate format here: a <code>USNG:</code> token is read and stored as
-            MGRS.
-        </p>
-
-        <p>
-            Like the <a href="#moniker"><code>DTG:</code> label</a>, a coordinate label is
-            <strong>consumed</strong>: the label and the token together become the link, so
-            <code>LATM:2120N15757W</code> is stored as a link reading
-            <code>2120N15757W</code>. The label said what kind of thing followed, and once
-            the thing is a link that says so itself the label is repeating it:
-        </p>
-
-        <p>
-            A label is guarded on both sides exactly as a bare coordinate is, so
-            <code>MGRS:4QFJ0906059620</code> inside a path such as
-            <code>logs/MGRS:4QFJ0906059620</code> is left alone. That means a USMTF line
-            quoted with slash delimiters does not decorate; a genuine one ends
-            <code>//</code> and is left alone for the same reason. That is also what bounds
-            the cost of consuming the label: the lines most likely to be quoted verbatim as
-            a structured record are exactly the ones that never decorate.
-        </p>
-
-        <pre><code>LATM:2130N15730W</code></pre>
-
-        <p>becomes a link on the coordinate alone, with <code>LATM:</code> still in front of it.</p>
-
-        <p>
-            A label vouches for nothing. <code>LATM:9999N99999W</code> stays declined,
-            exactly as <code>9999N99999W</code> does.
-        </p>
-
-        <div class="alert alert-tip">
-            <p class="alert-title">Labels are the only way to reach the shortest shape.</p>
-            <p>
-                <code>21N157W</code> is seven characters, two of them letters, and it
-                resolves to a 111 km square. It is available behind a label and nowhere
-                else. Turning every grammar off except the USMTF one and the label leaves
-                a configuration that decorates only what an author explicitly marked, which
-                is <a href="admin.html#tagged-only">a supported way to run this</a>.
-            </p>
-        </div>
-
-        <h2 id="location-declined">Coordinates deliberately declined</h2>
-
-        <p>
-            The same principle as the times above: a false positive here rewrites
-            somebody's message permanently, so anything that could plausibly be ordinary
-            text is left alone.
-        </p>
-
-        <table>
-            <thead>
-                <tr><th>Not matched</th><th>Example</th><th>Why</th></tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Coarse decimal pairs</td>
-                    <td><code>21.34, -157.95</code></td>
-                    <td>Fewer than four decimals. Two short decimals and a comma appear constantly in ordinary text.</td>
-                </tr>
-                <tr>
-                    <td>Integer pairs</td>
-                    <td><code>12, 34</code></td>
-                    <td>Scores, counts, ranges, anything.</td>
-                </tr>
-                <tr>
-                    <td>No delimiter</td>
-                    <td><code>21.3353 -157.9483</code></td>
-                    <td>A space between two numbers is not evidence that they are a pair.</td>
-                </tr>
-                <tr>
-                    <td>Units that look like hemispheres</td>
-                    <td><code>Load 12 N, 5 W</code></td>
-                    <td>N, S, E and W are also newton, siemens, east and watt. The decimal-point requirement is what keeps this out.</td>
-                </tr>
-                <tr>
-                    <td>Part of a numeric list</td>
-                    <td><code>0.1234, 0.5678, 0.9012</code></td>
-                    <td>A coordinate next to another number is a list, not a position.</td>
-                </tr>
-                <tr>
-                    <td>Inside a longer run</td>
-                    <td><code>-157.9483..-157.9583</code></td>
-                    <td>A range. Linking the middle of one would break it.</td>
-                </tr>
-                <tr>
-                    <td>Comma as a decimal separator</td>
-                    <td><code>21,3353, -157,9483</code></td>
-                    <td>Ambiguous with the separator between the pair. Declined rather than guessed at.</td>
-                </tr>
-                <tr>
-                    <td>Out of range</td>
-                    <td><code>9999N99999W</code></td>
-                    <td>Latitude past 90 or longitude past 180 is not a place.</td>
-                </tr>
-                <tr>
-                    <td>Bare LATD</td>
-                    <td><code>21N157W</code></td>
-                    <td>Too short to detect on its own. <code>LATD:21N157W</code> is recognized.</td>
-                </tr>
-                <tr>
-                    <td>Bare GEOREF</td>
-                    <td><code>XGKP5535</code></td>
-                    <td>Four letters and four digits is also a part number. <code>GEOREF:XGKP5535</code> is recognized.</td>
-                </tr>
-                <tr>
-                    <td>Bare GARS</td>
-                    <td><code>045KG14</code></td>
-                    <td>Seven alphanumerics with almost nothing in them to check. <code>GARS:045KG14</code> is recognized.</td>
-                </tr>
-                <tr>
-                    <td>Lower-case Plus Code</td>
-                    <td><code>73h483p2+4m</code></td>
-                    <td>That shape is what a version string with build metadata looks like, and about one in 50,000 of those is a valid code. <code>PLUSCODE:73h483p2+4m</code> is recognized.</td>
-                </tr>
-                <tr>
-                    <td>Short Plus Code</td>
-                    <td><code>CWC8+R9</code></td>
-                    <td>Meaningless without a nearby reference location, which this plugin does not have and would have to guess at.</td>
-                </tr>
-                <tr>
-                    <td>Null Island</td>
-                    <td><code>0.0000, 0.0000</code></td>
-                    <td>Overwhelmingly an unset field rather than a position in the Gulf of Guinea. A single zero component beside a real value is accepted.</td>
-                </tr>
-                <tr>
-                    <td>Another datum</td>
-                    <td><code>21.3353, -157.9483 NAD27</code></td>
-                    <td>Resolves to a different place. Declined rather than silently treated as WGS 84.</td>
-                </tr>
-                <tr>
-                    <td>Run-together grid references in lower case, or coarser than 100 m</td>
-                    <td><code>4qfj0906059620</code>, <code>4QFJ0959</code></td>
-                    <td>A lower-case run of that shape is what a short git commit hash looks like, and a shorter one is what a part number looks like. <a href="#location-grid">Upper case with three digits per axis is matched</a>, so <code>4QFJ0906059620</code> is a link; space these out or put <code>MGRS:</code> in front to reach the rest.</td>
-                </tr>
-                <tr>
-                    <td>A UTM northing outside its band</td>
-                    <td><code>11N 385000 3769000</code></td>
-                    <td>The letter after the zone is a latitude band, and that northing is 34 north, which is band S. Note this also means <code>11S</code> is <em>not</em> read as "zone 11, southern hemisphere".</td>
-                </tr>
-                <tr>
-                    <td>Grid squares that do not exist</td>
-                    <td><code>4QJJ123123</code></td>
-                    <td>Only eight of the twenty-four column letters are legal in any zone, and D is not one of zone 32's.</td>
-                </tr>
-                <tr>
-                    <td>Polar grid references</td>
-                    <td><code>ZAH 12345 67890</code></td>
-                    <td>Universal Polar Stereographic, above 84&deg; north or below 80&deg; south. A different system, not implemented.</td>
-                </tr>
-                <tr>
-                    <td>Airfield codes</td>
-                    <td><code>ICAO:KJFK</code></td>
-                    <td>Names a facility whose position has to be looked up rather than computed, so it is not read as a coordinate. It is recognized by the <a href="#airfield">airfield decorator</a> instead, which looks it up.</td>
-                </tr>
-                <tr>
-                    <td>Bearing and range</td>
-                    <td><code>BAR:330-PT ALFA-50</code></td>
-                    <td>Relative to a reference point that is not in the message, so there is nothing to resolve it against.</td>
-                </tr>
-            </tbody>
-        </table>
-
-        <div class="alert alert-tip">
-            <p class="alert-title">Not sure why yours was not linked?</p>
-            <p>
-                <a href="commands.html#check"><code>/tactical-fusion check &lt;your text&gt;</code></a>
-                runs the real matcher against it and tells you, without posting anything.
-            </p>
-        </div>
-
-        <h2 id="airfield">Airfield codes</h2>
-
-        <p>
-            An ICAO airfield code is four letters naming a facility, so unlike every
-            coordinate on this page its position is <strong>looked up rather than
-            computed</strong>. The plugin carries an airfield database and resolves the
-            code against it, then derives every coordinate reading from the position it
-            finds.
-        </p>
-
-        <table>
-            <thead>
-                <tr><th>What is recognized</th><th>Example</th><th>Notes</th></tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Behind a USMTF field label</td>
-                    <td><code>ICAO:PHNL</code></td>
-                    <td>The four labels that introduce an airfield code in USMTF: <code>ICAO:</code>, <code>LOC:</code>, <code>DEPLOC:</code> and <code>ARRLOC:</code>.</td>
-                </tr>
-                <tr>
-                    <td>A space before the colon</td>
-                    <td><code>ICAO :PHNL</code></td>
-                    <td>Spaces and tabs <em>before</em> the colon are optional. Nothing may follow it: see <a href="#airfield-declined">the declined list</a>. A line break is not allowed either, so a label at the end of a line never claims the next line's first word.</td>
-                </tr>
-                <tr>
-                    <td>Ending a USMTF set line</td>
-                    <td><code>DEPLOC:PHNL//</code></td>
-                    <td>The trailing <code>//</code> is left in the message and kept out of the link.</td>
-                </tr>
-            </tbody>
-        </table>
-
-        <h3 id="airfield-declined">Airfield codes deliberately declined</h3>
-
-        <table>
-            <thead>
-                <tr><th>What is not linked</th><th>Example</th><th>Why</th></tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Anything after the colon</td>
-                    <td><code>LOC: FAST</code></td>
-                    <td>The code must be written directly against the colon, which a genuine USMTF field is. A space would let the label reach the next word of an ordinary sentence, and military traffic is often written in capitals: <code>LOC: FAST TURNAROUND ON THE RAMP</code> would otherwise rewrite <code>FAST</code> into a link to Somerset East Airport, permanently. Write <code>LOC:FAST</code> when you mean the airfield.</td>
-                </tr>
-                <tr>
-                    <td>A code with no label</td>
-                    <td><code>KIND</code></td>
-                    <td>Four letters is what ordinary words are made of. 343 codes in the database are English dictionary words, including <code>FACT</code> (Cape Town International) and <code>FAST</code> (Somerset East), and <code>USCG</code> is an airfield in Russia. Linking bare codes would rewrite ordinary sentences into links pointing at the wrong side of the world.</td>
-                </tr>
-                <tr>
-                    <td>A lower-case label</td>
-                    <td><code>icao:phnl</code></td>
-                    <td>Same reason. A line like <code>loc: fast turnaround on the ramp</code> would otherwise be rewritten. USMTF field labels are upper case.</td>
-                </tr>
-                <tr>
-                    <td>A code the database does not hold</td>
-                    <td><code>ICAO:QZQZ</code></td>
-                    <td>The code is validated by looking it up, not by its shape, so four letters on their own vouch for nothing.</td>
-                </tr>
-                <tr>
-                    <td><code>ZZZZ</code></td>
-                    <td><code>DEPLOC:ZZZZ</code></td>
-                    <td>In a flight plan this means "aerodrome not listed", with the real field named in remarks. It is a real airfield upstream, and linking it would name a specific island airfield where the message means "see remarks", so it is deliberately not in the database.</td>
-                </tr>
-                <tr>
-                    <td>IATA codes</td>
-                    <td><code>IND</code></td>
-                    <td>Three letters, and not implemented in this version. The IATA code is shown in the panel for an airfield that has one.</td>
-                </tr>
-                <tr>
-                    <td>A label inside a path</td>
-                    <td><code>logs/ICAO:PHNL</code></td>
-                    <td>A label with a path character in front of it is not a field label, and rewriting the middle of a path is exactly what the plugin's boundary rules exist to prevent.</td>
-                </tr>
-            </tbody>
-        </table>
-
-        <div class="alert alert-note">
-            <p class="alert-title">The position is a reference point</p>
-            <p>
-                The airfield database gives one position per field, quoted to four
-                decimal places, which is about 11 metres. It is a reference point for
-                the field rather than a surveyed location of the tower, the threshold or
-                any particular part of it. Where the data comes from is recorded on this page
-                and beside the data itself rather than in the panel, which prints no
-                credit. The panel draws the position as a map and links to the
-                <a href="panel.html#location-panel">coordinate panel</a> for the readings
-                rather than reprinting them.
-            </p>
-        </div>
-
-        <h2 id="cot">Cursor on Target events</h2>
-
-        <p>
-            A Cursor on Target event is rendered as a card rather than linked: the callsign
-            and what the event says it is, the position, when it was taken and when it goes
-            stale, and how accurately the position is known. The position is drawn on a map
-            with its stated circular error around it, so a three-metre fix and a nine-kilometre
-            fix do not look alike.
-        </p>
-
-        <p>There are two ways to post one.</p>
-
-        <h3 id="cot-fence">In a fenced code block</h3>
-
-        <p>
-            Paste the event into a fenced block labelled <code>cot</code> or <code>xml</code>:
-        </p>
-
-        <pre><code>&#96;&#96;&#96;cot
-&lt;event version="2.0" uid="ANDROID-1" type="a-f-G-U-C" how="m-g"
-       time="2026-08-23T11:43:38Z" stale="2026-08-23T11:45:38Z"&gt;
-  &lt;point lat="21.335300" lon="-157.948300" ce="45.3" le="99.5"/&gt;
-  &lt;detail&gt;&lt;contact callsign="DELTA1"/&gt;&lt;/detail&gt;
-&lt;/event&gt;
-&#96;&#96;&#96;</code></pre>
-
-        <p>
-            Both labels are read the same way. Use <code>cot</code> when you mean it: a block
-            labelled <code>xml</code> that turns out not to be an event is left alone
-            silently, because plenty of XML is not Cursor on Target, while a block you
-            labelled <code>cot</code> tells you why it was not rendered.
-        </p>
-
-        <h3 id="cot-detail">What the card reads out of <code>detail</code></h3>
-
-        <p>
-            <code>&lt;detail&gt;</code> is an open container. There is no schema for it: ATAK,
-            TAK Server, FreeTAKServer and third-party plugins each write their own
-            conventions into it. This plugin reads the ones it knows and leaves the rest
-            alone, so an element it does not recognise costs you nothing.
-        </p>
-
-        <p>
-            <strong>Recognised today:</strong> <code>contact</code>, <code>__group</code>,
-            <code>track</code>, <code>remarks</code>, <code>link</code>, <code>uid</code>,
-            <code>takv</code>, <code>precisionlocation</code>, <code>archive</code>,
-            <code>usericon</code>, <code>color</code>, <code>status</code>,
-            <code>Attitude</code>, <code>sensor</code>, <code>__video</code>,
-            <code>__chat</code>, <code>_medevac_</code> and <code>_flow-tags_</code>.
-            Geometry is read too: a drawn shape's <code>shape</code> and
-            <code>polyline</code>, a circle's <code>ellipse</code>, and a route's
-            points, which ATAK writes as <code>link</code> elements carrying a
-            <code>point</code> rather than a <code>uid</code>. Those are drawn on the
-            map, and a route's points no longer count against the sixteen relations
-            an event may declare.
-        </p>
-
-        <p>
-            <strong>Almost none of it reaches the card.</strong> The card stays what it was:
-            the callsign, what the event is, the position, the times and the accuracy. The
-            recognised extensions are in the sidebar behind <strong>Open details</strong>,
-            grouped under Device, Position quality, Orientation, Payload and Processing
-            path. What the card gains is at most one extra line, and only for four kinds
-            of event: a GeoChat message, a MEDEVAC request, a sensor and a video stream.
-        </p>
-
-        <p>
-            <strong>An element this build does not recognise is counted, not dropped.</strong>
-            The sidebar says how many there were and the whole event is still printed
-            under <strong>As posted</strong>, unchanged.
-        </p>
-
-        <div class="alert alert-info">
-            <p class="alert-title">What kind of event it is comes from the type code, not from <code>detail</code>.</p>
-            <p>
-                A <code>__chat</code> or <code>_medevac_</code> element inside an
-                <code>a-</code> event does not change how the card is drawn. Only the
-                type code decides, so nobody can re-shape somebody else's contact report
-                by adding one element to it. An element only picks the layout when the
-                type code says nothing about what the event is.
-            </p>
-            <p>
-                For the same reason, a callsign inside <code>__chat</code> is labelled as
-                the sender the <em>event states</em>. It has no connection to the
-                Mattermost account that posted, and the card never draws it as though a
-                person had sent a message.
-            </p>
-        </div>
-
-        <p>
-            Two values are shown and deliberately not acted on. A stated
-            <code>color</code> appears as a value in the sidebar and never colours the map
-            marker or the affiliation dot, which are what tell one track from another. A
-            video address is shown as text and is never a link.
-        </p>
-
-        <div class="alert alert-info">
-            <p class="alert-title">A shape is drawn, or it is not drawn and the sidebar says why.</p>
-            <p>
-                There is no third option. A shape with more points than this build
-                draws would otherwise be shown as a line that stops somewhere the
-                shape does not, and a shape with a point that is not written as a
-                plain decimal would be shown missing a corner. Both are a different
-                shape rather than a partial one, so neither is drawn and the sidebar
-                says which happened. Everything else about the event, the callsign,
-                the position, the times and the accuracy, is unaffected.
-            </p>
-        </div>
-
-        <h3 id="cot-file">As an attached file</h3>
-
-        <p>
-            Attach exactly one file whose name ends <code>.cot</code> or <code>.xml</code>.
-            The card names the file and links to it, so the original is always one click
-            away. Files over 64 KB are left as ordinary attachments.
-        </p>
-
-        <p>
-            <strong>It has to be a file you attached to this post.</strong> A file already
-            carried by another post, one somebody else uploaded, or one that has been
-            deleted is left alone and the post goes out as ordinary text. The plugin reads
-            the attachment before the server has finished binding it to the post, so this
-            is the only thing standing between a quoted file id and that file's contents
-            being copied into a post anyone in the channel can read.
-        </p>
-
-        <h3 id="cot-limits">What is and is not rendered</h3>
-
-        <p>
-            You can write a covering note around the event and it is kept. There are limits
-            worth knowing before they surprise you:
-        </p>
-
-        <ul>
-            <li>
-                <strong>Markdown in that note is not formatted.</strong> The plugin draws the
-                whole post body itself and has no access to Mattermost's formatter, so bold,
-                links and lists beside an event render as the characters you typed.
-            </li>
-            <li>
-                <strong>Several events in one block are read together.</strong> The card
-                names each one and links its position, and the full detail of every event is
-                behind <a href="panel.html#cot-panel"><em>Open details</em></a>. Up to 32; a
-                block carrying more is left alone rather than shown in part. If any single
-                event in the block is malformed, none of them is rendered.
-            </li>
-
-            <li>
-                <strong>An event may name up to 16 others.</strong> Past that the extra
-                <code>link</code> elements are dropped and the event still renders, which is
-                deliberately the opposite of the 32 event limit above. Losing a relation
-                costs one entry in a <em>Relates to</em> row that has already told you who
-                sent the event; losing an event would leave a card quietly claiming a set it
-                does not hold.
-            </li>
-            <li>
-                <strong>A fence is optional for a one-line event.</strong> An event pasted
-                straight into a message, as it arrives over the wire, is read the same way,
-                with your surrounding text kept. An <em>indented</em> event needs the fence:
-                Markdown reads a line indented four spaces as a code block, so a
-                pretty-printed event pasted bare is left as the text you wrote. An event you
-                put in a code block without labelling the fence is left as code too, because
-                that is what you said it was.
-            </li>
-            <li>
-                <strong>Two fenced blocks are left alone.</strong> Put the events in one
-                block, or post them separately.
-            </li>
-            <li>
-                <strong>Two attachments means no card.</strong> The file has to be the only
-                one.
-            </li>
-            <li>
-                <strong>Editing the post removes the card, permanently.</strong> The event was
-                read once, when the post was created, and an edit can change the text it was
-                read from. Rather than show you a card that might no longer match, the post
-                falls back to its own text.
-            </li>
-            <li>
-                <strong>A coordinate written beside an event is not linked.</strong> The card
-                owns the post body, so a link written into the text around it could not
-                render. The position inside the event is linked by the card itself.
-            </li>
-            <li>
-                <strong>The post will not be found by search</strong> on installs that use
-                Elasticsearch or OpenSearch. See
-                <a href="admin.html#enable-cot">the admin note</a>.
-            </li>
-        </ul>
-
-        <p>
-            An event must carry a <code>uid</code>, a <code>type</code> and a
-            <code>time</code> to be rendered at all. Without those the card would be a table
-            of blanks, which is worse than the XML it replaced.
-        </p>
-
-        <h3 id="cot-honesty">What the card will not claim</h3>
-
-        <ul>
-            <li>
-                An accuracy the event did not state is not invented. The row says so and no
-                circle is drawn.
-            </li>
-            <li>
-                <code>9999999.0</code> is the Cursor on Target value for "not known". It is
-                shown as <em>not stated</em>, never as a figure.
-            </li>
-            <li>
-                A position of <code>0,0</code> is shown, and named as the value an unset
-                Cursor on Target point carries, but no pin is drawn for it.
-            </li>
-            <li>
-                A position written too coarsely to satisfy the coordinate grammar is shown as
-                text without a link, rather than padded out with digits the event never had.
-            </li>
-            <li>
-                An event that names the unit which sent it shows that as <em>Sent by</em>,
-                and any other events it names as <em>Relates to</em>. Nothing tries to find
-                those other events; the codes are shown as the event wrote them.
-            </li>
-            <li>
-                An event type is decoded as far as this build knows it and no further, so
-                <code>a-f-G-U-C</code> reads as <em>Friendly Ground Combat Unit</em> and
-                <code>a-f-A</code> as <em>Friendly Air</em>. A code carrying more than the
-                build recognizes keeps the deepest part it does know rather than guessing at
-                the rest, and a type outside the recognized set says it is unrecognized. The
-                raw code is always shown in brackets beside the label, so you can see what
-                the label came from and what it did not cover.
-            </li>
-            <li>
-                Staleness is measured between two values fixed on the server, so it reads the
-                same for everyone regardless of what any workstation clock says. The card is
-                a snapshot of what was posted, not a live track, and nothing on it ticks.
-            </li>
-        </ul>
 
         <h2 id="protected">Spans that are never rewritten</h2>
 

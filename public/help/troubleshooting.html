@@ -16,6 +16,12 @@
         <nav>
             <span class="nav-section">Documentation</span>
             <a href="help.html">Overview</a>
+            <span class="nav-section">Decorators</span>
+            <a href="dtg.html">Date-Time Groups</a>
+            <a href="location.html">Coordinates</a>
+            <a href="airfields.html">Airfields</a>
+            <a href="cot.html">Cursor on Target</a>
+            <span class="nav-section">Guides</span>
             <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
             <a href="admin.html">Admin Settings</a>
@@ -47,8 +53,8 @@
             <tbody>
                 <tr>
                     <td>The format is not one that is recognized</td>
-                    <td>Compare against the <a href="formats.html#declined">declined list</a>. Epoch seconds, 12 hour clocks, bare dates and <code>CST</code> style abbreviations are all deliberately absent.</td>
-                    <td>Write it as a <a href="formats.html#military">date-time group</a> or an <a href="formats.html#timestamp">RFC 3339 timestamp</a>.</td>
+                    <td>Compare against the <a href="dtg.html#declined">declined list</a>. Epoch seconds, 12 hour clocks, bare dates and <code>CST</code> style abbreviations are all deliberately absent.</td>
+                    <td>Write it as a <a href="dtg.html#military">date-time group</a> or an <a href="dtg.html#timestamp">RFC 3339 timestamp</a>.</td>
                 </tr>
                 <tr>
                     <td>It is inside a protected span</td>
@@ -168,7 +174,7 @@
                 <tr>
                     <td>A polar coordinate has no MGRS or UTM row</td>
                     <td>Above 84&deg; north and below 80&deg; south there is no UTM grid. That is Universal Polar Stereographic, a different system this plugin does not implement.</td>
-                    <td>Nothing to do, and less is missing than it looks. The coordinate is still decorated, still shows latitude and longitude, and still shows its <a href="formats.html#location-area">GEOREF, GARS and Plus Code</a> rows: those three subdivide the graticule rather than a projected grid, so they have no polar gap and are what remains at those latitudes.</td>
+                    <td>Nothing to do, and less is missing than it looks. The coordinate is still decorated, still shows latitude and longitude, and still shows its <a href="location.html#location-area">GEOREF, GARS and Plus Code</a> rows: those three subdivide the graticule rather than a projected grid, so they have no polar gap and are what remains at those latitudes.</td>
                 </tr>
                 <tr>
                     <td>One coordinate in a list linked and the others did not</td>
@@ -224,7 +230,7 @@
                 <tr>
                     <td><code>KIND</code> on its own did nothing</td>
                     <td>There is no bare grammar, permanently. Of the airfield codes this plugin ships, 343 are ordinary English words: <code>FACT</code> is Cape Town International, <code>USCG</code> is an airfield in Russia, <code>LIMA</code> is in Turin. Reading them bare would rewrite ordinary prose.</td>
-                    <td>Write a <a href="formats.html#airfield">USMTF field label</a> in front: <code>ICAO:PHNL</code>, <code>LOC:</code>, <code>DEPLOC:</code> or <code>ARRLOC:</code>.</td>
+                    <td>Write a <a href="airfields.html#airfield">USMTF field label</a> in front: <code>ICAO:PHNL</code>, <code>LOC:</code>, <code>DEPLOC:</code> or <code>ARRLOC:</code>.</td>
                 </tr>
                 <tr>
                     <td><code>icao:phnl</code> did nothing, but <code>ICAO:PHNL</code> works</td>
@@ -327,7 +333,7 @@
                 <tr>
                     <td><code>The Cursor on Target event you just posted could not be read, so it was left as ordinary text.</code></td>
                     <td>The XML did not parse, or it parsed into something this plugin refuses: a document type declaration, a processing instruction other than the XML declaration, an event with no <code>uid</code>, <code>type</code> or <code>time</code>, more than 32 events, or text that is not valid UTF-8. Code <a href="error-codes.html#hooks"><code>TF-11005</code></a>.</td>
-                    <td>Check the event against <a href="formats.html#cot-limits">what is and is not rendered</a>. The message text is unchanged, so nothing was lost.</td>
+                    <td>Check the event against <a href="cot.html#cot-limits">what is and is not rendered</a>. The message text is unchanged, so nothing was lost.</td>
                 </tr>
                 <tr>
                     <td><code>The Cursor on Target event you just posted carries too much detail to render, so it was left as ordinary text.</code></td>
@@ -337,7 +343,7 @@
                 <tr>
                     <td>An attached <code>.cot</code> or <code>.xml</code> file did nothing, and nothing said why</td>
                     <td><strong>Attachments fail silently</strong>, for the reason above. What reaches the server log depends on where it stopped: <a href="error-codes.html#hooks"><code>TF-11003</code></a> when the file could not be read at all; <a href="error-codes.html#hooks"><code>TF-11006</code></a> when it was read but is not yours, is already on another post, or has been deleted; <a href="error-codes.html#hooks"><code>TF-11005</code></a> when it was read but its contents did not parse; <a href="error-codes.html#hooks"><code>TF-11004</code></a> when it parsed but carried too much detail. A file whose name does not end <code>.cot</code> or <code>.xml</code>, and one over 64 KB, are passed over with nothing logged at all.</td>
-                    <td>Check the rules in <a href="formats.html#cot-file">as an attached file</a>: exactly one file, under 64 KB, one you attached to this post. A file your integration uploaded through the plugin API also counts, since those are credited to the server rather than to a person. Pasting the same event into a <code>cot</code> fence gives you the reason directly, which is faster than asking an administrator to read the log.</td>
+                    <td>Check the rules in <a href="cot.html#cot-file">as an attached file</a>: exactly one file, under 64 KB, one you attached to this post. A file your integration uploaded through the plugin API also counts, since those are credited to the server rather than to a person. Pasting the same event into a <code>cot</code> fence gives you the reason directly, which is faster than asking an administrator to read the log.</td>
                 </tr>
                 <tr>
                     <td>The event renders for me but not for a colleague</td>
@@ -494,7 +500,7 @@
             <strong>Every reading in the table renders regardless</strong>: the coordinate
             and its conversions are worked out on the server. The one thing that goes with
             the map is the
-            <a href="panel.html#location-region">country</a>, which the map speaks and
+            <a href="location.html#location-region">country</a>, which the map speaks and
             nothing else does.
         </p>
 
@@ -513,7 +519,7 @@
         <div class="alert alert-info">
             <p class="alert-title">Two things about the map under an airfield.</p>
             <p>
-                The <a href="panel.html#airfield-panel">airfield panel</a> draws the
+                The <a href="airfields.html#airfield-panel">airfield panel</a> draws the
                 coordinate decorator's own map, so it follows the same panel-map switch,
                 and that switch is combined with coordinate decoration itself: an install
                 that turns <em>coordinates</em> off loses the airfield map too, even
@@ -549,12 +555,12 @@
                 <tr>
                     <td><code>The position for this coordinate is unavailable.</code></td>
                     <td>Nothing is wrong with the map. Either the conversion did not arrive for a grid reference, which has no latitude and longitude until the server works one out, or the position is a polar one outside the grid entirely. Rather than guess at a pin, the map says so.</td>
-                    <td>For a conversion that did not arrive, reopen the coordinate. Every reading the link carries by itself stays on screen either way. See <a href="panel.html#location-degrades">when the conversion does not arrive</a>.</td>
+                    <td>For a conversion that did not arrive, reopen the coordinate. Every reading the link carries by itself stays on screen either way. See <a href="location.html#location-degrades">when the conversion does not arrive</a>.</td>
                 </tr>
                 <tr>
                     <td><code>This position is too far north for the map.</code><br><code>This position is too far south for the map.</code></td>
                     <td>Expected, and not a failure. The projection the map uses runs out at about 85 degrees north and south, so a coordinate beyond that is left off rather than pinned up to 550 km from where it actually is.</td>
-                    <td>None. The coordinate is fine and every reading renders. See <a href="panel.html#location-map">the map</a>.</td>
+                    <td>None. The coordinate is fine and every reading renders. See <a href="location.html#location-map">the map</a>.</td>
                 </tr>
             </tbody>
         </table>
@@ -593,7 +599,7 @@
         <h2 id="detail-packages">A detail area will not install, or never appears</h2>
 
         <p>
-            Above zoom 10 the map draws <a href="panel.html#location-map">OpenStreetMap
+            Above zoom 10 the map draws <a href="location.html#location-map">OpenStreetMap
             detail</a> for the areas this install has, and each area is one file on disk.
             Two very different things send people here, and the fix has nothing in common
             between them.
@@ -605,7 +611,7 @@
                 Detail is shipped per area rather than for the whole world. Outside a
                 covered area the world map keeps drawing, magnified past the detail it
                 holds, which is the expected behavior and is described under
-                <a href="panel.html#location-map">the map</a>. This build ships Hawaii and
+                <a href="location.html#location-map">the map</a>. This build ships Hawaii and
                 Guam; anything else was added by whoever installed the plugin, through
                 <a href="admin.html#location-map-packages-dir">the package directory</a>.
                 The credit beneath the map does not answer this: it is drawn whenever this
@@ -613,7 +619,7 @@
                 zoom and everywhere in the world once any area is installed. What tells
                 you an area is covered is the map itself, real road networks and named
                 water where the world map carried none. See
-                <a href="panel.html#location-map">the map</a>.
+                <a href="location.html#location-map">the map</a>.
             </p>
         </div>
 
@@ -847,9 +853,9 @@
             land and water edge better at the size a sidebar gives it, and it keeps the pin
             and the square around it from competing with the readings beside them. There is
             no setting for it, in the System Console or under
-            <a href="panel.html#location-customize">Customize your view</a>. If the map is
+            <a href="location.html#location-customize">Customize your view</a>. If the map is
             unwanted in a light theme, hiding it is the only lever, and it is
-            <a href="panel.html#location-map">yours to pull per person</a>.
+            <a href="location.html#location-map">yours to pull per person</a>.
         </p>
 
         <h2 id="wrong-timezones">The panel and the standalone page show different timezones</h2>

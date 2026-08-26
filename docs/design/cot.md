@@ -477,9 +477,11 @@ flickering itself in and out as the reader moves toward it.
   the short hand-written table of well-known ones, and anything else renders the
   raw string and says it is unrecognized.
 
-  The table has gaps: `A-M` has no row while `A` and `A-M-L` both do. That costs
-  nothing, because `longestAtomPath` keeps the deepest match rather than stopping
-  at the first miss, and `TestADeeperPathResolvesThroughAMissingParent` pins it.
+  The table has gaps: twenty-one paths have no row for their immediate parent.
+  `S-C-A-L-A` (Assault Vessel) is one, with `S-C-A` present and `S-C-A-L` absent.
+  That costs nothing, because `longestAtomPath` keeps the deepest match rather
+  than stopping at the first miss, and
+  `TestADeeperPathResolvesThroughAMissingParent` pins it.
 
 ### Time without a trusted clock
 

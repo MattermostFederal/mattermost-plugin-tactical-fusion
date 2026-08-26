@@ -27,9 +27,13 @@ const helpDir = "../public/help"
 
 // helpPages is every page in the bundle. The sidebar on each one links to all
 // of them, which TestHelpNavigationIsComplete enforces, so adding a page means
-// adding it here and to seven navigation blocks.
+// adding it here and to every navigation block.
 var helpPages = []string{
 	"help.html",
+	"dtg.html",
+	"location.html",
+	"airfields.html",
+	"cot.html",
 	"formats.html",
 	"panel.html",
 	"admin.html",
@@ -286,4 +290,105 @@ func TestHelpBundleMatchesTheListedPages(t *testing.T) {
 		t.Fatalf("public/help holds [%s] but the tests cover [%s]",
 			strings.Join(onDisk, " "), strings.Join(listed, " "))
 	}
+}
+
+// The slash commands carry a curated, matcher-verified example corpus, and it is
+// the same corpus the decorator pages teach from. Nothing else keeps the two in
+// step: a row added to example-details and not to a page leaves the docs quietly
+// behind the command, which is the drift the pages exist to avoid.
+//
+// The pages may show more than the command does. They may not show less.
+func TestEveryCommandExampleIsDocumented(t *testing.T) {
+	bundle := map[string]string{}
+	for _, name := range helpPages {
+		bundle[name] = readHelpFile(t, name)
+	}
+
+	checked := 0
+	for _, key := range detailSetOrder {
+		for _, group := range detailSets[key].groups {
+			for _, example := range group.examples {
+				if undocumentedExamples[example.text] {
+					continue
+				}
+				checked++
+				if !documentedSomewhere(bundle, example.text) {
+					t.Errorf("%s/%q: no help page shows %q",
+						key, group.heading, example.text)
+				}
+			}
+		}
+	}
+
+	// Without this the test passes just as happily against an empty catalog.
+	if checked == 0 {
+		t.Fatal("checked no examples; the catalog is not being read")
+	}
+}
+
+// Same contract for the Cursor on Target documents, which are whole XML sources
+// rather than single tokens.
+func TestEveryCotExampleIsDocumented(t *testing.T) {
+	page := readHelpFile(t, "cot.html")
+
+	sources := cotExampleSources()
+	if len(sources) == 0 {
+		t.Fatal("no example sources; the list is not being read")
+	}
+
+	for name, source := range sources {
+		if !strings.Contains(page, escapeForHelp(strings.TrimSpace(source))) {
+			t.Errorf("cot.html does not carry the %q example", name)
+		}
+	}
+}
+
+// cotExampleSources is hand-maintained, and three other tests trust it to be the
+// whole set. A constant added to the command and not to that map would weaken
+// them all silently, this one included.
+func TestEveryCotExampleSourceIsListed(t *testing.T) {
+	listed := map[string]bool{}
+	for _, source := range cotExampleSources() {
+		listed[strings.TrimSpace(source)] = true
+	}
+
+	fenced := regexp.MustCompile("(?s)```(?:cot|xml)\\n(.*?)```")
+
+	for _, chunk := range append(cotDetailChunks(true, true), cotExtensionChunks()...) {
+		for _, atom := range chunk.lines {
+			for _, m := range fenced.FindAllStringSubmatch(atom, -1) {
+				if source := strings.TrimSpace(m[1]); !listed[source] {
+					t.Errorf("%q posts an example that cotExampleSources does not list:\n%s",
+						chunk.heading, source)
+				}
+			}
+		}
+	}
+}
+
+// A handful of rows exist to exercise the packing and budget logic rather than to
+// teach a grammar, and putting them on a page would be noise. Every entry needs a
+// reason; if this list grows, the docs are drifting rather than the test being
+// wrong.
+var undocumentedExamples = map[string]bool{}
+
+func documentedSomewhere(bundle map[string]string, text string) bool {
+	want := escapeForHelp(text)
+	for _, body := range bundle {
+		if strings.Contains(body, want) {
+			return true
+		}
+	}
+	return false
+}
+
+// The three replacements that matter inside element content, in the order that
+// keeps the ampersand from eating the others. html.EscapeString is deliberately
+// not used: it also rewrites quotes and apostrophes, which these pages write
+// literally.
+func escapeForHelp(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	return s
 }

@@ -4,21 +4,56 @@
 
 ## Built-in documentation
 
-`public/help/` holds seven static HTML pages and one stylesheet. Mattermost
+`public/help/` holds eleven static HTML pages and one stylesheet. Mattermost
 serves the bundle's `public/` directory at `/plugins/<id>/public/**`, so
 **there is no route for this in the server code** and nothing to add to
 `ServeHTTP`. The build already copies it: `build/setup.mk` sets `HAS_PUBLIC`
 from the directory's existence and the `bundle` target acts on it.
 
+The bundle is organized **by feature, not by surface**. Each decorator owns one
+page covering it end to end, its grammars, its examples, its panel and its
+switches, because a reader arrives asking about coordinates rather than about
+sidebars. `formats.html` and `panel.html` were that split the other way round and
+are now the index and the shared-mechanics pages respectively.
+
 | Page | Covers | Kept in sync with |
 |---|---|---|
 | `help.html` | Landing page, what a decorator is, the consequences of server-side decoration, nav cards | The overall surface |
-| `formats.html` | Every recognized grammar, the declined list with reasons, protected spans | `server/decorators/dtg/dtg.go`, `parse.go`, `tagger.go` |
-| `panel.html` | The sidebar, the hover, the standalone page, Customize your view, the picker, zone ordering | `webapp/src/decorators/dtg/` |
+| `dtg.html` | Every date and time grammar, the zone letters, the declined list, the panel | `server/decorators/dtg/` |
+| `location.html` | The twelve coordinate grammars, the rows, the map, the declined list, the panel | `server/decorators/location/` |
+| `airfields.html` | The label-only grammar, the database, the table expansion, the panel | `server/decorators/airport/` |
+| `cot.html` | The whole schema: `event`, `point`, `detail`, the type tables, the limits and refusals, worked examples, the card, the panel, the map | `server/cot/`, `server/hooks_cot.go`, `webapp/src/cot/` |
+| `formats.html` | The index, and the rules every decorator shares: boundaries, consumed labels, protected spans | `server/decorators/tagger.go`, `boundary.go` |
+| `panel.html` | What a hover, a click and a standalone page are; preferences, restore defaults, zone ordering | `webapp/src/decorators/` |
 | `admin.html` | One section per switch, and what a switch does not do | `plugin.json` `settings_schema.settings` |
 | `commands.html` | `examples`, `example-details`, `check`, bare and unknown subcommands | `server/command*.go` |
 | `troubleshooting.html` | Symptom, cause, fix, quoting the exact user-facing strings | Every message in the server |
 | `error-codes.html` | The `TF-NNNN` registry, grouped by source file | `server/errcode/codes.go` |
+
+`admin.html` and `troubleshooting.html` stay **whole registries** rather than
+being split across the decorator pages. An admin auditing switches and a
+responder matching a symptom both scan the complete list, and splitting them
+would disperse the two inventories `TestEverySettingIsDocumented` and
+`TestEveryCodeIsDocumented` guard. The decorator pages link into them instead.
+
+### The examples come from the slash commands
+
+The decorator pages teach from the **same corpus** `/tactical-fusion examples`
+and `example-details` post: `detailSets` in `server/command_example_details.go`
+and the CoT documents in `server/command_cot_example.go`. That corpus is curated,
+annotated with the reason each row exists, and verified against the real matcher
+by `TestEveryDetailDoesWhatItsGroupClaims`, so a page built from it inherits that
+guarantee instead of restating grammar by hand.
+
+Before this, roughly half of it appeared nowhere in the documentation, and the
+overlap that did exist often taught the same grammar with *different literals*.
+`TestEveryCommandExampleIsDocumented` and `TestEveryCotExampleIsDocumented` close
+that: **a page may show more than the command does, never less.** Adding a row to
+the catalog now fails the build until a page carries it.
+
+`undocumentedExamples` is the exemption list, for rows that exercise packing or
+budget logic rather than teaching a grammar. It is empty today. If it grows past
+a handful, the docs are drifting rather than the test being wrong.
 
 Three things discover it, and `server/help_docs_test.go` guards the first:
 
@@ -44,6 +79,30 @@ A test enforces this, along with the repo-wide em dash ban, which
 fails silently: the browser lands at the top and the reader never learns they
 missed the section. `TestEveryCrossPageAnchorResolves` walks every
 `href="page.html#id"` in the bundle and is the reason renaming one is safe.
+
+### Examples are selectable, not copyable
+
+Every example a reader is meant to paste carries `class="copyable"`, which is
+`user-select: all` and a small drawn icon. One click selects the whole example;
+the reader presses Ctrl or Cmd C.
+
+**It is not a clipboard button, and that is deliberate.** A real copy needs
+`navigator.clipboard`, which is JavaScript this bundle may not have, and which
+is `undefined` on a non-secure origin. `CopyButton.tsx` already recorded the
+measurement that settles it: plain HTTP on-prem is the deployment norm for this
+audience rather than an edge case, which is why the sidebar's own copy buttons
+hide themselves rather than fail silently. A clipboard button here would be
+absent on exactly the air-gapped installs these pages exist to serve, so the
+affordance that works everywhere is the one that ships.
+
+The icon is drawn from borders on `::before` and `::after` rather than set as a
+font glyph in `content`. Two reasons: the bundle ships no web fonts and rides
+the system stack, so a minimal host can render a glyph as tofu; and a drawn
+shape with empty `content` is not announced by screen readers, where a glyph
+would be.
+
+`-webkit-user-select` is the only vendor prefix in the stylesheet. Safari still
+requires it.
 
 Admin setting headings carry `data-setting="EnableDTG"` alongside a readable
 `id`. The attribute exists only so `TestEverySettingIsDocumented` can pair a

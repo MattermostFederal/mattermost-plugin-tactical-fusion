@@ -1,6 +1,6 @@
 # Cursor on Target type data
 
-`types.csv` is the type table this plugin embeds: 1,005 rows of `path,label`,
+`types.csv` is the type table this plugin embeds: 1,006 rows of `path,label`,
 where `path` is a Cursor on Target atom code below the affiliation and `label`
 is what to call it.
 
