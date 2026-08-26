@@ -214,3 +214,47 @@ function withinAxis(near: number, far: number, sizePx: number): [number, number]
     const scale = budget / total;
     return [Math.floor(near * scale), Math.floor(far * scale)];
 }
+
+/**
+ * The same longitudes, made continuous across the antimeridian.
+ *
+ * A shape that crosses 180 arrives as a jump from 179 to -179, and every
+ * consumer reads that as travelling 358 degrees the wrong way round: the line
+ * is drawn straight back across the whole map, and the bounding box frames the
+ * planet instead of the two degrees the shape occupies.
+ *
+ * Each step is taken the short way instead, which can carry a longitude past
+ * 180. That is deliberate and is what both consumers want. MapLibre draws
+ * geometry beyond the meridian in the adjacent world copy, so the shape stays
+ * one unbroken outline, and `fitBounds` reads 179 to 181 as two degrees.
+ */
+export function unwrapLongitudes(lons: readonly number[]): number[] {
+    const out: number[] = [];
+
+    for (const lon of lons) {
+        if (out.length === 0) {
+            out.push(lon);
+            continue;
+        }
+
+        const previous = out[out.length - 1];
+        let moved = lon;
+        while (moved - previous > 180) {
+            moved -= 360;
+        }
+        while (moved - previous < -180) {
+            moved += 360;
+        }
+        out.push(moved);
+    }
+
+    return out;
+}
+
+/**
+ * A longitude span wider than the world cannot be framed more tightly than the
+ * world, which is what a route circling the globe produces once unwrapped.
+ */
+export function spansTheWorld(west: number, east: number): boolean {
+    return east - west >= 360;
+}

@@ -2,7 +2,7 @@ import type {FeatureCollection} from 'geojson';
 import type {StyleSpecification} from 'maplibre-gl';
 
 import type {Archive, Bounds, DetailArchive} from './basemap';
-import {DEGREE_METERS, MAX_ZOOM, SEAM_ZOOM} from './span';
+import {DEGREE_METERS, MAX_ZOOM, SEAM_ZOOM, unwrapLongitudes} from './span';
 
 import {pluginBaseUrl} from '../../../plugin_url';
 import {detectTheme} from '../../theme';
@@ -1159,16 +1159,13 @@ export function ellipseFeature(
 export function outlineFeature(
     points: ReadonlyArray<{lat: number; lon: number}>, closed: boolean,
 ): FeatureCollection {
-    const ring: Array<[number, number]> = [];
-    for (const point of points) {
-        if (Number.isFinite(point.lat) && Number.isFinite(point.lon)) {
-            ring.push([point.lon, point.lat]);
-        }
-    }
-
-    if (ring.length < 2) {
+    const usable = points.filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lon));
+    if (usable.length < 2) {
         return emptyCollection();
     }
+
+    const lons = unwrapLongitudes(usable.map((point) => point.lon));
+    const ring: Array<[number, number]> = usable.map((point, i) => [lons[i], point.lat]);
 
     if (!closed || ring.length < 3) {
         return {

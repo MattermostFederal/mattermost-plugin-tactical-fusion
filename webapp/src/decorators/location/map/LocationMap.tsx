@@ -14,7 +14,10 @@ import {
     markedPoints, markerImageID,
     mapColors, outlineFeature, pointFeature, syncGlobalReach,
 } from './maplibre';
-import {DEGREE_METERS, MAX_ZOOM, MERCATOR_LIMIT, cellBounds, fitPadding, isRenderable, zoomForSpan} from './span';
+import {
+    DEGREE_METERS, MAX_ZOOM, MERCATOR_LIMIT,
+    cellBounds, fitPadding, isRenderable, spansTheWorld, unwrapLongitudes, zoomForSpan,
+} from './span';
 import type {View} from './view';
 
 import {loadPackageNames} from '../../../packages/store';
@@ -792,11 +795,17 @@ function shapeBounds(
         return [[lon - dLon, lat - dLat], [lon + dLon, lat + dLat]];
     }
 
-    const lats = geometry.points.map((point) => point.lat).filter((value) => Number.isFinite(value));
-    const lons = geometry.points.map((point) => point.lon).filter((value) => Number.isFinite(value));
-    if (lats.length < 2 || lons.length < 2) {
+    const usable = geometry.points.filter(
+        (point) => Number.isFinite(point.lat) && Number.isFinite(point.lon),
+    );
+    if (usable.length < 2) {
         return null;
     }
+
+    // Unwrapped first, or a shape crossing the antimeridian reads as one
+    // spanning the planet the other way round.
+    const lats = usable.map((point) => point.lat);
+    const lons = unwrapLongitudes(usable.map((point) => point.lon));
 
     return [
         [Math.min(...lons), Math.min(...lats)],
@@ -823,13 +832,20 @@ function withinMercator(
         return null;
     }
 
-    // Clamped rather than refused: a shape reaching past the projection is
-    // still worth framing up to where the projection stops, and fitBounds
-    // throws on a latitude outside 90 rather than clamping for us.
-    return [
-        [Math.max(-180, west), Math.max(-MERCATOR_LIMIT, south)],
-        [Math.min(180, east), Math.min(MERCATOR_LIMIT, north)],
+    // Latitude only. fitBounds throws past 90 rather than clamping, so that one
+    // has to be brought in. Longitude is deliberately left continuous: a box
+    // running 179 to 181 is the two degrees a shape crossing the antimeridian
+    // occupies, and clamping it to 180 would collapse it to nothing.
+    const inRange: [[number, number], [number, number]] = [
+        [west, Math.max(-MERCATOR_LIMIT, south)],
+        [east, Math.min(MERCATOR_LIMIT, north)],
     ];
+
+    if (spansTheWorld(west, east)) {
+        return [[-180, inRange[0][1]], [180, inRange[1][1]]];
+    }
+
+    return inRange;
 }
 
 function unionOf(

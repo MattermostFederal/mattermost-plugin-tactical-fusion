@@ -1604,6 +1604,35 @@ set of pins and wrong for one polygon: a shape whose extent is larger than its
 happens to sit inside it. Geometry contributes its bounds to the same box the
 markers do.
 
+### The antimeridian
+
+A shape crossing 180 arrives as a jump from 179 to -179, and read literally that
+is 358 degrees the wrong way round. Both consumers got it wrong in the same way:
+the outline was drawn straight back across the whole map, and the camera framed
+the planet instead of the two degrees the shape occupies. For a plugin whose
+audience works either side of the date line, that is the common case rather than
+the exotic one.
+
+**The fix is to keep the longitudes continuous rather than to wrap them.**
+`unwrapLongitudes` takes each step the short way, which can carry a longitude
+past 180, and that is the point: MapLibre draws geometry beyond the meridian in
+the adjacent world copy, so the shape stays one unbroken outline, and
+`fitBounds` reads 179 to 181 as the two degrees it is.
+
+Wrapping into range was the other candidate and is worse in both places. It
+leaves the drawn line with a full-width stride at the crossing, and it makes the
+bounding box the complement of the shape.
+
+**So longitude is deliberately not clamped.** Latitude is, because `fitBounds`
+throws past 90 rather than clamping for us, but clamping longitude to 180 would
+collapse a crossing shape's box to nothing, which is the bug wearing a guard's
+clothes.
+
+The one thing continuity cannot express is a route that circles the globe: once
+unwrapped its span exceeds 360, and a span wider than the world cannot be framed
+more tightly than the world. `spansTheWorld` says so and the camera opens on the
+whole of it, rather than on a box the projection has no way to honour.
+
 **Vertices are not markers.** They are drawn as a line and a fill and never as
 crosshairs. Feeding them through `markers` would have been less code and would
 have put a reticle on every corner of a polygon, which says that each corner is a

@@ -143,3 +143,72 @@ test.describe('the frame', () => {
         expect(frameBounds(undefined, undefined, 0, 0)).toBeNull();
     });
 });
+
+/*
+ * The antimeridian. A shape crossing 180 arrives as a jump from 179 to -179,
+ * and read literally that is 358 degrees the wrong way round: the outline is
+ * drawn straight back across the whole map and the camera frames the planet.
+ *
+ * Both are fixed by keeping the longitudes continuous rather than wrapping
+ * them, which is also what lets MapLibre draw the shape in one piece.
+ */
+test.describe('crossing the antimeridian', () => {
+    const CROSSING = [{lat: 0, lon: 179}, {lat: 1, lon: -179}, {lat: 2, lon: -178}];
+
+    test('an outline takes the short way, not the long way round', () => {
+        const drawn = outlineFeature(CROSSING, false);
+        const line = (drawn.features[0].geometry as {coordinates: number[][]}).coordinates;
+
+        expect(line.map(([x]) => x)).toEqual([179, 181, 182]);
+
+        // Every step is a short one. A wrapped list has a 358 degree stride.
+        for (let i = 1; i < line.length; i++) {
+            expect(Math.abs(line[i][0] - line[i - 1][0])).toBeLessThanOrEqual(180);
+        }
+    });
+
+    test('the frame is the few degrees the shape occupies', () => {
+        const bounds = frameBounds(undefined, {kind: 'outline', points: CROSSING, closed: false}, 0, 179);
+
+        expect(bounds).not.toBeNull();
+        const [[west], [east]] = bounds!;
+        expect(east - west).toBeCloseTo(3, 6);
+    });
+
+    test('a shape that does not cross is unchanged', () => {
+        const plain = [{lat: 0, lon: 10}, {lat: 1, lon: 12}];
+        const line = (outlineFeature(plain, false).features[0].geometry as {coordinates: number[][]}).coordinates;
+
+        expect(line.map(([x]) => x)).toEqual([10, 12]);
+    });
+
+    test('an ellipse on the seam stays one ring', () => {
+        const ring = ringOf(0, 179.9, 20000, 20000, 0);
+        const lons = ring.map(([x]) => x);
+
+        // Continuous past the meridian rather than split into two arcs.
+        expect(Math.max(...lons)).toBeGreaterThan(180);
+        for (let i = 1; i < lons.length; i++) {
+            expect(Math.abs(lons[i] - lons[i - 1])).toBeLessThan(180);
+        }
+    });
+
+    // A route that circles the globe cannot be framed more tightly than the
+    // globe, and the unwrapped span says so rather than pretending otherwise.
+    test('a shape that wraps the world frames the world', () => {
+        const circling = Array.from({length: 8}, (_, i) => ({lat: 0, lon: ((i * 170) % 360) - 180}));
+        const bounds = frameBounds(undefined, {kind: 'outline', points: circling, closed: false}, 0, 0);
+
+        expect(bounds).not.toBeNull();
+        expect(bounds![0][0]).toBe(-180);
+        expect(bounds![1][0]).toBe(180);
+    });
+
+    test('latitude is still brought inside the projection', () => {
+        const bounds = frameBounds(
+            [{lat: 0, lon: 0, color: '#fff'}, {lat: 88, lon: 1, color: '#fff'}], undefined, 0, 0,
+        );
+
+        expect(bounds![1][1]).toBeLessThanOrEqual(85.06);
+    });
+});
