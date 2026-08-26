@@ -386,6 +386,50 @@ test('reads an ellipse, which carries axes rather than points', () => {
     const payload = fromProps(props({}, {
         geometry: {kind: 'ellipse', major: '100 m', minor: '50 m', angle: '-45°'},
     }));
+test('reads a checklist, keeping the order the event wrote its kinds in', () => {
+    const payload = fromProps(props({}, {
+        checklist: {
+            count: '6',
+            kinds: [
+                {name: 'checklistColumn', count: '4'},
+                {name: 'checklistTask', count: '2'},
+            ],
+        },
+    }));
+
+    const checklist = payload!.events[0].checklist!;
+    expect(checklist.count).toBe('6');
+    expect(checklist.kinds.map((k) => k.name)).toEqual(['checklistColumn', 'checklistTask']);
+    expect(checklist.kinds[0].count).toBe('4');
+});
+
+// readFlow's policy, not readGeometry's: a miscounted row is still a count of
+// something, where a polygon missing a corner is a different polygon.
+test('a malformed checklist kind is skipped, and the rest survive', () => {
+    const payload = fromProps(props({}, {
+        checklist: {count: '2', kinds: ['nope', {name: ''}, {name: 'checklistTask', count: '2'}]},
+    }));
+
+    expect(payload!.events[0].checklist!.kinds).toEqual([{name: 'checklistTask', count: '2'}]);
+});
+
+test('a checklist that stated no countable contents is still a checklist', () => {
+    const payload = fromProps(props({}, {checklist: {count: ''}}));
+
+    expect(payload!.events[0].checklist).toEqual({count: '', kinds: []});
+});
+
+test('a malformed checklist reads as none rather than throwing', () => {
+    for (const value of ['nope', 42, null, []]) {
+        const payload = fromProps(props({}, {checklist: value}));
+        expect(payload?.events[0].checklist, JSON.stringify(value)).toBeNull();
+    }
+});
+
+test('an event carrying no checklist carries none', () => {
+    expect(fromProps(props({}, {}))!.events[0].checklist).toBeNull();
+});
+
 
     const geometry = payload!.events[0].geometry!;
     expect(geometry.kind).toBe('ellipse');

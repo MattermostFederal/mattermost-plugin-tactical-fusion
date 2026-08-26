@@ -1389,6 +1389,61 @@ The two are read into their own values now, and `drawnGeometry` prefers the
 shape: an event carrying both is describing the shape, and its links are still
 relations wherever they carry a uid.
 
+## Checklists
+
+A `<checklist>` is read, its contents are counted by name, and nothing about
+what a checklist *means* is decoded. The panel shows the element names the event
+itself wrote and how many of each it carried. Before this the whole element was
+one tally under "elements this build did not read".
+
+### Why nothing is decoded
+
+The schema could not be verified. No general CoT reference defines `checklist`;
+the FreeTAK documentation describes the feature with no XML; and a code search
+against ATAK-CIV returned nothing, though that search also returned nothing for
+`takv` and `chatgrp`, so it is a broken search rather than a negative result.
+
+The TAK feature is **ExCheck**, and its templates are uploaded XML *files*
+managed through a REST API alongside file metadata: filename, hash, size,
+submitter. That is a data package rather than a `<detail>` child, so an ExCheck
+template pasted into a channel would be refused by `Parse` for carrying no
+`<event>` long before any of this applied. Whether a real event ever carries a
+`<checklist>` inline is itself unverified.
+
+That is the same position `__network` was refused from, and the decision is the
+same. Decoding `name` or `status` or a column type means inventing attribute
+names, which produces rows that never populate while claiming knowledge this
+build does not have. Geometry ships unverified because its failure is visible:
+the shape does not draw and the element is counted. An invented attribute name
+fails silently, as a blank row.
+
+Counting needs no schema at all. Every string in the block is either a label
+this build owns, "Checklist", or a name the event wrote itself.
+
+### Why it is outside the registry
+
+For both of the reasons geometry is, and either alone would be enough.
+
+`addBlock` is first-wins per element name, so a checklist's repeated rows would
+collapse into one set of keys and a reader would be told about the first task
+and not the other eleven. And the registry model stops at depth four, so a row
+inside a wrapper element is not merely undecoded but uncounted, because only
+`readDetailChild` increments `Detail.Unknown`.
+
+### Descendants are counted at any depth
+
+Direct children would have been the smaller change and the wrong one. The
+nesting is exactly what could not be verified: if rows sit inside a
+`<checklistColumns>` wrapper, counting direct children reports one wrapper where
+counting descendants reports the rows. Counting by the name the event used makes
+the answer correct under either shape, and honest under a third nobody has seen.
+
+`Seen` counts every descendant, including those past `maxChecklistKinds`, and is
+not the sum of the kinds once the cap bites. That is the same separation
+`Geometry.Seen` carries, and for the same reason: a counter that stops counting
+when a list stops growing reports the cap as though it were the measurement,
+which is a bug this repository has already shipped once.
+
 ### Acceptance is what the element filled, not what the geometry holds
 
 The depth-four branch marked a child accepted whenever the geometry was

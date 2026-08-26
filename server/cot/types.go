@@ -14,7 +14,7 @@ type affiliation struct {
 
 // The label is the adjectival form, because it is read in front of what
 // follows it: "Friendly Ground Combat Unit". The id is not a label and must not
-// follow it, since the card keys its affiliation colour on that string.
+// follow it, since the card keys its affiliation color on that string.
 var affiliations = map[byte]affiliation{
 	'p': {"pending", "Pending"},
 	'u': {"unknown", "Unknown"},
@@ -74,7 +74,7 @@ var wholeTypes = map[string]string{
 	"b-m-p-w":        "Waypoint",
 	"b-m-r":          "Route",
 	"b-a-o-tbl":      "Emergency Alert",
-	"b-a-o-can":      "Emergency Cancelled",
+	"b-a-o-can":      "Emergency Canceled",
 	"b-a-g":          "Geofence Breach",
 	"b-r-f-h-c":      "Casualty Evacuation Request",
 	"b-l-p-c":        "Sensor Point of Interest",

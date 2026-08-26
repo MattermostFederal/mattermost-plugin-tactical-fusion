@@ -133,6 +133,15 @@ func (b *budget) accept() {
 // which let a legitimate <detail><__video/> earlier in the document vouch for a
 // second <__video> parked outside <detail>, and let a repeated <__chat> that
 // first-wins had rejected still contribute its <chatgrp>.
+func (b *budget) insideAccepted(name string) bool {
+	for i := 0; i < len(b.path)-1; i++ {
+		if b.path[i] == name && b.accepted[i] {
+			return true
+		}
+	}
+	return false
+}
+
 func (b *budget) parentAccepted() bool {
 	if len(b.accepted) < 2 {
 		return false
@@ -179,18 +188,19 @@ type FlowTag struct {
 }
 
 type Detail struct {
-	Callsign string
-	Group    string
-	Role     string
-	Speed    string
-	Course   string
-	Remarks  string
-	Links    []Link
-	Blocks   []Block
-	Flow     []FlowTag
-	Shape    Geometry
-	Route    Geometry
-	Unknown  int
+	Callsign  string
+	Group     string
+	Role      string
+	Speed     string
+	Course    string
+	Remarks   string
+	Links     []Link
+	Blocks    []Block
+	Flow      []FlowTag
+	Shape     Geometry
+	Route     Geometry
+	Checklist Checklist
+	Unknown   int
 }
 
 type Event struct {
@@ -344,6 +354,11 @@ func readChild(event *Event, start xml.StartElement, decoder *xml.Decoder, count
 		return readDetailChild(event, start, decoder, counts, seen)
 	}
 
+	if counts.insideAccepted(checklistElement) {
+		event.Detail.Checklist.add(local)
+		return false, nil
+	}
+
 	// Accepted on what this element filled, not on the geometry being non-empty.
 	// Keyed on the latter, a <polyline> after an <ellipse> was marked accepted
 	// and its vertices were read into the ellipse.
@@ -418,6 +433,14 @@ func readDetailChild(event *Event, start xml.StartElement, decoder *xml.Decoder,
 	case shapeElement:
 		if !seen[local] {
 			seen[local] = true
+			counts.accept()
+		}
+		return false, nil
+
+	case checklistElement:
+		if !seen[local] {
+			seen[local] = true
+			event.Detail.Checklist.Present = true
 			counts.accept()
 		}
 		return false, nil

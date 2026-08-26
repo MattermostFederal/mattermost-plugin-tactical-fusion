@@ -1,6 +1,6 @@
 import React from 'react';
 
-import type {CotEvent} from './types';
+import type {CotChecklist, CotEvent} from './types';
 import {statedColor} from './types';
 
 const styles: Record<string, React.CSSProperties> = {
@@ -28,6 +28,16 @@ type Reading = [label: string, value: string];
 
 function present(readings: Reading[]): Reading[] {
     return readings.filter(([, value]) => value !== '');
+}
+
+function checklistReadings(list: CotChecklist | null): Reading[] {
+    if (list === null) {
+        return [];
+    }
+    if (list.kinds.length === 0) {
+        return [['Contents', 'None this build could count']];
+    }
+    return list.kinds.map((kind): Reading => [kind.name, kind.count]);
 }
 
 function Rows({readings}: {readings: Reading[]}) {
@@ -307,8 +317,11 @@ export const DetailGroups: React.FC<{event: CotEvent}> = ({event}) => {
         ['Trigger', d.geofenceTrigger],
         ['Tracking', d.geofenceTracking],
         ['Elevation monitored', d.geofenceElevation],
+    const checklist = checklistReadings(event.checklist);
+
         ['Minimum elevation', d.geofenceMin],
         ['Maximum elevation', d.geofenceMax],
+        ...checklist,
         ['Bounding sphere', d.geofenceSphere],
     ];
 
@@ -363,6 +376,10 @@ export const DetailGroups: React.FC<{event: CotEvent}> = ({event}) => {
                     <Block
                         label='MEDEVAC'
                         readings={medevac}
+                    <Block
+                        label='Checklist'
+                        readings={checklist}
+                    />
                     />
                     <Block
                         label='Geofence'

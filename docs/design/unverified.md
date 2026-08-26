@@ -81,3 +81,24 @@ And whether a plugin-rendered anchor still collects a
 `registerLinkTooltipComponent` hover. See "The map under a post": it is expected
 not to, which costs a coordinate-only post its hover card and nothing else.
 
+
+**No checklist has been through this, and it may never be.** The `<checklist>`
+counter was written against a schema no accessible source defines. The TAK
+feature is ExCheck, whose templates travel as uploaded XML files with their own
+REST API rather than as `<detail>` children, so it is an open question whether a
+CoT event carries a `<checklist>` inline at all. Nothing here decodes an
+attribute, so the failure mode if the guess is wrong is a count of elements that
+are really something else, under names the event supplied. See "Checklists" in
+[`cot.md`](cot.md).
+
+
+**The sidebar scroll fix is only provable on a running server.** `RhsView`'s
+container gained `height: 100%`, `flex: 1 1 auto`, `minHeight: 0` and
+`overflowY: auto`, because Mattermost renders a plugin's RHS component inside
+`.sidebar-right__body`, a flex column that clips rather than scrolls: a panel
+taller than the sidebar had everything past the first screen unreachable, which
+is why it surfaced first on a two-event Cursor on Target post. The component
+tests mount the panel in a bare div and render none of that chrome, so they
+cannot see the bug or the fix. Verify on a real install, in both themes and with
+a short window, and record the result here.
+

@@ -530,6 +530,7 @@ func cotExampleSources() map[string]string {
 		"appearance": cotDetailAppearance,
 		"group":      cotDetailGroup,
 		"flow":       cotDetailFlow,
+		"checklist":  cotDetailChecklist,
 		"unknown":    cotDetailUnknown,
 		"area":       cotDetailArea,
 		"circle":     cotDetailCircle,

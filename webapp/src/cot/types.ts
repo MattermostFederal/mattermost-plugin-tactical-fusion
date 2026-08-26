@@ -125,6 +125,16 @@ export interface CotVertex {
     lon: number;
 }
 
+export interface CotChecklistKind {
+    name: string;
+    count: string;
+}
+
+export interface CotChecklist {
+    count: string;
+    kinds: CotChecklistKind[];
+}
+
 /**
  * The shape an event describes, when it describes one.
  *
@@ -159,6 +169,7 @@ export interface CotEvent {
     detail: CotDetail;
     flow: CotFlowHop[];
     geometry: CotGeometry | null;
+    checklist: CotChecklist | null;
     callsign: string;
     cotType: string;
     typeLabel: string;
@@ -289,6 +300,7 @@ function readEvent(event: Record<string, unknown>): CotEvent | null {
             detail: readDetail(event),
             flow: readFlow(event),
             geometry: readGeometry(event),
+            checklist: readChecklist(event),
             callsign: text(event, 'callsign'),
             cotType: text(event, 'cot_type'),
             typeLabel: text(event, 'type_label'),
@@ -590,6 +602,35 @@ function readGeometry(event: Record<string, unknown>): CotGeometry | null {
         note: text(raw, 'note'),
     };
 }
+
+function readChecklist(event: Record<string, unknown>): CotChecklist | null {
+    const raw = record(event.checklist);
+    if (raw === null) {
+        return null;
+    }
+
+    const kinds: CotChecklistKind[] = [];
+    if (Array.isArray(raw.kinds)) {
+        for (const entry of raw.kinds.slice(0, MAX_CHECKLIST_KINDS)) {
+            const kind = record(entry);
+            if (kind === null) {
+                continue;
+            }
+
+            const name = text(kind, 'name');
+            if (name === '') {
+                continue;
+            }
+
+            kinds.push({name, count: text(kind, 'count')});
+        }
+    }
+
+    return {count: text(raw, 'count'), kinds};
+}
+
+/** Matches cot.maxChecklistKinds. A forged blob is not a trusted input either. */
+const MAX_CHECKLIST_KINDS = 8;
 
 /** Matches cot.MaxVertices. A forged blob is not a trusted input either. */
 const MAX_VERTICES = 512;

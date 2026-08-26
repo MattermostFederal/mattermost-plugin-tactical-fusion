@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
 
 import CotCard from './CotCard';
-import type {CotPayload} from './types';
+import type {CotChecklist, CotPayload} from './types';
 import {emptyDetail} from './types';
 
 import {RhsTitle, RhsView} from '../components/rhs/RhsView';
@@ -33,6 +33,7 @@ interface Props {
  */
 const CotPanelHarness: React.FC<Props> = ({
     event = {},
+    checklist?: CotChecklist | null;
     events,
     detail = {},
     source = 'fence',
@@ -48,6 +49,7 @@ const CotPanelHarness: React.FC<Props> = ({
 
     const payload: CotPayload = {
         source,
+    checklist = null,
         lead: '',
         trail: '',
         src,
@@ -74,6 +76,7 @@ const CotPanelHarness: React.FC<Props> = ({
             stale: '',
             staleQuery: '',
             staleAt: '',
+            checklist,
             timeAt: '',
             format: '',
             value: '',

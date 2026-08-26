@@ -360,12 +360,30 @@ const (
   </detail>
 </event>`
 
+	cotDetailChecklist = `<event version="2.0" uid="ANDROID-23" type="a-f-G-U-C" how="m-g"
+       time="2026-08-09T16:48:00Z" start="2026-08-09T16:48:00Z" stale="2026-08-09T16:50:00Z">
+  <point lat="21.335300" lon="-157.948300" hae="4.0" ce="9.5" le="15.0"/>
+  <detail>
+    <contact callsign="HOTEL1"/>
+    <checklist name="Pre-flight">
+      <checklistColumn name="Task"/>
+      <checklistColumn name="Status"/>
+      <checklistTask status="COMPLETE">
+        <checklistColumn>Fuel checked</checklistColumn>
+      </checklistTask>
+      <checklistTask status="PENDING">
+        <checklistColumn>Radios checked</checklistColumn>
+      </checklistTask>
+    </checklist>
+  </detail>
+</event>`
+
 	cotDetailUnknown = `<event version="2.0" uid="ANDROID-13" type="a-f-G-U-C" how="m-g"
        time="2026-08-09T16:40:30Z" start="2026-08-09T16:40:30Z" stale="2026-08-09T16:42:30Z">
   <point lat="21.335300" lon="-157.948300" hae="4.0" ce="9.5" le="15.0"/>
   <detail>
     <contact callsign="GOLF1"/>
-    <checklist name="pre-flight"/>
+    <__network uid="ANDROID-13"/>
     <fileshare filename="brief.pdf"/>
   </detail>
 </event>`
@@ -531,6 +549,10 @@ func cotExtensionChunks() []detailChunk {
 				note:   "A geofence, which is behaviour attached to a shape rather than a shape of its own: the circle is what is drawn, and the fence says what crossing it means.",
 				source: cotDetailFence, info: cotFenceInfo,
 			},
+			{
+				note:   "A checklist, counted rather than decoded. The sidebar reports `checklistColumn` four times and `checklistTask` twice, which are the event's own element names, and none of the attributes here are read. A column nested inside a task is counted with its siblings, so the answer does not depend on a nesting this build has never seen.",
+				source: cotDetailChecklist, info: cotFenceInfo,
+			},
 		}), cotRoutingLines()...),
 	}, {
 		heading: "Processing path, and what is not recognised",
@@ -587,8 +609,9 @@ func cotRoutingLines() []string {
 		"- A radio signal carries its unit. An unlabelled `-71` is a number a reader " +
 			"has to guess the meaning of, which is the same failure as this plugin " +
 			"guessing it.\n",
-		"- `checklist` is still read by nothing, and is counted as unrecognised along " +
-			"with anything else this build does not know.\n",
+		"- A `checklist` is counted rather than decoded. Its contents are reported " +
+			"by the element names the event itself used, because no specification " +
+			"this build could check says what a checklist column or task is.\n",
 	}
 }
 

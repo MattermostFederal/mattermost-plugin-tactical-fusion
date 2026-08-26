@@ -167,6 +167,33 @@ func eventProps(event Event, withDetail bool) map[string]any {
 		props["geometry"] = geometry
 	}
 
+	if list := checklistProps(event.Detail.Checklist); list != nil {
+		props["checklist"] = list
+	}
+
+	return props
+}
+
+func checklistProps(list Checklist) map[string]any {
+	if list.empty() {
+		return nil
+	}
+
+	props := map[string]any{}
+	putIfSet(props, "count", countText(list.Seen))
+
+	kinds := make([]any, 0, len(list.Kinds))
+	for _, kind := range list.Kinds {
+		name := strings.TrimSpace(stripUnsafe(kind.Name))
+		if name == "" || utf8.RuneCountInString(name) > maxFieldRunes {
+			continue
+		}
+		kinds = append(kinds, map[string]any{"name": name, "count": countText(kind.Count)})
+	}
+	if len(kinds) > 0 {
+		props["kinds"] = kinds
+	}
+
 	return props
 }
 

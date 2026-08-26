@@ -584,3 +584,55 @@ test.describe('the long tail', () => {
         await expect(rhs.getByRole('heading', {name: 'Geofence'})).toHaveCount(0);
     });
 });
+    // The rows are the event's own element names, so the panel is repeating
+    // what was written rather than claiming to know what a column or a task is.
+    test('a checklist is counted under Payload, by the names the event used', async ({mount}) => {
+        const component = await mount(
+            <CotPanelHarness
+                checklist={{
+                    count: '6',
+                    kinds: [
+                        {name: 'checklistColumn', count: '4'},
+                        {name: 'checklistTask', count: '2'},
+                    ],
+                }}
+            />,
+        );
+
+        await component.getByRole('button', {name: 'Open details'}).click();
+        const rhs = component.getByTestId('rhs');
+
+        await expect(rhs.getByRole('heading', {name: 'Checklist'})).toBeVisible();
+
+        const pairs = await rhs.locator('dt').evaluateAll(
+            (terms) => terms.map((term) => [
+                term.textContent ?? '',
+                term.nextElementSibling?.textContent ?? '',
+            ]),
+        );
+        expect(pairs).toContainEqual(['checklistColumn', '4']);
+        expect(pairs).toContainEqual(['checklistTask', '2']);
+    });
+
+    test('a checklist that counted nothing still says it was there', async ({mount}) => {
+        const component = await mount(
+            <CotPanelHarness checklist={{count: '', kinds: []}}/>,
+        );
+
+        await component.getByRole('button', {name: 'Open details'}).click();
+        const rhs = component.getByTestId('rhs');
+
+        await expect(rhs.getByRole('heading', {name: 'Checklist'})).toBeVisible();
+        await expect(rhs).toContainText('None this build could count');
+    });
+
+    test('an event with no checklist draws no Checklist heading', async ({mount}) => {
+        const component = await mount(<CotPanelHarness/>);
+
+        await component.getByRole('button', {name: 'Open details'}).click();
+
+        await expect(
+            component.getByTestId('rhs').getByRole('heading', {name: 'Checklist'}),
+        ).toHaveCount(0);
+    });
+

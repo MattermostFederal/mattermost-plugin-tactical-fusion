@@ -178,6 +178,7 @@ side moves alone. Change both halves together.
 | The `<detail>` extension registry: every key it can write | Same test, plus `TestEveryRegisteredKeyIsWrittenFromTheFixture` |
 | The CoT semantic classes | `TestWebappCotClassesMatch` |
 | The processing path, which is an array rather than a rendered string | `TestWebappReadsTheProcessingPath` |
+| A checklist, counted by element name rather than decoded | `TestWebappReadsTheChecklist` |
 | The package list's 60 second lifetime | `TestWebappPackageCacheLifetimeMatches` |
 | The map schema: `mapSchemaVersion` and `schemaPrefix`, and `MAP_SCHEMA` and `SCHEMA_PREFIX` in `build/maposm/build.sh` | `TestMapSchemaMatchesTheGenerator` |
 | Rendering fixtures | `format_test.go` and `format.spec.ts` hold the same table |

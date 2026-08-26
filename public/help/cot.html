@@ -650,6 +650,7 @@
                 <tr><td><code>TakRequest</code></td><td><code>TakControl</code></td><td><code>version</code></td><td>Processing path</td></tr>
                 <tr><td><code>TakResponse</code></td><td><code>TakControl</code></td><td><code>status</code></td><td>Processing path</td></tr>
                 <tr><td><code>shape</code></td><td><code>detail</code></td><td>container</td><td>See <a href="#cot-geometry">geometry</a></td></tr>
+                <tr><td><code>checklist</code></td><td><code>detail</code></td><td>none, and its contents are counted by name</td><td>Payload, Checklist</td></tr>
             </tbody>
         </table>
 
@@ -845,6 +846,40 @@
       &lt;TakRequest version="1"/&gt;
       &lt;TakResponse status="true"/&gt;
     &lt;/TakControl&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;</code></pre>
+
+        <h3 id="cot-example-checklist">A checklist</h3>
+
+        <p>
+            A checklist is <strong>counted, not decoded</strong>. The sidebar reports the
+            element names the event itself used and how many of each it carried, here
+            <code>checklistColumn</code> four times and <code>checklistTask</code> twice.
+            None of the attributes below are read.
+        </p>
+
+        <p>
+            Contents are counted at whatever depth they sit, so the column nested inside a
+            task is counted alongside its siblings. That is deliberate: the nesting is the
+            part this build has never seen a real example of, and counting by name gives the
+            same answer whichever shape an emitter uses.
+        </p>
+
+<pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-23" type="a-f-G-U-C" how="m-g"
+       time="2026-08-09T16:48:00Z" start="2026-08-09T16:48:00Z" stale="2026-08-09T16:50:00Z"&gt;
+  &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="9.5" le="15.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="HOTEL1"/&gt;
+    &lt;checklist name="Pre-flight"&gt;
+      &lt;checklistColumn name="Task"/&gt;
+      &lt;checklistColumn name="Status"/&gt;
+      &lt;checklistTask status="COMPLETE"&gt;
+        &lt;checklistColumn&gt;Fuel checked&lt;/checklistColumn&gt;
+      &lt;/checklistTask&gt;
+      &lt;checklistTask status="PENDING"&gt;
+        &lt;checklistColumn&gt;Radios checked&lt;/checklistColumn&gt;
+      &lt;/checklistTask&gt;
+    &lt;/checklist&gt;
   &lt;/detail&gt;
 &lt;/event&gt;</code></pre>
 
@@ -1134,7 +1169,7 @@
   &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="9.5" le="15.0"/&gt;
   &lt;detail&gt;
     &lt;contact callsign="GOLF1"/&gt;
-    &lt;checklist name="pre-flight"/&gt;
+    &lt;__network uid="ANDROID-13"/&gt;
     &lt;fileshare filename="brief.pdf"/&gt;
   &lt;/detail&gt;
 &lt;/event&gt;</code></pre>

@@ -124,7 +124,7 @@ func TestWebappCotShapeMatches(t *testing.T) {
 // Keys the webapp reads through something other than text(), which is the only
 // shape the scraper above recognises. TestWebappReadsTheProcessingPath is what
 // holds this one instead.
-var cotNonTextKeys = map[string]bool{"flow": true, "geometry": true}
+var cotNonTextKeys = map[string]bool{"flow": true, "geometry": true, "checklist": true}
 
 var cotOptionalKeys = map[string]bool{
 	"position_note": true,
@@ -170,6 +170,19 @@ func TestWebappReadsTheGeometry(t *testing.T) {
 	}
 }
 
+// A checklist is counted rather than decoded, so its key holds a nested object
+// with an ordered array inside and the text() scraper cannot see it either.
+func TestWebappReadsTheChecklist(t *testing.T) {
+	source := readCotTypes(t)
+
+	if !strings.Contains(source, "readChecklist") {
+		t.Error("the webapp has no readChecklist; Go writes a checklist that nothing reads")
+	}
+	if !strings.Contains(source, "event.checklist") {
+		t.Error("the webapp never reads the checklist key")
+	}
+}
+
 // Every class the server can write needs a layout on the other side. A class the
 // webapp does not know falls to the default, which is today's card, so the cost
 // is a silent loss of the layout rather than a broken render. That is still a
@@ -207,7 +220,8 @@ func TestWebappCotClassesMatch(t *testing.T) {
 var fullCotEvent = `<event version="2.0" uid="ANDROID-1" type="b-t-f" how="m-g" ` +
 	`time="2026-08-23T11:43:38Z" start="2026-08-23T11:43:38Z" stale="2026-08-23T11:45:38Z">` +
 	`<point lat="34.056100" lon="-118.250000" hae="-42.6" ce="45.3" le="99.5"/>` +
-	`<detail>` + cot.FixtureDetail() + cot.FixtureGeometry() + `<mystery-element/></detail></event>`
+	`<detail>` + cot.FixtureDetail() + cot.FixtureGeometry() + cot.FixtureChecklist() +
+	`<mystery-element/></detail></event>`
 
 // The card reads the map switch the location decorator already owns, so there is
 // no CoT map setting and no new /features field. If somebody adds one, this test

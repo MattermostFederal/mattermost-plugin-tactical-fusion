@@ -280,8 +280,9 @@ func TestAFlowHopWithAnUnreadableTimeIsKept(t *testing.T) {
 // nothing" rather than "we did not recognise what it carried".
 func TestDetailUnknownCountsWhatThisBuildDidNotRead(t *testing.T) {
 	// Deliberately the elements this build still defers, so the fixture goes
-	// stale only when one of them is actually implemented.
-	props := detailProps(t, `<takv platform="ATAK"/><checklist/><checklistColumn/><mystery-thing/>`)
+	// stale only when one of them is actually implemented. checklist and
+	// checklistColumn stood here until the checklist counter read them.
+	props := detailProps(t, `<takv platform="ATAK"/><__network/><fileshare/><mystery-thing/>`)
 
 	if props["detail_unknown"] != "3" {
 		t.Errorf("detail_unknown is %v, want 3", props["detail_unknown"])
