@@ -149,7 +149,7 @@ func (p *Plugin) cotSource(post *model.Post) (cot.Source, bool) {
 	// file so the visible message always wins over an attachment.
 	//
 	// decorators.SoleElementSpan is what keeps this off text inside a code
-	// block: an author who fenced an event without labelling the fence has said
+	// block: an author who fenced an event without labeling the fence has said
 	// it is code, and rewriting it anyway would be the corruption protected
 	// ranges exist to stop.
 	if block, ok := decorators.SoleElementSpan(post.Message, cotElementName); ok {

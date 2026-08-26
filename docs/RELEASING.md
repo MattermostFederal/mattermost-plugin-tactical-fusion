@@ -50,7 +50,7 @@ Rules of thumb:
 ### The major version is bumped by a person, never by a commit
 
 Semver reserves `0.y.z` for initial development but does not say breaking
-changes must use the minor there. That behaviour is a release-please setting:
+changes must use the minor there. That behavior is a release-please setting:
 `bump-minor-pre-major` in `.release-please-config.json`. Without it, a `feat!:`
 or a `BREAKING CHANGE:` footer takes an existing `0.x` straight to `1.0.0`,
 which is exactly what happened here. `8f66053` carries a `BREAKING CHANGE:`

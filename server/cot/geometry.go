@@ -77,7 +77,7 @@ func usableCoord(lat, lon string) bool {
 	return latOK && lonOK && math.Abs(latitude) <= 90 && math.Abs(longitude) <= 180
 }
 
-// readShapeChild reports whether it recognised the element, which is what the
+// readShapeChild reports whether it recognized the element, which is what the
 // caller marks accepted on.
 func readShapeChild(geometry *Geometry, start xml.StartElement) bool {
 	if !geometry.empty() {

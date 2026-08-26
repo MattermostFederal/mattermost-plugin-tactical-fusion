@@ -11,7 +11,7 @@ import (
 const mapPageTitle = "Map"
 
 // The map page gives the whole window to one picture, so the shell's own
-// centred column and its heading are out of the way. The heading stays in the
+// centered column and its heading are out of the way. The heading stays in the
 // document for assistive technology.
 const mapPageStyles = `
 body { padding: 0; overflow: hidden; }

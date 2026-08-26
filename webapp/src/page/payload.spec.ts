@@ -127,7 +127,7 @@ test.describe('a conversion that cannot be used degrades', () => {
 
 /*
  * The drift case this fallback exists for: a token the server issued that this
- * build's copy of the canonical shapes does not recognise. It must still render
+ * build's copy of the canonical shapes does not recognize. It must still render
  * from the conversion rather than refusing, because on a page there is nothing
  * behind it.
  */

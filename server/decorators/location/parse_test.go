@@ -435,7 +435,7 @@ func TestAnchoredTokenGrammarRejectsSurroundingProse(t *testing.T) {
 // A single "(?:" typed as "(" would break two things at once and neither
 // loudly. One alternate's group numbering shifts, so minutes get filed as
 // degrees in one spelling only; and every bare scanning pattern gains a group,
-// at which point Pattern.Value starts labelling links with a fragment of the
+// at which point Pattern.Value starts labeling links with a fragment of the
 // token instead of the token.
 func TestSharedSubExpressionsHaveNoCaptureGroups(t *testing.T) {
 	for name, expr := range map[string]string{

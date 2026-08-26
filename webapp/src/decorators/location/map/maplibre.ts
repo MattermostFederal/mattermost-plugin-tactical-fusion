@@ -232,7 +232,7 @@ const ALWAYS_DARK: boolean = true;
 /**
  * The map's palette.
  *
- * The marker colours are NOT derived from the panel's background and text, on
+ * The marker colors are NOT derived from the panel's background and text, on
  * purpose: tints of those are low-contrast by construction, and the pin has to
  * stay legible against both land and water in either theme.
  */
@@ -256,11 +256,11 @@ export function palette(dark: boolean): MapColors {
         cellFill: dark ? 'rgba(179,209,255,0.18)' : 'rgba(11,47,122,0.16)',
 
         // Orchid, and deliberately not red. This plugin renders Cursor on
-        // Target affiliations on the same maps, where colour is a claim about
+        // Target affiliations on the same maps, where color is a claim about
         // what a thing IS: red is hostile and suspect, blue is friend, green is
         // neutral, amber is unknown and pending. A location is a place somebody
         // typed and has no affiliation at all, so its pin has to sit outside
-        // that vocabulary rather than borrow the most loaded colour in it.
+        // that vocabulary rather than borrow the most loaded color in it.
         //
         // Purple through magenta is the ONLY window left. Holding 45 degrees
         // from all four affiliations leaves 252 to 321 and nothing else: the
@@ -278,12 +278,12 @@ export function palette(dark: boolean): MapColors {
 
         // An airfield is a landmark rather than context, so it is held to the
         // same floor as roads: 3.73:1 light, 3.71:1 dark. It is the one hue on
-        // the map that is neither the greys of the basemap nor the orchid of
+        // the map that is neither the grays of the basemap nor the orchid of
         // the pin, which is what stops an aerodrome reading as a town.
         airport: dark ? '#edc67e' : '#382d12',
 
         // The rest are context and are deliberately BELOW that floor, between
-        // 1.2:1 and 2.3:1 against land. They are there to be recognised when
+        // 1.2:1 and 2.3:1 against land. They are there to be recognized when
         // looked for, not to be read, and the coordinate has to stay the
         // loudest thing on screen when a city's worth of them is drawn under
         // it. That is why they are absent from the contrast table in
@@ -308,7 +308,7 @@ export function palette(dark: boolean): MapColors {
  */
 export const MARKER_IMAGE_ID = 'tf-marker';
 
-/** The image name for one colour, so a map registers each colour once. */
+/** The image name for one color, so a map registers each color once. */
 export function markerImageID(color: string): string {
     return `${MARKER_IMAGE_ID}-${color.replace('#', '')}`;
 }
@@ -608,7 +608,7 @@ export function buildStyle(
                 layout: {
 
                     // Read from the feature, so a block of events draws each
-                    // one in its own affiliation's colour.
+                    // one in its own affiliation's color.
                     'icon-image': ['get', 'icon'] as unknown as string,
                     'icon-size': 1,
 
@@ -665,11 +665,11 @@ export const DETAIL_SOURCE_LAYERS = [
 /**
  * Whether any installed package reaches anywhere in this view.
  *
- * INTERSECTION rather than a test of the centre, and the asymmetry is
- * deliberate. A centre test lifts the cap whenever the middle of the frame
+ * INTERSECTION rather than a test of the center, and the asymmetry is
+ * deliberate. A center test lifts the cap whenever the middle of the frame
  * falls outside a package, so a reader who pans until Oahu sits at the edge
  * gets the generalised tier overzoomed across the whole view while the accurate
- * one still draws Oahu: the same road twice, kilometres apart, which is the one
+ * one still draws Oahu: the same road twice, kilometers apart, which is the one
  * failure the seam exists to prevent. Capping whenever any covered ground is on
  * screen cannot do that. It costs a blank margin at the edge of coverage, which
  * is the cheaper of the two.
@@ -725,7 +725,7 @@ export const SEAM_CAPPED_LAYERS = [
  * The style is built once and the map is moved thereafter, so without this a
  * reader who pans out of a covered area keeps the cap and sees the empty frame
  * this exists to remove, and one who pans into a covered area sees both tiers
- * draw the same road kilometres apart.
+ * draw the same road kilometers apart.
  */
 export function syncGlobalReach(
     map: {
@@ -963,7 +963,7 @@ function detailLayers(colors: MapColors, name: string): StyleSpecification['laye
  *
  * OpenStreetMap is ODbL and the OpenMapTiles schema is CC-BY, so unlike Natural
  * Earth, whose credit this plugin deliberately dropped, both of these are
- * licence conditions. Written once here and read by both the style's own
+ * license conditions. Written once here and read by both the style's own
  * `attribution` field and the line the component renders, so the two cannot
  * disagree about what was credited.
  */
@@ -981,7 +981,7 @@ export function emptyCollection(): FeatureCollection {
  *
  * The image is named per feature rather than per layer because a block of
  * events is a block of different affiliations, and one layer drawing one icon
- * would paint a hostile track in a friendly colour.
+ * would paint a hostile track in a friendly color.
  */
 export function markedPoints(
     points: ReadonlyArray<{lat: number; lon: number; icon: string}>,
@@ -1032,9 +1032,9 @@ export function cellFeature(
  *
  * MapLibre's own circle layer takes a radius in PIXELS, which would mean the
  * drawn accuracy changed every time the reader zoomed. A polygon is the only
- * shape that keeps its metres.
+ * shape that keeps its meters.
  *
- * The vertices are geodesic. A metre is a different number of longitude degrees
+ * The vertices are geodesic. A meter is a different number of longitude degrees
  * at every latitude, so an equal-degree ring is right at the equator and wrong
  * everywhere else, which for a layer whose whole purpose is to stop the map
  * overstating a fix is the wrong way to be wrong.
@@ -1091,7 +1091,7 @@ export function geometryLayers(colors: MapColors): StyleSpecification['layers'] 
 /**
  * A geodesic ring, which is the accuracy circle and the drawn ellipse both.
  *
- * A metre is a different number of longitude degrees at every latitude, so the
+ * A meter is a different number of longitude degrees at every latitude, so the
  * offsets are scaled by cos(lat). An equal-degree ring is right at the equator
  * and increasingly wrong toward the poles, which for a shape whose whole job is
  * to say where something is would be the wrong way to be wrong.
@@ -1115,7 +1115,7 @@ function geodesicRing(
     for (let i = 0; i < ACCURACY_VERTICES; i++) {
         const angle = (2 * Math.PI * i) / ACCURACY_VERTICES;
 
-        // The axes are rotated in metres and only then converted, or the tilt
+        // The axes are rotated in meters and only then converted, or the tilt
         // would be sheared by the longitude scaling and the ellipse would point
         // somewhere the event did not say.
         const across = minorMeters * Math.cos(angle);
@@ -1137,7 +1137,7 @@ function geodesicRing(
 /**
  * An ellipse on the ground, from the axes the event stated.
  *
- * ATAK's `major` and `minor` are semi-axes in metres and `angle` is the
+ * ATAK's `major` and `minor` are semi-axes in meters and `angle` is the
  * bearing of the major axis, measured clockwise from north, which is why north
  * takes the cosine here and east the sine.
  */
@@ -1199,7 +1199,7 @@ export function accuracyFeature(lat: number, lon: number, meters: number): Featu
  * size reads as grain rather than as a line; a distance gives each pixel the
  * fraction of it the shape covers, which is what antialiasing is.
  *
- * The shape is stroked twice, the edge colour first and wider. That outline is
+ * The shape is stroked twice, the edge color first and wider. That outline is
  * what the palette's note relies on ("the pin is distinguished by its outline
  * against land rather than by its fill"), and it is what lets the fill carry
  * the affiliation.
@@ -1228,7 +1228,7 @@ export interface MarkerImage {
     data: Uint8Array;
 }
 
-/** Distance to a rectangle centred on the origin, negative inside it. */
+/** Distance to a rectangle centered on the origin, negative inside it. */
 function toBox(px: number, py: number, halfWidth: number, halfHeight: number): number {
     const dx = Math.abs(px) - halfWidth;
     const dy = Math.abs(py) - halfHeight;
@@ -1267,20 +1267,20 @@ export function crosshairImage(color: string, edge: string): MarkerImage {
 
     const fillRGB = channels(color);
     const edgeRGB = channels(edge);
-    const centre = (side - 1) / 2;
+    const center = (side - 1) / 2;
 
     // One pixel, in the units the distances are measured in. Coverage ramps
     // across exactly this, which is what makes an edge look soft rather than
     // stepped without making it look blurred.
-    const pixel = 1 / centre;
+    const pixel = 1 / center;
 
     const coverage = (distance: number) =>
         Math.max(0, Math.min(1, 0.5 - (distance / pixel)));
 
     for (let y = 0; y < side; y++) {
         for (let x = 0; x < side; x++) {
-            const nx = (x - centre) / centre;
-            const ny = (y - centre) / centre;
+            const nx = (x - center) / center;
+            const ny = (y - center) / center;
 
             const outer = coverage(toMarker(nx, ny, THICKNESS + EDGE_THICKNESS));
             if (outer <= 0) {

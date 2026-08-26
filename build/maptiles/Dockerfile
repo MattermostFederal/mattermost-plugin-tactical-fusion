@@ -4,7 +4,7 @@ ARG TIPPECANOE_VERSION=2.78.0
 ARG FONTNIK_VERSION=0.7.7
 
 # The font comes from the distribution rather than a download, so it is pinned by
-# this image and its licence text is installed alongside it.
+# this image and its license text is installed alongside it.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       build-essential ca-certificates fonts-noto-core git libsqlite3-dev \

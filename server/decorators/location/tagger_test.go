@@ -721,7 +721,7 @@ func TestCoordinatesInsideIdentifiersAreLeftAlone(t *testing.T) {
 // The two guards are the same function, so they cannot drift apart again.
 //
 // Asserted over every rune the leading side has to refuse rather than by
-// inspecting the source, since the failure this pins is behavioural.
+// inspecting the source, since the failure this pins is behavioral.
 func TestBareAndLabeledGuardsAgree(t *testing.T) {
 	tg := tagger(t, &location.Decorator{})
 

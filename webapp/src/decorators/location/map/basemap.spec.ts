@@ -163,7 +163,7 @@ test.describe('probing', () => {
 
     // A 200 whose body is only the requested bytes is a well-behaved backend
     // answering without the 206 status. That is usable.
-    test('accepts a 200 that still honoured the range', async () => {
+    test('accepts a 200 that still honored the range', async () => {
         stubFetch(() => ({ok: true, status: 200, contentLength: String(HEADER_BYTES)}));
 
         expect(await loadBasemap()).not.toBeNull();

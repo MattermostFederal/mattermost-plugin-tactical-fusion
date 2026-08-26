@@ -580,7 +580,7 @@ func TestCotStampsABareEvent(t *testing.T) {
 	}
 }
 
-// An author who fenced an event without labelling the fence has said it is
+// An author who fenced an event without labeling the fence has said it is
 // code. Reading it anyway would be the corruption protected ranges exist to
 // stop, and it is the one thing the bare scan must not do.
 func TestABareScanNeverReachesIntoCode(t *testing.T) {
@@ -608,7 +608,7 @@ func TestAFencedEventIsStillReadAsAFence(t *testing.T) {
 
 	updated := p.decoratePost(&model.Post{Message: cotFence("cot", cotEventXML), UserId: testUserID}, hookRef)
 	if updated == nil || updated.Type != cot.PostType {
-		t.Fatal("a labelled fence stopped being read")
+		t.Fatal("a labeled fence stopped being read")
 	}
 
 	if blob := cotBlob(t, updated); blob["lead"] != "" {

@@ -36,7 +36,7 @@ test('a point that is not a number is dropped rather than coerced', () => {
     expect(line).toHaveLength(OUTLINE.length);
 });
 
-// The axes are rotated in metres and only then converted, or the longitude
+// The axes are rotated in meters and only then converted, or the longitude
 // scaling would shear the tilt and the ellipse would point somewhere the event
 // did not say.
 function ringOf(lat: number, lon: number, major: number, minor: number, angle: number) {
@@ -62,7 +62,7 @@ function majorAxisBearing(ring: number[][], lat: number, lon: number): number {
 
 // At latitude 0 the cos(lat) division is a no-op, so a test there cannot see
 // whether the conversion is geodesic at all. This one is away from the equator.
-test('an ellipse is geodesic, so its axes are metres on the ground', () => {
+test('an ellipse is geodesic, so its axes are meters on the ground', () => {
     const lat = 60;
     const ring = ringOf(lat, 0, 1000, 1000, 0);
 

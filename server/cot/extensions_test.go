@@ -277,7 +277,7 @@ func TestAFlowHopWithAnUnreadableTimeIsKept(t *testing.T) {
 }
 
 // Once the panel enumerates blocks, an event with none reads as "carried
-// nothing" rather than "we did not recognise what it carried".
+// nothing" rather than "we did not recognize what it carried".
 func TestDetailUnknownCountsWhatThisBuildDidNotRead(t *testing.T) {
 	// Deliberately the elements this build still defers, so the fixture goes
 	// stale only when one of them is actually implemented. checklist and
@@ -298,7 +298,7 @@ func TestDetailUnknownIsAbsentWhenEverythingWasRead(t *testing.T) {
 }
 
 // format and value build a location URL the webapp follows, and affiliation
-// keys the marker colour. Nothing author-derived may land beside them, and
+// keys the marker color. Nothing author-derived may land beside them, and
 // _flow-tags_ is the one element whose attribute NAMES are author-chosen.
 func TestEventPropsKeysAreClosed(t *testing.T) {
 	hostile := `<_flow-tags_ format="x" value="x" affiliation="x" lat="x" lon="x" uid="x" ` +
@@ -359,7 +359,7 @@ func TestColorIsDecodedFromASignedDecimal(t *testing.T) {
 }
 
 // No author string is ever used as a style value, so anything that is not a
-// signed decimal produces no colour at all rather than a value a browser reads.
+// signed decimal produces no color at all rather than a value a browser reads.
 func TestAColorThatIsNotASignedDecimalIsNotWritten(t *testing.T) {
 	for _, raw := range []string{"url(https://attacker/px)", "#ff0000", "red", "", "1e9999"} {
 		props := detailProps(t, `<color argb="`+raw+`"/>`)
@@ -452,7 +452,7 @@ func TestANestedDetailDoesNotSmuggleATopLevelEntry(t *testing.T) {
 
 // The degraded rung says so on the card, not only in the server log.
 //
-// Without it the panel draws no groups and no unrecognised count, which a
+// Without it the panel draws no groups and no unrecognized count, which a
 // reader meets as "this event carried nothing" rather than "this did not fit".
 func TestTheDegradedBlobSaysSo(t *testing.T) {
 	events, err := parseOne([]byte(eventAround(FixtureDetail())))
@@ -596,7 +596,7 @@ func TestAFigureTooLongToBeAReadingIsRefused(t *testing.T) {
 		t.Errorf("sensor_range is %v (%d runes)", held, len(held.(string)))
 	}
 	if props["sensor_fov"] != "18°" {
-		t.Errorf("sensor_fov is %v; the neighbouring reading is unaffected", props["sensor_fov"])
+		t.Errorf("sensor_fov is %v; the neighboring reading is unaffected", props["sensor_fov"])
 	}
 }
 

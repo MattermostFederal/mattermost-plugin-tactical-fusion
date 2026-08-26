@@ -88,7 +88,7 @@ type LocationPreferences struct {
 	// chosen is stored as nothing at all, which is what lets "Restore defaults"
 	// be a delete. It also decides what happens when a row is ADDED in a later
 	// version: stored this way a new row appears for everybody, including
-	// readers who customised, which is the same promise the DTG defaults make.
+	// readers who customized, which is the same promise the DTG defaults make.
 	// Stored the other way round it would be invisible to exactly the readers
 	// who cared enough to choose.
 	HiddenRows []string `json:"hidden_rows"`

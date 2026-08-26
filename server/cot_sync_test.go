@@ -122,7 +122,7 @@ func TestWebappCotShapeMatches(t *testing.T) {
 // Keys Go omits when it has nothing to say. The webapp still reads them, since
 // absent and empty mean the same thing to it, so they are not drift.
 // Keys the webapp reads through something other than text(), which is the only
-// shape the scraper above recognises. TestWebappReadsTheProcessingPath is what
+// shape the scraper above recognizes. TestWebappReadsTheProcessingPath is what
 // holds this one instead.
 var cotNonTextKeys = map[string]bool{"flow": true, "geometry": true, "checklist": true}
 
@@ -240,7 +240,7 @@ func TestCotHasNoMapSettingOfItsOwn(t *testing.T) {
 
 // Every affiliation the decoder can name has a word in the webapp.
 //
-// The words are the map label's only channel: colour is what distinguishes one
+// The words are the map label's only channel: color is what distinguishes one
 // marker from another, and a screen reader gets none of it. An affiliation the
 // server decodes and the webapp cannot name falls through to "unstated", which
 // describes a value this build is holding as though nothing were known about

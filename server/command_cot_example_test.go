@@ -221,7 +221,7 @@ func TestTheExampleRowQuotesTheCardsOwnLabel(t *testing.T) {
 	}
 }
 
-// The example is a hostile contact, which is what the crosshair's colour and
+// The example is a hostile contact, which is what the crosshair's color and
 // the whole point of showing a card in a channel rest on.
 //
 // It also carries no __group: that element is the sender's team, and on a
@@ -480,7 +480,7 @@ func TestTheUnknownExampleIsCountedRatherThanDropped(t *testing.T) {
 	props := detailExampleProps(t, cotDetailUnknown)
 
 	if props["detail_unknown"] != "2" {
-		t.Fatalf("the unrecognised example counted %v elements, want the two it carries",
+		t.Fatalf("the unrecognized example counted %v elements, want the two it carries",
 			props["detail_unknown"])
 	}
 	if props["callsign"] != "GOLF1" {

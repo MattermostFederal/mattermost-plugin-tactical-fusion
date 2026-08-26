@@ -173,7 +173,7 @@ test.describe('the conversion cache', () => {
         let calls = 0;
 
         // Never settles on its own, so the abort signal is the only thing that
-        // can end it. The stub has to honour the signal the way fetch does, or
+        // can end it. The stub has to honor the signal the way fetch does, or
         // this tests a slow reply rather than the timeout.
         globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
             calls++;

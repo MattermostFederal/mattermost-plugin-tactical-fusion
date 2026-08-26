@@ -233,7 +233,7 @@ func TestDeletePreferencesRemovesTheBlob(t *testing.T) {
 	}
 }
 
-// Deleting settings that were never saved is how a reader who has customised
+// Deleting settings that were never saved is how a reader who has customized
 // nothing uses the button. It has to succeed.
 func TestDeletePreferencesIsIdempotent(t *testing.T) {
 	p, _ := newAPIPlugin(t)

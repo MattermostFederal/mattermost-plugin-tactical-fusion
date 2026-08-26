@@ -180,7 +180,7 @@ func TestArchiveDepthMatchesTheData(t *testing.T) {
  *
  * The minimum is an EQUALITY because a gap or an overlap there is a visible
  * defect: one zoom short and z10 draws neither tier, one zoom long and both
- * draw the same road with kilometres between them. The maximum is checked
+ * draw the same road with kilometers between them. The maximum is checked
  * against the generator rather than against a client constant, because there is
  * deliberately no client-side maximum: an operator may ship a shallower profile
  * than this pipeline can build and the reader must simply get what is there.

@@ -80,8 +80,8 @@ Consequences worth knowing:
 - **The standalone page always shows the defaults.** It requires a login now,
   but it does not ask who is reading it: the renderer takes a query string and
   no user. So the RHS and the page still disagree about the same DTG for a
-  reader who has customised either setting. That was inherent while the route
-  was public and is a **choice** now, and the choice is deliberate: honouring
+  reader who has customized either setting. That was inherent while the route
+  was public and is a **choice** now, and the choice is deliberate: honoring
   preferences means a KV read on a route served with a cache lifetime, and the
   renderers stop being pure functions of their query strings. Worth revisiting,
   but as its own piece of work.
@@ -150,7 +150,7 @@ channel), no Reset view and no zoom readout. What is left is the picture.
 tooltip caps at that plus its padding. The frame carries only a height everywhere
 else, because a block element fills the sidebar; inside a tooltip that sizes
 itself to its content there is nothing to fill, and the map came out a narrow
-strip. Every behavioural test passed while it did: a pin lands, labels draw and
+strip. Every behavioral test passed while it did: a pin lands, labels draw and
 the wheel is ignored at any width at all, so `is a map rather than a strip`
 measures the box instead. The 360px cap on the card is a max rather than a width,
 so the DTG countdown still shrinks to its own line.
@@ -254,7 +254,7 @@ quietly stopped meaning what its name said.
 direction is the whole design. Empty then means "all of them", so a reader who
 never chose is stored as nothing, which is what lets "Restore defaults" stay a
 delete. It also decides what happens when a row is **added**: stored this way a
-new row appears for everybody, including readers who customised, which is the
+new row appears for everybody, including readers who customized, which is the
 same promise the DTG defaults make. Stored the other way round it would be
 invisible to exactly the readers who cared enough to choose. The editor still
 presents it as what to *show*, because "hide this" is the honest mirror of the

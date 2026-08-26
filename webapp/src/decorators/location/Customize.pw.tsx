@@ -9,7 +9,7 @@ import {savedHiddenRows, stubPreferencesRoute} from '../../preferences/stub_rout
 /*
  * The location editor had no component test at all, which is how a
  * draft-clobbering effect and a "Restore defaults" that deleted another
- * decorator's settings both shipped. These are the two behaviours that were
+ * decorator's settings both shipped. These are the two behaviors that were
  * wrong, plus the ordinary ones.
  */
 

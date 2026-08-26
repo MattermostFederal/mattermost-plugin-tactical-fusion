@@ -70,7 +70,7 @@ interface Props {
  * Harness for the post body.
  *
  * Playwright runs the test body in Node and mounts in the browser, so the
- * registry is populated in here and everything else arrives as serialisable
+ * registry is populated in here and everything else arrives as serializable
  * props.
  */
 const PostBodyHarness: React.FC<Props> = ({

@@ -8,7 +8,7 @@ import {
 
 /*
  * The map's arithmetic, which is duplicated in Go and pinned to it by
- * TestWebappMapConstantsMatch. These cover the behaviour rather than the
+ * TestWebappMapConstantsMatch. These cover the behavior rather than the
  * numbers: that a constant ground span is not a constant zoom, and that a
  * position the projection cannot represent is refused rather than clamped.
  */

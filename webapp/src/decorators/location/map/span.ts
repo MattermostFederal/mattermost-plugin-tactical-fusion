@@ -13,11 +13,11 @@
 export const MERCATOR_LIMIT = 85.0511287798066;
 
 /**
- * How much ground the map tries to show across its width, in metres.
+ * How much ground the map tries to show across its width, in meters.
  *
  * This decides what a reader sees first, and it used to be 2,400 km, which
  * opened the panel at about z3.4 at the equator: two and a half zoom levels
- * below the map's own ceiling, with a one metre grid reference framed exactly
+ * below the map's own ceiling, with a one meter grid reference framed exactly
  * like a whole-degree one. 400 km frames a region instead, which is the
  * question somebody with a coordinate is usually asking. Zooming out to the
  * whole world is still one gesture away.
@@ -28,7 +28,7 @@ export const TARGET_SPAN_METERS = 400000;
  * Past this the basemap stops being honest about what it is.
  *
  * Natural Earth 10m carries roughly 5 km of positional accuracy, and a 512 px
- * tile puts 78271.5/2^z metres in a pixel. So that error is about 16 px at z8,
+ * tile puts 78271.5/2^z meters in a pixel. So that error is about 16 px at z8,
  * 33 px at z9 and 65 px at z10. At 16 px it reads as generalisation; at 65 px it
  * reads as fact to a reader with no way to tell, which for an audience acting on
  * grid references is the wrong way to be wrong.
@@ -65,7 +65,7 @@ export const DATA_MAX_ZOOM = 9;
  * the grammars actually produce: 10 m MGRS, and four decimal places of a degree
  * (about 11 m). A 1 m grid reference is still about 2 px, and going deeper was
  * declined: it would need z20, where the basemap is magnified 2048 times and is
- * a flat colour with a straight line for a coastline.
+ * a flat color with a straight line for a coastline.
  *
  * Past DATA_MAX_ZOOM MapLibre overzooms, which for vector tiles magnifies
  * without blurring, so lines stay crisp and only their GENERALISATION is wrong.
@@ -139,7 +139,7 @@ export function cellBounds(
  * is why these four numbers are not symmetrical and must not be tidied into
  * one.
  *
- * Each includes half a marker, since a crosshair is drawn centred on its point
+ * Each includes half a marker, since a crosshair is drawn centered on its point
  * and would otherwise hang over the edge it was just cleared of. That allowance
  * is not a rounding: at 40 the top edge of a marker landed exactly on the
  * bottom edge of the Reset button. The reach of each control, measured from the
@@ -219,7 +219,7 @@ function withinAxis(near: number, far: number, sizePx: number): [number, number]
  * The same longitudes, made continuous across the antimeridian.
  *
  * A shape that crosses 180 arrives as a jump from 179 to -179, and every
- * consumer reads that as travelling 358 degrees the wrong way round: the line
+ * consumer reads that as traveling 358 degrees the wrong way round: the line
  * is drawn straight back across the whole map, and the bounding box frames the
  * planet instead of the two degrees the shape occupies.
  *

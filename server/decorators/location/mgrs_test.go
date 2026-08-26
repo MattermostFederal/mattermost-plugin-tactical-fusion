@@ -56,12 +56,12 @@ func TestMgrsAtRefusesAPositionOffTheGrid(t *testing.T) {
 	}
 }
 
-// A step below a metre is clamped rather than refused or divided by, and the
+// A step below a meter is clamped rather than refused or divided by, and the
 // clamp is what keeps a zero step from making the rounding meaningless.
 func TestUtmAtTreatsAStepBelowOneAsOneMetre(t *testing.T) {
 	want, ok := utmAt(gridPointFixture(), 1)
 	if !ok {
-		t.Fatal("utmAt refused the fixture at a one metre step")
+		t.Fatal("utmAt refused the fixture at a one meter step")
 	}
 
 	for _, step := range []float64{0, 0.5, -3} {
@@ -85,7 +85,7 @@ func TestUtmAtTreatsAStepBelowOneAsOneMetre(t *testing.T) {
  * rendered fine, and an empty UTM row means "outside the grid" everywhere else
  * in this package.
  *
- * Clamped one metre south rather than wrapped to zero: zero beside a southern
+ * Clamped one meter south rather than wrapped to zero: zero beside a southern
  * band letter is the false origin itself, 10,000 km away, and produced a row
  * this package could not parse back. The northern twin is in the same table
  * because it is the half that makes the asymmetry visible, zero being an
@@ -115,7 +115,7 @@ func TestUtmAtKeepsAPositionEitherSideOfTheEquator(t *testing.T) {
 			}
 
 			// The row has to be one this package can read back, which is the
-			// whole reason the clamp is a metre rather than a wrap to zero.
+			// whole reason the clamp is a meter rather than a wrap to zero.
 			lat, _, ok := utmPointOf(g)
 			if !ok {
 				t.Fatalf("utmPointOf refused %+v, the row utmFor just produced", g)
@@ -162,8 +162,8 @@ func TestSquareMetersClampsDigitsToASquareItCanName(t *testing.T) {
 		{"below the floor is a 100 km square", -1, 100000},
 		{"no digits is the same square", 0, 100000},
 		{"one digit is 10 km", 1, 10000},
-		{"the finest is one metre", maxGridDigits, 1},
-		{"past the finest is still one metre", maxGridDigits + 1, 1},
+		{"the finest is one meter", maxGridDigits, 1},
+		{"past the finest is still one meter", maxGridDigits + 1, 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := squareMeters(tc.digits); got != tc.want {

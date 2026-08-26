@@ -54,7 +54,7 @@ func classify(event Event) string {
 		}
 	}
 
-	// An atom is a track, with an affiliation the card colours it by, and
+	// An atom is a track, with an affiliation the card colors it by, and
 	// element presence may never re-shape one. That is the whole spoof: ten
 	// author-chosen bytes turning somebody's hostile contact report into a
 	// message from a named sender.

@@ -61,7 +61,7 @@ const SHARED = require.resolve('maplibre-gl/dist/maplibre-gl-shared.mjs');
  * The worker is a property of the test bundler rather than of this component.
  * The shipping build imports it as a webpack asset and hands the emitted URL to
  * `setWorkerUrl`; Playwright's component runner builds with Vite, which does not
- * honour the `?copy` marker, so `assetUrl` returns null and MapLibre falls back
+ * honor the `?copy` marker, so `assetUrl` returns null and MapLibre falls back
  * to deriving `./maplibre-gl-worker.mjs` from its own `import.meta.url`. Vite
  * emits that chunk under a hashed name, so the request fails, the GeoJSON source
  * never finishes tiling, `load` never fires, and the map sits on "Loading map…"

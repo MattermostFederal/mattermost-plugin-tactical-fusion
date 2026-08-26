@@ -36,7 +36,7 @@ test('the ring is geodesic rather than equal degree', () => {
     const equatorHalfWidth = Math.abs(atEquator[0][0]);
     const sixtyHalfWidth = Math.abs(atSixty[0][0]);
 
-    // cos(60) is 0.5, so a metre is twice as many degrees of longitude there.
+    // cos(60) is 0.5, so a meter is twice as many degrees of longitude there.
     expect(sixtyHalfWidth / equatorHalfWidth).toBeCloseTo(2, 2);
 
     // Latitude does not vary with latitude, so both rings are the same height.
@@ -45,7 +45,7 @@ test('the ring is geodesic rather than equal degree', () => {
     expect(sixtyHalfHeight).toBeCloseTo(equatorHalfHeight, 6);
 });
 
-test('the radius is the stated number of metres', () => {
+test('the radius is the stated number of meters', () => {
     const meters = 5000;
     const points = ring(0, 0, meters);
 
@@ -127,22 +127,22 @@ b: image.data[at + 2],
 
     test('is a circle with a line across it and a line down it', () => {
         const image = crosshairImage(FILL, EDGE);
-        const centre = Math.floor(image.width / 2);
+        const center = Math.floor(image.width / 2);
 
         // Both lines run well past the circle, which is what makes them read as
         // crosshairs rather than as spokes. Measured against the ring rather
         // than against the bitmap edge, which is arbitrary.
-        const beyondRing = Math.round(centre * 0.8);
-        expect(pixel(image, centre - beyondRing, centre).a).toBeGreaterThan(0);
-        expect(pixel(image, centre + beyondRing, centre).a).toBeGreaterThan(0);
-        expect(pixel(image, centre, centre - beyondRing).a).toBeGreaterThan(0);
-        expect(pixel(image, centre, centre + beyondRing).a).toBeGreaterThan(0);
+        const beyondRing = Math.round(center * 0.8);
+        expect(pixel(image, center - beyondRing, center).a).toBeGreaterThan(0);
+        expect(pixel(image, center + beyondRing, center).a).toBeGreaterThan(0);
+        expect(pixel(image, center, center - beyondRing).a).toBeGreaterThan(0);
+        expect(pixel(image, center, center + beyondRing).a).toBeGreaterThan(0);
 
         // And the circle is a ring, not a disc: on the diagonal, where neither
-        // line runs, there is a gap between the centre and the stroke.
+        // line runs, there is a gap between the center and the stroke.
         const gap: number[] = [];
-        for (let step = 1; step < centre; step++) {
-            gap.push(pixel(image, centre + step, centre + step).a);
+        for (let step = 1; step < center; step++) {
+            gap.push(pixel(image, center + step, center + step).a);
         }
 
         expect(Math.min(...gap), 'nothing is hollow, so this is a disc').toBe(0);
@@ -153,7 +153,7 @@ b: image.data[at + 2],
     // rather than by its fill, which is what lets the fill carry an affiliation.
     test('puts the outline outside the fill, not the other way round', () => {
         const image = crosshairImage(FILL, EDGE);
-        const centre = Math.floor(image.width / 2);
+        const center = Math.floor(image.width / 2);
 
         const near = (a: {r: number; g: number; b: number}, hex: string) => {
             const want = [
@@ -167,18 +167,18 @@ b: image.data[at + 2],
         // Walk in from the edge along the horizontal line. The first ink met is
         // the outline; the middle of the stroke is the fill.
         let first = 0;
-        while (first < centre && pixel(image, first, centre).a === 0) {
+        while (first < center && pixel(image, first, center).a === 0) {
             first++;
         }
 
-        const outermost = pixel(image, first, centre);
+        const outermost = pixel(image, first, center);
         expect(near(outermost, EDGE)).toBeLessThan(near(outermost, FILL));
 
-        const middle = pixel(image, centre, centre - Math.round(centre * 0.02));
+        const middle = pixel(image, center, center - Math.round(center * 0.02));
         expect(near(middle, FILL)).toBeLessThan(near(middle, EDGE));
     });
 
-    test('takes the colour it is given, so the map and the card agree', () => {
+    test('takes the color it is given, so the map and the card agree', () => {
         const image = crosshairImage('#3d85c6', '#000000');
 
         // The most opaque pixels are the stroke's own middle, which is the
@@ -196,6 +196,6 @@ b: image.data[at + 2],
         }
 
         expect(solid).toBeGreaterThan(100);
-        expect(matching / solid, 'the fill is not the colour it was given').toBeGreaterThan(0.3);
+        expect(matching / solid, 'the fill is not the color it was given').toBeGreaterThan(0.3);
     });
 });

@@ -398,11 +398,11 @@ func cotDetailChunks(enabled, filesEnabled bool) []detailChunk {
 				source: cotExampleOneLine, info: cotPlainFenceInfo,
 			},
 			{
-				note:   "**Indent it to read it and you need a fence**, labelled `cot`, which is the spelling to use when you mean it. Markdown reads four spaces of indent as a code block, so the same event pasted bare and indented is left as the text it was written in.",
+				note:   "**Indent it to read it and you need a fence**, labeled `cot`, which is the spelling to use when you mean it. Markdown reads four spaces of indent as a code block, so the same event pasted bare and indented is left as the text it was written in.",
 				source: cotExampleEvent, info: cotFenceInfo,
 			},
 			{
-				note:   "And labelled `xml`, read the same way. A block that turns out not to be an event is left alone silently, while a `cot` one tells you why.",
+				note:   "And labeled `xml`, read the same way. A block that turns out not to be an event is left alone silently, while a `cot` one tells you why.",
 				source: cotExampleEvent, info: cotXMLFenceInfo,
 			},
 		}),
@@ -510,7 +510,7 @@ func cotExtensionChunks() []detailChunk {
 		heading: "Appearance and team",
 		lines: cotFenceAtom([]cotFencedExample{
 			{
-				note:   "A stated icon and colour, both shown as values in the sidebar.",
+				note:   "A stated icon and color, both shown as values in the sidebar.",
 				source: cotDetailAppearance, info: cotFenceInfo,
 			},
 			{
@@ -526,7 +526,7 @@ func cotExtensionChunks() []detailChunk {
 				source: cotDetailArea, info: cotFenceInfo,
 			},
 			{
-				note:   "A circle, drawn from its axes rather than from a vertex list. `major` and `minor` are read as semi-axes in metres and `angle` as a bearing clockwise from north, so an ellipse keeps its metres at every zoom.",
+				note:   "A circle, drawn from its axes rather than from a vertex list. `major` and `minor` are read as semi-axes in meters and `angle` as a bearing clockwise from north, so an ellipse keeps its meters at every zoom.",
 				source: cotDetailCircle, info: cotFenceInfo,
 			},
 			{
@@ -546,7 +546,7 @@ func cotExtensionChunks() []detailChunk {
 				source: cotDetailRouting, info: cotFenceInfo,
 			},
 			{
-				note:   "A geofence, which is behaviour attached to a shape rather than a shape of its own: the circle is what is drawn, and the fence says what crossing it means.",
+				note:   "A geofence, which is behavior attached to a shape rather than a shape of its own: the circle is what is drawn, and the fence says what crossing it means.",
 				source: cotDetailFence, info: cotFenceInfo,
 			},
 			{
@@ -555,7 +555,7 @@ func cotExtensionChunks() []detailChunk {
 			},
 		}), cotRoutingLines()...),
 	}, {
-		heading: "Processing path, and what is not recognised",
+		heading: "Processing path, and what is not recognized",
 		lines: append(cotFenceAtom([]cotFencedExample{
 			{
 				note:   "The systems that handled the event, shown in the sidebar as a collapsed Processing path in the order the event wrote them.",
@@ -629,7 +629,7 @@ func cotShapeLines() []string {
 			"**separate budgets**. Neither can exhaust the other.\n",
 		"- These shapes are read as ATAK is understood to write them and have not been " +
 			"checked against a real device. A shape this build reads wrongly does not " +
-			"draw and is counted as unrecognised, rather than drawn wrongly.\n",
+			"draw and is counted as unrecognized, rather than drawn wrongly.\n",
 	}
 }
 
@@ -672,7 +672,7 @@ func cotDetailNotes() []string {
 		"- A `__chat` or `_medevac_` element does **not** change how an `a-` event is " +
 			"drawn. The type code decides, so nobody can re-shape a contact report by " +
 			"adding one element to it.\n",
-		"- A stated `color` is shown as a value in the sidebar and never colours the " +
+		"- A stated `color` is shown as a value in the sidebar and never colors the " +
 			"marker or the affiliation dot, which are what say whose track it is.\n",
 		"- A video address is shown as text and is never a link.\n",
 	}

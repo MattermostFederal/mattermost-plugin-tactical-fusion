@@ -262,7 +262,7 @@ var locationDetailGroups = []detailGroup{{
 	decorates: true,
 	examples: []detailExample{
 		{text: "4Q 609060 2359620", note: "zone, band, easting, northing"},
-		{text: "55P 276020E 1502660N", note: "the axis letters are optional, and may carry a metre unit"},
+		{text: "55P 276020E 1502660N", note: "the axis letters are optional, and may carry a meter unit"},
 		{text: "11S 385000 3769000", note: "N and S are read as latitude bands, not as hemispheres"},
 		{text: "UTMO:4Q609060 2359620", note: "the USMTF grid labels"},
 		{text: "UTMT:4Q6090602359620", note: "run together, which is label-only for UTM"},

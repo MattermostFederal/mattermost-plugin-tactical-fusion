@@ -140,7 +140,7 @@ func eventProps(event Event, withDetail bool) map[string]any {
 
 	if !withDetail {
 		// Said on the card rather than only in the server log. Without it the
-		// panel draws no groups and no unrecognised count, which reads as "this
+		// panel draws no groups and no unrecognized count, which reads as "this
 		// event carried nothing" instead of "this did not fit".
 		props["detail_dropped"] = presenceValue
 		return props
@@ -152,7 +152,7 @@ func eventProps(event Event, withDetail bool) map[string]any {
 	// Merged rather than written through, and nothing on the registry path is
 	// handed this map. format, value and affiliation live in it: the first two
 	// build a location URL the webapp follows and the third keys the marker
-	// colour, so nothing author-derived may land beside them.
+	// color, so nothing author-derived may land beside them.
 	for key, value := range blockProps(event.Detail.Blocks) {
 		if _, held := props[key]; !held {
 			props[key] = value
@@ -508,7 +508,7 @@ func percentText(raw string) string {
 	return numberText(value, "%")
 }
 
-// colorText is the event's stated display colour, and never this plugin's.
+// colorText is the event's stated display color, and never this plugin's.
 //
 // ATAK writes argb as a signed 32-bit decimal rather than as hex. The alpha
 // byte is dropped: a fully transparent swatch is a row that says nothing. The
@@ -582,7 +582,7 @@ func numberOf(raw string) (float64, bool) {
 	return value, true
 }
 
-// trimFloat normalises negative zero, which formats as "-0" and reads as a
+// trimFloat normalizes negative zero, which formats as "-0" and reads as a
 // direction on a bearing and as a sign on a battery.
 func trimFloat(value float64) string {
 	if value == 0 {

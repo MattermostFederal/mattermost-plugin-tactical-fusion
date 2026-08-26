@@ -7,7 +7,7 @@ import {ALL_FEATURES} from './types';
  * Stands in for the plugin's features route in a component test.
  *
  * Every surface on unless a test says otherwise, so a test about something else
- * gets today's behaviour and does not have to know this route exists.
+ * gets today's behavior and does not have to know this route exists.
  *
  * It has to be stubbed rather than left to fail, even for those tests. An
  * unrouted request would reach the network, fail, and land on the store's

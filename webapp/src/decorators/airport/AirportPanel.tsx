@@ -137,7 +137,7 @@ function positionPayload(coordinate: AirportCoordinate): LocationPayload | null 
 
     // eslint-disable-next-line no-console
     console.warn(
-        '[tactical-fusion] this build does not recognise the coordinate the server issued for an airfield; ' +
+        '[tactical-fusion] this build does not recognize the coordinate the server issued for an airfield; ' +
         'drawing no map and offering no link',
         {format: coordinate.format, value: coordinate.value},
     );

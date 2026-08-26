@@ -338,7 +338,7 @@ set a `RootId` by accident, and `runDetails` checks it on every post.
 **One post per decorator**, which is the unit a reader thinks in: one for
 date-time groups, one for coordinates. Both fit at the ordinary post limit, so
 that is the shape rather than an aspiration. A set that does not fit continues
-into another message rather than being packed in beside its neighbour; sharing a
+into another message rather than being packed in beside its neighbor; sharing a
 post between two decorators saves a message and costs the thing that made the
 output readable.
 

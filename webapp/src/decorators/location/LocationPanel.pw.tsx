@@ -265,7 +265,7 @@ test('a server error degrades rather than refusing the link', async ({mount}) =>
 });
 
 // One copy control per value row, beside the value, rather than a row of
-// labelled buttons underneath.
+// labeled buttons underneath.
 test('offers a copy control on every value row and none on the prose rows', async ({mount}) => {
     const component = await mount(<LocationPanelHarness/>);
     await component.getByRole('button', {name: 'answer the conversion'}).click();

@@ -27,10 +27,10 @@ the pilot is committed and the rest are uploaded by hand.
 
 ## This is a sibling of build/maptiles, not an extension of it
 
-Different source, different toolchain, different output, and different licence
+Different source, different toolchain, different output, and different license
 obligations. There is no line of `build/maptiles/build.sh` a planetiler run
 would reuse, and sharing a directory would put an ODbL pipeline and a
-public-domain one behind one README and one `sources.lock` when the licence text
+public-domain one behind one README and one `sources.lock` when the license text
 has to travel with exactly one of them.
 
 ## What it reads
@@ -44,7 +44,7 @@ records that, so a rebuild asks for the same day's data rather than today's.
 
 **Three auxiliary datasets are NOT pinned**, and this is the one place this
 pipeline is weaker than `build/maptiles`. The OpenMapTiles profile also reads
-Natural Earth, OSM water polygons and lake centrelines, about 1.2 GB in total,
+Natural Earth, OSM water polygons and lake centerlines, about 1.2 GB in total,
 which planetiler downloads itself into `build/maposm/cache/`. They are pinned by
 nothing but planetiler's own URLs. Closing that is worth doing before this tier
 ships beyond a pilot.
@@ -70,7 +70,7 @@ Each archive is z10 through z14 and carries nine OpenMapTiles layers.
 `webapp/src/decorators/location/map/span.ts`, and
 `TestDetailPackagesStartAtTheSeam` holds all three together: the constant, the
 generator and the archive's own header. A gap there draws neither tier and an
-overlap draws both, kilometres apart.
+overlap draws both, kilometers apart.
 
 | Layer | What it carries |
 |---|---|
@@ -116,7 +116,7 @@ intuitive one.
 the buffered box. A way that *spans* the box with no vertex inside it is dropped
 whole. In dense terrain that is theoretical; in CENTCOM it is not, because
 desert administrative boundaries are mapped as near-straight ways with vertices
-hundreds of kilometres apart, and `filter.json` renders `admin_level <= 4`. A
+hundreds of kilometers apart, and `filter.json` renders `admin_level <= 4`. A
 0.25 degree buffer is 28 km and does not save a 400 km span, so cutting would
 put a missing national border through the middle of `centcom-red-sea` and it
 would look exactly like a correct build. The performance argument does not
@@ -522,7 +522,7 @@ The build is **byte-reproducible from the pinned sources given the same
 auxiliary cache**, and that qualifier is the whole of the gap described under
 "Three auxiliary datasets are NOT pinned" above. The extracts, the toolchain and
 the tiler are pinned; planetiler's ~1.2 GB of Natural Earth, water polygons and
-lake centrelines are not, so a clean build made after one of those upstream URLs
+lake centerlines are not, so a clean build made after one of those upstream URLs
 changes can differ. With `build/maposm/cache/` preserved, rebuilding the pilot
 reproduces the committed archive exactly:
 

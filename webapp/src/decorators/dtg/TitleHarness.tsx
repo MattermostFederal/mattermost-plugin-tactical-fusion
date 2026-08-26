@@ -14,7 +14,7 @@ import type {Dtg} from './index';
  * together is the only way to test that they actually agree.
  *
  * The instant arrives as milliseconds because Playwright drives this from Node
- * over serialisable props.
+ * over serializable props.
  */
 const TitleHarness: React.FC<{instantMs: number}> = ({instantMs}) => {
     useState(() => {

@@ -90,7 +90,7 @@ test.describe('the map itself', () => {
 
     /*
      * zoomForSpan holds the target ground span across the WIDTH, so an uncapped
-     * map in a wide centre channel would open several zoom levels deeper than
+     * map in a wide center channel would open several zoom levels deeper than
      * the panel does for the same coordinate.
      */
     test('caps its width rather than taking the whole channel', async ({mount, page}) => {

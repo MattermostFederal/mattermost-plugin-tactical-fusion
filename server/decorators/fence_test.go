@@ -171,7 +171,7 @@ func TestSoleElementSpanCoversSiblings(t *testing.T) {
 func TestSoleElementSpanRefusesWhatIsProtected(t *testing.T) {
 	cases := map[string]string{
 		"unlabelled fence": "```\n<event uid=\"u\"/>\n```",
-		"labelled fence":   "```xml\n<event uid=\"u\"/>\n```",
+		"labeled fence":    "```xml\n<event uid=\"u\"/>\n```",
 		"tilde fence":      "~~~\n<event uid=\"u\"/>\n~~~",
 		"inline code":      "`<event uid=\"u\"/>`",
 		"indented code":    "    <event uid=\"u\"/>",

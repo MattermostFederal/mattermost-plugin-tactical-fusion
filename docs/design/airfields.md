@@ -14,7 +14,7 @@ position is **looked up rather than computed**, which is exactly why
 readings of its own.** An airfield resolves to a position, and the location
 decorator already renders a position eleven ways with copy buttons and whichever
 rows the reader chose to keep. A second table here would say the same thing
-worse, would not honour those choices, and would drift. So the panel draws the
+worse, would not honor those choices, and would drift. So the panel draws the
 **map** under the airfield details, and **the Place value is the link**: it
 hands the coordinate to the location panel in place through `setSelection`, and
 the page's Place is an `<a>` to the coordinate page.
@@ -44,7 +44,7 @@ from the server, and it is on the wire for one reason: it is the map's
 accessible label, and since the Region row was retired that label is the only
 place the country reaches a reader at all.
 
-**This is a fifth `LocationMap` mount site, so it honours `mapPanel`** like the
+**This is a fifth `LocationMap` mount site, so it honors `mapPanel`** like the
 other four. Off means nothing is fetched rather than nothing drawn, and gating
 the mount site is what achieves that: the archive, the glyph ranges and the
 library are reached from that component and nowhere else. Reusing the existing
@@ -147,7 +147,7 @@ a clean checkout must run `go test` with no network and no prior generator run.
 argument for this decorator having no bare pattern, and it now reports it on
 every PR.
 
-**The behavioural sweep never needed a word list at all.** It asserted three
+**The behavioral sweep never needed a word list at all.** It asserted three
 things (a bare ident does not decorate, a lower-case or mixed-case label does
 not, an upper-case one does) and every one of them holds for *all* 19,012
 idents, not only the word-shaped ones. Restricting it to dictionary words made
@@ -561,7 +561,7 @@ It is in `parseAirfields` rather than in `build/airportdata` deliberately: the
 generator is not a prerequisite of `make test`, so a check there would not run
 where it matters and a hand-edited CSV would bypass it entirely.
 
-**Escaping alone cannot be the defence here, which is the whole argument for
+**Escaping alone cannot be the defense here, which is the whole argument for
 the whitelist.** `@here` in an airfield name is the case: backslash-escaping it
 does suppress the rendered mention, but Mattermost's mention scan reads the RAW
 message text and treats a backslash as a separator, so the notification fires
@@ -571,7 +571,7 @@ the same shape. This is the rule the location decorator already states for its
 later layer rather than the first.
 
 *Unverified, and worth confirming on a running server before it is relied on:
-the mention behaviour above is read from Mattermost's source, not observed.*
+the mention behavior above is read from Mattermost's source, not observed.*
 
 ### The escaping is new, and it is not hypothetical
 

@@ -702,8 +702,8 @@ func TestAnEventWithNoLinksSaysNothingAboutThem(t *testing.T) {
 // decodeAtom has two ways to give up before it reaches the type table, and
 // neither had a test: a raw type too short to carry an affiliation at all, and
 // one whose affiliation character names nothing. Both must leave the label AND
-// the affiliation empty, because a colour with no word beside it is exactly
-// what the card's "colour is never the only channel" rule forbids.
+// the affiliation empty, because a color with no word beside it is exactly
+// what the card's "color is never the only channel" rule forbids.
 func TestDecodeTypeGivesUpWholeOnAnAtomItCannotRead(t *testing.T) {
 	for name, raw := range map[string]string{
 		"no affiliation at all":                    "a-",

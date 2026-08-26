@@ -53,7 +53,7 @@ export interface Preferences {
 }
 
 /**
- * The blob of a reader who has customised nothing.
+ * The blob of a reader who has customized nothing.
  *
  * A module constant rather than a factory: it is the fallback snapshot for
  * `useSyncExternalStore`, which compares snapshots by identity and would

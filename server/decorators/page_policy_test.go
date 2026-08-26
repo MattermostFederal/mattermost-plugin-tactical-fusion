@@ -60,7 +60,7 @@ func TestPageWithScriptPinsItToItsDigest(t *testing.T) {
 }
 
 // The digest has to describe what is served. If the two ever drift, every
-// browser blocks the script and the page silently loses its behaviour.
+// browser blocks the script and the page silently loses its behavior.
 func TestScriptDigestMatchesWhatIsServed(t *testing.T) {
 	w := writtenPage(t, decorators.Page{Title: "t", BodyHTML: "<p>b</p>", ScriptJS: "var a = 1;"})
 
