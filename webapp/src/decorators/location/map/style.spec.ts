@@ -646,6 +646,41 @@ test.describe('the accuracy circle', () => {
 });
 
 /*
+ * The shape layers, pinned for the reason the accuracy circle's are. Their
+ * failure is quieter still: LocationMap writes through `outline?.setData(...)`,
+ * so a missing source is an optional chain that no-ops and reports nothing.
+ */
+test.describe('the geometry layers', () => {
+    test('are built on every surface, because a panel reuses one map', () => {
+        const style = buildStyle(ARCHIVE, [], palette(false));
+
+        expect(style.sources).toHaveProperty('geometry');
+        expect(style.layers.map((layer) => layer.id)).toContain('geometry-fill');
+        expect(style.layers.map((layer) => layer.id)).toContain('geometry-outline');
+    });
+
+    // A shape qualifies a position the same way an accuracy ring does, so it
+    // goes under the marker for the same reason.
+    test('are drawn under the pin, never over it', () => {
+        const ids = buildStyle(ARCHIVE, [], palette(false), false, false, true).layers.map((layer) => layer.id);
+
+        const pin = ids.indexOf('pin');
+        expect(pin).toBeGreaterThan(ids.indexOf('geometry-fill'));
+        expect(pin).toBeGreaterThan(ids.indexOf('geometry-outline'));
+    });
+
+    test('draw from their own source and nothing else does', () => {
+        const style = buildStyle(ARCHIVE, [], palette(false));
+
+        const fromGeometry = style.layers.
+            filter((layer) => 'source' in layer && layer.source === 'geometry').
+            map((layer) => layer.id);
+
+        expect(fromGeometry).toEqual(['geometry-fill', 'geometry-outline']);
+    });
+});
+
+/*
  * The marker layer.
  *
  * A location surface states no marker colour and keeps the dot it has always

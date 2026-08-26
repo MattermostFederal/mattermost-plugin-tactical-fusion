@@ -132,6 +132,42 @@ function ProcessingPath({event}: {event: CotEvent}) {
     );
 }
 
+function Shape({event}: {event: CotEvent}) {
+    const {geometry} = event;
+    const d = event.detail;
+    if (geometry === null) {
+        return null;
+    }
+
+    const readings = present([
+        ['Kind', SHAPE_WORDS[geometry.kind] ?? geometry.kind],
+        ['Route type', d.routeType],
+        ['Planning', d.routePlanning],
+        ['Method', d.routeMethod],
+        ['Direction', d.routeDirection],
+        ['Order', d.routeOrder],
+        ['Points', geometry.count],
+        ['Closed', geometry.closed ? 'Yes' : ''],
+        ['Major axis', geometry.major],
+        ['Minor axis', geometry.minor],
+        ['Orientation', geometry.angle],
+    ]);
+
+    return (
+        <>
+            <h3 style={styles.group}>{'Shape'}</h3>
+            {readings.length > 0 && <Rows readings={readings}/>}
+            {geometry.note !== '' && <p style={styles.unknown}>{geometry.note}</p>}
+        </>
+    );
+}
+
+const SHAPE_WORDS: Record<string, string> = {
+    polyline: 'Drawn outline',
+    ellipse: 'Circle or ellipse',
+    route: 'Route',
+};
+
 function Dropped({event}: {event: CotEvent}) {
     if (event.detailDropped === '') {
         return null;
@@ -297,6 +333,7 @@ export const DetailGroups: React.FC<{event: CotEvent}> = ({event}) => {
                 </>
             )}
 
+            <Shape event={event}/>
             <ProcessingPath event={event}/>
             <Unrecognized event={event}/>
             <Dropped event={event}/>

@@ -188,6 +188,8 @@ type Detail struct {
 	Links    []Link
 	Blocks   []Block
 	Flow     []FlowTag
+	Shape    Geometry
+	Route    Geometry
 	Unknown  int
 }
 
@@ -342,6 +344,21 @@ func readChild(event *Event, start xml.StartElement, decoder *xml.Decoder, count
 		return readDetailChild(event, start, decoder, counts, seen)
 	}
 
+	// Accepted on what this element filled, not on the geometry being non-empty.
+	// Keyed on the latter, a <polyline> after an <ellipse> was marked accepted
+	// and its vertices were read into the ellipse.
+	if depth == shapeChildDepth && counts.parent() == shapeElement && counts.parentAccepted() {
+		if readShapeChild(&event.Detail.Shape, start) {
+			counts.accept()
+		}
+		return false, nil
+	}
+
+	if depth == vertexDepth && local == vertexElement && counts.parent() == polylineElement && counts.parentAccepted() {
+		event.Detail.Shape.addVertex(attrValue(start, "lat"), attrValue(start, "lon"))
+		return false, nil
+	}
+
 	if depth == nestedChildDepth && counts.parentAccepted() {
 		if ext, ok := extensionFor(local, counts.parent()); ok && ext.Parent != detailElement {
 			addBlock(event, ext, start, counts, seen)
@@ -368,6 +385,16 @@ func readDetailChild(event *Event, start xml.StartElement, decoder *xml.Decoder,
 		return true, nil
 
 	case linkElement:
+		// A route's points are links too, and are told apart by carrying a
+		// point rather than by the event's type. Separate caps, so a long route
+		// cannot cost the reader the "Sent by" row.
+		if raw := attrValue(start, routePointAttr); raw != "" {
+			if vertex, ok := routeVertex(raw); ok {
+				addRouteVertex(&event.Detail.Route, vertex)
+				return false, nil
+			}
+		}
+
 		// Capped, because a link is author-controlled and every one of them
 		// costs props on a post that has a budget.
 		if len(event.Detail.Links) < maxCotLinks {
@@ -385,6 +412,13 @@ func readDetailChild(event *Event, start xml.StartElement, decoder *xml.Decoder,
 			seen[local] = true
 			event.Detail.Group = attrValue(start, "name")
 			event.Detail.Role = attrValue(start, "role")
+		}
+		return false, nil
+
+	case shapeElement:
+		if !seen[local] {
+			seen[local] = true
+			counts.accept()
 		}
 		return false, nil
 

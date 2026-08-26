@@ -3,6 +3,7 @@ import React, {useState} from 'react';
 import type {CotEvent} from './types';
 import {accuracyMeters, affiliationColor, affiliationWord, isLinkable} from './types';
 
+import type {MapGeometry} from '../decorators/location/map/LocationMap';
 import LocationMap, {MAP_HEIGHT} from '../decorators/location/map/LocationMap';
 import {useNearViewport} from '../decorators/location/map/near_viewport';
 import {isRenderable} from '../decorators/location/map/span';
@@ -113,6 +114,55 @@ function joinWords(parts: readonly string[]): string {
  */
 const UNCOLOURED = '#8a8f98';
 
+/**
+ * The shape one event describes, ready for the map.
+ *
+ * Only for a single event. A block of shapes on one map is a pile of outlines
+ * with nothing saying which belongs to which track, which is the argument the
+ * accuracy ring is already drawn under.
+ */
+function geometryFor(event: CotEvent | undefined): MapGeometry | undefined {
+    if (!event?.geometry) {
+        return undefined;
+    }
+
+    const {geometry} = event;
+
+    // The server's verdict wins. It refuses a shape it will not stand behind,
+    // and drawing one anyway made the card say "not drawn" over a drawn shape.
+    if (geometry.note !== '') {
+        return undefined;
+    }
+
+    if (geometry.kind === 'ellipse') {
+        const {majorMeters, minorMeters, angleDegrees} = geometry;
+        if (!Number.isFinite(majorMeters) || !Number.isFinite(minorMeters) ||
+            majorMeters <= 0 || minorMeters <= 0) {
+            return undefined;
+        }
+
+        return {
+            kind: 'ellipse',
+            major: majorMeters,
+            minor: minorMeters,
+            angle: Number.isFinite(angleDegrees) ? angleDegrees : 0,
+        };
+    }
+
+    if (geometry.points.length < 2) {
+        return undefined;
+    }
+
+    return {kind: 'outline', points: geometry.points, closed: geometry.closed};
+}
+
+/** @internal exported for tests */
+export function _geometryForTesting( // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
+    event: CotEvent | undefined,
+): MapGeometry | undefined {
+    return geometryFor(event);
+}
+
 const CotMapCanvas: React.FC<{events: readonly CotEvent[]; pageEnabled: boolean}> = ({
     events, pageEnabled,
 }) => {
@@ -143,6 +193,7 @@ const CotMapCanvas: React.FC<{events: readonly CotEvent[]; pageEnabled: boolean}
             accuracyMeters={only && accuracyMeters(only)}
             accuracyLabel={only?.ce}
             markers={markers}
+            geometry={geometryFor(only)}
             markerLabel={only ? only.typeLabel : blockLabel(drawn, events.length)}
             pageHref={pageEnabled && only ? mapPageHref(only) : undefined}
         />

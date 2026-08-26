@@ -97,6 +97,14 @@ func cotExampleIsStampable() bool {
 
 const cotDetailSetName = "Cursor on Target"
 
+// cotExtensionSetName is the second Cursor on Target post.
+//
+// One set is one post, and the examples outgrew that: the detail extensions and
+// the shapes together run past what a server accepts, so the packer was
+// splitting the set and the heading only appeared on the first half. Two named
+// sets say where the seam is instead of leaving the reader to find it.
+const cotExtensionSetName = "Reading an event's detail block"
+
 const (
 	cotDetailMultiEvent = `<event version="2.0" uid="ANDROID-1" type="a-f-G-U-C" how="m-g"
        time="2026-08-09T16:30:00Z" start="2026-08-09T16:30:00Z" stale="2026-08-09T16:32:00Z">
@@ -267,12 +275,68 @@ const (
   </detail>
 </event>`
 
+	cotDetailArea = `<event version="2.0" uid="AREA-1" type="u-d-f" how="h-g"
+       time="2026-08-09T16:41:00Z" start="2026-08-09T16:41:00Z" stale="2026-08-09T17:41:00Z">
+  <point lat="21.335300" lon="-157.948300" hae="4.0" ce="9999999.0" le="9999999.0"/>
+  <detail>
+    <contact callsign="RAMP CLOSURE"/>
+    <shape>
+      <polyline closed="true">
+        <vertex lat="21.336800" lon="-157.950100"/>
+        <vertex lat="21.336800" lon="-157.946500"/>
+        <vertex lat="21.333900" lon="-157.946500"/>
+        <vertex lat="21.333900" lon="-157.950100"/>
+      </polyline>
+    </shape>
+    <color argb="-65536"/>
+    <remarks>ramp closed to all traffic</remarks>
+  </detail>
+</event>`
+
+	cotDetailCircle = `<event version="2.0" uid="RING-1" type="u-d-c-c" how="h-g"
+       time="2026-08-09T16:42:00Z" start="2026-08-09T16:42:00Z" stale="2026-08-09T17:42:00Z">
+  <point lat="21.335300" lon="-157.948300" hae="4.0" ce="9999999.0" le="9999999.0"/>
+  <detail>
+    <contact callsign="KEEP OUT"/>
+    <shape><ellipse major="400" minor="250" angle="30"/></shape>
+  </detail>
+</event>`
+
+	cotDetailRoute = `<event version="2.0" uid="ROUTE-1" type="b-m-r" how="h-e"
+       time="2026-08-09T16:43:00Z" start="2026-08-09T16:43:00Z" stale="2026-08-09T17:43:00Z">
+  <point lat="21.335300" lon="-157.948300" hae="4.0" ce="9999999.0" le="9999999.0"/>
+  <detail>
+    <contact callsign="MSR AMBER"/>
+    <link point="21.335300,-157.948300,4.0"/>
+    <link point="21.339000,-157.943000,4.0"/>
+    <link point="21.344000,-157.938000,4.0"/>
+    <link_attr routetype="Infil" planningmethod="Infil" method="Driving"
+               direction="Infil" order="Ascending Check Points"/>
+    <link uid="ANDROID-88" relation="p-p" parent_callsign="ALPHA"/>
+  </detail>
+</event>`
+
+	cotDetailBadShape = `<event version="2.0" uid="AREA-2" type="u-d-f" how="h-g"
+       time="2026-08-09T16:44:00Z" start="2026-08-09T16:44:00Z" stale="2026-08-09T17:44:00Z">
+  <point lat="21.335300" lon="-157.948300" hae="4.0" ce="9999999.0" le="9999999.0"/>
+  <detail>
+    <contact callsign="BAD CORNER"/>
+    <shape>
+      <polyline closed="true">
+        <vertex lat="21.336800" lon="-157.950100"/>
+        <vertex lat="0x1p+3" lon="-157.946500"/>
+        <vertex lat="21.333900" lon="-157.946500"/>
+      </polyline>
+    </shape>
+  </detail>
+</event>`
+
 	cotDetailUnknown = `<event version="2.0" uid="ANDROID-13" type="a-f-G-U-C" how="m-g"
        time="2026-08-09T16:40:30Z" start="2026-08-09T16:40:30Z" stale="2026-08-09T16:42:30Z">
   <point lat="21.335300" lon="-157.948300" hae="4.0" ce="9.5" le="15.0"/>
   <detail>
     <contact callsign="GOLF1"/>
-    <shape><polyline closed="true"/></shape>
+    <checklist name="pre-flight"/>
     <fileshare filename="brief.pdf"/>
   </detail>
 </event>`
@@ -343,7 +407,23 @@ func cotDetailChunks(enabled, filesEnabled bool) []detailChunk {
 				source: cotDetailMedevac, info: cotFenceInfo,
 			},
 		}),
-	}, {
+	}}
+
+	if !enabled {
+		chunks = append(chunks, detailChunk{
+			heading: "Cursor on Target is off",
+			lines: []string{"- Cursor on Target rendering is currently **off**, so none of the " +
+				"above draws a card and every event is posted as the text it was written in.\n"},
+		})
+	}
+
+	return chunks
+}
+
+// cotExtensionChunks is what an event's <detail> says, which is the half of
+// these examples that grew.
+func cotExtensionChunks() []detailChunk {
+	return []detailChunk{{
 		heading: "Device and position quality",
 		lines: cotFenceAtom([]cotFencedExample{
 			{
@@ -392,6 +472,26 @@ func cotDetailChunks(enabled, filesEnabled bool) []detailChunk {
 			},
 		}),
 	}, {
+		heading: "Shapes and routes",
+		lines: append(cotFenceAtom([]cotFencedExample{
+			{
+				note:   "A drawn area: a `polyline` inside a `shape`, closed, so it is drawn as an outline on the map rather than as a single crosshair at the event's `point`. The map frames the shape and the position together, so an area larger than its own point is not half off screen.",
+				source: cotDetailArea, info: cotFenceInfo,
+			},
+			{
+				note:   "A circle, drawn from its axes rather than from a vertex list. `major` and `minor` are read as semi-axes in metres and `angle` as a bearing clockwise from north, so an ellipse keeps its metres at every zoom.",
+				source: cotDetailCircle, info: cotFenceInfo,
+			},
+			{
+				note:   "A route. Its points are `link` elements carrying a `point`, which is how ATAK writes them, and the last `link` here is an ordinary relation carrying a `uid`. The two are told apart by what the element carries, so a long route never costs the reader the Sent by row. `link_attr` describes the route itself and is shown under Shape.",
+				source: cotDetailRoute, info: cotFenceInfo,
+			},
+			{
+				note:   "A shape that is **not** drawn. Its second corner is written in a notation this build will not stand behind, so the outline is left off the map entirely rather than drawn missing a corner, and the sidebar says which happened. The callsign, the position and the times are unaffected.",
+				source: cotDetailBadShape, info: cotFenceInfo,
+			},
+		}), cotShapeLines()...),
+	}, {
 		heading: "Processing path, and what is not recognised",
 		lines: append(cotFenceAtom([]cotFencedExample{
 			{
@@ -410,16 +510,6 @@ func cotDetailChunks(enabled, filesEnabled bool) []detailChunk {
 			{text: "<event/>", note: "an event with no uid, type or time"},
 		}), cotSourceLimitLines()...),
 	}}
-
-	if !enabled {
-		chunks = append(chunks, detailChunk{
-			heading: "Cursor on Target is off",
-			lines: []string{"- Cursor on Target rendering is currently **off**, so none of the " +
-				"above draws a card and every event is posted as the text it was written in.\n"},
-		})
-	}
-
-	return chunks
 }
 
 type cotFencedExample struct {
@@ -444,6 +534,24 @@ func cotFenceAtom(examples []cotFencedExample) []string {
 
 func cotFenced(source, info string) string {
 	return "```" + info + "\n" + source + "\n```\n"
+}
+
+// cotShapeLines are the rules a reader cannot infer from the shapes above.
+func cotShapeLines() []string {
+	return []string{
+		fmt.Sprintf("- Up to %d points a shape. Past that the shape is **not drawn** and the "+
+			"event keeps everything else it stated. Drawing the first %d of a longer route "+
+			"would put a line on the map that ends where the route does not, which is worse "+
+			"than drawing nothing.\n", cot.MaxVertices, cot.MaxVertices),
+		"- A point must be written as a plain decimal. One that is not costs the whole " +
+			"shape rather than one corner, because a polygon missing a corner is a " +
+			"different polygon and not a partial one.\n",
+		"- A route's points and an event's relations share the `link` element and have " +
+			"**separate budgets**. Neither can exhaust the other.\n",
+		"- These shapes are read as ATAK is understood to write them and have not been " +
+			"checked against a real device. A shape this build reads wrongly does not " +
+			"draw and is counted as unrecognised, rather than drawn wrongly.\n",
+	}
 }
 
 func cotDetailLines(examples []detailExample) []string {

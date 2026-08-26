@@ -531,6 +531,10 @@ func cotExampleSources() map[string]string {
 		"group":      cotDetailGroup,
 		"flow":       cotDetailFlow,
 		"unknown":    cotDetailUnknown,
+		"area":       cotDetailArea,
+		"circle":     cotDetailCircle,
+		"route":      cotDetailRoute,
+		"bad shape":  cotDetailBadShape,
 		"file":       cotDetailFile(),
 	}
 }
@@ -578,7 +582,7 @@ func TestEveryRegisteredExtensionIsDemonstrated(t *testing.T) {
 func TestNoCotAtomCarriesExactlyOneFence(t *testing.T) {
 	for _, enabled := range []bool{true, false} {
 		for _, files := range []bool{true, false} {
-			for _, chunk := range cotDetailChunks(enabled, files) {
+			for _, chunk := range append(cotDetailChunks(enabled, files), cotExtensionChunks()...) {
 				for i, atom := range chunk.lines {
 					if fences := countFences(atom); fences == 1 {
 						t.Errorf("%q atom %d carries exactly one fence, so a post holding "+
@@ -593,7 +597,7 @@ func TestNoCotAtomCarriesExactlyOneFence(t *testing.T) {
 func TestEveryCotAtomFitsTheFloorBudget(t *testing.T) {
 	floor := safePostRunes - headingBudget
 
-	for _, chunk := range cotDetailChunks(true, true) {
+	for _, chunk := range append(cotDetailChunks(true, true), cotExtensionChunks()...) {
 		for i, atom := range chunk.lines {
 			if runes := utf8.RuneCountInString(atom); runes > floor {
 				t.Errorf("%q atom %d is %d runes, past the %d floor the retry ladder "+
@@ -666,4 +670,56 @@ func countFences(atom string) int {
 	}
 
 	return fences / 2
+}
+
+// The shape rows make four specific claims a reader cannot check by looking.
+func TestTheShapeExamplesAreWhatTheirRowsClaim(t *testing.T) {
+	area := detailExampleProps(t, cotDetailArea)
+	geometry, ok := area["geometry"].(map[string]any)
+	if !ok {
+		t.Fatalf("the area example describes no shape: %v", area["geometry"])
+	}
+	if geometry["kind"] != cot.GeometryPolyline || geometry["closed"] == nil {
+		t.Errorf("the area example is %v; its row says a closed outline", geometry)
+	}
+	if geometry["count"] != "4" {
+		t.Errorf("the area example has %v points, and its row shows four", geometry["count"])
+	}
+
+	circle := detailExampleProps(t, cotDetailCircle)["geometry"].(map[string]any)
+	if circle["kind"] != cot.GeometryEllipse {
+		t.Errorf("the circle example is %v, not an ellipse", circle["kind"])
+	}
+	if circle["major"] != "400 m" || circle["angle"] != "30°" {
+		t.Errorf("the circle example reads %v; its row names the axes and the bearing", circle)
+	}
+	if _, held := circle["points"]; held {
+		t.Error("the circle example carries a vertex list, which its row says it does not")
+	}
+
+	// The row's whole point: the two kinds of link do not cost each other.
+	route := detailExampleProps(t, cotDetailRoute)
+	shape := route["geometry"].(map[string]any)
+	if shape["kind"] != cot.GeometryRoute || shape["count"] != "3" {
+		t.Errorf("the route example is %v; its row says three route points", shape)
+	}
+	if route["parent"] != "ALPHA" {
+		t.Errorf("the route example lost its relation: %v", route["parent"])
+	}
+	if route["route_type"] != "Infil" {
+		t.Errorf("the route example states no link_attr: %v", route["route_type"])
+	}
+
+	// And the one that says a shape is NOT drawn rather than drawn wrong.
+	bad := detailExampleProps(t, cotDetailBadShape)
+	undrawn := bad["geometry"].(map[string]any)
+	if _, held := undrawn["points"]; held {
+		t.Error("the bad shape example was drawn, which is what its row says cannot happen")
+	}
+	if undrawn["note"] != cot.GeometryUnusableNote {
+		t.Errorf("the bad shape example's note is %v, want the refusal", undrawn["note"])
+	}
+	if bad["callsign"] != "BAD CORNER" {
+		t.Errorf("the bad shape example lost its callsign: %v", bad["callsign"])
+	}
 }

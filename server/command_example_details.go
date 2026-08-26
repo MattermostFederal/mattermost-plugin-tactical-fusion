@@ -666,6 +666,9 @@ func (p *Plugin) detailMessageSets(tagger *decorators.Tagger, ref time.Time) []d
 	return append(sets, detailMessageSet{
 		name:   cotDetailSetName,
 		chunks: cotDetailChunks(p.cotEnabled(), p.cotFilesEnabled()),
+	}, detailMessageSet{
+		name:   cotExtensionSetName,
+		chunks: cotExtensionChunks(),
 	})
 }
 

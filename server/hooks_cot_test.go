@@ -769,12 +769,28 @@ func TestCotRefusesAFileIdThatIsNotOne(t *testing.T) {
 func TestABatchOfMaximalEventsStillStamps(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 
+	// As many maximal events as a source can actually carry, computed rather
+	// than assumed. The registry has outgrown MaxEvents: one event carrying
+	// every extension is about 2 KB, so 32 of them are past the 64 KiB source
+	// cap and Parse refuses the batch before the budget ladder ever sees it.
+	// Hard-coding MaxEvents here measured a post nobody can make.
 	var events strings.Builder
+	count := 0
 	for i := range cot.MaxEvents {
-		fmt.Fprintf(&events, `<event version="2.0" uid="UID-%d" type="a-f-G-U-C-I" how="m-g" `+
+		event := fmt.Sprintf(`<event version="2.0" uid="UID-%d" type="a-f-G-U-C-I" how="m-g" `+
 			`time="2026-08-23T11:43:38Z" start="2026-08-23T11:43:38Z" stale="2026-08-23T11:45:38Z">`+
 			`<point lat="34.056100" lon="-118.250000" hae="-42.6" ce="45.3" le="99.5"/>`+
 			`<detail>%s</detail></event>`, i, cot.FixtureDetail())
+
+		if events.Len()+len(event) > cot.MaxSourceBytes {
+			break
+		}
+		events.WriteString(event)
+		count++
+	}
+
+	if count < 2 {
+		t.Fatalf("only %d maximal events fit a source; the fixture has outgrown a batch entirely", count)
 	}
 
 	note := strings.Repeat("n", 65536)
@@ -793,8 +809,8 @@ func TestABatchOfMaximalEventsStillStamps(t *testing.T) {
 		t.Fatal("the event blob is missing")
 	}
 	rendered, ok := blob["events"].([]any)
-	if !ok || len(rendered) != cot.MaxEvents {
-		t.Fatalf("the blob carries %v events, want %d", blob["events"], cot.MaxEvents)
+	if !ok || len(rendered) != count {
+		t.Fatalf("the blob carries %v events, want %d", blob["events"], count)
 	}
 
 	// The widest rung has to be the one that ran. Without this the two rungs
@@ -857,6 +873,69 @@ func TestOverBudgetTheDetailIsDroppedBeforeTheCardIs(t *testing.T) {
 	api := p.API.(*fakeAPI)
 	if !slices.Contains(api.warnCodes, errcode.HooksCotDetailDropped) {
 		t.Errorf("the degraded stamp was not logged under TF-%d", errcode.HooksCotDetailDropped)
+	}
+}
+
+// The largest shape that can actually reach this hook, which is bounded by the
+// source cap rather than by the vertex cap.
+//
+// What actually bounds a shape is the ELEMENT budget, not the byte cap.
+//
+// A vertex costs three units of maxCotElements (itself plus two attributes), so
+// roughly 1360 vertices exhaust it while the same vertices are only about 53 KB
+// of a 64 KiB allowance. The vertex cap sits below both, at 512, so it is
+// reachable and meaningful rather than shadowed. Worth pinning, because the
+// arithmetic that suggests otherwise is easy to redo and get wrong.
+func TestAShapeIsBoundedByTheElementBudgetNotTheByteCap(t *testing.T) {
+	source := func(n int) string {
+		var vertices strings.Builder
+		for i := range n {
+			fmt.Fprintf(&vertices, `<vertex lat="34.%04d" lon="-118.%04d"/>`, i%10000, i%10000)
+		}
+		return fmt.Sprintf(`<event version="2.0" uid="SHAPE-1" type="u-d-f" how="h-g" `+
+			`time="2026-08-23T11:43:38Z" stale="2026-08-23T11:45:38Z">`+
+			`<point lat="34.056100" lon="-118.250000" ce="45.3"/>`+
+			`<detail><contact callsign="AREA1"/><shape><polyline closed="true">%s`+
+			`</polyline></shape></detail></event>`, vertices.String())
+	}
+
+	drawable := source(cot.MaxVertices)
+	if len(drawable) > cot.MaxSourceBytes {
+		t.Fatalf("a shape at the vertex cap is %d bytes, past the %d source cap",
+			len(drawable), cot.MaxSourceBytes)
+	}
+
+	p := newTestPlugin(t, "https://example.com", true)
+	updated, stamped := p.cotStamp(&model.Post{Message: cotFence("cot", drawable), UserId: testUserID})
+	if !stamped {
+		t.Fatal("a shape at the vertex cap was left unstamped")
+	}
+
+	blob := updated.GetProps()[cot.PropsKey].(map[string]any)
+	geometry := blob["events"].([]any)[0].(map[string]any)["geometry"].(map[string]any)
+	if geometry["count"] != fmt.Sprint(cot.MaxVertices) {
+		t.Errorf("count is %v, want %d drawn", geometry["count"], cot.MaxVertices)
+	}
+
+	// One past it and the shape is not drawn, while the event keeps everything
+	// else it stated.
+	over := newTestPlugin(t, "https://example.com", true)
+	updated, stamped = over.cotStamp(&model.Post{Message: cotFence("cot", source(cot.MaxVertices+1)), UserId: testUserID})
+	if !stamped {
+		t.Fatal("a shape past the vertex cap cost the event its card")
+	}
+
+	blob = updated.GetProps()[cot.PropsKey].(map[string]any)
+	first := blob["events"].([]any)[0].(map[string]any)
+	if first["callsign"] != "AREA1" {
+		t.Errorf("callsign is %v; the event was lost over its geometry", first["callsign"])
+	}
+	geometry = first["geometry"].(map[string]any)
+	if _, drawn := geometry["points"]; drawn {
+		t.Error("a shape past the cap was drawn, ending where the shape does not")
+	}
+	if geometry["note"] == nil {
+		t.Error("an undrawn shape says nothing about why")
 	}
 }
 

@@ -279,7 +279,7 @@ func TestAFlowHopWithAnUnreadableTimeIsKept(t *testing.T) {
 // Once the panel enumerates blocks, an event with none reads as "carried
 // nothing" rather than "we did not recognise what it carried".
 func TestDetailUnknownCountsWhatThisBuildDidNotRead(t *testing.T) {
-	props := detailProps(t, `<takv platform="ATAK"/><shape/><polyline/><mystery-thing/>`)
+	props := detailProps(t, `<takv platform="ATAK"/><checklist/><__geofence/><mystery-thing/>`)
 
 	if props["detail_unknown"] != "3" {
 		t.Errorf("detail_unknown is %v, want 3", props["detail_unknown"])

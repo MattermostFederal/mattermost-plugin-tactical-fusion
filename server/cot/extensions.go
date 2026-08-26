@@ -175,6 +175,18 @@ var extensions = []Extension{
 		},
 	},
 	{
+		Element: "link_attr",
+		Parent:  detailElement,
+		Prefix:  "route",
+		Attrs: []Attr{
+			{Name: "routetype", Key: "type"},
+			{Name: "planningmethod", Key: "planning"},
+			{Name: "method", Key: "method"},
+			{Name: "direction", Key: "direction"},
+			{Name: "order", Key: "order"},
+		},
+	},
+	{
 		Element: "_medevac_",
 		Parent:  detailElement,
 		Prefix:  "medevac",

@@ -9,11 +9,12 @@ import {
     SEAM_CAPPED_LAYERS,
     MARKER_PIXEL_RATIO,
     accuracyFeature,
-    buildStyle, cellFeature, coveredBy, crosshairImage, emptyCollection, hasWebGL2, loadMapLibre,
+    buildStyle, cellFeature, coveredBy, crosshairImage, ellipseFeature, emptyCollection, hasWebGL2,
+    loadMapLibre,
     markedPoints, markerImageID,
-    mapColors, pointFeature, syncGlobalReach,
+    mapColors, outlineFeature, pointFeature, syncGlobalReach,
 } from './maplibre';
-import {MAX_ZOOM, cellBounds, fitPadding, isRenderable, zoomForSpan} from './span';
+import {DEGREE_METERS, MAX_ZOOM, MERCATOR_LIMIT, cellBounds, fitPadding, isRenderable, zoomForSpan} from './span';
 import type {View} from './view';
 
 import {loadPackageNames} from '../../../packages/store';
@@ -162,6 +163,15 @@ interface Props extends View {
      * same mark to a good share of readers. This is the other channel.
      */
     markerLabel?: string;
+
+    /**
+     * A shape to draw, in metres on the ground rather than in pixels.
+     *
+     * Vertices are deliberately not markers: routing them through `markers`
+     * would be less code and would put a reticle on every corner of a polygon,
+     * which says each corner is a position somebody reported.
+     */
+    geometry?: MapGeometry;
 }
 
 const styles: Record<string, React.CSSProperties> = {
@@ -244,7 +254,7 @@ const styles: Record<string, React.CSSProperties> = {
 
 const LocationMap: React.FC<Props> = ({
     lat, lon, cellDegLat, cellDegLon, region, pageHref, pending, fill, preview, accuracyMeters,
-    accuracyLabel, markers, markerLabel,
+    accuracyLabel, markers, markerLabel, geometry,
 }) => {
     const container = useRef<HTMLDivElement | null>(null);
     const map = useRef<MapLibreMap | null>(null);
@@ -294,6 +304,9 @@ const LocationMap: React.FC<Props> = ({
     const drawn = useRef<Props['markers']>(markers);
     drawn.current = markers;
 
+    const shape = useRef<Props['geometry']>(geometry);
+    shape.current = geometry;
+
     const applyView = useCallback(() => {
         const instance = map.current;
         if (!instance || !ready.current) {
@@ -303,6 +316,7 @@ const LocationMap: React.FC<Props> = ({
         const pin = instance.getSource<GeoJSONSource>('pin');
         const cell = instance.getSource<GeoJSONSource>('cell');
         const accuracy = instance.getSource<GeoJSONSource>('accuracy');
+        const outline = instance.getSource<GeoJSONSource>('geometry');
         const current = view.current;
 
         // A stale pin is worse than no pin. Clicking a grid coordinate while an
@@ -313,6 +327,7 @@ const LocationMap: React.FC<Props> = ({
             pin?.setData(emptyCollection());
             cell?.setData(emptyCollection());
             accuracy?.setData(emptyCollection());
+            outline?.setData(emptyCollection());
             return;
         }
 
@@ -325,7 +340,10 @@ const LocationMap: React.FC<Props> = ({
         // Several markers frame all of them instead, because a block of events
         // opening on the first one would put the rest off screen with nothing
         // to say they were there.
-        const spread = spreadOf(drawn.current);
+        // The union, not the marker spread alone. A shape larger than its own
+        // <point> would otherwise open half off screen, or at a zoom chosen for
+        // a point that happens to sit inside it.
+        const spread = withinMercator(unionOf(spreadOf(drawn.current), shapeBounds(shape.current, current.lat, current.lon)));
         if (spread === null) {
             instance.jumpTo({
                 center: [current.lon, current.lat],
@@ -342,6 +360,7 @@ const LocationMap: React.FC<Props> = ({
         pin?.setData(drawableMarkers(drawn.current, current.lat, current.lon));
         cell?.setData(drawableCell(current));
         accuracy?.setData(drawableAccuracy(current.lat, current.lon, radius.current));
+        outline?.setData(drawableGeometry(shape.current, current.lat, current.lon));
     }, []);
 
     // A verdict belongs to the coordinate that produced it, so a change of
@@ -583,7 +602,7 @@ const LocationMap: React.FC<Props> = ({
     // sources change.
     useEffect(() => {
         applyView();
-    }, [applyView, lat, lon, cellDegLat, cellDegLon, accuracyMeters]);
+    }, [applyView, lat, lon, cellDegLat, cellDegLon, accuracyMeters, geometry]);
 
     // Torn down on unmount only. Browsers cap live WebGL contexts at about
     // sixteen, and the panel outlives any one coordinate.
@@ -732,6 +751,102 @@ function drawableMarkers(
         lon: marker.lon,
         icon: markerImageID(marker.color),
     })));
+}
+
+/** What a surface may ask this map to draw beyond its pin. */
+export type MapGeometry =
+    | {kind: 'outline'; points: ReadonlyArray<{lat: number; lon: number}>; closed: boolean}
+    | {kind: 'ellipse'; major: number; minor: number; angle: number};
+
+function drawableGeometry(
+    geometry: Props['geometry'], lat: number, lon: number,
+): FeatureCollection {
+    if (geometry === undefined) {
+        return emptyCollection();
+    }
+
+    if (geometry.kind === 'ellipse') {
+        return ellipseFeature(lat, lon, geometry.major, geometry.minor, geometry.angle);
+    }
+
+    return outlineFeature(geometry.points, geometry.closed);
+}
+
+/** The box the shape occupies, so the camera can frame it with the markers. */
+function shapeBounds(
+    geometry: Props['geometry'], lat: number, lon: number,
+): [[number, number], [number, number]] | null {
+    if (geometry === undefined) {
+        return null;
+    }
+
+    if (geometry.kind === 'ellipse') {
+        const cosLat = Math.cos((lat * Math.PI) / 180);
+        const reach = Math.max(geometry.major, geometry.minor);
+        if (!Number.isFinite(reach) || reach <= 0 || Math.abs(cosLat) < 1e-9) {
+            return null;
+        }
+
+        const dLat = reach / DEGREE_METERS;
+        const dLon = reach / (DEGREE_METERS * cosLat);
+        return [[lon - dLon, lat - dLat], [lon + dLon, lat + dLat]];
+    }
+
+    const lats = geometry.points.map((point) => point.lat).filter((value) => Number.isFinite(value));
+    const lons = geometry.points.map((point) => point.lon).filter((value) => Number.isFinite(value));
+    if (lats.length < 2 || lons.length < 2) {
+        return null;
+    }
+
+    return [
+        [Math.min(...lons), Math.min(...lats)],
+        [Math.max(...lons), Math.max(...lats)],
+    ];
+}
+
+/** @internal exported for tests */
+export function _frameBoundsForTesting( // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
+    markers: Props['markers'], geometry: Props['geometry'], lat: number, lon: number,
+): [[number, number], [number, number]] | null {
+    return withinMercator(unionOf(spreadOf(markers), shapeBounds(geometry, lat, lon)));
+}
+
+function withinMercator(
+    box: [[number, number], [number, number]] | null,
+): [[number, number], [number, number]] | null {
+    if (box === null) {
+        return null;
+    }
+
+    const [[west, south], [east, north]] = box;
+    if (![west, south, east, north].every((value) => Number.isFinite(value))) {
+        return null;
+    }
+
+    // Clamped rather than refused: a shape reaching past the projection is
+    // still worth framing up to where the projection stops, and fitBounds
+    // throws on a latitude outside 90 rather than clamping for us.
+    return [
+        [Math.max(-180, west), Math.max(-MERCATOR_LIMIT, south)],
+        [Math.min(180, east), Math.min(MERCATOR_LIMIT, north)],
+    ];
+}
+
+function unionOf(
+    a: [[number, number], [number, number]] | null,
+    b: [[number, number], [number, number]] | null,
+): [[number, number], [number, number]] | null {
+    if (a === null) {
+        return b;
+    }
+    if (b === null) {
+        return a;
+    }
+
+    return [
+        [Math.min(a[0][0], b[0][0]), Math.min(a[0][1], b[0][1])],
+        [Math.max(a[1][0], b[1][0]), Math.max(a[1][1], b[1][1])],
+    ];
 }
 
 /**

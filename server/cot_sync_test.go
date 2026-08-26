@@ -124,7 +124,7 @@ func TestWebappCotShapeMatches(t *testing.T) {
 // Keys the webapp reads through something other than text(), which is the only
 // shape the scraper above recognises. TestWebappReadsTheProcessingPath is what
 // holds this one instead.
-var cotNonTextKeys = map[string]bool{"flow": true}
+var cotNonTextKeys = map[string]bool{"flow": true, "geometry": true}
 
 var cotOptionalKeys = map[string]bool{
 	"position_note": true,
@@ -154,6 +154,19 @@ func TestWebappReadsTheProcessingPath(t *testing.T) {
 	}
 	if !strings.Contains(source, "event.flow") {
 		t.Error("the webapp never reads the flow key")
+	}
+}
+
+// Geometry is a shape rather than a rendered string, so it has its own reader
+// too. Without one the map draws nothing and no other guard would say so.
+func TestWebappReadsTheGeometry(t *testing.T) {
+	source := readCotTypes(t)
+
+	if !strings.Contains(source, "readGeometry") {
+		t.Error("the webapp has no readGeometry; Go writes a shape that nothing reads")
+	}
+	if !strings.Contains(source, "event.geometry") {
+		t.Error("the webapp never reads the geometry key")
 	}
 }
 
@@ -194,7 +207,7 @@ func TestWebappCotClassesMatch(t *testing.T) {
 var fullCotEvent = `<event version="2.0" uid="ANDROID-1" type="b-t-f" how="m-g" ` +
 	`time="2026-08-23T11:43:38Z" start="2026-08-23T11:43:38Z" stale="2026-08-23T11:45:38Z">` +
 	`<point lat="34.056100" lon="-118.250000" hae="-42.6" ce="45.3" le="99.5"/>` +
-	`<detail>` + cot.FixtureDetail() + `<mystery-element/></detail></event>`
+	`<detail>` + cot.FixtureDetail() + cot.FixtureGeometry() + `<mystery-element/></detail></event>`
 
 // The card reads the map switch the location decorator already owns, so there is
 // no CoT map setting and no new /features field. If somebody adds one, this test

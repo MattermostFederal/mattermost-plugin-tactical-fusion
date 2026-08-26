@@ -56,6 +56,7 @@ const CotPanelHarness: React.FC<Props> = ({
             detailDropped: '',
             detail: {...emptyDetail(), ...detail},
             flow: [],
+            geometry: null,
             callsign: '',
             cotType: 'a-f-G-U-C',
             typeLabel: 'Friend ground',

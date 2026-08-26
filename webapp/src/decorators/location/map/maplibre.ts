@@ -331,6 +331,12 @@ export function buildStyle(
         sources.accuracy = {type: 'geojson', data: emptyCollection()};
     }
 
+    // Unconditional, unlike the accuracy source above. A panel reuses one map
+    // across selections, so a source decided at construction is a source the
+    // next selection cannot have: an event with a shape drew nothing after one
+    // without. An empty collection costs nothing.
+    sources.geometry = {type: 'geojson', data: emptyCollection()};
+
     for (const detail of details) {
         sources[detailSourceID(detail.name)] = {
             type: 'vector',
@@ -594,6 +600,7 @@ export function buildStyle(
                 paint: {'line-color': colors.cell, 'line-width': 1.5},
             },
             ...(withAccuracy ? accuracyLayers(colors) : []),
+            ...geometryLayers(colors),
             ...(withMarker ? [{
                 id: 'pin',
                 type: 'symbol' as const,
@@ -1057,38 +1064,128 @@ export function accuracyLayers(colors: MapColors): StyleSpecification['layers'] 
     ];
 }
 
-export function accuracyFeature(lat: number, lon: number, meters: number): FeatureCollection {
+/**
+ * The shape an event describes.
+ *
+ * Solid where the accuracy ring is dashed, because they say different things: a
+ * dashed ring is the bound on a position somebody reported, and a solid outline
+ * is a shape somebody drew.
+ */
+export function geometryLayers(colors: MapColors): StyleSpecification['layers'] {
+    return [
+        {
+            id: 'geometry-fill',
+            type: 'fill',
+            source: 'geometry',
+            paint: {'fill-color': colors.cellFill},
+        },
+        {
+            id: 'geometry-outline',
+            type: 'line',
+            source: 'geometry',
+            paint: {'line-color': colors.cell, 'line-width': 2},
+        },
+    ];
+}
+
+/**
+ * A geodesic ring, which is the accuracy circle and the drawn ellipse both.
+ *
+ * A metre is a different number of longitude degrees at every latitude, so the
+ * offsets are scaled by cos(lat). An equal-degree ring is right at the equator
+ * and increasingly wrong toward the poles, which for a shape whose whole job is
+ * to say where something is would be the wrong way to be wrong.
+ */
+function geodesicRing(
+    lat: number, lon: number, majorMeters: number, minorMeters: number, angleDeg: number,
+): Array<[number, number]> | null {
     const cosLat = Math.cos((lat * Math.PI) / 180);
     if (!Number.isFinite(lat) || !Number.isFinite(lon) ||
-        !Number.isFinite(meters) || meters <= 0 || Math.abs(cosLat) < 1e-9) {
-        return emptyCollection();
+        !Number.isFinite(majorMeters) || majorMeters <= 0 ||
+        !Number.isFinite(minorMeters) || minorMeters <= 0 ||
+        !Number.isFinite(angleDeg) || Math.abs(cosLat) < 1e-9) {
+        return null;
     }
 
-    const dLat = meters / DEGREE_METERS;
-    const dLon = meters / (DEGREE_METERS * cosLat);
+    const tilt = (angleDeg * Math.PI) / 180;
+    const cosTilt = Math.cos(tilt);
+    const sinTilt = Math.sin(tilt);
 
     const ring: Array<[number, number]> = [];
     for (let i = 0; i < ACCURACY_VERTICES; i++) {
         const angle = (2 * Math.PI * i) / ACCURACY_VERTICES;
-        ring.push([lon + (dLon * Math.cos(angle)), lat + (dLat * Math.sin(angle))]);
+
+        // The axes are rotated in metres and only then converted, or the tilt
+        // would be sheared by the longitude scaling and the ellipse would point
+        // somewhere the event did not say.
+        const across = minorMeters * Math.cos(angle);
+        const along = majorMeters * Math.sin(angle);
+
+        const east = (across * cosTilt) + (along * sinTilt);
+        const north = (along * cosTilt) - (across * sinTilt);
+
+        ring.push([lon + (east / (DEGREE_METERS * cosLat)), lat + (north / DEGREE_METERS)]);
     }
 
     // Closed by copying the first position rather than by computing the last
     // one. sin(2 pi) is 1e-16 rather than 0, so the computed form leaves a ring
     // GeoJSON considers unclosed.
-    if (ring.length === 0) {
+    ring.push(ring[0]);
+    return ring;
+}
+
+/**
+ * An ellipse on the ground, from the axes the event stated.
+ *
+ * ATAK's `major` and `minor` are semi-axes in metres and `angle` is the
+ * bearing of the major axis, measured clockwise from north, which is why north
+ * takes the cosine here and east the sine.
+ */
+export function ellipseFeature(
+    lat: number, lon: number, majorMeters: number, minorMeters: number, angleDeg: number,
+): FeatureCollection {
+    const ring = geodesicRing(lat, lon, majorMeters, minorMeters, angleDeg);
+    if (ring === null) {
         return emptyCollection();
     }
-    ring.push(ring[0]);
 
     return {
         type: 'FeatureCollection',
-        features: [{
-            type: 'Feature',
-            properties: {},
-            geometry: {type: 'Polygon', coordinates: [ring]},
-        }],
+        features: [{type: 'Feature', properties: {}, geometry: {type: 'Polygon', coordinates: [ring]}}],
     };
+}
+
+/** A drawn outline, closed into a polygon or left as a line. */
+export function outlineFeature(
+    points: ReadonlyArray<{lat: number; lon: number}>, closed: boolean,
+): FeatureCollection {
+    const ring: Array<[number, number]> = [];
+    for (const point of points) {
+        if (Number.isFinite(point.lat) && Number.isFinite(point.lon)) {
+            ring.push([point.lon, point.lat]);
+        }
+    }
+
+    if (ring.length < 2) {
+        return emptyCollection();
+    }
+
+    if (!closed || ring.length < 3) {
+        return {
+            type: 'FeatureCollection',
+            features: [{type: 'Feature', properties: {}, geometry: {type: 'LineString', coordinates: ring}}],
+        };
+    }
+
+    ring.push(ring[0]);
+    return {
+        type: 'FeatureCollection',
+        features: [{type: 'Feature', properties: {}, geometry: {type: 'Polygon', coordinates: [ring]}}],
+    };
+}
+
+export function accuracyFeature(lat: number, lon: number, meters: number): FeatureCollection {
+    return ellipseFeature(lat, lon, meters, meters, 0);
 }
 
 /**

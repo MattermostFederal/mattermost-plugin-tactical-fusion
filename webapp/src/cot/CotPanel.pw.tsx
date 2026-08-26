@@ -310,3 +310,55 @@ test.describe('the panel draws only what the event carried', () => {
         await expect(rhs).not.toContainText('true');
     });
 });
+
+test.describe('the shape an event describes', () => {
+    test('a drawn outline names its kind and counts its points', async ({mount}) => {
+        const component = await mount(
+            <CotPanelHarness
+                event={{geometry: {kind: 'polyline', closed: true, count: '3', points: [{lat: 1, lon: 2}, {lat: 3, lon: 4}], major: '', minor: '', angle: '', note: ''}}}
+            />,
+        );
+
+        await component.getByRole('button', {name: 'Open details'}).click();
+        const rhs = component.getByTestId('rhs');
+
+        await expect(rhs.getByRole('heading', {name: 'Shape'})).toBeVisible();
+        await expect(rhs).toContainText('Drawn outline');
+        await expect(rhs).toContainText('3');
+    });
+
+    test('an ellipse names its axes rather than a point count', async ({mount}) => {
+        const component = await mount(
+            <CotPanelHarness
+                event={{geometry: {kind: 'ellipse', closed: false, count: '', points: [], major: '100 m', minor: '50 m', angle: '-45°', note: ''}}}
+            />,
+        );
+
+        await component.getByRole('button', {name: 'Open details'}).click();
+        const rhs = component.getByTestId('rhs');
+
+        await expect(rhs).toContainText('Circle or ellipse');
+        await expect(rhs).toContainText('100 m');
+        await expect(rhs).toContainText('-45°');
+    });
+
+    // Not drawn is said, not left blank. A shape section with a kind and no
+    // reason would read as a shape this build simply failed to draw.
+    test('a shape that is not drawn says why', async ({mount}) => {
+        const component = await mount(
+            <CotPanelHarness
+                event={{geometry: {kind: 'polyline', closed: false, count: '900', points: [], major: '', minor: '', angle: '', note: 'This build does not draw a shape with this many points.'}}}
+            />,
+        );
+
+        await component.getByRole('button', {name: 'Open details'}).click();
+        await expect(component.getByTestId('rhs')).toContainText('does not draw a shape with this many points');
+    });
+
+    test('an event that describes no shape draws no Shape heading', async ({mount}) => {
+        const component = await mount(<CotPanelHarness/>);
+
+        await component.getByRole('button', {name: 'Open details'}).click();
+        await expect(component.getByTestId('rhs').getByRole('heading', {name: 'Shape'})).toHaveCount(0);
+    });
+});

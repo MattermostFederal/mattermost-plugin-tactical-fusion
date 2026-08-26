@@ -162,6 +162,74 @@ func eventProps(event Event, withDetail bool) map[string]any {
 		props["flow"] = flow
 	}
 
+	if geometry := geometryProps(drawnGeometry(event.Detail)); geometry != nil {
+		props["geometry"] = geometry
+	}
+
+	return props
+}
+
+// drawnGeometry prefers the shape an event drew over the route its links imply.
+// An event carrying both is describing the shape, and its links are still
+// relations wherever they carry a uid.
+func drawnGeometry(detail Detail) Geometry {
+	if !detail.Shape.empty() {
+		return detail.Shape
+	}
+	return detail.Route
+}
+
+// geometryProps is the shape an event describes, or nil when it describes none.
+//
+// One key holding an ordered list, for the reason flow is: the order of the
+// vertices IS the shape. The coordinates are the event's own digits, as lat and
+// lon already are, so the resolution the source carried survives.
+func geometryProps(geometry Geometry) map[string]any {
+	if geometry.empty() {
+		return nil
+	}
+
+	props := map[string]any{"kind": geometry.Kind}
+
+	if geometry.Kind == GeometryPolyline && geometry.Closed {
+		props["closed"] = presenceValue
+	}
+
+	putIfSet(props, "major", positiveMeters(geometry.Major))
+	putIfSet(props, "minor", positiveMeters(geometry.Minor))
+	putIfSet(props, "angle", signedDegrees(geometry.Angle))
+
+	putIfSet(props, "major_m", positiveNumber(geometry.Major))
+	putIfSet(props, "minor_m", positiveNumber(geometry.Minor))
+	putIfSet(props, "angle_deg", signedNumber(geometry.Angle))
+
+	if geometry.Undrawable != "" {
+		props["note"] = geometry.Undrawable
+		putIfSet(props, "count", countText(geometry.Seen))
+		return props
+	}
+
+	if geometry.Kind == GeometryEllipse {
+		// An ellipse is its axes, both of them, because the map draws a ring
+		// from both. This is the vertex list's "fewer than two is not a shape"
+		// rule applied to the other kind.
+		if props["major"] == nil || props["minor"] == nil {
+			return nil
+		}
+		return props
+	}
+
+	if len(geometry.Vertices) < 2 {
+		return nil
+	}
+
+	points := make([]any, 0, len(geometry.Vertices))
+	for _, vertex := range geometry.Vertices {
+		points = append(points, map[string]any{"lat": vertex.Lat, "lon": vertex.Lon})
+	}
+	props["points"] = points
+	props["count"] = countText(len(points))
+
 	return props
 }
 
@@ -376,6 +444,34 @@ func signedDegrees(raw string) string {
 		return ""
 	}
 	return numberText(value, "°")
+}
+
+// positiveMeters is metersText for a measurement describing an extent, so zero
+// is as useless as a negative one.
+func positiveMeters(raw string) string {
+	value, ok := knownNumber(raw, true)
+	if !ok || value <= 0 {
+		return ""
+	}
+	return numberText(value, " m")
+}
+
+// The axes travel as numbers as well as readings, the way ce_meters sits beside
+// ce, so the map never parses a rendered string back.
+func positiveNumber(raw string) string {
+	value, ok := knownNumber(raw, true)
+	if !ok || value <= 0 {
+		return ""
+	}
+	return numberText(value, "")
+}
+
+func signedNumber(raw string) string {
+	value, ok := knownNumber(raw, false)
+	if !ok {
+		return ""
+	}
+	return numberText(value, "")
 }
 
 func percentText(raw string) string {

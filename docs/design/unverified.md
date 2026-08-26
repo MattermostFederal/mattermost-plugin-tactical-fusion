@@ -12,6 +12,15 @@ rather than as a decode: `precisionlocation/@pdop`, `@hdop` and `@vdop`;
 `status/@readiness`; and `_medevac_/@security`, whose numeric 9-line vocabulary
 is plausible and uncited. None has been seen against a real emitter.
 
+**The geometry shapes are convention, and the failure is visible.** `shape`,
+`polyline`, `vertex`, `ellipse` and a route's `link/@point` are all read as ATAK
+is understood to write them and none has been checked against a real emitter. If
+a shape is wrong the geometry does not draw and `detail_unknown` counts the
+element, which is what an unrecognised element already does, so the failure
+surfaces rather than producing a wrong outline. The reading most likely to be
+wrong is the ellipse's: whether `major`/`minor` are semi-axes or full axes, and
+whether `angle` is measured clockwise from north.
+
 **No real ATAK output has been through the registry.** Every fixture in the test
 suite is hand-written or built from the registry itself, so the parser has never
 met an event a device actually produced. The shapes most likely to be wrong are

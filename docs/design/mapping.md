@@ -1560,3 +1560,54 @@ is what is asserted.
 The affiliation colours are read out of `affiliationColor` rather than copied
 into the test, so an affiliation added in a violet hue fails here rather than
 shipping.
+
+## The geometry layer
+
+Cursor on Target events that describe a shape rather than a point draw it, and
+the mechanism is the accuracy circle's, one level generalised.
+
+`accuracyLayers` and `accuracyFeature` were already the pattern: a `geojson`
+source added only when the surface asks for it, a fill and a line layer over it,
+and a ring built from `DEGREE_METERS` so the shape keeps its metres at every
+zoom. Geometry adds a second such source and reuses the ring.
+
+**An ellipse is that ring with two radii and a rotation**, so the ring math is
+extracted and both call it: `accuracyFeature` is now one line,
+`ellipseFeature(lat, lon, meters, meters, 0)`. It keeps its signature and its
+behaviour, which `accuracy.spec.ts` measures against real metres and
+`the accuracy circle is the ring with equal axes` pins directly.
+
+**The bearing is clockwise from north, so the rotation is the transpose of the
+usual one.** The first version applied a counter-clockwise matrix, which is
+right at 0 and at 90 and mirrored everywhere else: a shape stated at 45 was
+drawn at 315. Two things let that ship. Every test used an angle of zero, where
+the rotation cancels; and the one non-zero fixture used -45, whose mirror is
+plausible on sight. `the major axis lies along the bearing the event stated`
+sweeps six bearings now, and the geodesy test moved off the equator, where the
+cos(lat) division is a no-op and therefore proves nothing.
+
+**Nothing author-derived reaches `fitBounds` outside the projection.** MapLibre
+throws on a latitude past 90 rather than clamping, and the throw is swallowed by
+its own render loop from the load handler, so the reader gets a blank map with
+no note. The union is clamped to the Mercator limit before it is used.
+
+**Both overlay sources are built on every surface.** The geometry source used to
+be built only when the first render asked for one, and the sidebar reuses a
+single map across selections: opening a shapeless event and then a shape drew
+nothing, forever, because `getSource('geometry')` stayed undefined and `setData`
+was an optional chain that no-opped. An empty collection costs nothing.
+
+**The frame is the union of the markers and the geometry.** `spreadOf` answers
+only about markers and returns nothing below two of them, which is right for a
+set of pins and wrong for one polygon: a shape whose extent is larger than its
+`<point>` would open half off screen, or at a zoom picked for a point that
+happens to sit inside it. Geometry contributes its bounds to the same box the
+markers do.
+
+**Vertices are not markers.** They are drawn as a line and a fill and never as
+crosshairs. Feeding them through `markers` would have been less code and would
+have put a reticle on every corner of a polygon, which says that each corner is a
+position somebody reported.
+
+Geometry draws on the card and in the panel both. A drawn shape whose shape is
+not drawn is a card that has said nothing.

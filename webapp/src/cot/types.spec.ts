@@ -1,5 +1,6 @@
 import {expect, test} from '@playwright/test';
 
+import {_geometryForTesting as geometryForTesting} from './CotMap';
 import {SUMMARY_MAX_RUNES, TOO_LONG, oneLine} from './summary';
 import {AFFILIATION_COLORS, COT_CLASSES, COT_PROPS_KEY, accuracyMeters, affiliationWord, fromProps, isLinkable, staleAfterPosting, statedColor} from './types';
 import type {CotEvent} from './types';
@@ -298,6 +299,7 @@ const DETAIL_KEYS = [
     'medevac_routine', 'medevac_security', 'medevac_terrain_none', 'medevac_title',
     'medevac_urgent', 'medevac_zone_prot_selection', 'precision_altsrc',
     'precision_geopointsrc', 'precision_hdop', 'precision_pdop', 'precision_vdop',
+    'route_direction', 'route_method', 'route_order', 'route_planning', 'route_type',
     'sensor_azimuth', 'sensor_elevation', 'sensor_fov', 'sensor_model', 'sensor_range',
     'sensor_roll', 'sensor_vfov', 'status_battery', 'status_readiness', 'takv_device',
     'takv_os', 'takv_platform', 'takv_version', 'track_slope', 'uid_extra_droid',
@@ -354,4 +356,129 @@ test('a single overlong reading points at the panel rather than being clipped', 
 test('nothing stated still renders nothing', () => {
     expect(oneLine([])).toBe('');
     expect(oneLine(['', ''])).toBe('');
+});
+
+test('reads a drawn outline, and keeps its vertex order', () => {
+    const payload = fromProps(props({}, {
+        geometry: {
+            kind: 'polyline',
+            closed: 'stated',
+            count: '3',
+            points: [
+                {lat: '1.0000', lon: '10.0000'},
+                {lat: '2.0000', lon: '20.0000'},
+                {lat: '3.0000', lon: '30.0000'},
+            ],
+        },
+    }));
+
+    const geometry = payload!.events[0].geometry!;
+    expect(geometry.kind).toBe('polyline');
+    expect(geometry.closed).toBe(true);
+    expect(geometry.points.map((p) => p.lat)).toEqual([1, 2, 3]);
+});
+
+test('reads an ellipse, which carries axes rather than points', () => {
+    const payload = fromProps(props({}, {
+        geometry: {kind: 'ellipse', major: '100 m', minor: '50 m', angle: '-45°'},
+    }));
+
+    const geometry = payload!.events[0].geometry!;
+    expect(geometry.kind).toBe('ellipse');
+    expect(geometry.major).toBe('100 m');
+    expect(geometry.points).toEqual([]);
+});
+
+// The server refuses a shape it will not stand behind and says so in `note`.
+// This is the same refusal on the side that draws.
+test('a shape left with fewer than two usable points is not a shape', () => {
+    const payload = fromProps(props({}, {
+        geometry: {kind: 'polyline', points: [{lat: '1.0000', lon: '2.0000'}, {lat: 'north', lon: 'x'}]},
+    }));
+
+    expect(payload!.events[0].geometry!.points).toEqual([]);
+});
+
+test('a malformed geometry reads as none rather than throwing', () => {
+    for (const value of ['nope', 42, null, [], {kind: ''}, {points: []}]) {
+        const payload = fromProps(props({}, {geometry: value}));
+        expect(payload?.events[0].geometry, JSON.stringify(value)).toBeNull();
+    }
+});
+
+test('an event that describes no shape carries none', () => {
+    expect(fromProps(props({}, {}))!.events[0].geometry).toBeNull();
+});
+
+test.describe('what the map is asked to draw', () => {
+    function geometryOf(overrides: Record<string, unknown>) {
+        const payload = fromProps(props({}, {geometry: overrides}));
+        return geometryForTesting(payload!.events[0]);
+    }
+
+    test('an ellipse is taken from the raw numbers, not from the rendered strings', () => {
+        const drawn = geometryOf({
+            kind: 'ellipse',
+            major: '400 m',
+minor: '250 m',
+angle: '30°',
+            major_m: '400',
+minor_m: '250',
+angle_deg: '30',
+        });
+
+        expect(drawn).toEqual({kind: 'ellipse', major: 400, minor: 250, angle: 30});
+    });
+
+    // The server refuses a shape it will not stand behind. Drawing one anyway
+    // made the card say "not drawn" over a shape the map had drawn.
+    test('a shape the server refused is not drawn', () => {
+        const drawn = geometryOf({
+            kind: 'ellipse',
+major_m: '400',
+minor_m: '250',
+            note: 'A point in this shape is not one this build will stand behind.',
+        });
+
+        expect(drawn).toBeUndefined();
+    });
+
+    test('an ellipse whose axes did not survive is not drawn', () => {
+        expect(geometryOf({kind: 'ellipse', major: '400 m'})).toBeUndefined();
+        expect(geometryOf({kind: 'ellipse', major_m: '0', minor_m: '250'})).toBeUndefined();
+    });
+
+    test('an outline is drawn from its points', () => {
+        const drawn = geometryOf({
+            kind: 'polyline',
+closed: 'stated',
+            points: [{lat: '1.0000', lon: '2.0000'}, {lat: '3.0000', lon: '4.0000'}],
+        });
+
+        expect(drawn).toEqual({kind: 'outline', points: [{lat: 1, lon: 2}, {lat: 3, lon: 4}], closed: true});
+    });
+
+    test('an event with no shape asks for nothing', () => {
+        expect(geometryForTesting(undefined)).toBeUndefined();
+        expect(geometryForTesting(fromProps(props({}, {}))!.events[0])).toBeUndefined();
+    });
+});
+
+// One bad vertex refuses the whole shape, which is the rule the server applies.
+// Dropping the corner drew a different polygon as fact.
+test('one unusable vertex refuses the whole outline', () => {
+    for (const bad of [{lat: 'north', lon: '2'}, {lat: '95', lon: '2'}, {lat: '1', lon: '181'}, 'nope']) {
+        const payload = fromProps(props({}, {
+            geometry: {kind: 'polyline', points: [{lat: '1.0000', lon: '2.0000'}, bad, {lat: '3.0000', lon: '4.0000'}]},
+        }));
+
+        expect(payload!.events[0].geometry!.points, JSON.stringify(bad)).toEqual([]);
+    }
+});
+
+test('a forged vertex list is capped at what the server can write', () => {
+    const points = Array.from({length: 600}, (_, i) => ({lat: '1.0000', lon: `${i % 100}.0000`}));
+    const payload = fromProps(props({}, {geometry: {kind: 'polyline', points}}));
+
+    expect(payload!.events[0].geometry!.points.length).toBeLessThanOrEqual(512);
 });

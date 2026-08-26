@@ -62,6 +62,11 @@ export interface CotDetail {
     medevacTitle: string;
     medevacUrgent: string;
     medevacZoneProtSelection: string;
+    routeType: string;
+    routePlanning: string;
+    routeMethod: string;
+    routeDirection: string;
+    routeOrder: string;
     precisionAltsrc: string;
     precisionGeopointsrc: string;
     precisionHdop: string;
@@ -96,6 +101,32 @@ export interface CotFlowHop {
     time: string;
 }
 
+export interface CotVertex {
+    lat: number;
+    lon: number;
+}
+
+/**
+ * The shape an event describes, when it describes one.
+ *
+ * `points` is empty for an ellipse, which is drawn from its axes and the
+ * event's own position, and for a shape the server would not stand behind: it
+ * says so in `note` rather than handing over a partial outline.
+ */
+export interface CotGeometry {
+    kind: string;
+    closed: boolean;
+    points: CotVertex[];
+    count: string;
+    major: string;
+    minor: string;
+    angle: string;
+    majorMeters: number;
+    minorMeters: number;
+    angleDegrees: number;
+    note: string;
+}
+
 /** The classes the server writes. Anything else falls to the default layout. */
 export const COT_CLASSES = ['chat', 'medevac', 'sensor', 'video'] as const;
 
@@ -108,6 +139,7 @@ export interface CotEvent {
     detailDropped: string;
     detail: CotDetail;
     flow: CotFlowHop[];
+    geometry: CotGeometry | null;
     callsign: string;
     cotType: string;
     typeLabel: string;
@@ -237,6 +269,7 @@ function readEvent(event: Record<string, unknown>): CotEvent | null {
             detailDropped: text(event, 'detail_dropped'),
             detail: readDetail(event),
             flow: readFlow(event),
+            geometry: readGeometry(event),
             callsign: text(event, 'callsign'),
             cotType: text(event, 'cot_type'),
             typeLabel: text(event, 'type_label'),
@@ -310,6 +343,11 @@ export function emptyDetail(): CotDetail {
     medevacTitle: '',
     medevacUrgent: '',
     medevacZoneProtSelection: '',
+    routeType: '',
+    routePlanning: '',
+    routeMethod: '',
+    routeDirection: '',
+    routeOrder: '',
     precisionAltsrc: '',
     precisionGeopointsrc: '',
     precisionHdop: '',
@@ -378,6 +416,11 @@ function readDetail(event: Record<string, unknown>): CotDetail {
         medevacTitle: text(event, 'medevac_title'),
         medevacUrgent: text(event, 'medevac_urgent'),
         medevacZoneProtSelection: text(event, 'medevac_zone_prot_selection'),
+        routeType: text(event, 'route_type'),
+        routePlanning: text(event, 'route_planning'),
+        routeMethod: text(event, 'route_method'),
+        routeDirection: text(event, 'route_direction'),
+        routeOrder: text(event, 'route_order'),
         precisionAltsrc: text(event, 'precision_altsrc'),
         precisionGeopointsrc: text(event, 'precision_geopointsrc'),
         precisionHdop: text(event, 'precision_hdop'),
@@ -437,6 +480,62 @@ function readFlow(event: Record<string, unknown>): CotFlowHop[] {
 
     return hops;
 }
+
+/**
+ * The shape the event describes, or null when it describes none.
+ *
+ * A vertex is dropped rather than coerced when either half is not a finite
+ * number, and a shape left with fewer than two is not a shape: the server
+ * already refused those, and this is the same refusal on the side that draws.
+ */
+function readGeometry(event: Record<string, unknown>): CotGeometry | null {
+    const raw = record(event.geometry);
+    if (raw === null) {
+        return null;
+    }
+
+    const kind = text(raw, 'kind');
+    if (kind === '') {
+        return null;
+    }
+
+    // One bad vertex refuses the whole shape, which is the rule the server
+    // states and applies: a polygon missing a corner is a different polygon.
+    // Dropping the corner here drew that different polygon as fact.
+    const points: CotVertex[] = [];
+    let usable = true;
+    if (Array.isArray(raw.points)) {
+        for (const entry of raw.points.slice(0, MAX_VERTICES)) {
+            const vertex = record(entry);
+            const lat = vertex === null ? NaN : Number(text(vertex, 'lat'));
+            const lon = vertex === null ? NaN : Number(text(vertex, 'lon'));
+
+            if (!Number.isFinite(lat) || !Number.isFinite(lon) ||
+                Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+                usable = false;
+                break;
+            }
+            points.push({lat, lon});
+        }
+    }
+
+    return {
+        kind,
+        closed: text(raw, 'closed') !== '',
+        points: usable && points.length >= 2 ? points : [],
+        count: text(raw, 'count'),
+        major: text(raw, 'major'),
+        minor: text(raw, 'minor'),
+        angle: text(raw, 'angle'),
+        majorMeters: Number(text(raw, 'major_m')),
+        minorMeters: Number(text(raw, 'minor_m')),
+        angleDegrees: Number(text(raw, 'angle_deg')),
+        note: text(raw, 'note'),
+    };
+}
+
+/** Matches cot.MaxVertices. A forged blob is not a trusted input either. */
+const MAX_VERTICES = 512;
 
 /**
  * The colour the EVENT stated, and never this plugin's own.

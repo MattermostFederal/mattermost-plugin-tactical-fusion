@@ -1229,7 +1229,103 @@ than as a decode, which needs no second code path: `Unit == ""` already means
 | `__chat`, `chatgrp` | ATAK-CIV GeoChat |
 | `_medevac_` | FreeTAKServer's CoT model. `@security` is **not decoded**, see above |
 | `_flow-tags_` | The MITRE XSD in the ATAK repository, which is also where the open attribute set is stated |
+| `shape` / `polyline` / `vertex` | ATAK-CIV drawing tools. **Unverified**: the nesting and the `closed` attribute are convention |
+| `ellipse` | ATAK-CIV. **Unverified**: `major`/`minor` read as semi-axes in metres and `angle` as a bearing clockwise from north |
+| `link/@point` as a route vertex | ATAK-CIV routes. **Unverified**: read as `lat,lon` or `lat,lon,hae` |
 
 Two things this table is for. It says which rows a maintainer may tighten
 without new evidence, and it says which ones a bug report should be believed
 about first.
+
+## Geometry
+
+A drawn shape, a circle and a route are the three event kinds whose content is
+not a point. Before this they rendered as a card with one crosshair at whatever
+`<point>` said, which for a drawn shape is its centroid and for a route is one
+end, and the geometry that IS the event was counted as an unrecognised element.
+
+### Why geometry is outside the registry
+
+The registry maps attributes to flat props keys, and that is exactly what
+geometry is not: an ordered list of coordinates whose order is the data. It is
+handled by hand for the same reason `_flow-tags_` is, and it lands in props the
+same way, as one array-valued key rather than as fifty-eight flat ones.
+
+It also reaches deeper than the registry can. A vertex sits at depth five,
+`event > detail > shape > polyline > vertex`, and the registry model stops at
+four because that is as deep as an attribute-bearing extension ever goes.
+
+### A `<link>` is a relation or a route vertex, and the shape says which
+
+ATAK writes a route's points as `<link point="lat,lon,hae"/>`, and `<link>` was
+already how this parser reads relations. So before this, a route's points were
+swallowed into the relations list, contributed nothing (their `uid` is empty and
+`putIfSet` drops it), and spent the relation budget: a forty point route
+exhausted `maxCotLinks` and cost the reader the "Sent by" row that budget exists
+for.
+
+**The two are told apart by what the element carries, not by the event's type.**
+A link with a `point` is a vertex; a link with a `uid` is a relation. They get
+separate caps, so a long route cannot cost a relation and a relation cannot cost
+a vertex. Keying off `b-m-r` instead was considered and refused: a route drawn on
+an event this build types as something else would then have its points read as
+relations, which is the bug this replaces rather than a different one.
+
+### The vertex cap refuses to draw, and keeps the event
+
+A third answer, and deliberately neither of the two already here.
+
+`maxCotLinks` drops the extras and keeps going, because a relation lost past the
+sixteenth costs one entry in a row that has already told the reader who sent it.
+`maxCotEvents` refuses the whole source, because a card showing thirty-two of two
+hundred events is quietly wrong about what was posted.
+
+A truncated route is the second case wearing the first's clothes. Drawing the
+first `maxCotVertices` points of a longer route puts a line on the map that
+confidently ends somewhere the route does not, which is worse than drawing
+nothing. But refusing the post over it is too harsh when the callsign, the
+position, the times and the accuracy are all fine and all worth having.
+
+So past the cap the event is kept, the geometry is **not drawn**, and the card
+says why. The reader gets everything the event stated except the one thing this
+build cannot render honestly, and is told which.
+
+### A shape and a route are separate geometries
+
+They shared one, and three things fell out of that. A `<link>` whose point did
+not parse set the refusal flag and killed an otherwise perfect polygon. A route
+point written after a shape was appended as another corner, so a closed area
+grew a leg to wherever the link pointed. And links written before a shape left
+the kind as `route`, which silently dropped the shape's own `closed`.
+
+The two are read into their own values now, and `drawnGeometry` prefers the
+shape: an event carrying both is describing the shape, and its links are still
+relations wherever they carry a uid.
+
+### Acceptance is what the element filled, not what the geometry holds
+
+The depth-four branch marked a child accepted whenever the geometry was
+non-empty afterwards, rather than when that child was the thing that filled it.
+So an `<ellipse>` followed by a `<polyline>` marked the polyline accepted, and
+the polyline's vertices were read into the ellipse. The card then said the shape
+was not drawn while the map drew the ellipse anyway, which is the card and the
+picture disagreeing about the same event.
+
+`readShapeChild` reports whether it recognised the element, and only that marks
+it accepted.
+
+### A vertex is held to the whole gate a position gets
+
+Vertex coordinates go through `decimalShape`, the gate `<point>` already uses,
+**and the range check beside it**. Only the grammar half landed at first, which
+is worse than neither: a latitude of 200 is a plain decimal, so it passed, and
+`fitBounds` refuses a latitude outside 90 by throwing. The reader met a blank
+map with no note, or lost the map entirely on the next Reset view.
+`strconv.ParseFloat` accepts hexadecimal and exponent notation where JavaScript's
+`Number` does not, and the failure mode is the one already recorded above: a
+value that validates in Go, is stored verbatim, and is then read as `NaN` by the
+map, leaving the card and the picture disagreeing. On a vertex list that would be
+one silently missing corner rather than a missing pin.
+
+A shape whose vertices do not all pass is not drawn at all. A polygon missing one
+corner is a different polygon, not a partial one.
