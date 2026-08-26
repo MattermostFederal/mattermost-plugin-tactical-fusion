@@ -187,7 +187,7 @@ Refusals during decoding, all on tokens rather than by scanning text:
 undefined entity is a syntax error, which kills entity expansion, and a non-UTF-8
 `encoding=` declaration errors because no `CharsetReader` is set, which closes
 the UTF-16 route. The byte cap is the real bound on CPU; the depth and element
-budgets are defence in depth.
+budgets are defense in depth.
 
 Every refusal the top of the document gets also holds inside `<remarks>`, which
 is the one element that reads arbitrary author text: the depth and element
@@ -211,7 +211,7 @@ identically is impersonation of another track.
 **The ranges themselves are gone**, and were dead from the moment the category
 test went in above them. All ten codepoints they named, U+202A to U+202E,
 U+2066 to U+2069 and U+FEFF, are in `Cf`, so the three arms below it could never
-run. They read as a second, narrower defence and were none:
+run. They read as a second, narrower defense and were none:
 `TestTheCategoryTestCoversTheRangesItReplaced` sweeps every one of them rather
 than sampling, so a Go release that moved any codepoint out of `Cf` fails there
 instead of quietly letting an override back into a callsign.
@@ -245,6 +245,27 @@ The forgery and sanitising arguments elsewhere in this note are unchanged by the
 move. They are about the pane being trustworthy wherever it is drawn, and it is
 still drawn.
 
+It is a `<details>`, collapsed, for the reason the processing path is: it is what
+you go and look at, not what you read on the way past, and open it pushed the
+extension groups a screen down the panel. It carries a `CopyButton`, the
+location decorator's, inside its `<summary>`, in a span that calls
+`preventDefault` so copying does not also toggle the disclosure. The button
+hides itself on a plain-HTTP origin, which for an air-gapped install is the
+norm, and the `<pre>` stays selectable there.
+
+### The whole card opens the sidebar
+
+"Open details" was the only way in, which made a 640px card a click target the
+size of a link. The card wrapper now opens the panel too, and skips the click
+when it landed on an `a`, a `button`, or anything under `[data-cot-noopen]`,
+which is what the map frame carries: those three mean something else by a click,
+and a map is dragged rather than clicked. A click that ends a text selection is
+skipped as well, since that is a reader finishing a drag.
+
+"Open details" stays. It is the keyboard and screen reader path, and it is why
+the wrapper takes no `role` and no `tabIndex`: an interactive wrapper around an
+interactive button announces the same action twice.
+
 ### Several events in one source
 
 `Parse` returns every event the source carries, and the props hold an `events`
@@ -259,7 +280,7 @@ hundred is quietly wrong about what was posted.
 
 **The card lists them; the panel carries them.** Rendering every event in full
 would put N maps and N tables in a channel, against a WebGL budget the inline
-map already has to respect. The list names each track, colours its dot and links
+map already has to respect. The list names each track, colors its dot and links
 its position, and the panel behind "Open details" has the full detail of every
 one. A single event still gets the full card, unchanged.
 
@@ -267,7 +288,7 @@ one. A single event still gets the full card, unchanged.
 frames the whole set rather than opening on the first, which would leave the
 rest off screen with nothing to say they were there. The image is named per
 FEATURE rather than per layer, because one icon on the layer would paint a
-hostile track in a friendly colour, and an image is registered once per colour
+hostile track in a friendly color, and an image is registered once per color
 rather than once per marker. The accuracy circle is drawn only for a single
 event: a ring per track reads as overlapping blobs rather than as positions.
 
@@ -284,7 +305,7 @@ baseline, the way `CotPostBodyHarness` already did.
 **The rule between events is asserted by its margin, not its border.**
 `styles.later` is `1px solid rgba(var(--center-channel-color-rgb), 0.16)` plus a
 `20px` top margin. The harness defines no theme, so the variable is undefined,
-the colour is invalid, and the browser drops the whole `border-top` shorthand:
+the color is invalid, and the browser drops the whole `border-top` shorthand:
 `getComputedStyle` reports `0px` for a border React really did apply. The margin
 in the same style computes normally and is the separation a reader sees, so it
 is what the test counts. Counting the separated events rather than checking the
@@ -293,7 +314,7 @@ given to every event.
 
 **Every optional row shares one shape**, `x !== '' && <Row label='...'>{x}</Row>`,
 repeated about a dozen times, and the harness baseline leaves them all empty.
-Nothing about that shape stops a row being wired to its neighbour's field, and
+Nothing about that shape stops a row being wired to its neighbor's field, and
 no test would have caught it, so one test populates the whole set and reads the
 `<dl>` back as label/value pairs rather than asserting the values are somewhere
 on the page.
@@ -307,7 +328,7 @@ what the field is for.
 
 An event needs no fence around it. `decorators.SoleElementSpan` finds the span
 from the first opening tag to the last closing one, so siblings come back
-together, and the fence is still tried first so a labelled fence keeps its
+together, and the fence is still tried first so a labeled fence keeps its
 stricter reading.
 
 **It is tested against the CODE ranges, not the whole protected set**, and that
@@ -349,14 +370,14 @@ while a relation lost past the sixteenth costs one entry in a "Relates to" row
 that already told the reader who sent it. `TestTheLinkCapDropsRatherThanRefuses`
 pins the difference, because an examples row states it to readers.
 
-### The marker is a crosshair, in the affiliation's colour
+### The marker is a crosshair, in the affiliation's color
 
 **The shape** is a circle with a line across it and a line down it. A filled dot
 reads as "somewhere around here"; a crosshair reads as "this point", which is
 what an event is claiming.
 
 Two things were tried and removed on the way, both recorded so they are not
-tried again. Ticks radiating from the centre instead of full lines made the
+tried again. Ticks radiating from the center instead of full lines made the
 marker busy at 16px. A white disc filling the circle, meant to lift it off the
 basemap, made it heavier rather than clearer.
 
@@ -373,19 +394,19 @@ it the shape covers, which is antialiasing, and `is antialiased rather than
 stepped` is the test that keeps it. The bitmap is oversampled at four device
 pixels per CSS pixel for the same reason; the cost is a few kilobytes.
 
-The shape is stroked twice, the edge colour first and wider. That outline is what
+The shape is stroked twice, the edge color first and wider. That outline is what
 the palette's own note relies on ("the pin is distinguished by its outline against
 land rather than by its fill"), and it is what lets the fill carry something else.
 The wider pass has to grow the lines along their LENGTH as well as across them,
 or each line ends in a bare fill pixel meeting the map, which is the one place
 the outline has to be.
 
-**The colour** is the affiliation's, from the same `affiliationColor` the dot
+**The color** is the affiliation's, from the same `affiliationColor` the dot
 beside the callsign reads, so the two cannot disagree about what a track is.
 
-The caveat: on the map, colour is the ONLY thing carrying affiliation, and the
+The caveat: on the map, color is the ONLY thing carrying affiliation, and the
 hues are close in luminance, so hostile red and neutral green are one mark to a
-reader with a common colour vision deficiency. `markerLabel` is the other channel
+reader with a common color vision deficiency. `markerLabel` is the other channel
 and is why `markerColor` should never be passed without it. It is not a full
 answer. MIL-STD-2525 solves this with SHAPE, a diamond for hostile and a
 rectangle for friendly, and that is the honest fix if this proves to matter;
@@ -519,10 +540,6 @@ two readers looking at one post must not disagree about whether to act on it.
   `dtg.FormatZulu`, so there is one DTG rendering in the repository.
 - The validity window is `stale - time`, both from the event, so the figure is
   identical everywhere. Computed in Go.
-- The age reading is `stale_at - post.create_at`, both server-side values.
-  Computed in the **webapp**, because `post.CreateAt` is 0 inside
-  `MessageWillBePosted`: `referenceTime`'s own comment records that the server
-  fills it in later.
 - **Nothing ticks.** `dtg/Countdown.tsx` runs a one-second interval and a pulse
   and deliberately ignores `prefers-reduced-motion`, which was argued for a
   single RHS panel. Thirty position reports in a channel would be sixty timers
@@ -530,7 +547,32 @@ two readers looking at one post must not disagree about whether to act on it.
   reads as a live feed. Nothing on the card ticks, which is the guarantee that
   matters; a line of prose saying so was tried and removed as clutter, since it
   restated what the absence of movement already tells a reader. The live
-  countdown lives in the sidebar panel, which says what it is counted against.
+  countdown lives in the sidebar panel.
+
+**The age reading is gone.** The card carried a Freshness row of
+`stale_at - post.create_at`, computed in the webapp because `post.CreateAt` is 0
+inside `MessageWillBePosted`. It was removed as a third way of saying what the
+Stale row already says: that row carries the instant and the validity window
+beside it, and a reader comparing two events compares those. `staleAfterPosting`
+went with it.
+
+**The caveat about the reader's clock is gone too.** The panel's countdown
+carried a line saying it was counted against this device's clock, unlike every
+other reading in the feature. It was true and it was noise: it asked the reader
+to discount the one number the panel puts in the largest type on the page, every
+time they opened it, for a drift most installs do not have. The fact it stated
+is still true, and is now recorded here rather than in front of the reader.
+
+**A stale event says `Stale`, and does not count.** `StaleCountdown` holds one
+`setTimeout` for the stale instant rather than reading the clock each render, so
+a panel left open crosses the boundary on its own. Past it, the countdown is
+replaced by the standing word: a clock counting *up* from an expiry reads as a
+live track, which is the opposite of what it means. One timer, not a ticker, so
+the reason the card carries no clock is not quietly reintroduced.
+
+**Staleness is drawn above the readings.** It decides whether the rest of the
+panel is worth reading at all, so it is read first. It used to sit between the
+readings and the remarks, which is where a reader finds it last.
 
 ### The CE circle
 
@@ -540,19 +582,19 @@ passes nothing and is unaffected.
 A dot cannot be allowed to look the same at CE 3 m and CE 9 km: accuracy is the
 channel through which this feature's worst failure mode arrives. MapLibre's own
 circle layer takes a radius in **pixels**, so the drawn accuracy would change
-with every zoom; a polygon is the only shape that keeps its metres.
+with every zoom; a polygon is the only shape that keeps its meters.
 
-**The vertices are geodesic.** A metre is a different number of longitude degrees
+**The vertices are geodesic.** A meter is a different number of longitude degrees
 at every latitude, so the offsets are `dLat = m / DEGREE_METERS` and
 `dLon = m / (DEGREE_METERS * cos lat)`, reusing the `DEGREE_METERS` already
 pinned to Go. An equal-degree ring is right at the equator and increasingly wrong
 toward the poles, which for a layer whose whole purpose is to stop the map
 overstating a fix is the wrong way to be wrong.
 
-A metre is drawn on the ground, but the accuracy is **read** from the string the
+A meter is drawn on the ground, but the accuracy is **read** from the string the
 card already shows. `LocationMap` takes `accuracyLabel` rather than formatting
-the number a second time: rounding metres again turned a stated `0.4` into
-"within 0 metres", a claim of a perfect fix made only to a screen reader, while
+the number a second time: rounding meters again turned a stated `0.4` into
+"within 0 meters", a claim of a perfect fix made only to a screen reader, while
 the visible row beside it said `0.4 m`.
 
 The ring is closed by copying its first position rather than by computing the
@@ -610,7 +652,7 @@ Both commands demonstrate one event, and it is a target rather than a position
 report. A unit's own position goes over the network to the people who need it;
 a contact is the thing somebody pastes into a channel to show other people and
 argue about, so it is the card a reader should meet first. It also puts the
-crosshair on screen in the colour that carries the most meaning.
+crosshair on screen in the color that carries the most meaning.
 
 It carries **no `__group`**. That element is the sender's team, and ATAK puts it
 on a self position report rather than on a placed marker. On a hostile contact
@@ -618,8 +660,8 @@ the card would render "Team: Cyan" against the target, which reads as the target
 being on that team. `TestTheExampleIsAHostileContact` pins both the affiliation
 and the absence.
 
-`how` is `h-e`, estimated, and the accuracy is tens of metres rather than the
-sub-metre of a GPS fix, because a contact somebody plotted by eye is not known
+`how` is `h-e`, estimated, and the accuracy is tens of meters rather than the
+sub-meter of a GPS fix, because a contact somebody plotted by eye is not known
 to the precision of a device reporting itself. An example whose numbers claim
 otherwise teaches the wrong thing about what `ce` means.
 
@@ -647,7 +689,7 @@ decorators and quietly ignoring anything that is not one, which is exactly how
 this section first went in with three tests still green.
 
 **The examples are real fenced blocks, and two invariants make that safe.** A
-block labelled `cot` or `xml` is exactly what `cotSource` recognises, so a post
+block labeled `cot` or `xml` is exactly what `cotSource` recognizes, so a post
 made of them is a post describing the thing it is made of. Both ways that can go
 wrong are closed by construction rather than by hoping the packing is kind.
 
@@ -672,7 +714,7 @@ leave `postDetails` with nothing smaller to retry: the floor is the bottom rung
 of that ladder, not a target. That is the real cost of fencing, and it is why the
 examples are grouped two or three to an atom rather than all of one heading's.
 
-**A pretty-printed event is only ever recognised behind a fence, and the rows say
+**A pretty-printed event is only ever recognized behind a fence, and the rows say
 so.** `isIndentedCode` treats any line indented four spaces or a tab as a code
 range, and `SoleElementSpan` refuses to look inside one. Nested XML reaches four
 spaces at its second level, and a hanging attribute indent reaches seven on the
@@ -712,7 +754,7 @@ to the same uid, type, time and point, which is the same shape of guard
 `TestTheFileExampleIsTheCardsOwnEvent` already applies to `cotDetailFile`. The
 compact row in `examples` is sliced from the flat one, as it always was.
 
-The block that demonstrates an unfenced event is itself fenced, labelled `text`.
+The block that demonstrates an unfenced event is itself fenced, labeled `text`.
 It has to be a fence of some kind for the post to survive itself, and a label
 `cotInfoString` refuses is what keeps the row from being read as the event it is
 printing.
@@ -795,9 +837,9 @@ nothing. `TestAStrippedPostStillReachesTheDecorators` covers the first half and
 A block used to be announced as *"World map with the position marked. The marker
 is 3 events."* Three things were wrong and one of them mattered.
 
-**The one that mattered: no affiliation.** Colour is the whole of what tells one
-marker from another on a multi-event map, so a reader who gets no colour got a
-count and nothing else. `cot.md` already argues that colour is never the only
+**The one that mattered: no affiliation.** Color is the whole of what tells one
+marker from another on a multi-event map, so a reader who gets no color got a
+count and nothing else. `cot.md` already argues that color is never the only
 channel, and points at `markerLabel` as the other one. That held for a single
 event, whose label is its type and therefore begins with its affiliation word.
 It failed for a block, which is the only case where markers must be told apart
@@ -819,12 +861,12 @@ and "The marker is" / "The markers are". The old text was singular for any
 number of them.
 
 `AFFILIATION_WORDS` sits beside `AFFILIATION_COLORS` in `webapp/src/cot/types.ts`
-and is keyed on the same ids, with `every affiliation with a colour has a word`
-holding the two together. An affiliation that gained a colour and no word would
+and is keyed on the same ids, with `every affiliation with a color has a word`
+holding the two together. An affiliation that gained a color and no word would
 be a marker a screen reader cannot tell from any other, on the one surface where
 telling them apart is the entire job. An affiliation this build does not know is
 called `unstated` rather than dropped, which matches the map drawing it in
-`UNCOLOURED` rather than leaving it off.
+`UNCOLORED` rather than leaving it off.
 
 ## The map's filter is `isLinkable`, and it lives in `CotMap`
 
@@ -909,7 +951,7 @@ the registry. No author string is ever a props key.
 
 That is not tidiness. `format` and `value` sit in the same map, and
 `isLinkable` builds `/decorate/location?f=&v=` from them verbatim; `affiliation`
-sits there too and keys the marker colour, which `cot.md` already refuses to let
+sits there too and keys the marker color, which `cot.md` already refuses to let
 an author choose. An author-chosen key beside those three is the whole attack,
 and `_flow-tags_`, whose attribute NAMES are the data, is the one element that
 would have supplied it.
@@ -939,13 +981,36 @@ the type is forgeable and the props under a plugin's key are not protected.
 
 The alpha byte is dropped rather than applied. An `argb` of `#00FF0000` is a
 fully transparent swatch, which is a row that says nothing, and the hex is
-rendered as text beside the swatch so colour is never the only channel. The
+rendered as text beside the swatch so color is never the only channel. The
 swatch is `aria-hidden` like the affiliation dot and carries a themed 1px
 border, without which `#FFFFFF` on a light theme is an invisible square.
 
 `usericon/@iconsetpath` is text for the same reason and is one refactor away
 from being an `<img src>`, which is why the rule is written down rather than
 left to each call site.
+
+### The stated color draws the shape, and never the marker
+
+The panel used to print a color the map then ignored, which is the panel and the
+map disagreeing in front of the reader about the same event. `LocationMap` takes
+an optional `geometryColor`, and `CotMap` passes the event's stated color when
+there is exactly one event, which is already the condition the shape and the
+accuracy ring are drawn under. Absent, the shape keeps the theme's own cell
+color, which is what every location surface gets.
+
+The **marker** still does not take it, and that is the line. A marker's color is
+this plugin's claim about what a track IS: red is hostile, blue is friend, green
+is neutral, amber is unknown. An author who states red for a drawn boundary has
+said nothing about affiliation, and letting that reach the marker would put a
+hostile-colored reticle on a friendly track. A shape has no affiliation to
+contradict, so there is nothing for a stated color to overwrite.
+
+The validation is unchanged and is now load-bearing twice: `statedColor` gates
+the value before it reaches a style property, and `fillOf` in `LocationMap` gates
+it again before it reaches MapLibre, falling back to the theme rather than
+passing an unparsed string through. The fill is written as `rgba()` at the
+theme's own alpha rather than as an eight-digit hex, which MapLibre's color
+parser does not accept.
 
 ### Author URLs are not clickable, and what that does and does not buy
 
@@ -1090,7 +1155,7 @@ This is the same failure `cot.md` already argues for `uid` ("two `uid` values
 that render identically is impersonation of another track") and for the example
 carrying no `__group`, on a louder surface.
 
-So the chat heading stays inside the card's own header treatment and is labelled
+So the chat heading stays inside the card's own header treatment and is labeled
 as what the event states. No blockquote, no avatar, no username styling. The
 message text is rendered exactly once: the class suppresses the ordinary Remarks
 row rather than drawing the same string twice.
@@ -1129,11 +1194,11 @@ Reusing it would have silently dropped every negative attitude.
 These three replaced six near-identical functions that had accumulated one at a
 time, the last of them named `numberText2`. They differed only in a string, and
 `numberText2` was already the general form of two of the others. The collapse
-changed no behaviour, which is what the existing suite passing unchanged says.
+changed no behavior, which is what the existing suite passing unchanged says.
 
 **`Attitude/@yaw` renders as "Yaw", not "Heading".** Yaw is orientation about
 the vertical axis; `track/@course` is the event's own word for direction of
-travel. An event carrying both would otherwise show two rows both labelled
+travel. An event carrying both would otherwise show two rows both labeled
 Heading and disagreeing.
 
 **MEDEVAC counts are written even when they are zero**, and that fell out rather
@@ -1206,7 +1271,7 @@ for exactly the extension-rich events the registry exists to read.
 
 `detail_unknown` closes the other half. Once the panel enumerates blocks, an
 event with none reads as "this event carried nothing" rather than "this build
-did not recognise what it carried", so the parser counts the `<detail>` children
+did not recognize what it carried", so the parser counts the `<detail>` children
 it skipped and the panel says so and points at the pane.
 
 ### Over budget, the card degrades before it is refused
@@ -1230,7 +1295,7 @@ asserts the extension keys are PRESENT, because without that the two rungs could
 be swapped and every test would still pass while every post silently lost them.
 
 **The degraded rung says so on both surfaces.** `detail_dropped` is the one key
-it adds. Without it the panel draws no groups and no unrecognised count, which a
+it adds. Without it the panel draws no groups and no unrecognized count, which a
 reader meets as "this event carried nothing" rather than "this did not fit":
 the same false reading `detail_unknown` exists to prevent, arriving by a
 different route. The card carries the notice too, because the degraded rung also
@@ -1253,7 +1318,7 @@ the panel.
 `FormatFloat` never uses exponent notation, so a subnormal like `1e-320` expands
 to 324 runes against a stated field cap of 128. A clipped number still reads as
 a number, which is worse than an absent row, so this follows the flow-name rule.
-Negative zero is normalised for the same class of reason: `-0` reads as a
+Negative zero is normalized for the same class of reason: `-0` reads as a
 direction on a bearing and as a sign on a battery.
 
 ### Where each extension's shape came from
@@ -1283,7 +1348,7 @@ than as a decode, which needs no second code path: `Unit == ""` already means
 | `_medevac_` | FreeTAKServer's CoT model. `@security` is **not decoded**, see above |
 | `_flow-tags_` | The MITRE XSD in the ATAK repository, which is also where the open attribute set is stated |
 | `shape` / `polyline` / `vertex` | ATAK-CIV drawing tools. **Unverified**: the nesting and the `closed` attribute are convention |
-| `ellipse` | ATAK-CIV. **Unverified**: `major`/`minor` read as semi-axes in metres and `angle` as a bearing clockwise from north |
+| `ellipse` | ATAK-CIV. **Unverified**: `major`/`minor` read as semi-axes in meters and `angle` as a bearing clockwise from north |
 | `link/@point` as a route vertex | ATAK-CIV routes. **Unverified**: read as `lat,lon` or `lat,lon,hae` |
 | `__chatReceipt` | ATAK-CIV GeoChat, beside `__chat` |
 | `__serverdestination` | TAK Server routing. **Unverified** |
@@ -1324,12 +1389,67 @@ one version string. The binding exists now, from `chatgrp` and
 class argument is unchanged: a control event already renders correctly, because
 `0,0` is never linkable and `t-x-takp-v` already has a label.
 
+## Checklists
+
+A `<checklist>` is read, its contents are counted by name, and nothing about
+what a checklist *means* is decoded. The panel shows the element names the event
+itself wrote and how many of each it carried. Before this the whole element was
+one tally under "elements this build did not read".
+
+### Why nothing is decoded
+
+The schema could not be verified. No general CoT reference defines `checklist`;
+the FreeTAK documentation describes the feature with no XML; and a code search
+against ATAK-CIV returned nothing, though that search also returned nothing for
+`takv` and `chatgrp`, so it is a broken search rather than a negative result.
+
+The TAK feature is **ExCheck**, and its templates are uploaded XML *files*
+managed through a REST API alongside file metadata: filename, hash, size,
+submitter. That is a data package rather than a `<detail>` child, so an ExCheck
+template pasted into a channel would be refused by `Parse` for carrying no
+`<event>` long before any of this applied. Whether a real event ever carries a
+`<checklist>` inline is itself unverified.
+
+That is the same position `__network` was refused from, and the decision is the
+same. Decoding `name` or `status` or a column type means inventing attribute
+names, which produces rows that never populate while claiming knowledge this
+build does not have. Geometry ships unverified because its failure is visible:
+the shape does not draw and the element is counted. An invented attribute name
+fails silently, as a blank row.
+
+Counting needs no schema at all. Every string in the block is either a label
+this build owns, "Checklist", or a name the event wrote itself.
+
+### Why it is outside the registry
+
+For both of the reasons geometry is, and either alone would be enough.
+
+`addBlock` is first-wins per element name, so a checklist's repeated rows would
+collapse into one set of keys and a reader would be told about the first task
+and not the other eleven. And the registry model stops at depth four, so a row
+inside a wrapper element is not merely undecoded but uncounted, because only
+`readDetailChild` increments `Detail.Unknown`.
+
+### Descendants are counted at any depth
+
+Direct children would have been the smaller change and the wrong one. The
+nesting is exactly what could not be verified: if rows sit inside a
+`<checklistColumns>` wrapper, counting direct children reports one wrapper where
+counting descendants reports the rows. Counting by the name the event used makes
+the answer correct under either shape, and honest under a third nobody has seen.
+
+`Seen` counts every descendant, including those past `maxChecklistKinds`, and is
+not the sum of the kinds once the cap bites. That is the same separation
+`Geometry.Seen` carries, and for the same reason: a counter that stops counting
+when a list stops growing reports the cap as though it were the measurement,
+which is a bug this repository has already shipped once.
+
 ## Geometry
 
 A drawn shape, a circle and a route are the three event kinds whose content is
 not a point. Before this they rendered as a card with one crosshair at whatever
 `<point>` said, which for a drawn shape is its centroid and for a route is one
-end, and the geometry that IS the event was counted as an unrecognised element.
+end, and the geometry that IS the event was counted as an unrecognized element.
 
 ### Why geometry is outside the registry
 
@@ -1389,61 +1509,6 @@ The two are read into their own values now, and `drawnGeometry` prefers the
 shape: an event carrying both is describing the shape, and its links are still
 relations wherever they carry a uid.
 
-## Checklists
-
-A `<checklist>` is read, its contents are counted by name, and nothing about
-what a checklist *means* is decoded. The panel shows the element names the event
-itself wrote and how many of each it carried. Before this the whole element was
-one tally under "elements this build did not read".
-
-### Why nothing is decoded
-
-The schema could not be verified. No general CoT reference defines `checklist`;
-the FreeTAK documentation describes the feature with no XML; and a code search
-against ATAK-CIV returned nothing, though that search also returned nothing for
-`takv` and `chatgrp`, so it is a broken search rather than a negative result.
-
-The TAK feature is **ExCheck**, and its templates are uploaded XML *files*
-managed through a REST API alongside file metadata: filename, hash, size,
-submitter. That is a data package rather than a `<detail>` child, so an ExCheck
-template pasted into a channel would be refused by `Parse` for carrying no
-`<event>` long before any of this applied. Whether a real event ever carries a
-`<checklist>` inline is itself unverified.
-
-That is the same position `__network` was refused from, and the decision is the
-same. Decoding `name` or `status` or a column type means inventing attribute
-names, which produces rows that never populate while claiming knowledge this
-build does not have. Geometry ships unverified because its failure is visible:
-the shape does not draw and the element is counted. An invented attribute name
-fails silently, as a blank row.
-
-Counting needs no schema at all. Every string in the block is either a label
-this build owns, "Checklist", or a name the event wrote itself.
-
-### Why it is outside the registry
-
-For both of the reasons geometry is, and either alone would be enough.
-
-`addBlock` is first-wins per element name, so a checklist's repeated rows would
-collapse into one set of keys and a reader would be told about the first task
-and not the other eleven. And the registry model stops at depth four, so a row
-inside a wrapper element is not merely undecoded but uncounted, because only
-`readDetailChild` increments `Detail.Unknown`.
-
-### Descendants are counted at any depth
-
-Direct children would have been the smaller change and the wrong one. The
-nesting is exactly what could not be verified: if rows sit inside a
-`<checklistColumns>` wrapper, counting direct children reports one wrapper where
-counting descendants reports the rows. Counting by the name the event used makes
-the answer correct under either shape, and honest under a third nobody has seen.
-
-`Seen` counts every descendant, including those past `maxChecklistKinds`, and is
-not the sum of the kinds once the cap bites. That is the same separation
-`Geometry.Seen` carries, and for the same reason: a counter that stops counting
-when a list stops growing reports the cap as though it were the measurement,
-which is a bug this repository has already shipped once.
-
 ### Acceptance is what the element filled, not what the geometry holds
 
 The depth-four branch marked a child accepted whenever the geometry was
@@ -1453,7 +1518,7 @@ the polyline's vertices were read into the ellipse. The card then said the shape
 was not drawn while the map drew the ellipse anyway, which is the card and the
 picture disagreeing about the same event.
 
-`readShapeChild` reports whether it recognised the element, and only that marks
+`readShapeChild` reports whether it recognized the element, and only that marks
 it accepted.
 
 ### A vertex is held to the whole gate a position gets

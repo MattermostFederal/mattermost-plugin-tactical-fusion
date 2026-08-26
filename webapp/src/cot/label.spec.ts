@@ -52,10 +52,10 @@ test('omits the ratio when every event was drawn', () => {
 });
 
 /*
- * An affiliation this build does not colour is still named, because the marker
- * is still drawn, in grey.
+ * An affiliation this build does not color is still named, because the marker
+ * is still drawn, in gray.
  */
-test('names an affiliation that carries no colour', () => {
+test('names an affiliation that carries no color', () => {
     expect(blockLabel([ev('joker')], 1)).toBe('1 joker');
     expect(blockLabel([ev('zzz')], 1)).toBe('1 unstated');
 });

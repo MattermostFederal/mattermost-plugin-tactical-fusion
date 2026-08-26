@@ -76,7 +76,6 @@ export const CotPostBody: React.FC<Props> = ({post, compactDisplay}) => {
     return (
         <CotCard
             payload={payload}
-            createAt={post?.create_at ?? 0}
             compactDisplay={compactDisplay}
         />
     );

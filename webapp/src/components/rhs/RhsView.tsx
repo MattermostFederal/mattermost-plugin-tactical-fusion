@@ -6,7 +6,14 @@ import {getSelection, subscribe} from '../../decorators/selection';
 import {getPanel} from '../../panels';
 
 const styles: Record<string, React.CSSProperties> = {
-    container: {padding: '16px'},
+    container: {
+        padding: '16px',
+        boxSizing: 'border-box',
+        flex: '1 1 auto',
+        minHeight: 0,
+        height: '100%',
+        overflowY: 'auto',
+    },
     empty: {color: 'var(--center-channel-color)'},
     emptyLead: {fontSize: '14px', margin: '0 0 8px'},
     emptyHint: {fontSize: '13px', opacity: 0.65, margin: 0},

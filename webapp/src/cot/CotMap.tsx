@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
 
 import type {CotEvent} from './types';
-import {accuracyMeters, affiliationColor, affiliationWord, isLinkable} from './types';
+import {accuracyMeters, affiliationColor, affiliationWord, isLinkable, statedColor} from './types';
 
 import type {MapGeometry} from '../decorators/location/map/LocationMap';
 import LocationMap, {MAP_HEIGHT} from '../decorators/location/map/LocationMap';
@@ -51,23 +51,23 @@ function drawableEvents(events: readonly CotEvent[]): CotEvent[] {
     return events.filter((event) => isLinkable(event) && isRenderable(Number(event.lat)));
 }
 
-/** Those events as markers, with the colour to draw each one in. */
+/** Those events as markers, with the color to draw each one in. */
 function markersFor(events: readonly CotEvent[]) {
     return events.map((event) => ({
         lat: Number(event.lat),
         lon: Number(event.lon),
-        color: affiliationColor(event) ?? UNCOLOURED,
+        color: affiliationColor(event) ?? UNCOLORED,
     }));
 }
 
 /**
- * What a block of markers is, for a reader who gets no colour.
+ * What a block of markers is, for a reader who gets no color.
  *
- * Colour is the whole of what tells one marker from another on this map, so a
+ * Color is the whole of what tells one marker from another on this map, so a
  * label that says only how many there are leaves a screen reader with a count
  * and nothing else. The affiliations are the second channel, and this is the
  * one surface that has to carry them: a single-event map already states its
- * type, and there the colour distinguishes nothing anyway.
+ * type, and there the color distinguishes nothing anyway.
  *
  * Counted in EVENTS, not markers. An event with no usable position draws
  * nothing, and the card's own heading counts every event, so a map announcing
@@ -107,12 +107,12 @@ function joinWords(parts: readonly string[]): string {
 }
 
 /**
- * What an event whose affiliation this build does not colour is drawn in.
+ * What an event whose affiliation this build does not color is drawn in.
  *
  * A marker still has to be drawn: leaving it off the map would be the map
  * quietly disagreeing with the list beside it about how many events there are.
  */
-const UNCOLOURED = '#8a8f98';
+const UNCOLORED = '#8a8f98';
 
 /**
  * The shape one event describes, ready for the map.
@@ -194,6 +194,7 @@ const CotMapCanvas: React.FC<{events: readonly CotEvent[]; pageEnabled: boolean}
             accuracyLabel={only?.ce}
             markers={markers}
             geometry={geometryFor(only)}
+            geometryColor={only && statedColor(only)}
             markerLabel={only ? only.typeLabel : blockLabel(drawn, events.length)}
             pageHref={pageEnabled && only ? mapPageHref(only) : undefined}
         />
@@ -227,6 +228,7 @@ const CotMap: React.FC<{events: readonly CotEvent[]}> = ({events}) => {
             ref={setBox}
             style={styles.frame}
             data-testid='cot-map'
+            data-cot-noopen=''
         >
             {near ? (
                 <CotMapCanvas

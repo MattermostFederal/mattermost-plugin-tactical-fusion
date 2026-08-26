@@ -3,7 +3,7 @@ import React from 'react';
 import CotMap from './CotMap';
 import {ClassSummary, chatReading} from './summary';
 import type {CotEvent, CotPayload} from './types';
-import {SOURCE_FILE, affiliationColor, isLinkable, staleAfterPosting, validFor} from './types';
+import {SOURCE_FILE, affiliationColor, isLinkable, validFor} from './types';
 
 import ErrorBoundary from '../components/ErrorBoundary';
 import HoverLink from '../decorators/HoverLink';
@@ -13,7 +13,6 @@ import {showCotEvent} from './index';
 
 interface Props {
     payload: CotPayload;
-    createAt: number;
     compactDisplay?: boolean;
 }
 
@@ -25,6 +24,7 @@ const styles: Record<string, React.CSSProperties> = {
         marginTop: 8,
         maxWidth: 640,
         overflow: 'hidden',
+        cursor: 'pointer',
     },
     kind: {
         fontWeight: 700,
@@ -131,8 +131,8 @@ export function fileHref(fileId: string): string | null {
 
 /** The dot, which is redundant with the affiliation word in the type label. */
 function Dot({event}: {event: CotEvent}) {
-    const colour = affiliationColor(event);
-    if (colour === undefined) {
+    const color = affiliationColor(event);
+    if (color === undefined) {
         return null;
     }
 
@@ -140,7 +140,7 @@ function Dot({event}: {event: CotEvent}) {
         <span
             aria-hidden={true}
             style={{
-                background: colour,
+                background: color,
                 borderRadius: '50%',
                 display: 'inline-block',
                 height: 10,
@@ -178,8 +178,7 @@ function Naming({event}: {event: CotEvent}) {
 }
 
 /** One event, in full. What a post carrying a single event shows. */
-function EventDetail({event, createAt}: {event: CotEvent; createAt: number}) {
-    const staleReading = staleAfterPosting(event, createAt);
+function EventDetail({event}: {event: CotEvent}) {
     const window = validFor(event);
 
     // The chat class carries the message above these rows, so drawing Remarks
@@ -232,7 +231,6 @@ function EventDetail({event, createAt}: {event: CotEvent; createAt: number}) {
                         {window !== '' && ` (valid for ${window})`}
                     </Row>
                 )}
-                {staleReading !== '' && <Row label='Freshness'>{staleReading}</Row>}
                 {event.group !== '' && (
                     <Row label='Team'>
                         {event.group}
@@ -279,7 +277,21 @@ function EventList({events}: {events: readonly CotEvent[]}) {
     );
 }
 
-export const CotCard: React.FC<Props> = ({payload, createAt, compactDisplay}) => {
+function openFrom(clicked: React.MouseEvent, payload: CotPayload): void {
+    const target = clicked.target as Element | null;
+    if (target?.closest?.('a, button, [data-cot-noopen]')) {
+        return;
+    }
+
+    const selected = typeof window === 'undefined' ? '' : (window.getSelection()?.toString() ?? '');
+    if (selected !== '') {
+        return;
+    }
+
+    showCotEvent(payload);
+}
+
+export const CotCard: React.FC<Props> = ({payload, compactDisplay}) => {
     const {events} = payload;
     const only = events.length === 1 ? events[0] : undefined;
 
@@ -290,6 +302,7 @@ export const CotCard: React.FC<Props> = ({payload, createAt, compactDisplay}) =>
             <div
                 style={styles.card}
                 data-testid='cot-card'
+                onClick={(clicked) => openFrom(clicked, payload)}
             >
                 <p style={styles.kind}>
                     {only ? `${CARD_KIND}:` : `${CARD_KIND}: ${events.length} events`}
@@ -309,10 +322,7 @@ export const CotCard: React.FC<Props> = ({payload, createAt, compactDisplay}) =>
 
                 <ErrorBoundary fallback={<p style={styles.note}>{DETAIL_FAILED}</p>}>
                     {only ? (
-                        <EventDetail
-                            event={only}
-                            createAt={createAt}
-                        />
+                        <EventDetail event={only}/>
                     ) : <EventList events={events}/>}
                 </ErrorBoundary>
 

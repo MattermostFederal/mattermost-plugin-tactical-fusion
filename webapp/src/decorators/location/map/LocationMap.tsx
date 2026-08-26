@@ -76,7 +76,7 @@ const NO_POSITION = 'The position for this coordinate is unavailable.';
 
 // One label across all three maps. The pages call it the same thing, and a
 // reader who moves between them should not have to learn a second word for the
-// same button. It resets the zoom as well as the centre, which is why it is not
+// same button. It resets the zoom as well as the center, which is why it is not
 // "Recenter".
 const RESET_LABEL = 'Reset view';
 const TOO_FAR_NORTH = 'This position is too far north for the map.';
@@ -126,7 +126,7 @@ interface Props extends View {
     preview?: boolean;
 
     /**
-     * A stated circular error, in metres, drawn on the ground around the pin.
+     * A stated circular error, in meters, drawn on the ground around the pin.
      *
      * Absent means the source stated no accuracy, and nothing is drawn: a
      * default radius would be one this component invented. Every location
@@ -139,20 +139,20 @@ interface Props extends View {
      * How the accuracy reads, already rendered by whoever stated it.
      *
      * Taken rather than formatted here so the label and the row a reader sees
-     * beside it cannot say different things: rounding metres a second time
-     * turned a stated 0.4 into "within 0 metres", which is a claim of a perfect
+     * beside it cannot say different things: rounding meters a second time
+     * turned a stated 0.4 into "within 0 meters", which is a claim of a perfect
      * fix made only to a screen reader.
      */
     accuracyLabel?: string;
 
     /**
-     * Every point to mark, each in its own colour, which also asks for the
+     * Every point to mark, each in its own color, which also asks for the
      * reticle shape rather than the plain dot.
      *
      * Absent on every location surface, which keeps the single pin they have
      * always drawn from `lat` and `lon`. A Cursor on Target card passes one per
      * event, so a block of them draws each track in its own affiliation's
-     * colour, and `lat` and `lon` stay the primary position that decides
+     * color, and `lat` and `lon` stay the primary position that decides
      * whether there is anything to draw at all.
      */
     markers?: ReadonlyArray<{lat: number; lon: number; color: string}>;
@@ -160,21 +160,23 @@ interface Props extends View {
     /**
      * What the marker IS, in words.
      *
-     * Required alongside `markerColor` in practice, because the colour is
-     * carrying a meaning and a colour cannot be the only way to read one: the
+     * Required alongside `markerColor` in practice, because the color is
+     * carrying a meaning and a color cannot be the only way to read one: the
      * affiliation hues are near enough in luminance that red and green are the
      * same mark to a good share of readers. This is the other channel.
      */
     markerLabel?: string;
 
     /**
-     * A shape to draw, in metres on the ground rather than in pixels.
+     * A shape to draw, in meters on the ground rather than in pixels.
      *
      * Vertices are deliberately not markers: routing them through `markers`
      * would be less code and would put a reticle on every corner of a polygon,
      * which says each corner is a position somebody reported.
      */
     geometry?: MapGeometry;
+
+    geometryColor?: string;
 }
 
 const styles: Record<string, React.CSSProperties> = {
@@ -257,7 +259,7 @@ const styles: Record<string, React.CSSProperties> = {
 
 const LocationMap: React.FC<Props> = ({
     lat, lon, cellDegLat, cellDegLon, region, pageHref, pending, fill, preview, accuracyMeters,
-    accuracyLabel, markers, markerLabel, geometry,
+    accuracyLabel, markers, markerLabel, geometry, geometryColor,
 }) => {
     const container = useRef<HTMLDivElement | null>(null);
     const map = useRef<MapLibreMap | null>(null);
@@ -309,6 +311,9 @@ const LocationMap: React.FC<Props> = ({
 
     const shape = useRef<Props['geometry']>(geometry);
     shape.current = geometry;
+
+    const shapeColor = useRef<Props['geometryColor']>(geometryColor);
+    shapeColor.current = geometryColor;
 
     const applyView = useCallback(() => {
         const instance = map.current;
@@ -364,6 +369,7 @@ const LocationMap: React.FC<Props> = ({
         cell?.setData(drawableCell(current));
         accuracy?.setData(drawableAccuracy(current.lat, current.lon, radius.current));
         outline?.setData(drawableGeometry(shape.current, current.lat, current.lon));
+        paintGeometry(instance, shapeColor.current);
     }, []);
 
     // A verdict belongs to the coordinate that produced it, so a change of
@@ -605,7 +611,7 @@ const LocationMap: React.FC<Props> = ({
     // sources change.
     useEffect(() => {
         applyView();
-    }, [applyView, lat, lon, cellDegLat, cellDegLon, accuracyMeters, geometry]);
+    }, [applyView, lat, lon, cellDegLat, cellDegLon, accuracyMeters, geometry, geometryColor]);
 
     // Torn down on unmount only. Browsers cap live WebGL contexts at about
     // sixteen, and the panel outlives any one coordinate.
@@ -727,7 +733,7 @@ function drawableCell(current: View): FeatureCollection {
     }
 
     // No minimum size, and no threshold below which the cell is dropped. These
-    // surfaces zoom, so there is no one scale to test against: a metre-wide cell
+    // surfaces zoom, so there is no one scale to test against: a meter-wide cell
     // is invisible until the reader zooms far enough to see it, which is more
     // honest than a number guessing on their behalf.
     //
@@ -760,6 +766,28 @@ function drawableMarkers(
 export type MapGeometry =
     | {kind: 'outline'; points: ReadonlyArray<{lat: number; lon: number}>; closed: boolean}
     | {kind: 'ellipse'; major: number; minor: number; angle: number};
+
+const GEOMETRY_FILL_ALPHA = 0.16;
+
+const HEX_COLOR = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i;
+
+function fillOf(color: string): string | null {
+    const parsed = HEX_COLOR.exec(color);
+    if (parsed === null) {
+        return null;
+    }
+
+    const [red, green, blue] = parsed.slice(1).map((part) => parseInt(part, 16));
+    return `rgba(${red}, ${green}, ${blue}, ${GEOMETRY_FILL_ALPHA})`;
+}
+
+function paintGeometry(instance: MapLibreMap, color: string | undefined): void {
+    const colors = mapColors();
+    const fill = color === undefined ? null : fillOf(color);
+
+    instance.setPaintProperty('geometry-outline', 'line-color', fill === null ? colors.cell : color);
+    instance.setPaintProperty('geometry-fill', 'fill-color', fill ?? colors.cellFill);
+}
 
 function drawableGeometry(
     geometry: Props['geometry'], lat: number, lon: number,
@@ -888,9 +916,9 @@ function hasMarkers(markers: Props['markers']): boolean {
 }
 
 /**
- * Registers one reticle per colour the markers ask for.
+ * Registers one reticle per color the markers ask for.
  *
- * Per colour rather than per marker, so a block of twenty friendly tracks costs
+ * Per color rather than per marker, so a block of twenty friendly tracks costs
  * one image. Nothing to do for a map with no markers, which is every location
  * surface: those draw the circle layer and never reference an image.
  */

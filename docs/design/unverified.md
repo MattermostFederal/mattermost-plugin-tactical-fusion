@@ -16,7 +16,7 @@ is plausible and uncited. None has been seen against a real emitter.
 `polyline`, `vertex`, `ellipse` and a route's `link/@point` are all read as ATAK
 is understood to write them and none has been checked against a real emitter. If
 a shape is wrong the geometry does not draw and `detail_unknown` counts the
-element, which is what an unrecognised element already does, so the failure
+element, which is what an unrecognized element already does, so the failure
 surfaces rather than producing a wrong outline. The reading most likely to be
 wrong is the ellipse's: whether `major`/`minor` are semi-axes or full axes, and
 whether `angle` is measured clockwise from north.

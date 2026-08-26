@@ -67,33 +67,24 @@ function Block({label, readings}: {label: string; readings: Reading[]}) {
     );
 }
 
-/**
- * The colour the event stated, with the hex as text beside the swatch.
- *
- * Three things this row will not do. It does not colour the affiliation dot or
- * the map marker, which are the plugin's own channel for what a track is. It
- * does not let colour be the only channel, which is why the hex is rendered as
- * text and the swatch is aria-hidden like the dot already is. And it carries a
- * border, without which a stated white on a light theme is an invisible square.
- */
 function ColorRow({event}: {event: CotEvent}) {
     const stated = event.detail.colorArgb;
     if (stated === '') {
         return null;
     }
 
-    const colour = statedColor(event);
+    const color = statedColor(event);
 
     return (
         <>
-            <h4 style={styles.block}>{'Stated display colour'}</h4>
+            <h4 style={styles.block}>{'Stated display color'}</h4>
             <dl style={styles.rows}>
-                <dt style={styles.term}>{'Colour'}</dt>
+                <dt style={styles.term}>{'Color'}</dt>
                 <dd style={styles.value}>
-                    {colour !== undefined && (
+                    {color !== undefined && (
                         <span
                             aria-hidden={true}
-                            style={{...styles.swatch, background: colour}}
+                            style={{...styles.swatch, background: color}}
                         />
                     )}
                     {stated}
@@ -197,7 +188,7 @@ function Dropped({event}: {event: CotEvent}) {
 
     return (
         <p style={styles.unknown}>
-            {'This post carried more detail than it had room to store, so the extension rows, the count of unrecognised elements and the event class were left out. '}
+            {'This post carried more detail than it had room to store, so the extension rows, the count of unrecognized elements and the event class were left out. '}
             {'The whole event is unchanged under "As posted" below.'}
         </p>
     );
@@ -212,7 +203,7 @@ function Unrecognized({event}: {event: CotEvent}) {
     const plural = count === 1 ? 'element' : 'elements';
     return (
         <p style={styles.unknown}>
-            {`This event carried ${count} other <detail> ${plural} that this build does not recognise. `}
+            {`This event carried ${count} other <detail> ${plural} that this build does not recognize. `}
             {'They are unchanged under "As posted" below.'}
         </p>
     );
@@ -317,11 +308,8 @@ export const DetailGroups: React.FC<{event: CotEvent}> = ({event}) => {
         ['Trigger', d.geofenceTrigger],
         ['Tracking', d.geofenceTracking],
         ['Elevation monitored', d.geofenceElevation],
-    const checklist = checklistReadings(event.checklist);
-
         ['Minimum elevation', d.geofenceMin],
         ['Maximum elevation', d.geofenceMax],
-        ...checklist,
         ['Bounding sphere', d.geofenceSphere],
     ];
 
@@ -329,8 +317,11 @@ export const DetailGroups: React.FC<{event: CotEvent}> = ({event}) => {
         ['Files referenced', d.attachmentsCount],
     ];
 
+    const checklist = checklistReadings(event.checklist);
+
     const payload = present([
         ...sensor, ...video, ...chat, ...medevac, ...geofence, ...attachments,
+        ...checklist,
     ]).length > 0;
     const hasColor = d.colorArgb !== '';
 
@@ -376,10 +367,6 @@ export const DetailGroups: React.FC<{event: CotEvent}> = ({event}) => {
                     <Block
                         label='MEDEVAC'
                         readings={medevac}
-                    <Block
-                        label='Checklist'
-                        readings={checklist}
-                    />
                     />
                     <Block
                         label='Geofence'
@@ -388,6 +375,10 @@ export const DetailGroups: React.FC<{event: CotEvent}> = ({event}) => {
                     <Block
                         label='Attachments'
                         readings={attachments}
+                    />
+                    <Block
+                        label='Checklist'
+                        readings={checklist}
                     />
                 </>
             )}

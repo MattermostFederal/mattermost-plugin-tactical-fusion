@@ -24,6 +24,41 @@ test('the card opens the sidebar on its own event', async ({mount}) => {
     await expect(component.getByTestId('rhs')).toContainText('ANDROID-1');
 });
 
+test.describe('the card is its own click target', () => {
+    test('clicking the card body opens the sidebar', async ({mount}) => {
+        const component = await mount(
+            <CotPanelHarness event={{callsign: 'DELTA1', uid: 'ANDROID-1'}}/>,
+        );
+
+        await component.getByTestId('cot-card').getByText('DELTA1').click();
+
+        await expect(component.getByTestId('rhs')).toContainText('ANDROID-1');
+    });
+
+    test('clicking a link inside the card does not', async ({mount}) => {
+        const component = await mount(
+            <CotPanelHarness
+                event={{lat: '34.0561', lon: '-118.2500', format: 'dd', value: '34.0561,-118.2500'}}
+            />,
+        );
+
+        // The anchor is a real one, so the navigation is stopped rather than
+        // the click, which would take the harness with it.
+        await component.evaluate(() => {
+            document.addEventListener('click', (clicked) => {
+                if ((clicked.target as Element).closest('a')) {
+                    clicked.preventDefault();
+                }
+            });
+        });
+
+        await component.getByTestId('cot-card').
+            getByRole('link', {name: '34.0561, -118.2500'}).click();
+
+        await expect(component.getByTestId('rhs')).not.toContainText('Readings for the');
+    });
+});
+
 test('the sidebar header names the event rather than the feature', async ({mount}) => {
     const component = await mount(<CotPanelHarness event={{callsign: 'DELTA1'}}/>);
 
@@ -46,7 +81,7 @@ test('an event with no callsign is named by its uid', async ({mount}) => {
  * channel reads as a live feed and puts a timer behind every post in the window.
  */
 test.describe('the countdown', () => {
-    test('runs in the panel, and says what it is counted against', async ({mount}) => {
+    test('runs in the panel while the event is still good for something', async ({mount}) => {
         const staleAt = String(Date.now() + 3_600_000);
         const component = await mount(
             <CotPanelHarness event={{stale: '231245ZAUG26', staleAt}}/>,
@@ -54,8 +89,34 @@ test.describe('the countdown', () => {
 
         await component.getByRole('button', {name: 'Open details'}).click();
 
-        await expect(component.getByTestId('rhs')).toContainText('Goes stale');
-        await expect(component.getByTestId('rhs')).toContainText('clock');
+        const rhs = component.getByTestId('rhs');
+        await expect(rhs).toContainText('Goes stale');
+        await expect(rhs).toContainText(/in \d+m \d+s/);
+        await expect(rhs).not.toContainText('clock');
+    });
+
+    test('is a standing word rather than a clock once the event is stale', async ({mount}) => {
+        const staleAt = String(Date.now() - 3_600_000);
+        const component = await mount(
+            <CotPanelHarness event={{stale: '231245ZAUG26', staleAt}}/>,
+        );
+
+        await component.getByRole('button', {name: 'Open details'}).click();
+
+        const rhs = component.getByTestId('rhs');
+        await expect(rhs).toContainText('Goes stale');
+        await expect(rhs).toContainText('Stale');
+        await expect(rhs).not.toContainText('ago');
+    });
+
+    test('is drawn above the readings rather than after them', async ({mount}) => {
+        const staleAt = String(Date.now() + 3_600_000);
+        const component = await mount(<CotPanelHarness event={{staleAt}}/>);
+
+        await component.getByRole('button', {name: 'Open details'}).click();
+
+        const headings = component.getByTestId('rhs').getByRole('heading', {level: 3});
+        await expect(headings.first()).toHaveText('Goes stale');
     });
 
     test('is absent when the event states no stale time', async ({mount}) => {
@@ -153,7 +214,7 @@ test.describe('a post carrying several events', () => {
     });
 });
 
-test('every reading the event carried is labelled with its own value', async ({mount}) => {
+test('every reading the event carried is labeled with its own value', async ({mount}) => {
     const component = await mount(
         <CotPanelHarness
             event={{
@@ -201,7 +262,7 @@ test('every reading the event carried is labelled with its own value', async ({m
     expect(pairs.Stale).toContain('valid for');
 });
 
-test('an event whose type this build does not recognise says so', async ({mount}) => {
+test('an event whose type this build does not recognize says so', async ({mount}) => {
     const component = await mount(
         <CotPanelHarness event={{typeLabel: '', cotType: 'z-z-z'}}/>,
     );
@@ -268,9 +329,31 @@ test('the panel shows the source as posted, reachable without a pointer', async 
 
     await component.getByRole('button', {name: 'Open details'}).click();
 
-    const pane = component.getByTestId('rhs').getByRole('region', {name: 'The event as it was posted'});
+    const rhs = component.getByTestId('rhs');
+    const pane = rhs.getByRole('region', {name: 'The event as it was posted'});
+    await expect(pane).toBeHidden();
+
+    await rhs.getByText('As posted').click();
+
     await expect(pane).toContainText('<event uid="X"/>');
     await expect(pane).toHaveAttribute('tabindex', '0');
+});
+
+test('the source can be copied without collapsing the disclosure', async ({mount}) => {
+    const component = await mount(<CotPanelHarness src='<event uid="X"/>'/>);
+
+    await component.getByRole('button', {name: 'Open details'}).click();
+
+    const rhs = component.getByTestId('rhs');
+    await rhs.getByText('As posted').click();
+
+    const pane = rhs.getByRole('region', {name: 'The event as it was posted'});
+    await expect(pane).toBeVisible();
+
+    await rhs.getByRole('button', {name: 'Copy the event as posted'}).click();
+
+    await expect(pane).toBeVisible();
+    await expect(rhs).toContainText('Copy the event as posted: copied');
 });
 
 test('the panel names the source file for a file post', async ({mount}) => {
@@ -312,7 +395,7 @@ test.describe('the extension groups', () => {
     });
 
     // Yaw is orientation about the vertical axis; track/@course is the event's
-    // own word for direction of travel. Both labelled Heading would disagree.
+    // own word for direction of travel. Both labeled Heading would disagree.
     test('yaw is called yaw and never heading', async ({mount}) => {
         const component = await mount(
             <CotPanelHarness detail={{attitudeYaw: '183.5°'}}/>,
@@ -378,7 +461,7 @@ test.describe('the extension groups', () => {
     });
 
     // Once the panel enumerates blocks, an event with none reads as "carried
-    // nothing" rather than "we did not recognise what it carried".
+    // nothing" rather than "we did not recognize what it carried".
     test('what this build did not read is stated rather than silent', async ({mount}) => {
         const component = await mount(
             <CotPanelHarness event={{detailUnknown: '3'}}/>,
@@ -388,7 +471,7 @@ test.describe('the extension groups', () => {
         await expect(component.getByTestId('rhs')).toContainText('3 other <detail> elements');
     });
 
-    test('a stated colour is shown as text beside its swatch', async ({mount}) => {
+    test('a stated color is shown as text beside its swatch', async ({mount}) => {
         const component = await mount(
             <CotPanelHarness detail={{colorArgb: '#ff0000'}}/>,
         );
@@ -400,7 +483,7 @@ test.describe('the extension groups', () => {
     // A props blob is not a trusted input: the post type is forgeable and props
     // under a plugin's key are not protected. This is the only author-derived
     // value in the bundle that reaches a style property.
-    test('a colour that is not a hex triple never reaches a style property', async ({mount}) => {
+    test('a color that is not a hex triple never reaches a style property', async ({mount}) => {
         const component = await mount(
             <CotPanelHarness detail={{colorArgb: 'url(https://attacker.example/px)'}}/>,
         );
@@ -453,7 +536,7 @@ test.describe('the panel draws only what the event carried', () => {
         await expect(rhs.getByRole('heading', {name: 'MEDEVAC'})).toHaveCount(0);
     });
 
-    test('one unrecognised element is singular', async ({mount}) => {
+    test('one unrecognized element is singular', async ({mount}) => {
         const component = await mount(<CotPanelHarness event={{detailUnknown: '1'}}/>);
 
         await component.getByRole('button', {name: 'Open details'}).click();
@@ -556,7 +639,7 @@ test.describe('the long tail', () => {
         await expect(rhs).toContainText('2');
     });
 
-    // Routing and protocol say how the message travelled, which is what the
+    // Routing and protocol say how the message traveled, which is what the
     // processing path already is, so they share its collapsed section.
     test('routing and protocol are filed with the processing path', async ({mount}) => {
         const component = await mount(
@@ -574,16 +657,6 @@ test.describe('the long tail', () => {
         await expect(rhs).toContainText('protocol exchange');
     });
 
-    test('an event with no routing draws no section for it', async ({mount}) => {
-        const component = await mount(<CotPanelHarness/>);
-
-        await component.getByRole('button', {name: 'Open details'}).click();
-        const rhs = component.getByTestId('rhs');
-
-        await expect(rhs.getByText('Routing')).toHaveCount(0);
-        await expect(rhs.getByRole('heading', {name: 'Geofence'})).toHaveCount(0);
-    });
-});
     // The rows are the event's own element names, so the panel is repeating
     // what was written rather than claiming to know what a column or a task is.
     test('a checklist is counted under Payload, by the names the event used', async ({mount}) => {
@@ -636,3 +709,13 @@ test.describe('the long tail', () => {
         ).toHaveCount(0);
     });
 
+    test('an event with no routing draws no section for it', async ({mount}) => {
+        const component = await mount(<CotPanelHarness/>);
+
+        await component.getByRole('button', {name: 'Open details'}).click();
+        const rhs = component.getByTestId('rhs');
+
+        await expect(rhs.getByText('Routing')).toHaveCount(0);
+        await expect(rhs.getByRole('heading', {name: 'Geofence'})).toHaveCount(0);
+    });
+});

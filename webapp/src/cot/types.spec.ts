@@ -2,7 +2,7 @@ import {expect, test} from '@playwright/test';
 
 import {_geometryForTesting as geometryForTesting} from './CotMap';
 import {SUMMARY_MAX_RUNES, TOO_LONG, oneLine} from './summary';
-import {AFFILIATION_COLORS, COT_CLASSES, COT_PROPS_KEY, accuracyMeters, affiliationWord, fromProps, isLinkable, staleAfterPosting, statedColor} from './types';
+import {AFFILIATION_COLORS, COT_CLASSES, COT_PROPS_KEY, accuracyMeters, affiliationWord, fromProps, isLinkable, statedColor} from './types';
 import type {CotEvent} from './types';
 
 function props(overrides: Record<string, unknown> = {}, event: Record<string, unknown> = {}) {
@@ -87,30 +87,6 @@ test('an unstated or nonsense accuracy draws no circle', () => {
     expect(accuracyMeters({...base, ceMeters: '45.3'})).toBe(45.3);
 });
 
-test('the freshness reading uses two server side values and never the local clock', () => {
-    const createAt = 1_700_000_000_000;
-    const event = {staleAt: String(createAt + 120_000)} as CotEvent;
-
-    expect(staleAfterPosting(event, createAt)).toBe('stale 2m after posting');
-    expect(staleAfterPosting({staleAt: String(createAt + 45_000)} as CotEvent, createAt)).
-        toBe('stale 45s after posting');
-    expect(staleAfterPosting({staleAt: String(createAt + 5_400_000)} as CotEvent, createAt)).
-        toBe('stale 1h 30m after posting');
-});
-
-test('an event already stale when it was posted says so', () => {
-    const createAt = 1_700_000_000_000;
-
-    expect(staleAfterPosting({staleAt: String(createAt - 1000)} as CotEvent, createAt)).
-        toBe('already stale when it was posted');
-});
-
-test('the freshness reading stands down when either value is missing', () => {
-    expect(staleAfterPosting({staleAt: ''} as CotEvent, 1_700_000_000_000)).toBe('');
-    expect(staleAfterPosting({staleAt: 'wat'} as CotEvent, 1_700_000_000_000)).toBe('');
-    expect(staleAfterPosting({staleAt: '1700000000000'} as CotEvent, 0)).toBe('');
-});
-
 test('reads the events array a version 2 blob carries', () => {
     const payload = fromProps({
         [COT_PROPS_KEY]: {
@@ -178,21 +154,21 @@ test('reads the relations an event declares', () => {
 });
 
 /*
- * Every affiliation this build colours can also be NAMED.
+ * Every affiliation this build colors can also be NAMED.
  *
- * The two tables exist for one reason between them: colour is never the only
- * channel. A map's accessible label is the surface where the colour is worth
- * nothing, so an affiliation with a colour and no word would be a marker a
+ * The two tables exist for one reason between them: color is never the only
+ * channel. A map's accessible label is the surface where the color is worth
+ * nothing, so an affiliation with a color and no word would be a marker a
  * screen reader cannot tell from any other on the one surface where telling
  * them apart is the whole job.
  */
-test('every affiliation with a colour has a word', () => {
+test('every affiliation with a color has a word', () => {
     const ids = Object.keys(AFFILIATION_COLORS);
     expect(ids.length).toBeGreaterThan(0);
 
     for (const affiliation of ids) {
         const word = affiliationWord({affiliation} as CotEvent);
-        expect(word, `${affiliation} has a colour but no word`).not.toBe('unstated');
+        expect(word, `${affiliation} has a color but no word`).not.toBe('unstated');
         expect(word).not.toBe('');
     }
 });
@@ -271,7 +247,7 @@ test('a hop with no system is dropped and the rest survive', () => {
 
 // React sets style values through setProperty without sanitising them, so this
 // is the last gate before an author-derived string reaches one.
-test('only a hex triple is offered as a colour', () => {
+test('only a hex triple is offered as a color', () => {
     const accepted = ['#ff0000', '#FF0000', '#0a0b0c'];
     const refused = ['url(https://attacker.example/px)', 'red', '#f00', '#ff00000', '', 'expression(1)'];
 
@@ -386,6 +362,30 @@ test('reads an ellipse, which carries axes rather than points', () => {
     const payload = fromProps(props({}, {
         geometry: {kind: 'ellipse', major: '100 m', minor: '50 m', angle: '-45°'},
     }));
+
+    const geometry = payload!.events[0].geometry!;
+    expect(geometry.kind).toBe('ellipse');
+    expect(geometry.major).toBe('100 m');
+    expect(geometry.points).toEqual([]);
+});
+
+// The server refuses a shape it will not stand behind and says so in `note`.
+// This is the same refusal on the side that draws.
+test('a shape left with fewer than two usable points is not a shape', () => {
+    const payload = fromProps(props({}, {
+        geometry: {kind: 'polyline', points: [{lat: '1.0000', lon: '2.0000'}, {lat: 'north', lon: 'x'}]},
+    }));
+
+    expect(payload!.events[0].geometry!.points).toEqual([]);
+});
+
+test('a malformed geometry reads as none rather than throwing', () => {
+    for (const value of ['nope', 42, null, [], {kind: ''}, {points: []}]) {
+        const payload = fromProps(props({}, {geometry: value}));
+        expect(payload?.events[0].geometry, JSON.stringify(value)).toBeNull();
+    }
+});
+
 test('reads a checklist, keeping the order the event wrote its kinds in', () => {
     const payload = fromProps(props({}, {
         checklist: {
@@ -428,30 +428,6 @@ test('a malformed checklist reads as none rather than throwing', () => {
 
 test('an event carrying no checklist carries none', () => {
     expect(fromProps(props({}, {}))!.events[0].checklist).toBeNull();
-});
-
-
-    const geometry = payload!.events[0].geometry!;
-    expect(geometry.kind).toBe('ellipse');
-    expect(geometry.major).toBe('100 m');
-    expect(geometry.points).toEqual([]);
-});
-
-// The server refuses a shape it will not stand behind and says so in `note`.
-// This is the same refusal on the side that draws.
-test('a shape left with fewer than two usable points is not a shape', () => {
-    const payload = fromProps(props({}, {
-        geometry: {kind: 'polyline', points: [{lat: '1.0000', lon: '2.0000'}, {lat: 'north', lon: 'x'}]},
-    }));
-
-    expect(payload!.events[0].geometry!.points).toEqual([]);
-});
-
-test('a malformed geometry reads as none rather than throwing', () => {
-    for (const value of ['nope', 42, null, [], {kind: ''}, {points: []}]) {
-        const payload = fromProps(props({}, {geometry: value}));
-        expect(payload?.events[0].geometry, JSON.stringify(value)).toBeNull();
-    }
 });
 
 test('an event that describes no shape carries none', () => {

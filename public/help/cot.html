@@ -56,15 +56,15 @@
             A Cursor on Target event is rendered as a <strong>card</strong> rather than linked:
             the callsign and what the event says it is, the position, when it was taken and when
             it goes stale, and how accurately the position is known. The position is drawn on a
-            map with its stated circular error around it, so a three metre fix and a nine
-            kilometre fix do not look alike.
+            map with its stated circular error around it, so a three meter fix and a nine
+            kilometer fix do not look alike.
         </p>
 
         <h2 id="cot-posting">Posting an event</h2>
 
         <h3 id="cot-fence">In a fenced code block</h3>
 
-        <p>Paste the event into a fence labelled <code>cot</code> or <code>xml</code>:</p>
+        <p>Paste the event into a fence labeled <code>cot</code> or <code>xml</code>:</p>
 
         <pre class="copyable"><code>&lt;event version="2.0" uid="TGT-9F2A1C7B" type="a-h-G-U-C-A" how="h-e"
        time="2026-08-09T16:30:00Z" start="2026-08-09T16:30:00Z" stale="2026-08-09T16:32:00Z"&gt;
@@ -78,8 +78,8 @@
 
         <p>
             Both labels are read the same way. Use <code>cot</code> when you mean it: a block
-            labelled <code>xml</code> that turns out not to be an event is left alone silently,
-            because plenty of XML is not Cursor on Target, while a block you labelled
+            labeled <code>xml</code> that turns out not to be an event is left alone silently,
+            because plenty of XML is not Cursor on Target, while a block you labeled
             <code>cot</code> tells you why it was not rendered.
         </p>
 
@@ -197,7 +197,7 @@
             <tbody>
                 <tr><td><code>lat</code></td><td>-90 to 90</td><td>Position, and a link to the coordinate tools.</td></tr>
                 <tr><td><code>lon</code></td><td>-180 to 180</td><td>Position.</td></tr>
-                <tr><td><code>hae</code></td><td>Any, including negative</td><td>Altitude (HAE), in metres.</td></tr>
+                <tr><td><code>hae</code></td><td>Any, including negative</td><td>Altitude (HAE), in meters.</td></tr>
                 <tr><td><code>ce</code></td><td>Non-negative</td><td>Accuracy, circular. Drawn on the map as a circle.</td></tr>
                 <tr><td><code>le</code></td><td>Non-negative</td><td>Accuracy, vertical.</td></tr>
             </tbody>
@@ -262,7 +262,7 @@
 
         <table>
             <thead>
-                <tr><th>Character</th><th>Label</th><th>Colour on the map</th></tr>
+                <tr><th>Character</th><th>Label</th><th>Color on the map</th></tr>
             </thead>
             <tbody>
                 <tr><td><code>f</code></td><td>Friendly</td><td>Blue</td></tr>
@@ -272,17 +272,17 @@
                 <tr><td><code>s</code></td><td>Suspect</td><td>Red</td></tr>
                 <tr><td><code>p</code></td><td>Pending</td><td>Amber</td></tr>
                 <tr><td><code>u</code></td><td>Unknown</td><td>Amber</td></tr>
-                <tr><td><code>j</code></td><td>Joker</td><td>Grey</td></tr>
-                <tr><td><code>k</code></td><td>Faker</td><td>Grey</td></tr>
-                <tr><td><code>o</code></td><td>Unaffiliated</td><td>Grey</td></tr>
-                <tr><td><code>x</code></td><td>Other</td><td>Grey</td></tr>
+                <tr><td><code>j</code></td><td>Joker</td><td>Gray</td></tr>
+                <tr><td><code>k</code></td><td>Faker</td><td>Gray</td></tr>
+                <tr><td><code>o</code></td><td>Unaffiliated</td><td>Gray</td></tr>
+                <tr><td><code>x</code></td><td>Other</td><td>Gray</td></tr>
             </tbody>
         </table>
 
         <div class="alert alert-warning">
-            <p class="alert-title">Colour is the only affiliation channel on the map.</p>
+            <p class="alert-title">Color is the only affiliation channel on the map.</p>
             <p>
-                The marker is a crosshair whose colour carries the affiliation, and the hues are
+                The marker is a crosshair whose color carries the affiliation, and the hues are
                 close in luminance. Shape coding, as MIL-STD-2525 does it, is the real fix and
                 this build does not do it. Read the card rather than the pin where it matters.
             </p>
@@ -558,7 +558,7 @@
                 <tr><td><code>b-m-p-w</code></td><td>Waypoint</td></tr>
                 <tr><td><code>b-m-r</code></td><td>Route</td></tr>
                 <tr><td><code>b-a-o-tbl</code></td><td>Emergency Alert</td></tr>
-                <tr><td><code>b-a-o-can</code></td><td>Emergency Cancelled</td></tr>
+                <tr><td><code>b-a-o-can</code></td><td>Emergency Canceled</td></tr>
                 <tr><td><code>b-a-g</code></td><td>Geofence Breach</td></tr>
                 <tr><td><code>b-r-f-h-c</code></td><td>Casualty Evacuation Request</td></tr>
                 <tr><td><code>b-l-p-c</code></td><td>Sensor Point of Interest</td></tr>
@@ -611,7 +611,7 @@
             <code>&lt;detail&gt;</code> is an open container. There is no schema for it: ATAK, TAK
             Server, FreeTAKServer and third party plugins each write their own conventions into
             it. This build reads the ones it knows and leaves the rest alone, so an element it
-            does not recognise costs you nothing.
+            does not recognize costs you nothing.
         </p>
 
         <table>
@@ -630,7 +630,7 @@
                 <tr><td><code>status</code></td><td><code>detail</code></td><td><code>battery</code>, <code>readiness</code></td><td>Device group</td></tr>
                 <tr><td><code>archive</code></td><td><code>detail</code></td><td>presence only</td><td>"The event asks to be kept"</td></tr>
                 <tr><td><code>usericon</code></td><td><code>detail</code></td><td><code>iconsetpath</code></td><td>Icon, as text</td></tr>
-                <tr><td><code>color</code></td><td><code>detail</code></td><td><code>argb</code></td><td>Stated display colour, a swatch and a hex value</td></tr>
+                <tr><td><code>color</code></td><td><code>detail</code></td><td><code>argb</code></td><td>Stated display color, a swatch and a hex value</td></tr>
                 <tr><td><code>Attitude</code></td><td><code>detail</code></td><td><code>roll</code>, <code>pitch</code>, <code>yaw</code></td><td>Orientation group</td></tr>
                 <tr><td><code>sensor</code></td><td><code>detail</code></td><td><code>azimuth</code>, <code>elevation</code>, <code>range</code>, <code>fov</code>, <code>vfov</code>, <code>roll</code>, <code>model</code></td><td>Payload, Sensor</td></tr>
                 <tr><td><code>__video</code></td><td><code>detail</code></td><td><code>uid</code>, <code>url</code></td><td>Payload, Video</td></tr>
@@ -687,7 +687,7 @@
             </thead>
             <tbody>
                 <tr><td>Drawn outline</td><td><code>shape &gt; polyline &gt; vertex</code>, each with <code>lat</code> and <code>lon</code></td><td>An ordered list of points. <code>closed</code> on the polyline makes it a ring.</td></tr>
-                <tr><td>Circle or ellipse</td><td><code>shape &gt; ellipse</code> with <code>major</code>, <code>minor</code>, <code>angle</code></td><td>Semi-axes in metres, and a bearing clockwise from north.</td></tr>
+                <tr><td>Circle or ellipse</td><td><code>shape &gt; ellipse</code> with <code>major</code>, <code>minor</code>, <code>angle</code></td><td>Semi-axes in meters, and a bearing clockwise from north.</td></tr>
                 <tr><td>Route</td><td><code>link</code> elements carrying <code>point="lat,lon"</code></td><td>An ordered list of points.</td></tr>
             </tbody>
         </table>
@@ -703,7 +703,7 @@
             <p>
                 This one is worth knowing about because it is the only geometry error that
                 stays quiet. Get a shape element wrong and nothing is drawn: the element is
-                counted as unrecognised and the panel says so. Get the semi-axis reading
+                counted as unrecognized and the panel says so. Get the semi-axis reading
                 wrong and the circle still draws, at half or twice the radius intended, with
                 nothing on the map to say it is the wrong size. Treat a drawn ring as an
                 indication rather than a measurement until you have checked one against its
@@ -722,7 +722,7 @@
 
         <h3 id="cot-example-area">A drawn area</h3>
 
-        <p>Four vertices, closed, with a stated display colour.</p>
+        <p>Four vertices, closed, with a stated display color.</p>
 
         <pre class="copyable"><code>&lt;event version="2.0" uid="AREA-1" type="u-d-f" how="h-g"
        time="2026-08-09T16:41:00Z" start="2026-08-09T16:41:00Z" stale="2026-08-09T17:41:00Z"&gt;
@@ -886,7 +886,7 @@
         <h3 id="cot-example-geofence">A geofence</h3>
 
         <p>
-            A geofence is behaviour attached to a shape rather than a shape of its own.
+            A geofence is behavior attached to a shape rather than a shape of its own.
             The circle is what is drawn; the fence says what crossing it means.
         </p>
 
@@ -944,8 +944,8 @@
 
         <p>
             An ordinary XML comment is fine, including inside remarks. When a source is refused
-            and you labelled the fence <code>cot</code>, the plugin tells you why, privately. A
-            fence labelled <code>xml</code> is left alone silently.
+            and you labeled the fence <code>cot</code>, the plugin tells you why, privately. A
+            fence labeled <code>xml</code> is left alone silently.
         </p>
 
         <h2 id="cot-examples">Worked examples</h2>
@@ -1120,7 +1120,7 @@
 
         <h3 id="cot-example-appearance">Appearance</h3>
 
-        <p>An icon path and a display colour. The colour is shown as a swatch and a hex value; it does not colour the map marker, which carries affiliation instead.</p>
+        <p>An icon path and a display color. The color is shown as a swatch and a hex value; it does not color the map marker, which carries affiliation instead.</p>
 
         <pre class="copyable"><code>&lt;event version="2.0" uid="MARK-2B" type="b-m-p-s-m" how="h-e"
        time="2026-08-09T16:39:00Z" start="2026-08-09T16:39:00Z" stale="2026-08-09T16:59:00Z"&gt;
@@ -1162,7 +1162,7 @@
 
         <h3 id="cot-example-unknown">Elements this build does not know</h3>
 
-        <p>Two unrecognised elements. Nothing is lost: the sidebar says how many there were and the full event is under "As posted".</p>
+        <p>Two unrecognized elements. Nothing is lost: the sidebar says how many there were and the full event is under "As posted".</p>
 
         <pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-13" type="a-f-G-U-C" how="m-g"
        time="2026-08-09T16:40:30Z" start="2026-08-09T16:40:30Z" stale="2026-08-09T16:42:30Z"&gt;
@@ -1177,7 +1177,7 @@
         <h2 id="cot-card">What the card shows</h2>
 
         <p>
-            A coloured dot for the affiliation, the callsign, what the event says it is, and the
+            A colored dot for the affiliation, the callsign, what the event says it is, and the
             raw type in parentheses. Then, each row omitted when the event does not state it:
         </p>
 
@@ -1193,7 +1193,6 @@
                 <tr><td>Time</td><td>Linked to the date-time tools.</td></tr>
                 <tr><td>Valid from</td><td>Only when it differs from Time.</td></tr>
                 <tr><td>Stale</td><td>With how long the event was valid for.</td></tr>
-                <tr><td>Freshness</td><td>Whether it was already stale when it was posted.</td></tr>
                 <tr><td>Team, Sent by, Relates to, Source</td><td></td></tr>
                 <tr><td>UID</td><td><strong>Always shown.</strong></td></tr>
                 <tr><td>Remarks</td><td>Suppressed for a chat event, which shows them in its own line.</td></tr>
@@ -1211,27 +1210,31 @@
             <p>
                 Every time on it is absolute Zulu, computed on the server. The one live countdown
                 in this feature is the <strong>Goes stale</strong> row in the sidebar, which is
-                counted against your own device's clock and says so.
+                counted against your own device's clock.
             </p>
         </div>
 
         <h2 id="cot-panel">What the sidebar shows</h2>
 
-        <p>Open it from the card's own button. It carries everything the card does, and then:</p>
+        <p>
+            Click anywhere on the card to open it, or use the card's <strong>Open details</strong>
+            button. Clicking a link on the card, or the map, does what that does instead. It
+            carries everything the card does, and then:
+        </p>
 
         <table>
             <thead>
                 <tr><th>Group</th><th>Contains</th></tr>
             </thead>
             <tbody>
-                <tr><td>Goes stale</td><td>The live countdown, and a note that it is counted against this device's clock.</td></tr>
-                <tr><td>Device</td><td>Platform, device, operating system, TAK version, device id, battery, readiness, network endpoint, icon, archive, radio signal and GPS, and the stated display colour.</td></tr>
+                <tr><td>Goes stale</td><td>Drawn above the readings. A live countdown while the event is still good for something, and the standing word <strong>Stale</strong> once it is not.</td></tr>
+                <tr><td>Device</td><td>Platform, device, operating system, TAK version, device id, battery, readiness, network endpoint, icon, archive, radio signal and GPS, and the stated display color.</td></tr>
                 <tr><td>Position quality</td><td>Position source, altitude source, PDOP, HDOP, VDOP.</td></tr>
                 <tr><td>Orientation</td><td>Yaw, pitch, roll, slope.</td></tr>
                 <tr><td>Payload</td><td>Sensor, Video, GeoChat, MEDEVAC, Geofence and Attachments, each as its own block. GeoChat carries any receipt rows.</td></tr>
                 <tr><td>Shape</td><td>Kind, route attributes, point count, axes and orientation, and the reason a shape was not drawn.</td></tr>
                 <tr><td>Processing path</td><td>A collapsed table of system and time, plus routing: the servers the event was addressed to and any TAK protocol exchange. Headed <em>Routing</em> when there are no hops.</td></tr>
-                <tr><td>As posted</td><td>The event exactly as it was posted, scrollable.</td></tr>
+                <tr><td>As posted</td><td>The event exactly as it was posted, scrollable. Collapsed until you open it, with a button that copies it.</td></tr>
             </tbody>
         </table>
 
@@ -1239,11 +1242,11 @@
 
         <p>
             The marker is a crosshair rather than a dot, because a crosshair says "this point"
-            where a dot says "somewhere around here". Its colour is the affiliation.
+            where a dot says "somewhere around here". Its color is the affiliation.
         </p>
 
         <p>
-            A stated <code>ce</code> is drawn as a circle around the position, sized in metres and
+            A stated <code>ce</code> is drawn as a circle around the position, sized in meters and
             redrawn at every zoom so it keeps its size on the ground rather than on the screen.
             Its label is the same string the card shows, never re-rounded. An event with no
             <code>ce</code> gets a pin and no circle: no default radius is invented.
@@ -1270,7 +1273,7 @@
                 <tr><td>Name the country</td><td>An event states no country. A derived one, printed beside <code>ce</code> and <code>hae</code>, would read as something the event reported.</td></tr>
                 <tr><td>Pin <code>0,0</code></td><td>That is the value for a position that was never set. The numbers are shown; the pin is not.</td></tr>
                 <tr><td>Re-round a reading</td><td>A stated <code>0.4</code> stays <code>0.4 m</code> everywhere, including for a screen reader.</td></tr>
-                <tr><td>Colour the marker from <code>color</code></td><td>The marker carries affiliation. A stated display colour is shown as its own swatch.</td></tr>
+                <tr><td>Color the marker from <code>color</code></td><td>The marker carries affiliation. A stated display color is shown as its own swatch.</td></tr>
                 <tr><td>Link a video address</td><td>Author text is never turned into a link by this card.</td></tr>
                 <tr><td>Reshape an atom from its detail</td><td>A <code>__chat</code> or <code>_medevac_</code> element inside an <code>a-</code> contact report does not turn it into a chat or a MEDEVAC.</td></tr>
             </tbody>

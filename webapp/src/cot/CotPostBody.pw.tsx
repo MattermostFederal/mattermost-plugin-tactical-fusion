@@ -208,7 +208,7 @@ test('the raw type is shown in parentheses beside the label', async ({mount}) =>
     await expect(card).toContainText('(a-f-G-U-C)');
 });
 
-test('the rows are a labelled description list', async ({mount}) => {
+test('the rows are a labeled description list', async ({mount}) => {
     const component = await mount(<CotPostBodyHarness/>);
 
     await expect(

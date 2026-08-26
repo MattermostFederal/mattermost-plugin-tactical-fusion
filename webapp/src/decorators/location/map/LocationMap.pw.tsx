@@ -2,6 +2,7 @@ import type {Locator} from '@playwright/test';
 import React from 'react';
 
 import {serveMapAssets} from './asset_fixtures';
+import type {MapGeometry} from './LocationMap';
 import LocationMapHarness from './LocationMapHarness';
 import type {ViewName} from './LocationMapHarness';
 import {MARKER_SIZE} from './maplibre';
@@ -144,7 +145,7 @@ test.describe('with a basemap it can verify', () => {
 
     // A token with no resolution to draw gets its dot and no rectangle. There
     // is no minimum cell size and no threshold below which one is dropped:
-    // these surfaces zoom, so a metre-wide cell is invisible until the reader
+    // these surfaces zoom, so a meter-wide cell is invisible until the reader
     // zooms in, which is more honest than a number guessing on their behalf.
     test('a coordinate with no cell draws the pin alone', async ({mount, page}) => {
         await serveMapAssets(page);
@@ -177,7 +178,7 @@ test.describe('with a basemap it can verify', () => {
 
     // The label is the one value on this map that comes from data rather than
     // from a source literal, so its escaping is what makes "nothing from a
-    // request reaches it" a defence rather than an accident. React escapes a
+    // request reaches it" a defense rather than an accident. React escapes a
     // text node, and this asserts that it does: the guard CLAUDE.md described
     // was pinned by nothing in either language once the label moved out of
     // aria-label and into a visually-hidden span.
@@ -231,7 +232,7 @@ test.describe('with a basemap it can verify', () => {
     });
 
     // Once a reader can zoom and pan there is otherwise no way back to the pin,
-    // which is why the control resets the zoom as well as the centre.
+    // which is why the control resets the zoom as well as the center.
     test('Reset view brings the camera back to the coordinate', async ({mount, page}) => {
         await serveMapAssets(page);
 
@@ -422,7 +423,7 @@ test.describe('land and water', () => {
                 return component.getByTestId('tiles').textContent();
             }, {message: `tiles loaded at ${where}`}).toBe('loaded');
 
-            const drawn = Number(await component.getByTestId('land-at-centre').textContent());
+            const drawn = Number(await component.getByTestId('land-at-center').textContent());
             if (onLand) {
                 // Greater-than rather than exactly one: a coastline split
                 // across tiles or tiers can legitimately return several
@@ -799,7 +800,7 @@ test.describe('preview mode', () => {
  * The OpenStreetMap credit.
  *
  * Unlike the Natural Earth credit this plugin deliberately dropped, this one is
- * a licence condition: OpenStreetMap is ODbL and the OpenMapTiles schema is
+ * a license condition: OpenStreetMap is ODbL and the OpenMapTiles schema is
  * CC-BY. It is a line beside the map rather than a MapLibre control because
  * every corner is already taken, and because a compact AttributionControl is a
  * button whose text only appears on click, which at a 300px panel width is the
@@ -926,11 +927,11 @@ test.describe('framing a block of events', () => {
     ];
 
     /*
-     * The MARKER, not the point it is centred on.
+     * The MARKER, not the point it is centered on.
      *
-     * A crosshair is MARKER_SIZE across and drawn centred, so a marker whose
-     * centre clears the scale bar by 4px still has its bottom third under it.
-     * Checking the centre alone passed against the uniform padding this test
+     * A crosshair is MARKER_SIZE across and drawn centered, so a marker whose
+     * center clears the scale bar by 4px still has its bottom third under it.
+     * Checking the center alone passed against the uniform padding this test
      * exists to catch, which is the whole reason it is written this way.
      */
     function covers(box: typeof CHROME[number], x: number, y: number, w: number, h: number): boolean {
@@ -1022,9 +1023,9 @@ test.describe('framing a block of events', () => {
  * A block used to be announced as "World map with the position marked. The
  * marker is 3 events." Three things wrong at once: singular grammar for N
  * markers, a sentence that is not a description of a marker, and no affiliation
- * anywhere. That last one is the defect that matters, because colour is the
+ * anywhere. That last one is the defect that matters, because color is the
  * whole of what tells one marker from another on this map, so a reader who gets
- * no colour got a count and nothing else.
+ * no color got a count and nothing else.
  */
 test.describe('the accessible label for a block', () => {
     const TWO = [
@@ -1069,5 +1070,63 @@ test.describe('the accessible label for a block', () => {
         expect(label).toContain('the position marked');
         expect(label).toContain('The marker is Hostile Armor Unit');
         expect(label).not.toContain('positions marked');
+    });
+});
+
+test.describe('the color a shape is drawn in', () => {
+    const SQUARE: MapGeometry = {
+        kind: 'outline',
+        points: [
+            {lat: 34.05, lon: -118.25},
+            {lat: 34.06, lon: -118.25},
+            {lat: 34.06, lon: -118.24},
+            {lat: 34.05, lon: -118.24},
+        ],
+        closed: true,
+    };
+
+    test('is the stated one, at the fill alpha the theme uses', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness
+                geometry={SQUARE}
+                geometryColor='#ff0000'
+            />,
+        );
+        await expectDrawn(component);
+        await component.getByRole('button', {name: 'read the map'}).click();
+
+        await expect(component.getByTestId('shape-line')).toHaveText('#ff0000');
+        await expect(component.getByTestId('shape-fill')).toHaveText('rgba(255, 0, 0, 0.16)');
+    });
+
+    test('falls back to the theme when the source states nothing', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness geometry={SQUARE}/>);
+        await expectDrawn(component);
+        await component.getByRole('button', {name: 'read the map'}).click();
+
+        await expect(component.getByTestId('shape-line')).not.toHaveText('#ff0000');
+        await expect(component.getByTestId('shape-line')).not.toHaveText('');
+    });
+
+    test('falls back to the theme for a color that is not a hex triple', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness
+                geometry={SQUARE}
+                geometryColor='url(https://attacker.example/px)'
+            />,
+        );
+        await expectDrawn(component);
+        await component.getByRole('button', {name: 'read the map'}).click();
+
+        await expect(component.getByTestId('shape-line')).
+            not.toContainText('attacker.example');
+        await expect(component.getByTestId('shape-fill')).
+            not.toContainText('attacker.example');
     });
 });

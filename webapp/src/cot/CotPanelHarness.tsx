@@ -10,6 +10,19 @@ import {clearSelection} from '../decorators/selection';
 
 import {registerCotPanel} from './index';
 
+// Stubbed at module scope for the reason CopyButtonHarness records.
+export let copied = '';
+
+Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    get: () => ({
+        writeText: (value: string) => {
+            copied = value;
+            return Promise.resolve();
+        },
+    }),
+});
+
 interface Props {
     event?: Record<string, unknown>;
 
@@ -20,6 +33,7 @@ interface Props {
     detail?: Record<string, string>;
     source?: string;
     fileName?: string;
+    checklist?: CotChecklist | null;
     src?: string;
 }
 
@@ -33,9 +47,9 @@ interface Props {
  */
 const CotPanelHarness: React.FC<Props> = ({
     event = {},
-    checklist?: CotChecklist | null;
     events,
     detail = {},
+    checklist = null,
     source = 'fence',
     fileName = '',
     src = '<event uid="ANDROID-1"/>',
@@ -49,7 +63,6 @@ const CotPanelHarness: React.FC<Props> = ({
 
     const payload: CotPayload = {
         source,
-    checklist = null,
         lead: '',
         trail: '',
         src,
@@ -63,6 +76,7 @@ const CotPanelHarness: React.FC<Props> = ({
             detail: {...emptyDetail(), ...detail},
             flow: [],
             geometry: null,
+            checklist,
             callsign: '',
             cotType: 'a-f-G-U-C',
             typeLabel: 'Friend ground',
@@ -76,7 +90,6 @@ const CotPanelHarness: React.FC<Props> = ({
             stale: '',
             staleQuery: '',
             staleAt: '',
-            checklist,
             timeAt: '',
             format: '',
             value: '',
@@ -102,10 +115,7 @@ const CotPanelHarness: React.FC<Props> = ({
         <div data-testid='harness'>
             <div data-testid='rhs-title'><RhsTitle/></div>
             <div data-testid='rhs'><RhsView/></div>
-            <CotCard
-                payload={payload}
-                createAt={0}
-            />
+            <CotCard payload={payload}/>
         </div>
     );
 };

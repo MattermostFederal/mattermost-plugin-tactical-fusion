@@ -263,7 +263,7 @@ export function fromProps(props: unknown): CotPayload | null {
  * The events, from either shape the server has written.
  *
  * Null rather than an empty array for a blob carrying none, since a stamped
- * post with nothing in it is one the card cannot honour and should hand back to
+ * post with nothing in it is one the card cannot honor and should hand back to
  * the post's own text.
  */
 function readEvents(blob: Record<string, unknown>): CotEvent[] | null {
@@ -636,7 +636,7 @@ const MAX_CHECKLIST_KINDS = 8;
 const MAX_VERTICES = 512;
 
 /**
- * The colour the EVENT stated, and never this plugin's own.
+ * The color the EVENT stated, and never this plugin's own.
  *
  * Re-validated here even though Go already validated it, because a props blob
  * is not a trusted input either: the post type is forgeable and props under a
@@ -651,12 +651,12 @@ export function statedColor(event: CotEvent): string | undefined {
 }
 
 /**
- * What colour an affiliation is drawn in, or undefined for one this build does
- * not colour.
+ * What color an affiliation is drawn in, or undefined for one this build does
+ * not color.
  *
  * Read by the dot beside the callsign AND by the map marker, so the two cannot
- * disagree about what a track is. Colour is never the only channel: the type
- * label always begins with the affiliation word wherever this returns a colour,
+ * disagree about what a track is. Color is never the only channel: the type
+ * label always begins with the affiliation word wherever this returns a color,
  * and the map states it in its accessible label.
  */
 export const AFFILIATION_COLORS: Record<string, string> = {
@@ -670,13 +670,13 @@ export const AFFILIATION_COLORS: Record<string, string> = {
 };
 
 /**
- * What to CALL an affiliation, for the surfaces that cannot use its colour.
+ * What to CALL an affiliation, for the surfaces that cannot use its color.
  *
  * Every affiliation the SERVER can decode, which is a wider set than
  * AFFILIATION_COLORS: this table names all eleven, and only some of them earn a
- * colour. `TestWebappAffiliationWordsMatch` holds it to the Go table.
+ * color. `TestWebappAffiliationWordsMatch` holds it to the Go table.
  *
- * The wider set is the point. The four the colours leave out (joker, faker,
+ * The wider set is the point. The four the colors leave out (joker, faker,
  * none, other) were falling through to `unstated`, so an event whose
  * affiliation this build was holding in a string was described as though
  * nothing were known about it, on the one surface where the word is the whole
@@ -730,27 +730,6 @@ export function accuracyMeters(event: CotEvent): number | undefined {
  */
 export function validFor(event: CotEvent): string {
     return spanBetween(event.timeAt, event.staleAt);
-}
-
-/**
- * How long after the post was written the event went stale.
- *
- * Both halves are server-side values, so the answer is the same on every
- * machine. Nothing here reads the reader's clock: a workstation twenty minutes
- * out would otherwise report a live track as expired.
- */
-export function staleAfterPosting(event: CotEvent, createAt: number): string {
-    const staleAt = Number(event.staleAt);
-    if (!Number.isFinite(staleAt) || staleAt <= 0 || !Number.isFinite(createAt) || createAt <= 0) {
-        return '';
-    }
-
-    const seconds = Math.round((staleAt - createAt) / 1000);
-    if (seconds <= 0) {
-        return 'already stale when it was posted';
-    }
-
-    return `stale ${compactDuration(seconds)} after posting`;
 }
 
 function spanBetween(fromMillis: string, toMillis: string): string {

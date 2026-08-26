@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 
 import CotMap from './CotMap';
 import DetailGroups from './DetailGroups';
@@ -8,6 +8,7 @@ import {SOURCE_FILE, isLinkable, validFor} from './types';
 import ErrorBoundary from '../components/ErrorBoundary';
 import Countdown from '../decorators/dtg/Countdown';
 import HoverLink from '../decorators/HoverLink';
+import CopyButton from '../decorators/location/CopyButton';
 import {pluginBaseUrl} from '../plugin_url';
 
 export const PANEL_TITLE = 'Cursor on Target';
@@ -32,7 +33,15 @@ const styles: Record<string, React.CSSProperties> = {
         overflow: 'auto',
         whiteSpace: 'pre',
     },
-    countdownNote: {fontSize: '12px', opacity: 0.85, margin: '4px 0 0'},
+    stale: {
+        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+        fontSize: '24px',
+        fontWeight: 600,
+        color: 'var(--center-channel-color)',
+        margin: '0 0 6px',
+    },
+    summary: {cursor: 'pointer', margin: '16px 0 4px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.04em', opacity: 0.85, fontWeight: 600},
+    summaryRow: {alignItems: 'center', display: 'inline-flex', gap: '8px', verticalAlign: 'middle'},
     later: {
         borderTop: '1px solid rgba(var(--center-channel-color-rgb), 0.16)',
         marginTop: '20px',
@@ -72,32 +81,35 @@ function Position({event}: {event: CotEvent}) {
     );
 }
 
-/**
- * The countdown, which lives here and nowhere else.
- *
- * A ticking clock in a channel reads as a live feed and puts a timer behind
- * every post in the window, which is why the card carries a fixed reading
- * instead. A reader who opened this panel asked for one event, so the argument
- * `dtg/Countdown` was built under holds again: there is one of them, and the
- * reader chose it.
- *
- * The caveat is stated rather than hidden. This is the only reading in the
- * feature that depends on the workstation's clock, and clock drift on field kit
- * is not rare.
- */
 function StaleCountdown({event}: {event: CotEvent}) {
     const staleAt = Number(event.staleAt);
-    if (!Number.isFinite(staleAt) || staleAt <= 0) {
+    const usable = Number.isFinite(staleAt) && staleAt > 0;
+    const [passed, setPassed] = useState(() => usable && staleAt <= Date.now());
+
+    useEffect(() => {
+        if (!usable) {
+            return undefined;
+        }
+
+        const remaining = staleAt - Date.now();
+        if (remaining <= 0) {
+            setPassed(true);
+            return undefined;
+        }
+
+        setPassed(false);
+        const timer = setTimeout(() => setPassed(true), remaining);
+        return () => clearTimeout(timer);
+    }, [staleAt, usable]);
+
+    if (!usable) {
         return null;
     }
 
     return (
         <div>
             <h3 style={styles.groupHeading}>{'Goes stale'}</h3>
-            <Countdown target={new Date(staleAt)}/>
-            <p style={styles.countdownNote}>
-                {'Counted against this device’s clock, unlike every other reading here.'}
-            </p>
+            {passed ? <p style={styles.stale}>{'Stale'}</p> : <Countdown target={new Date(staleAt)}/>}
         </div>
     );
 }
@@ -121,6 +133,8 @@ const EventSection: React.FC<{event: CotEvent; payload: CotPayload}> = ({event, 
             )}
 
             {event.positionNote !== '' && <p style={styles.subhead}>{event.positionNote}</p>}
+
+            <StaleCountdown event={event}/>
 
             <h3 style={styles.groupHeading}>{'Event'}</h3>
             <dl
@@ -169,8 +183,6 @@ const EventSection: React.FC<{event: CotEvent; payload: CotPayload}> = ({event, 
                 <Row label='UID'>{event.uid}</Row>
             </dl>
 
-            <StaleCountdown event={event}/>
-
             {event.remarks !== '' && (
                 <div>
                     <h3 style={styles.groupHeading}>{'Remarks'}</h3>
@@ -188,15 +200,25 @@ const EventSection: React.FC<{event: CotEvent; payload: CotPayload}> = ({event, 
             )}
 
             {payload.src !== '' && (
-                <div>
-                    <h3 style={styles.groupHeading}>{'As posted'}</h3>
+                <details>
+                    <summary style={styles.summary}>
+                        <span style={styles.summaryRow}>
+                            {'As posted'}
+                            <span onClick={(clicked) => clicked.preventDefault()}>
+                                <CopyButton
+                                    label='Copy the event as posted'
+                                    value={payload.src}
+                                />
+                            </span>
+                        </span>
+                    </summary>
                     <pre
                         style={styles.source}
                         tabIndex={0}
                         role='region'
                         aria-label='The event as it was posted'
                     >{payload.src}</pre>
-                </div>
+                </details>
             )}
         </div>
     );
