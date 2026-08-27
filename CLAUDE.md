@@ -151,7 +151,9 @@ Adding one is four edits that go together: the constant, the `AllCodes` entry,
 the call site, and a row in `public/help/error-codes.html`.
 
 **Anchor ids in `public/help/` are a contract**, and those pages must stay
-static, light-only and self-contained so they render air-gapped.
+light-only and self-contained so they render air-gapped. The only script they
+may load is their own `copy.js`, which enhances and never enables: every page
+must still work with scripting off.
 
 ### Cross-language sync points
 

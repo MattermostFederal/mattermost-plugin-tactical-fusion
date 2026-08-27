@@ -219,18 +219,32 @@ func TestHelpNavigationIsComplete(t *testing.T) {
 // These pages have to render on an air-gapped host with no route out. Anything
 // fetched from elsewhere would either fail to load or leak the fact that
 // somebody opened the documentation.
+//
+// The one script in the bundle is copy.js, which is loaded by src rather than
+// written inline. Inline stays banned because a strict CSP on the host serving
+// the bundle would need a nonce or a hash to run it, and there is nowhere to put
+// one on a static file.
 func TestHelpPagesAreSelfContained(t *testing.T) {
 	banned := []struct {
 		pattern *regexp.Regexp
 		why     string
 	}{
-		{regexp.MustCompile(`(?i)<script`), "no JavaScript: these pages are static by requirement"},
 		{regexp.MustCompile(`(?i)\son\w+\s*=\s*"`), "no inline event handlers"},
 		{regexp.MustCompile(`(?i)(src|href)="https?://`), "no remote assets or absolute links"},
 		{regexp.MustCompile(`(?i)@import`), "no imported stylesheets"},
 	}
 
-	for _, name := range append(helpPages, "styles.css") {
+	// RE2 has no negative lookahead, so the one allowed script is checked by
+	// matching every script element and comparing it, rather than by a pattern
+	// that tries to describe everything it is not.
+	//
+	// Counting opening tags as well is what closes the gap this had at first:
+	// an UNTERMINATED `<script src="...">` matches no element, so element
+	// comparison alone passed it while a browser still fetched and ran it.
+	scriptElement := regexp.MustCompile(`(?is)<script.*?</script>`)
+	scriptOpen := regexp.MustCompile(`(?i)<script`)
+
+	for _, name := range append(helpPages, "styles.css", "copy.js") {
 		t.Run(name, func(t *testing.T) {
 			body := readHelpFile(t, name)
 			for _, b := range banned {
@@ -238,7 +252,138 @@ func TestHelpPagesAreSelfContained(t *testing.T) {
 					t.Errorf("%s contains %q: %s", name, m, b.why)
 				}
 			}
+
+			elements := scriptElement.FindAllString(body, -1)
+			for _, found := range elements {
+				if found != allowedScript {
+					t.Errorf("%s carries %q; the only script this bundle may load is %q",
+						name, found, allowedScript)
+				}
+			}
+
+			if opens := len(scriptOpen.FindAllString(body, -1)); opens != len(elements) {
+				t.Errorf("%s has %d script openings but %d complete script elements; "+
+					"an unterminated tag still runs in a browser", name, opens, len(elements))
+			}
+
+			// At most one, so a page cannot load copy.js twice. Combined with
+			// TestEveryHelpPageLoadsTheCopyScript, which requires at least one,
+			// that pins every page at exactly one.
+			if len(elements) > 1 {
+				t.Errorf("%s carries %d script elements; copy.js runs once per page",
+					name, len(elements))
+			}
 		})
+	}
+}
+
+// The one script tag the bundle may carry, verbatim.
+//
+// By src rather than inline, because a strict CSP on the host serving these
+// files would need a nonce or a hash to run an inline body and there is nowhere
+// to put one on a static file. Deferred, so it runs after the examples exist.
+const allowedScript = `<script src="copy.js" defer></script>`
+
+// The script no-ops on a page with no examples, so a page that forgets it costs
+// nothing today and costs a silently button-less example the first time one is
+// added. Cheaper to require it everywhere than to remember the rule.
+func TestEveryHelpPageLoadsTheCopyScript(t *testing.T) {
+	for _, name := range helpPages {
+		t.Run(name, func(t *testing.T) {
+			if !strings.Contains(readHelpFile(t, name), allowedScript) {
+				t.Errorf("%s does not load copy.js", name)
+			}
+		})
+	}
+}
+
+// The enhancement may never become the mechanism.
+//
+// copy.js returns before it touches the DOM when navigator.clipboard is absent,
+// which is every plain-HTTP install, and those are the norm for this audience
+// rather than an edge case. What is left has to be the affordance that shipped
+// before it: user-select on the block and the drawn icon. A build that dropped
+// either would leave exactly those readers with no way to take an example at
+// all, and nothing else here would notice.
+func TestTheCopyScriptOnlyEnhances(t *testing.T) {
+	script := readHelpFile(t, "copy.js")
+
+	if !strings.Contains(script, "navigator.clipboard") {
+		t.Error("copy.js does not test for navigator.clipboard before using it")
+	}
+	if !strings.Contains(script, "typeof clipboard.writeText !== 'function'") {
+		t.Error("copy.js does not check writeText before calling it")
+	}
+
+	styles := readHelpFile(t, "styles.css")
+	for _, required := range []string{"user-select: all", ".copyable::before", ".copyable::after"} {
+		if !strings.Contains(styles, required) {
+			t.Errorf("styles.css no longer carries %q, which is the no-script fallback", required)
+		}
+	}
+}
+
+// Both shapes of copyable are wired, and only those two.
+//
+// An inline run and a block are the same promise to a reader: the same drawn
+// icon on both. Wiring one and not the other was the state this replaced, and
+// nothing about it looked broken on either page on its own.
+//
+// The block selector must stay `pre.copyable` and the inline one
+// `code.copyable`. Every block wraps a bare <code>, so a selector that matched
+// any descendant code would bind the block's own child a second time and copy
+// it twice.
+func TestTheCopyScriptWiresBothCopyables(t *testing.T) {
+	script := readHelpFile(t, "copy.js")
+
+	for _, selector := range []string{`'pre.copyable'`, `'code.copyable'`} {
+		if !strings.Contains(script, selector) {
+			t.Errorf("copy.js never selects %s", selector)
+		}
+	}
+
+	// Neither handler may swallow the default, or the selection that is the
+	// whole fallback stops happening on the pages that do have the script.
+	for _, banned := range []string{"preventDefault", "stopPropagation"} {
+		if strings.Contains(script, banned) {
+			t.Errorf("copy.js calls %s, which would suppress the user-select fallback", banned)
+		}
+	}
+
+	// The block markup the wiring assumes, swept over every page rather than
+	// the one that happens to carry the examples today. A block that stopped
+	// wrapping a <code> would copy the button's label along with the event.
+	//
+	// Attribute-tolerant: the blocks carry tabindex as well as class, so
+	// matching a fixed opening tag pinned the attribute order too.
+	opening := regexp.MustCompile(`(?i)<pre[^>]*class="copyable"[^>]*>`)
+	wrapping := regexp.MustCompile(`(?i)<pre[^>]*class="copyable"[^>]*><code[^>]*>`)
+
+	total := 0
+	for _, name := range helpPages {
+		body := readHelpFile(t, name)
+		blocks := len(opening.FindAllString(body, -1))
+		wrapped := len(wrapping.FindAllString(body, -1))
+		if blocks != wrapped {
+			t.Errorf("%s: %d of %d example blocks do not wrap a <code>", name, blocks-wrapped, blocks)
+		}
+		total += blocks
+	}
+
+	if total == 0 {
+		t.Error("no example blocks found on any help page; point this test at wherever they moved")
+	}
+
+	// A scrolling box has to be reachable by keyboard, or the part of a long
+	// example that is off screen cannot be read without a pointer.
+	loose := regexp.MustCompile(`(?i)<pre(?:\s[^>]*)?>`)
+	for _, name := range helpPages {
+		body := readHelpFile(t, name)
+		for _, tag := range loose.FindAllString(body, -1) {
+			if !strings.Contains(tag, `tabindex="0"`) {
+				t.Errorf("%s carries %q; pre is overflow-x: auto, so it needs tabindex=\"0\"", name, tag)
+			}
+		}
 	}
 }
 

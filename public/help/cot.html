@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cursor on Target - Tactical Fusion</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="copy.js" defer></script>
 </head>
 <body>
 <div class="layout">
@@ -66,7 +67,7 @@
 
         <p>Paste the event into a fence labeled <code>cot</code> or <code>xml</code>:</p>
 
-        <pre class="copyable"><code>&lt;event version="2.0" uid="TGT-9F2A1C7B" type="a-h-G-U-C-A" how="h-e"
+        <pre class="copyable" tabindex="0"><code>&lt;event version="2.0" uid="TGT-9F2A1C7B" type="a-h-G-U-C-A" how="h-e"
        time="2026-08-09T16:30:00Z" start="2026-08-09T16:30:00Z" stale="2026-08-09T16:32:00Z"&gt;
   &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="45.0" le="60.0"/&gt;
   &lt;detail&gt;
@@ -89,7 +90,7 @@
             An event written on <strong>one line</strong> needs no fence at all:
         </p>
 
-        <pre class="copyable"><code>&lt;event version="2.0" uid="TGT-9F2A1C7B" type="a-h-G-U-C-A" how="h-e" time="2026-08-09T16:30:00Z" start="2026-08-09T16:30:00Z" stale="2026-08-09T16:32:00Z"&gt;&lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="45.0" le="60.0"/&gt;&lt;detail&gt;&lt;contact callsign="TGT01"/&gt;&lt;link uid="ANDROID-88" relation="p-p" parent_callsign="ALPHA"/&gt;&lt;remarks&gt;two vehicles, stationary&lt;/remarks&gt;&lt;/detail&gt;&lt;/event&gt;</code></pre>
+        <pre class="copyable" tabindex="0"><code>&lt;event version="2.0" uid="TGT-9F2A1C7B" type="a-h-G-U-C-A" how="h-e" time="2026-08-09T16:30:00Z" start="2026-08-09T16:30:00Z" stale="2026-08-09T16:32:00Z"&gt;&lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="45.0" le="60.0"/&gt;&lt;detail&gt;&lt;contact callsign="TGT01"/&gt;&lt;link uid="ANDROID-88" relation="p-p" parent_callsign="ALPHA"/&gt;&lt;remarks&gt;two vehicles, stationary&lt;/remarks&gt;&lt;/detail&gt;&lt;/event&gt;</code></pre>
 
         <div class="alert alert-warning">
             <p class="alert-title">Only the flat form is found without a fence.</p>
@@ -109,7 +110,7 @@
             may carry an XML declaration:
         </p>
 
-        <pre class="copyable"><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+        <pre class="copyable" tabindex="0"><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
 &lt;event version="2.0" uid="TGT-9F2A1C7B" type="a-h-G-U-C-A" how="h-e"
        time="2026-08-09T16:30:00Z" start="2026-08-09T16:30:00Z" stale="2026-08-09T16:32:00Z"&gt;
   &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="45.0" le="60.0"/&gt;
@@ -136,7 +137,7 @@
 
         <p>Two events in one file are read as a batch:</p>
 
-        <pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-5" type="a-f-G-U-C" how="m-g"
+        <pre class="copyable" tabindex="0"><code>&lt;event version="2.0" uid="ANDROID-5" type="a-f-G-U-C" how="m-g"
        time="2026-08-09T16:33:00Z" start="2026-08-09T16:33:00Z" stale="2026-08-09T16:35:00Z"&gt;
   &lt;point lat="21.318700" lon="-157.922400" hae="6.0" ce="8.0" le="12.0"/&gt;
   &lt;detail&gt;
@@ -724,7 +725,7 @@
 
         <p>Four vertices, closed, with a stated display color.</p>
 
-        <pre class="copyable"><code>&lt;event version="2.0" uid="AREA-1" type="u-d-f" how="h-g"
+        <pre class="copyable" tabindex="0"><code>&lt;event version="2.0" uid="AREA-1" type="u-d-f" how="h-g"
        time="2026-08-09T16:41:00Z" start="2026-08-09T16:41:00Z" stale="2026-08-09T17:41:00Z"&gt;
   &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="9999999.0" le="9999999.0"/&gt;
   &lt;detail&gt;
@@ -746,7 +747,7 @@
 
         <p>Semi-axes and an orientation, with no vertex list at all.</p>
 
-        <pre class="copyable"><code>&lt;event version="2.0" uid="RING-1" type="u-d-c-c" how="h-g"
+        <pre class="copyable" tabindex="0"><code>&lt;event version="2.0" uid="RING-1" type="u-d-c-c" how="h-g"
        time="2026-08-09T16:42:00Z" start="2026-08-09T16:42:00Z" stale="2026-08-09T17:42:00Z"&gt;
   &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="9999999.0" le="9999999.0"/&gt;
   &lt;detail&gt;
@@ -759,7 +760,7 @@
 
         <p>Three route points, the route attributes, and one genuine relation alongside them.</p>
 
-        <pre class="copyable"><code>&lt;event version="2.0" uid="ROUTE-1" type="b-m-r" how="h-e"
+        <pre class="copyable" tabindex="0"><code>&lt;event version="2.0" uid="ROUTE-1" type="b-m-r" how="h-e"
        time="2026-08-09T16:43:00Z" start="2026-08-09T16:43:00Z" stale="2026-08-09T17:43:00Z"&gt;
   &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="9999999.0" le="9999999.0"/&gt;
   &lt;detail&gt;
@@ -800,7 +801,7 @@
 
         <p>One vertex is written as <code>0x1p+3</code>, which is a number Go accepts and a browser does not. The whole shape is refused rather than drawn with three corners out of four.</p>
 
-        <pre class="copyable"><code>&lt;event version="2.0" uid="AREA-2" type="u-d-f" how="h-g"
+        <pre class="copyable" tabindex="0"><code>&lt;event version="2.0" uid="AREA-2" type="u-d-f" how="h-g"
        time="2026-08-09T16:44:00Z" start="2026-08-09T16:44:00Z" stale="2026-08-09T17:44:00Z"&gt;
   &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="9999999.0" le="9999999.0"/&gt;
   &lt;detail&gt;
@@ -832,7 +833,7 @@
             Mattermost file ids bear no relationship to them.
         </p>
 
-<pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-21" type="b-t-f" how="m-g"
+<pre class="copyable" tabindex="0"><code>&lt;event version="2.0" uid="ANDROID-21" type="b-t-f" how="m-g"
        time="2026-08-09T16:45:00Z" start="2026-08-09T16:45:00Z" stale="2026-08-09T16:47:00Z"&gt;
   &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="9.5" le="15.0"/&gt;
   &lt;detail&gt;
@@ -865,7 +866,7 @@
             same answer whichever shape an emitter uses.
         </p>
 
-<pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-23" type="a-f-G-U-C" how="m-g"
+<pre class="copyable" tabindex="0"><code>&lt;event version="2.0" uid="ANDROID-23" type="a-f-G-U-C" how="m-g"
        time="2026-08-09T16:48:00Z" start="2026-08-09T16:48:00Z" stale="2026-08-09T16:50:00Z"&gt;
   &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="9.5" le="15.0"/&gt;
   &lt;detail&gt;
@@ -890,7 +891,7 @@
             The circle is what is drawn; the fence says what crossing it means.
         </p>
 
-<pre class="copyable"><code>&lt;event version="2.0" uid="FENCE-1" type="u-d-c-c" how="h-g"
+<pre class="copyable" tabindex="0"><code>&lt;event version="2.0" uid="FENCE-1" type="u-d-c-c" how="h-g"
        time="2026-08-09T16:46:00Z" start="2026-08-09T16:46:00Z" stale="2026-08-09T17:46:00Z"&gt;
   &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="9999999.0" le="9999999.0"/&gt;
   &lt;detail&gt;
@@ -962,7 +963,7 @@
             attachment rather than sitting beside it.
         </p>
 
-        <pre class="copyable"><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+        <pre class="copyable" tabindex="0"><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
 &lt;event version="2.0" uid="MED-4C1E" type="b-r-f-h-c" how="h-g-i-g-o"
        time="2026-08-09T16:31:00Z" start="2026-08-09T16:31:00Z" stale="2026-08-09T17:31:00Z"&gt;
   &lt;point lat="21.330100" lon="-157.939900" hae="6.0" ce="20.0" le="30.0"/&gt;
@@ -992,7 +993,7 @@
             because a map of overlapping outlines says nothing about which belongs to which track.
         </p>
 
-        <pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-88" type="a-f-G-U-C" how="m-g"
+        <pre class="copyable" tabindex="0"><code>&lt;event version="2.0" uid="ANDROID-88" type="a-f-G-U-C" how="m-g"
        time="2026-08-09T16:30:00Z" start="2026-08-09T16:30:00Z" stale="2026-08-09T16:40:00Z"&gt;
   &lt;point lat="21.318700" lon="-157.922500" hae="12.0" ce="9.5" le="15.0"/&gt;
   &lt;detail&gt;
@@ -1052,7 +1053,7 @@
 
         <p>Sibling <code>&lt;event&gt;</code> elements with no wrapper. The card lists them; the sidebar details them.</p>
 
-        <pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-1" type="a-f-G-U-C" how="m-g"
+        <pre class="copyable" tabindex="0"><code>&lt;event version="2.0" uid="ANDROID-1" type="a-f-G-U-C" how="m-g"
        time="2026-08-09T16:30:00Z" start="2026-08-09T16:30:00Z" stale="2026-08-09T16:32:00Z"&gt;
   &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="9.5" le="15.0"/&gt;
   &lt;detail&gt;
@@ -1071,7 +1072,7 @@
 
         <p>A <code>link</code> with a <code>parent_callsign</code> becomes the "Sent by" row.</p>
 
-        <pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-3" type="a-f-A-M-F-Q" how="m-g"
+        <pre class="copyable" tabindex="0"><code>&lt;event version="2.0" uid="ANDROID-3" type="a-f-A-M-F-Q" how="m-g"
        time="2026-08-09T16:31:00Z" start="2026-08-09T16:31:00Z" stale="2026-08-09T16:33:00Z"&gt;
   &lt;point lat="13.583900" lon="144.930000" hae="188.0" ce="12.0" le="20.0"/&gt;
   &lt;detail&gt;
@@ -1084,7 +1085,7 @@
 
         <p>Only the link carrying a <code>parent_callsign</code> becomes "Sent by". The <code>relation</code> attribute itself is parsed and never read, so <code>p-c</code> contributes exactly what <code>p-p</code> does.</p>
 
-        <pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-4" type="a-f-G-U-C-R" how="m-g"
+        <pre class="copyable" tabindex="0"><code>&lt;event version="2.0" uid="ANDROID-4" type="a-f-G-U-C-R" how="m-g"
        time="2026-08-09T16:32:00Z" start="2026-08-09T16:32:00Z" stale="2026-08-09T16:34:00Z"&gt;
   &lt;point lat="21.483600" lon="-158.038600" hae="256.0" ce="10.0" le="15.0"/&gt;
   &lt;detail&gt;
@@ -1098,7 +1099,7 @@
 
         <p>The sender is what the event states, which is not the same as the Mattermost account that posted it. The card says "Event states sender" for exactly that reason, and never styles it as a real message.</p>
 
-        <pre class="copyable"><code>&lt;event version="2.0" uid="GeoChat.ANDROID-1.Operations.t1" type="b-t-f" how="h-g-i-g-o"
+        <pre class="copyable" tabindex="0"><code>&lt;event version="2.0" uid="GeoChat.ANDROID-1.Operations.t1" type="b-t-f" how="h-g-i-g-o"
        time="2026-08-09T16:34:00Z" start="2026-08-09T16:34:00Z" stale="2026-08-09T16:39:00Z"&gt;
   &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="45.0" le="60.0"/&gt;
   &lt;detail&gt;
@@ -1114,7 +1115,7 @@
 
         <p>A stated zero survives: <code>urgent="0"</code> means none urgent, which is not the same as saying nothing about it.</p>
 
-        <pre class="copyable"><code>&lt;event version="2.0" uid="MED-4C1E" type="b-r-f-h-c" how="h-e"
+        <pre class="copyable" tabindex="0"><code>&lt;event version="2.0" uid="MED-4C1E" type="b-r-f-h-c" how="h-e"
        time="2026-08-09T16:35:00Z" start="2026-08-09T16:35:00Z" stale="2026-08-09T16:55:00Z"&gt;
   &lt;point lat="21.341200" lon="-157.939800" hae="5.0" ce="30.0" le="45.0"/&gt;
   &lt;detail&gt;
@@ -1132,7 +1133,7 @@
 
         <p>Platform, operating system, battery, and a request to be archived.</p>
 
-        <pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-7" type="a-f-G-U-C" how="m-g"
+        <pre class="copyable" tabindex="0"><code>&lt;event version="2.0" uid="ANDROID-7" type="a-f-G-U-C" how="m-g"
        time="2026-08-09T16:36:00Z" start="2026-08-09T16:36:00Z" stale="2026-08-09T16:38:00Z"&gt;
   &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="9.5" le="15.0"/&gt;
   &lt;detail&gt;
@@ -1148,7 +1149,7 @@
 
         <p>Where the fix came from, and the dilution of precision figures, all rendered as stated.</p>
 
-        <pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-8" type="a-f-G-U-C" how="m-g"
+        <pre class="copyable" tabindex="0"><code>&lt;event version="2.0" uid="ANDROID-8" type="a-f-G-U-C" how="m-g"
        time="2026-08-09T16:36:30Z" start="2026-08-09T16:36:30Z" stale="2026-08-09T16:38:30Z"&gt;
   &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="2.5" le="4.0"/&gt;
   &lt;detail&gt;
@@ -1162,7 +1163,7 @@
 
         <p>Roll, pitch and yaw. The sidebar calls yaw "Yaw" rather than "Heading", because the event does.</p>
 
-        <pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-9" type="a-f-A-M-F-Q" how="m-g"
+        <pre class="copyable" tabindex="0"><code>&lt;event version="2.0" uid="ANDROID-9" type="a-f-A-M-F-Q" how="m-g"
        time="2026-08-09T16:37:00Z" start="2026-08-09T16:37:00Z" stale="2026-08-09T16:39:00Z"&gt;
   &lt;point lat="21.410000" lon="-157.990000" hae="1220.0" ce="12.0" le="20.0"/&gt;
   &lt;detail&gt;
@@ -1175,7 +1176,7 @@
 
         <p>Speed and course, which the card combines into one Track row and the sidebar splits into two.</p>
 
-        <pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-10" type="a-f-G-E-V-C" how="m-g"
+        <pre class="copyable" tabindex="0"><code>&lt;event version="2.0" uid="ANDROID-10" type="a-f-G-E-V-C" how="m-g"
        time="2026-08-09T16:37:30Z" start="2026-08-09T16:37:30Z" stale="2026-08-09T16:39:30Z"&gt;
   &lt;point lat="21.329000" lon="-157.930000" hae="12.0" ce="9.5" le="15.0"/&gt;
   &lt;detail&gt;
@@ -1188,7 +1189,7 @@
 
         <p>Field of view, azimuth, range and model.</p>
 
-        <pre class="copyable"><code>&lt;event version="2.0" uid="SENSOR-1" type="b-l-p-c" how="m-g"
+        <pre class="copyable" tabindex="0"><code>&lt;event version="2.0" uid="SENSOR-1" type="b-l-p-c" how="m-g"
        time="2026-08-09T16:38:00Z" start="2026-08-09T16:38:00Z" stale="2026-08-09T16:40:00Z"&gt;
   &lt;point lat="21.352000" lon="-157.960000" hae="30.0" ce="10.0" le="15.0"/&gt;
   &lt;detail&gt;
@@ -1202,7 +1203,7 @@
 
         <p>The address is shown as text and never as a link. The card says only that a stream exists.</p>
 
-        <pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-11" type="b-m-p-s-p-i" how="m-g"
+        <pre class="copyable" tabindex="0"><code>&lt;event version="2.0" uid="ANDROID-11" type="b-m-p-s-p-i" how="m-g"
        time="2026-08-09T16:38:30Z" start="2026-08-09T16:38:30Z" stale="2026-08-09T16:40:30Z"&gt;
   &lt;point lat="21.352000" lon="-157.960000" hae="30.0" ce="10.0" le="15.0"/&gt;
   &lt;detail&gt;
@@ -1218,7 +1219,7 @@
 
         <p>An icon path and a display color. The color is shown as a swatch and a hex value; it does not color the map marker, which carries affiliation instead.</p>
 
-        <pre class="copyable"><code>&lt;event version="2.0" uid="MARK-2B" type="b-m-p-s-m" how="h-e"
+        <pre class="copyable" tabindex="0"><code>&lt;event version="2.0" uid="MARK-2B" type="b-m-p-s-m" how="h-e"
        time="2026-08-09T16:39:00Z" start="2026-08-09T16:39:00Z" stale="2026-08-09T16:59:00Z"&gt;
   &lt;point lat="21.344000" lon="-157.945000" hae="4.0" ce="20.0" le="30.0"/&gt;
   &lt;detail&gt;
@@ -1233,7 +1234,7 @@
 
         <p>The sender's own team and role.</p>
 
-        <pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-88" type="a-f-G-U-C" how="m-g"
+        <pre class="copyable" tabindex="0"><code>&lt;event version="2.0" uid="ANDROID-88" type="a-f-G-U-C" how="m-g"
        time="2026-08-09T16:39:30Z" start="2026-08-09T16:39:30Z" stale="2026-08-09T16:41:30Z"&gt;
   &lt;point lat="21.336900" lon="-157.950100" hae="4.0" ce="9.5" le="15.0"/&gt;
   &lt;detail&gt;
@@ -1246,7 +1247,7 @@
 
         <p>Which systems handled the event and when, in document order. The attribute names are the data here, which is why this element is read by hand rather than through the table above.</p>
 
-        <pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-12" type="a-f-G-U-C" how="m-g"
+        <pre class="copyable" tabindex="0"><code>&lt;event version="2.0" uid="ANDROID-12" type="a-f-G-U-C" how="m-g"
        time="2026-08-09T16:40:00Z" start="2026-08-09T16:40:00Z" stale="2026-08-09T16:42:00Z"&gt;
   &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="9.5" le="15.0"/&gt;
   &lt;detail&gt;
@@ -1260,7 +1261,7 @@
 
         <p>Two unrecognized elements. Nothing is lost: the sidebar says how many there were and the full event is under "As posted".</p>
 
-        <pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-13" type="a-f-G-U-C" how="m-g"
+        <pre class="copyable" tabindex="0"><code>&lt;event version="2.0" uid="ANDROID-13" type="a-f-G-U-C" how="m-g"
        time="2026-08-09T16:40:30Z" start="2026-08-09T16:40:30Z" stale="2026-08-09T16:42:30Z"&gt;
   &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="9.5" le="15.0"/&gt;
   &lt;detail&gt;

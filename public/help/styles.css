@@ -5,8 +5,9 @@
  * Mattermost, so there is no theme to follow, and the plugin's own decorator
  * page (which does sit next to the sidebar) is the one that needs to adapt.
  *
- * Self-contained by requirement: no web fonts, no CDN, no JavaScript anywhere
- * in this bundle. It has to work on an air-gapped host.
+ * Self-contained by requirement: no web fonts, no CDN, and no script beyond the
+ * bundle's own copy.js, which enhances and never enables. It has to work on an
+ * air-gapped host, and with scripting off.
  */
 
 :root {
@@ -412,7 +413,7 @@ pre code {
     height: 8px;
     border: 1px solid currentColor;
     border-radius: 1px;
-    opacity: 0.45;
+    opacity: 0.7;
     pointer-events: none;
 }
 
@@ -440,8 +441,125 @@ pre.copyable {
     padding-right: 28px;
 }
 
+pre.copyable::before {
+    top: 8px;
+    margin-top: 0;
+}
+
 pre.copyable::after {
+    top: 12px;
+    margin-top: 0;
     background: var(--code-bg);
+}
+
+/*
+ * The button sits in normal flow above the block rather than floating over it.
+ * Absolutely positioning it meant reserving space in the block's own padding,
+ * and the two scaled from different font sizes: `pre` is a fixed 13px, so under
+ * text-only zoom the button grew and the reservation did not, and the control
+ * came down over the first line of the example.
+ */
+.example {
+    background: var(--code-bg);
+    border-radius: 6px;
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.example > pre {
+    background: none;
+    border-radius: 0;
+    margin-bottom: 0;
+}
+
+.copy-bar {
+    display: flex;
+    justify-content: flex-end;
+    padding: 8px 8px 0;
+}
+
+pre.has-copy-button {
+    padding-top: 8px;
+    padding-right: 20px;
+    cursor: auto;
+}
+
+pre.has-copy-button::before,
+pre.has-copy-button::after {
+    content: none;
+}
+
+.copy-button {
+    padding: 0.4em 0.7em;
+    border: 1px solid rgba(212, 212, 212, 0.75);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--code-text);
+    font-family: inherit;
+    font-size: 0.85em;
+    line-height: 1.4;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.copy-button:hover {
+    background: rgba(255, 255, 255, 0.22);
+}
+
+.copy-button:focus-visible {
+    background: rgba(255, 255, 255, 0.22);
+    outline: 2px solid #ffffff;
+    outline-offset: 2px;
+}
+
+.copyable.just-copied::before {
+    content: none;
+}
+
+.copyable.just-copied::after {
+    width: 4px;
+    height: 8px;
+    right: 8px;
+    margin-top: -5px;
+    border-width: 0 1.5px 1.5px 0;
+    border-radius: 0;
+    background: none;
+    opacity: 0.9;
+    transform: rotate(45deg);
+}
+
+.copyable.copy-failed::before,
+.copyable.copy-failed::after {
+    width: 8px;
+    height: 0;
+    top: 50%;
+    right: 5px;
+    margin-top: -1px;
+    border-width: 1.5px 0 0;
+    border-radius: 0;
+    background: none;
+    opacity: 0.9;
+}
+
+.copyable.copy-failed::before {
+    transform: rotate(45deg);
+}
+
+.copyable.copy-failed::after {
+    transform: rotate(-45deg);
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
 }
 
 .pill {
