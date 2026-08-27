@@ -71,6 +71,12 @@ jobs:
       - name: Generate SBOMs (server + webapp)
         run: make sbom
 
+      # Blocks a copyleft, unstated or unrecognized license in the shipped set.
+      # Runs before the CVE scan because a dependency that cannot ship at all is
+      # a more basic answer than which CVEs it carries.
+      - name: Enforce the dependency license policy
+        run: make license-check
+
       - name: Upload SBOM artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

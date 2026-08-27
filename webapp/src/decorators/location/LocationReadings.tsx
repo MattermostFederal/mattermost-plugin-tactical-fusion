@@ -270,7 +270,7 @@ const LocationReadings: React.FC<{
     // "Open larger" points at the map's own page, which gives the whole window
     // to one picture. Not the readings page, which opens onto a table, and not a
     // decorator link either: this route is outside /decorate, so the framework's
-    // click handler does not recognise it and the browser simply follows it.
+    // click handler does not recognize it and the browser simply follows it.
     //
     // The theme travels with it, for the reason mapPageHref records.
     //

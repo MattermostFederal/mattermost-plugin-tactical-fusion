@@ -475,7 +475,7 @@ export function gridText(format: LocationFormat, canonical: string): string {
 }
 
 /**
- * The size of a grid square in metres, or null when the token is not one.
+ * The size of a grid square in meters, or null when the token is not one.
  *
  * The numeric half of gridResolutionText, so the map can size a cell without
  * parsing prose back out of a row.

@@ -12,7 +12,7 @@ import type {Decorator} from '../../decorators/types';
  * Playwright runs the test body in Node but mounts the component in the
  * browser, so registry and selection state set from a test file would never
  * reach the component. Everything therefore has to be set up in here, driven by
- * plain serialisable props.
+ * plain serializable props.
  */
 const FixturePanel: React.FC<{payload: {value: string}}> = ({payload}) => (
     <div data-testid='fixture-panel'>{payload.value}</div>

@@ -131,6 +131,23 @@ type configuration struct {
 	// load an entire archive into memory. os.Open with http.ServeContent is the
 	// only reader that answers a range without doing that.
 	LocationMapPackagesDir string
+
+	// EnableCot is the switch for rendering a Cursor on Target event, and
+	// EnableCotFile decides whether an attached .xml or .cot file is read at
+	// post time. Both are false at zero, exactly as every switch above is.
+	//
+	// EnableCot governs stamping only. A post already stamped keeps rendering
+	// after this is turned off, for the same reason a decorator link already
+	// written into a message keeps working.
+	//
+	// EnableCotFile is the only setting in this plugin that puts a filestore
+	// read on the post path.
+	//
+	// There is deliberately no EnableCotMap. EnableLocationMapInline already
+	// means "the map under a post" and the CoT card reads the same answer, so
+	// the parent ANDs cannot be re-implemented differently here.
+	EnableCot     bool
+	EnableCotFile bool
 }
 
 func (c *configuration) Clone() *configuration {

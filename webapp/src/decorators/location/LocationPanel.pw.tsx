@@ -265,7 +265,7 @@ test('a server error degrades rather than refusing the link', async ({mount}) =>
 });
 
 // One copy control per value row, beside the value, rather than a row of
-// labelled buttons underneath.
+// labeled buttons underneath.
 test('offers a copy control on every value row and none on the prose rows', async ({mount}) => {
     const component = await mount(<LocationPanelHarness/>);
     await component.getByRole('button', {name: 'answer the conversion'}).click();
@@ -447,7 +447,11 @@ test.describe('customizing the view', () => {
         await component.getByRole('button', {name: 'Customize your view'}).click();
 
         await expect(component.getByText('Rows to show')).toBeVisible();
-        await expect(component.getByText('Lat / lon', {exact: true})).toHaveCount(0);
+
+        // The reading's copy button, not its label: the editor offers one
+        // tickbox per row and names it with that same label, so a bare text
+        // match finds the editor and reports the panel it replaced.
+        await expect(component.getByRole('button', {name: 'Copy Lat / lon'})).toHaveCount(0);
 
         await component.getByRole('button', {name: '← Back'}).click();
         await expect(component.getByText('Lat / lon', {exact: true})).toBeVisible();

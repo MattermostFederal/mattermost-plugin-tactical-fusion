@@ -2,7 +2,7 @@ import type {FeatureCollection} from 'geojson';
 import type {StyleSpecification} from 'maplibre-gl';
 
 import type {Archive, Bounds, DetailArchive} from './basemap';
-import {MAX_ZOOM, SEAM_ZOOM} from './span';
+import {DEGREE_METERS, MAX_ZOOM, SEAM_ZOOM, unwrapLongitudes} from './span';
 
 import {pluginBaseUrl} from '../../../plugin_url';
 import {detectTheme} from '../../theme';
@@ -232,7 +232,7 @@ const ALWAYS_DARK: boolean = true;
 /**
  * The map's palette.
  *
- * The marker colours are NOT derived from the panel's background and text, on
+ * The marker colors are NOT derived from the panel's background and text, on
  * purpose: tints of those are low-contrast by construction, and the pin has to
  * stay legible against both land and water in either theme.
  */
@@ -246,15 +246,28 @@ export function palette(dark: boolean): MapColors {
     // content of this map, so it carries WCAG 1.4.11's 3:1 for non-text: the
     // first palette sat at 1.46:1 in dark and 1.28:1 in light, which read as a
     // near-uniform slab once the map filled a window. The pin is distinguished
-    // by its outline against land rather than by its fill, which is what lets it
-    // stay red.
+    // by its outline against land rather than by its fill, which is what frees
+    // the fill to be chosen for what it MEANS.
     return {
         water: dark ? '#12161d' : '#eef2f7',
         land: dark ? '#5a6472' : '#76889f',
         line: dark ? 'rgba(255,255,255,0.45)' : 'rgba(20,24,32,0.55)',
         cell: dark ? '#b3d1ff' : '#0b2f7a',
         cellFill: dark ? 'rgba(179,209,255,0.18)' : 'rgba(11,47,122,0.16)',
-        pin: dark ? '#ff6b6b' : '#c92a2a',
+
+        // Orchid, and deliberately not red. This plugin renders Cursor on
+        // Target affiliations on the same maps, where color is a claim about
+        // what a thing IS: red is hostile and suspect, blue is friend, green is
+        // neutral, amber is unknown and pending. A location is a place somebody
+        // typed and has no affiliation at all, so its pin has to sit outside
+        // that vocabulary rather than borrow the most loaded color in it.
+        //
+        // Purple through magenta is the ONLY window left. Holding 45 degrees
+        // from all four affiliations leaves 252 to 321 and nothing else: the
+        // gaps between red and amber, amber and green, and green and blue are
+        // all too narrow to stand in. Within that window this is the hue that
+        // separates best from everything else drawn on the same map.
+        pin: dark ? '#e070e0' : '#8d0da0',
         pinEdge: dark ? '#0b0e13' : '#ffffff',
         label: dark ? '#e8edf5' : '#101418',
         labelHalo: dark ? '#12161d' : '#eef2f7',
@@ -265,12 +278,12 @@ export function palette(dark: boolean): MapColors {
 
         // An airfield is a landmark rather than context, so it is held to the
         // same floor as roads: 3.73:1 light, 3.71:1 dark. It is the one hue on
-        // the map that is neither the greys of the basemap nor the red of the
-        // pin, which is what stops an aerodrome reading as a town.
+        // the map that is neither the grays of the basemap nor the orchid of
+        // the pin, which is what stops an aerodrome reading as a town.
         airport: dark ? '#edc67e' : '#382d12',
 
         // The rest are context and are deliberately BELOW that floor, between
-        // 1.2:1 and 2.3:1 against land. They are there to be recognised when
+        // 1.2:1 and 2.3:1 against land. They are there to be recognized when
         // looked for, not to be read, and the coordinate has to stay the
         // loudest thing on screen when a city's worth of them is drawn under
         // it. That is why they are absent from the contrast table in
@@ -293,9 +306,16 @@ export function palette(dark: boolean): MapColors {
  * labels therefore widens no policy. A sprite would, because its image half
  * loads under `img-src`, which is why there still is not one.
  */
+export const MARKER_IMAGE_ID = 'tf-marker';
+
+/** The image name for one color, so a map registers each color once. */
+export function markerImageID(color: string): string {
+    return `${MARKER_IMAGE_ID}-${color.replace('#', '')}`;
+}
+
 export function buildStyle(
     archive: Archive, details: readonly DetailArchive[], colors: MapColors,
-    overzoomGlobal = false,
+    overzoomGlobal = false, withMarker = false,
 ): StyleSpecification {
     const globalCap = overzoomGlobal ? MAX_ZOOM : SEAM_ZOOM;
     const sources: StyleSpecification['sources'] = {
@@ -303,6 +323,14 @@ export function buildStyle(
         cell: {type: 'geojson', data: emptyCollection()},
         pin: {type: 'geojson', data: emptyCollection()},
     };
+
+    // A panel reuses one map across selections, so a source decided at
+    // construction is a source the next selection cannot have: an event with a
+    // shape drew nothing after one without, and an event stating accuracy drew
+    // no ring after one that stated none. An empty collection costs nothing,
+    // which is cheaper than being wrong on the second selection.
+    sources.accuracy = {type: 'geojson', data: emptyCollection()};
+    sources.geometry = {type: 'geojson', data: emptyCollection()};
 
     for (const detail of details) {
         sources[detailSourceID(detail.name)] = {
@@ -566,9 +594,28 @@ export function buildStyle(
                 source: 'cell',
                 paint: {'line-color': colors.cell, 'line-width': 1.5},
             },
-            {
+            ...accuracyLayers(colors),
+            ...geometryLayers(colors),
+            ...(withMarker ? [{
                 id: 'pin',
-                type: 'circle',
+                type: 'symbol' as const,
+                source: 'pin',
+                layout: {
+
+                    // Read from the feature, so a block of events draws each
+                    // one in its own affiliation's color.
+                    'icon-image': ['get', 'icon'] as unknown as string,
+                    'icon-size': 1,
+
+                    // The reticle marks a point, so it stays put and stays put
+                    // on top: dropping it because a label got there first would
+                    // hide the one thing the map is drawn to show.
+                    'icon-allow-overlap': true,
+                    'icon-ignore-placement': true,
+                },
+            }] : [{
+                id: 'pin',
+                type: 'circle' as const,
                 source: 'pin',
                 paint: {
                     'circle-radius': 4,
@@ -576,7 +623,7 @@ export function buildStyle(
                     'circle-stroke-color': colors.pinEdge,
                     'circle-stroke-width': 1.5,
                 },
-            },
+            }]),
         ],
     };
 }
@@ -613,11 +660,11 @@ export const DETAIL_SOURCE_LAYERS = [
 /**
  * Whether any installed package reaches anywhere in this view.
  *
- * INTERSECTION rather than a test of the centre, and the asymmetry is
- * deliberate. A centre test lifts the cap whenever the middle of the frame
+ * INTERSECTION rather than a test of the center, and the asymmetry is
+ * deliberate. A center test lifts the cap whenever the middle of the frame
  * falls outside a package, so a reader who pans until Oahu sits at the edge
  * gets the generalised tier overzoomed across the whole view while the accurate
- * one still draws Oahu: the same road twice, kilometres apart, which is the one
+ * one still draws Oahu: the same road twice, kilometers apart, which is the one
  * failure the seam exists to prevent. Capping whenever any covered ground is on
  * screen cannot do that. It costs a blank margin at the edge of coverage, which
  * is the cheaper of the two.
@@ -673,7 +720,7 @@ export const SEAM_CAPPED_LAYERS = [
  * The style is built once and the map is moved thereafter, so without this a
  * reader who pans out of a covered area keeps the cap and sees the empty frame
  * this exists to remove, and one who pans into a covered area sees both tiers
- * draw the same road kilometres apart.
+ * draw the same road kilometers apart.
  */
 export function syncGlobalReach(
     map: {
@@ -911,7 +958,7 @@ function detailLayers(colors: MapColors, name: string): StyleSpecification['laye
  *
  * OpenStreetMap is ODbL and the OpenMapTiles schema is CC-BY, so unlike Natural
  * Earth, whose credit this plugin deliberately dropped, both of these are
- * licence conditions. Written once here and read by both the style's own
+ * license conditions. Written once here and read by both the style's own
  * `attribution` field and the line the component renders, so the two cannot
  * disagree about what was credited.
  */
@@ -922,6 +969,26 @@ export const OSM_CREDIT: ReadonlyArray<{label: string; href: string}> = [
 
 export function emptyCollection(): FeatureCollection {
     return {type: 'FeatureCollection', features: []};
+}
+
+/**
+ * One marked point per event, each naming the image it is drawn with.
+ *
+ * The image is named per feature rather than per layer because a block of
+ * events is a block of different affiliations, and one layer drawing one icon
+ * would paint a hostile track in a friendly color.
+ */
+export function markedPoints(
+    points: ReadonlyArray<{lat: number; lon: number; icon: string}>,
+): FeatureCollection {
+    return {
+        type: 'FeatureCollection',
+        features: points.map((point) => ({
+            type: 'Feature',
+            properties: {icon: point.icon},
+            geometry: {type: 'Point', coordinates: [point.lon, point.lat]},
+        })),
+    };
 }
 
 export function pointFeature(lat: number, lon: number): FeatureCollection {
@@ -953,6 +1020,283 @@ export function cellFeature(
             },
         }],
     };
+}
+
+/**
+ * A stated circular error, as a polygon on the ground rather than on the screen.
+ *
+ * MapLibre's own circle layer takes a radius in PIXELS, which would mean the
+ * drawn accuracy changed every time the reader zoomed. A polygon is the only
+ * shape that keeps its meters.
+ *
+ * The vertices are geodesic. A meter is a different number of longitude degrees
+ * at every latitude, so an equal-degree ring is right at the equator and wrong
+ * everywhere else, which for a layer whose whole purpose is to stop the map
+ * overstating a fix is the wrong way to be wrong.
+ */
+export const ACCURACY_VERTICES = 64;
+
+/**
+ * The circle's two layers, drawn UNDER the pin.
+ *
+ * Order is the contract: a fill drawn over the marker would hide the position
+ * the circle exists to qualify.
+ */
+export function accuracyLayers(colors: MapColors): StyleSpecification['layers'] {
+    return [
+        {
+            id: 'accuracy-fill',
+            type: 'fill',
+            source: 'accuracy',
+            paint: {'fill-color': colors.cellFill},
+        },
+        {
+            id: 'accuracy-outline',
+            type: 'line',
+            source: 'accuracy',
+            paint: {'line-color': colors.cell, 'line-width': 1.5, 'line-dasharray': [2, 2]},
+        },
+    ];
+}
+
+/**
+ * The shape an event describes.
+ *
+ * Solid where the accuracy ring is dashed, because they say different things: a
+ * dashed ring is the bound on a position somebody reported, and a solid outline
+ * is a shape somebody drew.
+ */
+export function geometryLayers(colors: MapColors): StyleSpecification['layers'] {
+    return [
+        {
+            id: 'geometry-fill',
+            type: 'fill',
+            source: 'geometry',
+            paint: {'fill-color': colors.cellFill},
+        },
+        {
+            id: 'geometry-outline',
+            type: 'line',
+            source: 'geometry',
+            paint: {'line-color': colors.cell, 'line-width': 2},
+        },
+    ];
+}
+
+/**
+ * A geodesic ring, which is the accuracy circle and the drawn ellipse both.
+ *
+ * A meter is a different number of longitude degrees at every latitude, so the
+ * offsets are scaled by cos(lat). An equal-degree ring is right at the equator
+ * and increasingly wrong toward the poles, which for a shape whose whole job is
+ * to say where something is would be the wrong way to be wrong.
+ */
+function geodesicRing(
+    lat: number, lon: number, majorMeters: number, minorMeters: number, angleDeg: number,
+): Array<[number, number]> | null {
+    const cosLat = Math.cos((lat * Math.PI) / 180);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) ||
+        !Number.isFinite(majorMeters) || majorMeters <= 0 ||
+        !Number.isFinite(minorMeters) || minorMeters <= 0 ||
+        !Number.isFinite(angleDeg) || Math.abs(cosLat) < 1e-9) {
+        return null;
+    }
+
+    const tilt = (angleDeg * Math.PI) / 180;
+    const cosTilt = Math.cos(tilt);
+    const sinTilt = Math.sin(tilt);
+
+    const ring: Array<[number, number]> = [];
+    for (let i = 0; i < ACCURACY_VERTICES; i++) {
+        const angle = (2 * Math.PI * i) / ACCURACY_VERTICES;
+
+        // The axes are rotated in meters and only then converted, or the tilt
+        // would be sheared by the longitude scaling and the ellipse would point
+        // somewhere the event did not say.
+        const across = minorMeters * Math.cos(angle);
+        const along = majorMeters * Math.sin(angle);
+
+        const east = (across * cosTilt) + (along * sinTilt);
+        const north = (along * cosTilt) - (across * sinTilt);
+
+        ring.push([lon + (east / (DEGREE_METERS * cosLat)), lat + (north / DEGREE_METERS)]);
+    }
+
+    // Closed by copying the first position rather than by computing the last
+    // one. sin(2 pi) is 1e-16 rather than 0, so the computed form leaves a ring
+    // GeoJSON considers unclosed.
+    ring.push(ring[0]);
+    return ring;
+}
+
+/**
+ * An ellipse on the ground, from the axes the event stated.
+ *
+ * ATAK's `major` and `minor` are semi-axes in meters and `angle` is the
+ * bearing of the major axis, measured clockwise from north, which is why north
+ * takes the cosine here and east the sine.
+ */
+export function ellipseFeature(
+    lat: number, lon: number, majorMeters: number, minorMeters: number, angleDeg: number,
+): FeatureCollection {
+    const ring = geodesicRing(lat, lon, majorMeters, minorMeters, angleDeg);
+    if (ring === null) {
+        return emptyCollection();
+    }
+
+    return {
+        type: 'FeatureCollection',
+        features: [{type: 'Feature', properties: {}, geometry: {type: 'Polygon', coordinates: [ring]}}],
+    };
+}
+
+/** A drawn outline, closed into a polygon or left as a line. */
+export function outlineFeature(
+    points: ReadonlyArray<{lat: number; lon: number}>, closed: boolean,
+): FeatureCollection {
+    const usable = points.filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lon));
+    if (usable.length < 2) {
+        return emptyCollection();
+    }
+
+    const lons = unwrapLongitudes(usable.map((point) => point.lon));
+    const ring: Array<[number, number]> = usable.map((point, i) => [lons[i], point.lat]);
+
+    if (!closed || ring.length < 3) {
+        return {
+            type: 'FeatureCollection',
+            features: [{type: 'Feature', properties: {}, geometry: {type: 'LineString', coordinates: ring}}],
+        };
+    }
+
+    ring.push(ring[0]);
+    return {
+        type: 'FeatureCollection',
+        features: [{type: 'Feature', properties: {}, geometry: {type: 'Polygon', coordinates: [ring]}}],
+    };
+}
+
+export function accuracyFeature(lat: number, lon: number, meters: number): FeatureCollection {
+    return ellipseFeature(lat, lon, meters, meters, 0);
+}
+
+/**
+ * The marker: a circle with a horizontal and a vertical line through it.
+ *
+ * Built as a raw RGBA buffer rather than through a canvas or an SVG, for two
+ * reasons. It is a pure function of its arguments, so it is unit tested against
+ * the pixels rather than against a screenshot. And it needs no glyph: a Unicode
+ * crosshair would depend on the font ranges this plugin trims for an air-gapped
+ * bundle, so the character could simply be absent.
+ *
+ * Drawn from signed distances rather than by testing whether a pixel is inside
+ * the shape. A yes-or-no test gives every curve a stepped edge, which at this
+ * size reads as grain rather than as a line; a distance gives each pixel the
+ * fraction of it the shape covers, which is what antialiasing is.
+ *
+ * The shape is stroked twice, the edge color first and wider. That outline is
+ * what the palette's note relies on ("the pin is distinguished by its outline
+ * against land rather than by its fill"), and it is what lets the fill carry
+ * the affiliation.
+ */
+export const MARKER_SIZE = 20;
+
+/**
+ * Four device pixels per CSS pixel, which is oversampling even a retina screen.
+ * The marker is 20px on screen and every edge in it is a curve or a thin line,
+ * so the cost of the extra samples is a few kilobytes and the benefit is that
+ * nothing steps.
+ */
+export const MARKER_PIXEL_RATIO = 4;
+
+const RING = 0.56;
+
+// Chosen against the rendered shape rather than by taste: past about 0.125 the
+// ring and the lines merge and the circle stops reading as one.
+const THICKNESS = 0.105;
+const EDGE_THICKNESS = 0.045;
+const LINE_REACH = 0.90;
+
+export interface MarkerImage {
+    width: number;
+    height: number;
+    data: Uint8Array;
+}
+
+/** Distance to a rectangle centered on the origin, negative inside it. */
+function toBox(px: number, py: number, halfWidth: number, halfHeight: number): number {
+    const dx = Math.abs(px) - halfWidth;
+    const dy = Math.abs(py) - halfHeight;
+
+    return Math.min(Math.max(dx, dy), 0) + Math.hypot(Math.max(dx, 0), Math.max(dy, 0));
+}
+
+/** Distance to the whole marker, negative inside it. */
+function toMarker(nx: number, ny: number, half: number): number {
+    const ring = Math.abs(Math.hypot(nx, ny) - RING) - half;
+
+    // The line grows along its length as well as across it, so the wider edge
+    // pass caps its ends. Growing only the thickness left the last pixel of
+    // each line as bare fill meeting the map, which is the one place the
+    // outline has to be.
+    const reach = LINE_REACH + (half - THICKNESS);
+    const across = toBox(nx, ny, reach, half);
+    const down = toBox(nx, ny, half, reach);
+
+    return Math.min(ring, across, down);
+}
+
+function channels(hex: string): [number, number, number] {
+    const value = hex.replace('#', '');
+    const full = value.length === 3 ? value.split('').map((c) => c + c).join('') : value;
+    return [
+        parseInt(full.slice(0, 2), 16) || 0,
+        parseInt(full.slice(2, 4), 16) || 0,
+        parseInt(full.slice(4, 6), 16) || 0,
+    ];
+}
+
+export function crosshairImage(color: string, edge: string): MarkerImage {
+    const side = MARKER_SIZE * MARKER_PIXEL_RATIO;
+    const data = new Uint8Array(side * side * 4);
+
+    const fillRGB = channels(color);
+    const edgeRGB = channels(edge);
+    const center = (side - 1) / 2;
+
+    // One pixel, in the units the distances are measured in. Coverage ramps
+    // across exactly this, which is what makes an edge look soft rather than
+    // stepped without making it look blurred.
+    const pixel = 1 / center;
+
+    const coverage = (distance: number) =>
+        Math.max(0, Math.min(1, 0.5 - (distance / pixel)));
+
+    for (let y = 0; y < side; y++) {
+        for (let x = 0; x < side; x++) {
+            const nx = (x - center) / center;
+            const ny = (y - center) / center;
+
+            const outer = coverage(toMarker(nx, ny, THICKNESS + EDGE_THICKNESS));
+            if (outer <= 0) {
+                continue;
+            }
+            const inner = coverage(toMarker(nx, ny, THICKNESS));
+
+            // The fill over the edge, both already covering their own share of
+            // the pixel. Straight rather than premultiplied, which is what
+            // addImage takes.
+            const at = ((y * side) + x) * 4;
+            for (let c = 0; c < 3; c++) {
+                data[at + c] = Math.round(
+                    ((fillRGB[c] * inner) + (edgeRGB[c] * (outer - inner))) / outer,
+                );
+            }
+            data[at + 3] = Math.round(outer * 255);
+        }
+    }
+
+    return {width: side, height: side, data};
 }
 
 /** @internal exported for tests */

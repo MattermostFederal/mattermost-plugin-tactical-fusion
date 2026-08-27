@@ -1,7 +1,7 @@
 import {useEffect, useSyncExternalStore} from 'react';
 
 import type {Preferences} from './types';
-import {EMPTY_PREFERENCES, fromWire, toWire} from './types';
+import {EMPTY_PREFERENCES, fromWire, withSection, wireHasNoChoices} from './types';
 
 import {pluginBaseUrl} from '../plugin_url';
 
@@ -15,12 +15,25 @@ export interface PreferencesState {
 
     /** Why the last read failed, or null. */
     error: string | null;
+
+    /**
+     * Whether a read has ever succeeded.
+     *
+     * An editor may not offer a form until this is true. A failed FIRST read
+     * degrades `preferences` to the defaults, which renders as every box
+     * ticked: a reader who edits that and saves writes a selection derived
+     * from settings they never had, and the save replaces their real section
+     * wholesale. `error` alone cannot distinguish that from a later failure,
+     * which keeps the last good blob and is safe to edit.
+     */
+    loaded: boolean;
 }
 
 const INITIAL_STATE: PreferencesState = {
     preferences: EMPTY_PREFERENCES,
     loading: false,
     error: null,
+    loaded: false,
 };
 
 /*
@@ -116,7 +129,20 @@ function messageOf(error: unknown): string {
     return error instanceof Error && error.message ? error.message : 'Something went wrong.';
 }
 
-async function request(method: string, body?: Preferences): Promise<Preferences> {
+interface Answer {
+    preferences: Preferences;
+
+    /**
+     * What the server sent, unparsed.
+     *
+     * Kept so a save can send back the sections it did not touch exactly as
+     * they arrived. See withSection: rebuilding them from the parsed shape
+     * turns fromWire's deliberate forgiveness into a destructive write.
+     */
+    raw: unknown;
+}
+
+async function request(method: string, body?: unknown): Promise<Answer> {
     const response = await fetch(endpoint(), {
         method,
         credentials: 'same-origin',
@@ -128,7 +154,7 @@ async function request(method: string, body?: Preferences): Promise<Preferences>
             'X-Requested-With': 'XMLHttpRequest',
             'Content-Type': 'application/json',
         },
-        body: body === undefined ? undefined : JSON.stringify(toWire(body)),
+        body: body === undefined ? undefined : JSON.stringify(body),
     });
 
     // The server explains a rejected save in terms the reader can act on, such
@@ -140,7 +166,7 @@ async function request(method: string, body?: Preferences): Promise<Preferences>
         throw new Error(detail || `The server returned ${response.status}.`);
     }
 
-    return fromWire(payload);
+    return {preferences: fromWire(payload), raw: payload};
 }
 
 /**
@@ -164,14 +190,14 @@ export function loadPreferences(): Promise<void> {
     const startedAt = writes;
 
     inflight = request('GET').
-        then((preferences) => {
+        then(({preferences}) => {
             // A write finished while this was in the air, so it already knows
             // better than the answer being carried here.
             if (writes !== startedAt) {
                 return;
             }
             loadedAt = now();
-            setState({preferences, loading: false, error: null});
+            setState({preferences, loading: false, error: null, loaded: true});
         }).
         catch((error: unknown) => {
             if (writes !== startedAt) {
@@ -195,6 +221,7 @@ export function loadPreferences(): Promise<void> {
                 preferences: loadedAt === null ? EMPTY_PREFERENCES : state.preferences,
                 loading: false,
                 error: messageOf(error),
+                loaded: loadedAt !== null,
             });
         }).
         finally(() => {
@@ -232,11 +259,12 @@ export async function savePreferencesSection<K extends keyof Preferences>(
     value: Preferences[K],
 ): Promise<void> {
     const current = await request('GET');
-    const preferences = await request('PUT', {...current, [section]: value});
+    const answer = await request('PUT', withSection(current.raw, section, value));
+    const preferences = answer.preferences;
 
     writes++;
     loadedAt = now();
-    setState({preferences, loading: false, error: null});
+    setState({preferences, loading: false, error: null, loaded: true});
 }
 
 /**
@@ -255,26 +283,14 @@ export async function savePreferencesSection<K extends keyof Preferences>(
  */
 export async function resetPreferencesSection<K extends keyof Preferences>(section: K): Promise<void> {
     const current = await request('GET');
-    const next = {...current, [section]: EMPTY_PREFERENCES[section]};
+    const next = withSection(current.raw, section, EMPTY_PREFERENCES[section]);
 
-    const preferences = hasNoChoices(next) ? await request('DELETE') : await request('PUT', next);
+    const answer = wireHasNoChoices(next) ? await request('DELETE') : await request('PUT', next);
+    const preferences = answer.preferences;
 
     writes++;
     loadedAt = now();
-    setState({preferences, loading: false, error: null});
-}
-
-/**
- * Whether a blob records no choice at all.
- *
- * Spelled out per section rather than deep-compared, so that adding a decorator
- * is a compile error here rather than a silently missed case: a new section this
- * does not mention would keep the blob alive forever.
- */
-function hasNoChoices(preferences: Preferences): boolean {
-    return preferences.dtg.zones.length === 0 &&
-        preferences.dtg.urgentWithinMinutes === 0 &&
-        preferences.location.hiddenRows.length === 0;
+    setState({preferences, loading: false, error: null, loaded: true});
 }
 
 /**

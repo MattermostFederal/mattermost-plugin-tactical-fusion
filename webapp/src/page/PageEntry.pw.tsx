@@ -155,7 +155,7 @@ test.describe('the map page', () => {
 
     // Anything other than the literal keyword is the readings page. The shell
     // writes the attribute for both, so a typo must not open a map.
-    test('an unrecognised mode is the readings page', async ({mount, page}) => {
+    test('an unrecognized mode is the readings page', async ({mount, page}) => {
         await load(mount, page, {...SHELL, mode: 'chart'});
 
         await expect(page.locator('#page-root').getByText('18S 323478E 4306483N')).toBeVisible();

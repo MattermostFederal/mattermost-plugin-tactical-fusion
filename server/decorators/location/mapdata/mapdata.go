@@ -63,7 +63,7 @@ func decodeCountries(encoded string) []Country {
 					// shape decodePoints refuses to produce: a clipped bounding
 					// box rejects positions inside the part it dropped, and an
 					// unclosed ring flips the parity test, so the reader gets a
-					// neighbouring country rather than no answer. Refuse the
+					// neighboring country rather than no answer. Refuse the
 					// polygon and let the country come back short and visible.
 					sound = false
 					break

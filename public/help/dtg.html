@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Date-Time Groups - Tactical Fusion</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="copy.js" defer></script>
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <h2>Tactical Fusion</h2>
+            <span class="version">Plugin Documentation</span>
+        </div>
+        <nav>
+            <span class="nav-section">Documentation</span>
+            <a href="help.html">Overview</a>
+            <span class="nav-section">Decorators</span>
+            <a href="dtg.html" class="active">Date-Time Groups</a>
+            <a href="location.html">Coordinates</a>
+            <a href="airfields.html">Airfields</a>
+            <a href="cot.html">Cursor on Target</a>
+            <span class="nav-section">Guides</span>
+            <a href="formats.html">Recognized Formats</a>
+            <a href="panel.html">The Sidebar Panel</a>
+            <a href="admin.html">Admin Settings</a>
+            <a href="commands.html">Slash Commands</a>
+            <span class="nav-section">Reference</span>
+            <a href="troubleshooting.html">Troubleshooting</a>
+            <a href="error-codes.html">Error Codes</a>
+        </nav>
+    </aside>
+
+    <main class="content">
+        <div class="breadcrumb">
+            <a href="help.html">Docs</a>
+            <span class="separator">/</span>
+            Date-Time Groups
+        </div>
+
+        <h1>Date-Time Groups</h1>
+        <p class="tagline">Every date and time shape the plugin recognizes, what each one resolves to, and the ones it turns down.</p>
+
+        <div class="alert alert-info">
+            <p>
+                Every format on this page can be switched off individually in the System
+                Console. See <a href="admin.html#enable-dtg">Admin Settings</a>. To see what
+                your own server does rather than what this page says, run
+                <a href="commands.html#examples"><code>/tactical-fusion examples</code></a>,
+                which runs the real matcher and posts what it did. Every example below is
+                one of that command's own rows.
+            </p>
+        </div>
+
+        <h2 id="dtg-rule">The rule everything follows</h2>
+
+        <p>
+            A date or time is eligible only if it <strong>resolves to a single instant</strong>.
+            The link bakes that instant into its query string and the panel counts down to it,
+            so anything needing a timezone invented for it is out. That one rule explains most
+            of the <a href="#declined">declined</a> list below.
+        </p>
+
+        <h2 id="military">Military date-time group</h2>
+
+        <p>Setting: <a href="admin.html#enable-dtg-military"><code>EnableDTGMilitary</code></a></p>
+
+        <table>
+            <thead>
+                <tr><th>Form</th><th>Example</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>DDHHMM</code> + zone + <code>MMM</code> + <code>YY</code></td>
+                    <td><code class="copyable">091630ZAUG26</code></td>
+                    <td>Any zone letter except <code>I</code> and <code>J</code>. The month abbreviation is case insensitive.</td>
+                </tr>
+                <tr>
+                    <td><code>DDHHMM</code> + zone + <code>MMM</code> + <code>YYYY</code></td>
+                    <td><code class="copyable">091630ZAUG2026</code></td>
+                    <td>The same, with a four digit year. The link normalizes it to two.</td>
+                </tr>
+                <tr>
+                    <td><code>DDHHMM</code> + <code>Z</code></td>
+                    <td><code class="copyable">091630Z</code></td>
+                    <td>Short form. Literal <code>Z</code> only. Month and year are taken from the date the message was posted, and the panel says so.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>More of the same, including the ends of the range:</p>
+
+        <table>
+            <thead>
+                <tr><th>Example</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code class="copyable">091630ZAUG2026</code></td><td>four-digit year, normalized to two in the link</td></tr>
+                <tr><td><code class="copyable">091630ZAUG26</code></td><td>two digits always mean 20NN</td></tr>
+                <tr><td><code class="copyable">091630Z</code></td><td>the short form: month and year from the post date</td></tr>
+                <tr><td><code class="copyable">010001ZJAN00</code></td><td>the earliest the two-digit year can name</td></tr>
+                <tr><td><code class="copyable">312359ZDEC99</code></td><td>and the latest</td></tr>
+                <tr><td><code class="copyable">290000ZFEB24</code></td><td>29 February in a leap year</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            The year is restricted to <strong>2000 to 2099</strong>, which is exactly the range
+            two year digits can name without ambiguity. Written with four digits, a year outside
+            it is declined rather than accepted and then rendered wrongly.
+        </p>
+
+        <div class="alert alert-tip">
+            <p>
+                <code>091630R</code> is <strong>not</strong> a date-time group here. The short
+                form accepts only <code>Z</code>, because six digits followed by a single letter
+                is far too easy to hit by accident. Write <code class="copyable">091630RAUG26</code>
+                if you mean Romeo.
+            </p>
+        </div>
+
+        <h2 id="zones">Zone letters</h2>
+
+        <p>
+            The letter after the six digits is the zone the time is written in. The plugin
+            resolves it to UTC before it stores anything, so the link carries one instant no
+            matter which letter you used.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Example</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code class="copyable">091630AAUG26</code></td><td>A is UTC+1</td></tr>
+                <tr><td><code class="copyable">091630MAUG26</code></td><td>M is UTC+12, the furthest east</td></tr>
+                <tr><td><code class="copyable">091630YAUG26</code></td><td>Y is UTC-12, the furthest west</td></tr>
+                <tr><td><code class="copyable">091630RAUG26</code></td><td>R is UTC-5</td></tr>
+                <tr><td><code class="copyable">091630Zaug26</code></td><td>the month is case-insensitive; the zone letter is not</td></tr>
+            </tbody>
+        </table>
+
+        <table>
+            <thead>
+                <tr><th>Letters</th><th>Offset</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>Z</code></td><td>UTC</td></tr>
+                <tr><td><code>A</code> to <code>H</code></td><td>UTC+1 to UTC+8</td></tr>
+                <tr><td><code>K</code> to <code>M</code></td><td>UTC+10 to UTC+12</td></tr>
+                <tr><td><code>N</code> to <code>Y</code></td><td>UTC-1 to UTC-12</td></tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">Two letters are missing, and both on purpose.</p>
+            <p>
+                <strong><code>I</code></strong> is skipped in the military alphabet because it
+                reads as a 1. <strong><code>J</code></strong> (Juliet) means the observer's own
+                local time, which would make the resolved instant depend on who is reading it.
+                This design bakes one instant into the link, so a Juliet group is declined
+                rather than guessed at.
+            </p>
+        </div>
+
+        <h2 id="timestamp">RFC 3339 timestamp</h2>
+
+        <p>Setting: <a href="admin.html#enable-dtg-timestamp"><code>EnableDTGTimestamp</code></a></p>
+
+        <p>The extended form only, with the hyphens and the colons present:</p>
+
+        <table>
+            <thead>
+                <tr><th>Example</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code class="copyable">2026-08-09T16:30:00Z</code></td><td></td></tr>
+                <tr><td><code class="copyable">2026-08-09T16:30Z</code></td><td>seconds optional</td></tr>
+                <tr><td><code class="copyable">2026-08-09T16:30:00.500Z</code></td><td>a fraction is parsed and discarded</td></tr>
+                <tr><td><code class="copyable">2026-08-09T20:30:00+04:00</code></td><td>the same instant, written in +04:00</td></tr>
+                <tr><td><code class="copyable">2026-08-09T22:00:00+05:30</code></td><td>a half-hour offset no zone letter can say</td></tr>
+                <tr><td><code class="copyable">2026-08-09T22:15:00+05:45</code></td><td>and a quarter-hour one</td></tr>
+                <tr><td><code class="copyable">2026-08-09T11:30:00-05:00</code></td><td>behind UTC</td></tr>
+                <tr><td><code class="copyable">2026-08-09t16:30:00z</code></td><td>RFC 3339 allows lower case</td></tr>
+                <tr><td><code class="copyable">1970-01-01T00:00:00Z</code></td><td>the earliest instant a link may carry</td></tr>
+                <tr><td><code class="copyable">2200-01-01T00:00:00Z</code></td><td>and the latest</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Seconds are optional and a fractional part is parsed and then discarded, since the
+            panel resolves to the second. An explicit offset is what makes this format eligible
+            at all, and it can say things no zone letter can: half-hour and quarter-hour offsets
+            have no letter.
+        </p>
+
+        <h2 id="moniker">The <code>DTG:</code> label</h2>
+
+        <p>Setting: <a href="admin.html#enable-dtg-moniker"><code>EnableDTGMoniker</code></a></p>
+
+        <p>
+            Some military formats mark where a time starts with a <code>DTG:</code> label. The
+            label is <strong>matched and then dropped</strong>, so only the token itself becomes
+            the link text:
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Example</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code class="copyable">DTG: 091630ZAUG26</code></td><td>consumed, so only the token is linked</td></tr>
+                <tr><td><code class="copyable">DTG:091630ZAUG26</code></td><td>spacing optional</td></tr>
+                <tr><td><code class="copyable">DTG : 091630ZAUG26</code></td><td>either side of the colon</td></tr>
+                <tr><td><code class="copyable">dtg: 091630ZAUG26</code></td><td>case-insensitive</td></tr>
+                <tr><td><code class="copyable">Dtg:2026-08-09T16:30:00Z</code></td><td>either grammar</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Spacing either side of the colon is optional and the label itself is case
+            insensitive. The token keeps its own casing rules.
+        </p>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">The label vouches for nothing.</p>
+            <p>
+                A token it marks still has to be a real one. <code>DTG: 091630R</code> is declined
+                exactly as <code>091630R</code> is. The label also only applies to formats that
+                are themselves switched on, so turning military formats off also stops
+                <code>DTG: 091630ZAUG26</code> from being recognized.
+            </p>
+        </div>
+
+        <h2 id="dtg-sentence">In a sentence</h2>
+
+        <p>
+            A token does not have to be alone on the line. It is found in ordinary prose, twice
+            on one line, and beside a different decorator, and what surrounds it is left exactly
+            as written:
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Example</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code class="copyable">ARCT 091630ZAUG26 confirmed</code></td><td>only the token is linked</td></tr>
+                <tr><td><code class="copyable">window opens 090600ZAUG26 and closes 091800ZAUG26</code></td><td>two on one line</td></tr>
+                <tr><td><code class="copyable">[the plan](https://example.com) says 091630ZAUG26</code></td><td>the link is untouched</td></tr>
+                <tr><td><code class="copyable">run `status --now` at 091630ZAUG26</code></td><td>the code is untouched</td></tr>
+                <tr><td><code class="copyable">091630ZAUG26 at 21.3353, -157.9483</code></td><td>two decorators on one line</td></tr>
+            </tbody>
+        </table>
+
+        <h2 id="declined">Deliberately declined</h2>
+
+        <p>
+            The declined list is long, and each entry is declined for a stated reason rather
+            than by oversight. Nothing below is decorated.
+        </p>
+
+        <h3 id="declined-impossible">Impossible dates and times</h3>
+
+        <p>
+            These have the right shape and name a moment that does not exist. Normalizing them
+            would silently show a different date than the author wrote, so they are turned down
+            instead.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Example</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>311200ZFEB26</code></td><td>no 31 February</td></tr>
+                <tr><td><code>2026-02-30T16:30:00Z</code></td><td>nor 30 February</td></tr>
+                <tr><td><code>290000ZFEB25</code></td><td>2025 is not a leap year</td></tr>
+                <tr><td><code>001630ZAUG26</code></td><td>day 00</td></tr>
+                <tr><td><code>321630ZAUG26</code></td><td>day 32</td></tr>
+                <tr><td><code>092400ZAUG26</code></td><td>hour 24</td></tr>
+                <tr><td><code>091660ZAUG26</code></td><td>minute 60</td></tr>
+                <tr><td><code>2026-13-09T16:30:00Z</code></td><td>month 13</td></tr>
+                <tr><td><code>2026-08-09T16:30:00+24:00</code></td><td>a 24-hour offset</td></tr>
+            </tbody>
+        </table>
+
+        <h3 id="declined-ambiguous">No single instant</h3>
+
+        <p>This is the eligibility rule doing its work. Each of these needs a timezone or a date invented for it.</p>
+
+        <table>
+            <thead>
+                <tr><th>Example</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>2026-08-09</code></td><td>a date is not a time</td></tr>
+                <tr><td><code>2026-08-09T16:30:00</code></td><td>no zone, so no instant</td></tr>
+                <tr><td><code>16:30Z</code></td><td>no date</td></tr>
+                <tr><td><code>4:30 PM</code></td><td>a 12-hour clock</td></tr>
+                <tr><td><code>16:30 CST</code></td><td>CST is three different zones</td></tr>
+                <tr><td><code>16:30 EST</code></td><td>and EST collides with "est."</td></tr>
+                <tr><td><code>091630JAUG26</code></td><td>J is the reader's own local time, which differs per reader</td></tr>
+                <tr><td><code>091630IAUG26</code></td><td>I is skipped in the alphabet, it reads as a 1</td></tr>
+                <tr><td><code>DTG: 091630R</code></td><td>the moniker vouches for nothing</td></tr>
+            </tbody>
+        </table>
+
+        <h3 id="declined-range">Outside the range a link may carry</h3>
+
+        <p>Instants run from 1970 to 2200. Both ends are enforced identically at decoration and at render, so a token accepted in a message can never fail on its own page.</p>
+
+        <table>
+            <thead>
+                <tr><th>Example</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>1918-11-11T11:00:00Z</code></td><td>before 1970</td></tr>
+                <tr><td><code>2201-01-01T00:00:00Z</code></td><td>after 2200</td></tr>
+            </tbody>
+        </table>
+
+        <h3 id="declined-falsepositive">A false positive would rewrite the message</h3>
+
+        <p>
+            These are the shapes that occur in ordinary text and identifiers. Decoration rewrites
+            the stored message permanently, so a grammar that is merely plausible is not enough.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Example</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>1786293000</code></td><td>epoch seconds are any ten-digit number</td></tr>
+                <tr><td><code>20260809T163000Z</code></td><td>the basic ISO form has no word boundary</td></tr>
+                <tr><td><code>snapshot-20260809T163000Z.zip</code></td><td>which is what it would match inside</td></tr>
+                <tr><td><code>X091630ZAUG26</code></td><td>inside a longer run</td></tr>
+                <tr><td><code>part 091630ZAUG26X</code></td><td>or with one after it</td></tr>
+            </tbody>
+        </table>
+
+        <h3 id="declined-protected">Left exactly as written</h3>
+
+        <p>
+            A real token inside a protected span is left alone. See
+            <a href="formats.html#protected">spans that are never rewritten</a> for the full list
+            of what protects text.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Example</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>the format is `091630ZAUG26`</code></td><td>inside code</td></tr>
+                <tr><td><code>[091630ZAUG26](https://example.com/window)</code></td><td>already a link</td></tr>
+                <tr><td><code>see https://example.com/logs/091630Z for detail</code></td><td>inside a URL</td></tr>
+                <tr><td><code>www.example.com/091630ZAUG26</code></td><td>a bare www URL counts too</td></tr>
+                <tr><td><code>&lt;https://example.com/091630ZAUG26&gt;</code></td><td>an autolink</td></tr>
+                <tr><td><code>&lt;span title="091630ZAUG26"&gt;x&lt;/span&gt;</code></td><td>inside an HTML tag</td></tr>
+                <tr><td><code>[ref]: https://example.com/091630ZAUG26</code></td><td>a reference definition</td></tr>
+            </tbody>
+        </table>
+
+        <h2 id="dtg-panel">What the panel shows</h2>
+
+        <p>
+            Clicking a date-time link opens the right-hand sidebar. See
+            <a href="panel.html#panel">the sidebar panel</a> for the mechanics that are the same
+            for every decorator.
+        </p>
+
+        <p>Three lines, then a table:</p>
+
+        <table class="field-table">
+            <tbody>
+                <tr>
+                    <td>Countdown</td>
+                    <td>Time remaining until the instant, counting down live: <code>in 3h 20m 15s</code>, <code>2d 1h 0m 5s ago</code>, or <code>now</code>. It flashes once the instant is close, which by default means within 30 minutes.</td>
+                </tr>
+                <tr>
+                    <td>Reading</td>
+                    <td>The instant written out in full, in the offset it was originally written in: <code>09 Aug 2026 16:30 Z</code>. Seconds appear only when there are seconds to show, so <code>2026-08-09T16:30:45Z</code> reads <code>09 Aug 2026 16:30:45 Z</code> while <code>2026-08-09T16:30:00Z</code> stays <code>16:30</code>: a written <code>:00</code> has nothing to lose, and padding it on would claim a field the row does not need. A date-time group has no seconds field, so it never shows one.</td>
+                </tr>
+                <tr>
+                    <td>Canonical form</td>
+                    <td>The token as the parser understood it, in monospace. Useful for confirming that a short form was read the way you meant, and it is what travels in the link.</td>
+                </tr>
+                <tr>
+                    <td>Timezone table</td>
+                    <td>The same instant in each of your timezones, ordered west to east. Times follow the reading: to the minute, and to the second when the original text was written that finely.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3 id="dtg-badges">The date column badges</h3>
+
+        <p>
+            A <code>+1</code> or <code>-1</code> next to a date means that row falls on a
+            different calendar day from the token itself. The comparison is against the
+            <strong>token's own zone</strong>, not UTC, so a group written in
+            <code>+04:00</code> does not badge half the table as a day out.
+        </p>
+
+        <p>
+            The zones are ordered west to east <em>measured at that instant</em> rather than by a
+            fixed offset, so a zone observing daylight saving sits where it actually is on the day
+            in question.
+        </p>
+
+        <h3 id="dtg-assumed">Short forms say what they assumed</h3>
+
+        <p>
+            A short form such as <code class="copyable">091630Z</code> carries no month and no
+            year, so both are taken from the date the message was posted. The panel states this in
+            italics beneath the reading rather than presenting an inferred date as fact. A token
+            that named only its year is treated the same way.
+        </p>
+
+        <p>
+            The plugin never pads a field the author did not write without saying that it did.
+        </p>
+
+        <p>
+            A zone whose data will not load renders <code>n/a</code> rather than being dropped
+            from the table, so the list of zones stays the same length every time you open it.
+        </p>
+
+        <p>
+            <strong>The hover card shows the countdown and nothing else.</strong> A hover answers
+            "how far off is this" at a glance; everything else is a click away.
+        </p>
+
+        <p>
+            You can choose which zones appear and how urgent an instant has to be before it is
+            flagged. See <a href="panel.html#customize">Customize your view</a>.
+        </p>
+
+        <h2 id="dtg-live">Times generated when you ask</h2>
+
+        <p>
+            <a href="commands.html#examples"><code>/tactical-fusion examples</code></a>
+            opens with date-time groups built from the moment you ran it, rather than from a fixed
+            date: one a few minutes ahead, one further out, one days out, and one in the past.
+        </p>
+
+        <p>
+            That is deliberate. A fixed date cannot show a countdown actually moving, cannot
+            straddle the threshold at which the panel starts flagging, and cannot show the half of
+            the behavior nobody expects until they meet it, which is a past instant counting
+            <em>up</em>.
+        </p>
+
+        <h2 id="dtg-settings">Settings and troubleshooting</h2>
+
+        <table>
+            <thead>
+                <tr><th>Setting</th><th>Governs</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><a href="admin.html#enable-dtg"><code>EnableDTG</code></a></td><td>Every format on this page.</td></tr>
+                <tr><td><a href="admin.html#enable-dtg-military"><code>EnableDTGMilitary</code></a></td><td><a href="#military">Military date-time groups</a>, long and short.</td></tr>
+                <tr><td><a href="admin.html#enable-dtg-timestamp"><code>EnableDTGTimestamp</code></a></td><td><a href="#timestamp">RFC 3339 timestamps</a>.</td></tr>
+                <tr><td><a href="admin.html#enable-dtg-moniker"><code>EnableDTGMoniker</code></a></td><td>The <a href="#moniker"><code>DTG:</code> label</a>, for whichever grammars are on.</td></tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-info">
+            <p class="alert-title">Switching a format off does not break existing links.</p>
+            <p>
+                A format switch governs <strong>decoration only</strong>. A link already written
+                into a message keeps working after its format is switched off, which is why the
+                decorator stays registered with everything off. Turning a switch off is the safe
+                way to stop new decoration.
+            </p>
+        </div>
+
+        <p>
+            If a date you expected to be linked was not, see
+            <a href="troubleshooting.html">Troubleshooting</a>.
+        </p>
+
+    </main>
+</div>
+</body>
+</html>

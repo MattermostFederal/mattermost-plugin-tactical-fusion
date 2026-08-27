@@ -25,6 +25,26 @@ const BASEMAP = path.resolve(__dirname, '../../../../../public/map/world.pmtiles
 const ARCHIVE = fs.readFileSync(BASEMAP);
 export const PILOT_PACKAGE = 'indopacom-hawaii';
 const DETAIL = path.resolve(__dirname, `../../../../../public/map/packages/${PILOT_PACKAGE}.pmtiles`);
+
+/*
+ * Read once, like the basemap above, and not once per request.
+ *
+ * PMTiles reads by byte range, so a single map asks the detail archive for
+ * several slices, and this used to be a `readFileSync` inside the route handler:
+ * every slice re-read all seven megabytes, synchronously, on the Node event loop
+ * that Playwright serves those very responses from. Across a suite of forty map
+ * tests that is most of a gigabyte of blocking disk reads whose only effect was
+ * to make the browser wait for a map it had already asked for.
+ *
+ * Lazy, because a suite that never draws a detail tier should not pay for it at
+ * import.
+ */
+let detailArchive: Buffer | null = null;
+
+function detailBytes(): Buffer {
+    detailArchive = detailArchive ?? fs.readFileSync(DETAIL);
+    return detailArchive;
+}
 const FONTS = path.resolve(__dirname, '../../../../../public/map/fonts/NotoSans-Regular');
 
 /*
@@ -41,7 +61,7 @@ const SHARED = require.resolve('maplibre-gl/dist/maplibre-gl-shared.mjs');
  * The worker is a property of the test bundler rather than of this component.
  * The shipping build imports it as a webpack asset and hands the emitted URL to
  * `setWorkerUrl`; Playwright's component runner builds with Vite, which does not
- * honour the `?copy` marker, so `assetUrl` returns null and MapLibre falls back
+ * honor the `?copy` marker, so `assetUrl` returns null and MapLibre falls back
  * to deriving `./maplibre-gl-worker.mjs` from its own `import.meta.url`. Vite
  * emits that chunk under a hashed name, so the request fails, the GeoJSON source
  * never finishes tiling, `load` never fires, and the map sits on "Loading map…"
@@ -80,7 +100,7 @@ export async function serveMapAssets(
             return route.fulfill({status: 404});
         }
 
-        return rangeReply(route, fs.readFileSync(DETAIL));
+        return rangeReply(route, detailBytes());
     });
 
     // PMTiles reads by byte range, so this has to answer 206 with the requested

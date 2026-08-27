@@ -4,11 +4,97 @@
 
 ## Reader preferences
 
-"Customize your view" is a link below both panels. On the DTG it chooses the
-timezone rows and how close a DTG has to be before the countdown flashes; on the
-location panel it chooses **which rows to show**.
+### A forgiving read must not become a destructive write
 
-Both editors write through `savePreferencesSection` / `resetPreferencesSection`,
+The read is deliberately more forgiving than the write. `validHiddenSections`
+refuses an unknown id on the way in, so a hand-written request cannot store
+junk; `kvPreferenceStore.Get` does not validate on the way out, so retiring a
+section can never lock a reader out of their own settings. `fromWire` matches
+that on the client and drops an id this build does not know.
+
+A save then undid it. A PUT replaces the whole blob, so the client had to send
+back the sections it did not touch, and it rebuilt them from the **parsed**
+shape. Everything `fromWire` had forgivingly dropped was dropped again, this
+time into storage. A reader on a cached older bundle, or one whose admin had
+just downgraded the plugin, lost a hidden id by saving an unrelated section:
+silently, permanently, and with no concurrency involved at all.
+
+`withSection` is the fix. The untouched sections travel back exactly as the
+server sent them, byte for byte, and only the edited one is rebuilt. A section
+the server never sent stays absent rather than being invented as explicit
+zeros, which is the same thing to the server, since a zero value means "use the
+default" everywhere here.
+
+`wireHasNoChoices` follows from the same argument. "Restore defaults" deletes
+the blob when nothing is left, and deciding that on the parsed view would have
+read an unknown id as no choice at all and deleted the settings the forgiving
+read exists to protect. It reads the wire.
+
+**What this does not fix is the lost update.** Two tabs still race: both GET,
+both PUT, and the second overwrites the first's section from a snapshot taken
+before it. The re-read narrows the window from the lifetime of the tab to the
+length of one request, which is worth having and is not a fix. Closing it needs
+a revision the server checks, which is a wire change and a decision about the
+`A PUT replaces the whole blob` invariant, so it is recorded here rather than
+taken.
+
+### Leaving is not editing
+
+Every editor seals its controls until a read has succeeded, because a failed
+FIRST read degrades to the defaults and saving an edit made on top of those
+replaces the reader's real section with settings they never chose. `loaded`
+stays false for good after that failure, which is deliberate.
+
+Back must not be sealed by it. The DTG editor gated Back on the same flag, so
+the one path where a reader most wants out was the one path where the control
+was dead for the life of the panel: they were shut in the editor, with closing
+the whole sidebar the only way back to the timestamp they opened it from.
+`HideableEditor` had already got this right (`disabled={busy}`), which is the
+kind of divergence extracting a shared component is supposed to end, and did
+not here because the DTG editor was left out of the extraction.
+
+The same pair of fixes travels together: a failed save refocuses the Save
+button, because disabling a button that holds focus blurs it to the body and
+leaves the reader nowhere to retry from. `HideableEditor` carried that and the
+DTG editor did not.
+
+
+"Customize your view" is a link below three panels. On the DTG it chooses the
+timezone rows and how close a DTG has to be before the countdown flashes; on the
+location panel it chooses **which rows to show**; on the Cursor on Target panel
+it chooses **which groups to show**, argued in
+[`cot.md`](cot.md#customize-your-view).
+
+The two that hide things, location and Cursor on Target, are **one component**:
+`preferences/HideableEditor.tsx`. What differs between them is a catalog and
+four strings; what is the same is every property that took a defect to get
+right, and those had been copied twice and fixed at different times in each
+copy. The DTG editor stays its own, because a zone picker and a number field
+are not a checkbox list.
+
+**Nothing is editable until a read has succeeded.** A failed FIRST read degrades
+to the defaults, which renders as every box ticked, and the form used to be
+enabled over it: a reader who edited that and saved wrote a selection derived
+from settings they never had, and a save replaces the whole section. `error`
+alone cannot tell that from a later failure, which keeps the last good blob and
+is safe to edit, so the store carries a `loaded` flag and the editors seal on
+it. All three had the defect; all three now seal.
+
+**Focus is placed on both halves of the swap.** The editor replaces the whole
+panel, so the link that opened it unmounts and focus fell to the body: a
+keyboard reader was dropped at the top of the document with nothing announced,
+and again on the way back. The editor focuses its Back link on mount, and each
+panel focuses its Customize link when it returns. `LinkButton` forwards a ref
+for exactly this. A failed save does the same smaller thing: disabling the
+button while it held focus blurred it, so the reader had nowhere to retry from.
+
+**A hint describes its checkbox; it does not name it.** The hint span used to
+sit inside the `<label>`, which made it part of the accessible name, so every
+box announced a dozen words of prose before its own state. It is a sibling now,
+referenced by `aria-describedby`. Tests match on labels rather than hints, which
+is the more honest assertion anyway.
+
+All three editors write through `savePreferencesSection` / `resetPreferencesSection`,
 never a whole blob of their own, and that is load-bearing twice over. A `PUT`
 replaces the entire blob, so an editor building one from its own state deletes
 whatever the reader chose in the other one; and `loadPreferences` fetches **once
@@ -80,8 +166,8 @@ Consequences worth knowing:
 - **The standalone page always shows the defaults.** It requires a login now,
   but it does not ask who is reading it: the renderer takes a query string and
   no user. So the RHS and the page still disagree about the same DTG for a
-  reader who has customised either setting. That was inherent while the route
-  was public and is a **choice** now, and the choice is deliberate: honouring
+  reader who has customized either setting. That was inherent while the route
+  was public and is a **choice** now, and the choice is deliberate: honoring
   preferences means a KV read on a route served with a cache lifetime, and the
   renderers stop being pure functions of their query strings. Worth revisiting,
   but as its own piece of work.
@@ -150,7 +236,7 @@ channel), no Reset view and no zoom readout. What is left is the picture.
 tooltip caps at that plus its padding. The frame carries only a height everywhere
 else, because a block element fills the sidebar; inside a tooltip that sizes
 itself to its content there is nothing to fill, and the map came out a narrow
-strip. Every behavioural test passed while it did: a pin lands, labels draw and
+strip. Every behavioral test passed while it did: a pin lands, labels draw and
 the wheel is ignored at any width at all, so `is a map rather than a strip`
 measures the box instead. The 360px cap on the card is a max rather than a width,
 so the DTG countdown still shrinks to its own line.
@@ -254,7 +340,7 @@ quietly stopped meaning what its name said.
 direction is the whole design. Empty then means "all of them", so a reader who
 never chose is stored as nothing, which is what lets "Restore defaults" stay a
 delete. It also decides what happens when a row is **added**: stored this way a
-new row appears for everybody, including readers who customised, which is the
+new row appears for everybody, including readers who customized, which is the
 same promise the DTG defaults make. Stored the other way round it would be
 invisible to exactly the readers who cared enough to choose. The editor still
 presents it as what to *show*, because "hide this" is the honest mirror of the
@@ -273,10 +359,19 @@ it.
 Hiding every row is allowed and leaves the note and the links, which is what
 makes it recoverable: the way back is the Customize link itself.
 
-Both editors **spread the existing preferences** before saving, because a PUT
-replaces the whole blob and building one fresh would wipe whatever the reader
-chose in the other decorator's editor. The type checker catches this today,
-since `Preferences` requires both keys.
+All three editors **spread the existing preferences** before saving, because a
+PUT replaces the whole blob and building one fresh would wipe whatever the reader
+chose in another editor. The type checker catches this today, since
+`Preferences` requires all three keys.
+
+**Three sections mean three places that have to know there are three.**
+`hasNoChoices` in `preferences/store.ts` is spelled out per section rather than
+deep-compared, so a fourth is a visible omission there rather than a blob that
+outlives every choice in it; `clone` in Go copies each section's slice, or the
+cache hands one caller a value the next caller edited; and `EMPTY_PREFERENCES`,
+`fromWire` and `toWire` each carry all three. None of those fails loudly when a
+section is missed: the blob simply never gets deleted, or a setting silently
+never reaches the wire.
 
 Stored blobs are stamped with `preferencesVersion`. Nothing reads it yet; it is
 there so a later change of shape can tell an old blob from a new one, which is

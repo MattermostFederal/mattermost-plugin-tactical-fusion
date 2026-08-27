@@ -187,7 +187,7 @@ test('a first read that fails still degrades to every surface on', async () => {
 test('a hung read is abandoned rather than pinning every surface off', async () => {
     // Never settles on its own. The abort signal is the only thing that can end
     // it, which is what makes this a test of the timeout rather than of a slow
-    // reply, and is why the stub has to honour the signal the way fetch does.
+    // reply, and is why the stub has to honor the signal the way fetch does.
     _setFetchTimeoutForTesting(20);
 
     const calls = stubFetch((init) => new Promise((_, reject) => {

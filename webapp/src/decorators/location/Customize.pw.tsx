@@ -3,13 +3,13 @@ import React from 'react';
 import CustomizeHarness from './CustomizeHarness';
 
 import {expect, test} from '../../../playwright/ct-coverage';
-import {stubFeaturesRoute} from '../../features/stub_route';
+import {featuresAnswered, stubFeaturesRoute} from '../../features/stub_route';
 import {savedHiddenRows, stubPreferencesRoute} from '../../preferences/stub_route';
 
 /*
  * The location editor had no component test at all, which is how a
  * draft-clobbering effect and a "Restore defaults" that deleted another
- * decorator's settings both shipped. These are the two behaviours that were
+ * decorator's settings both shipped. These are the two behaviors that were
  * wrong, plus the ordinary ones.
  */
 
@@ -124,7 +124,7 @@ test('announces when every row has been hidden', async ({mount, page}) => {
     // The two map boxes are offered only once the features route has answered,
     // so a snapshot taken on mount misses them and "uncheck everything" would
     // quietly leave two ticked and never fire the warning.
-    await expect(component.getByRole('checkbox', {name: /Drawn in the channel/})).toBeVisible();
+    await expect(component.getByRole('checkbox', {name: 'Map under the post'})).toBeVisible();
 
     const boxes = await component.getByRole('checkbox').all();
     await boxes.reduce(
@@ -177,8 +177,8 @@ test.describe('the map under a post', () => {
         await stubPreferencesRoute(page);
         const component = await mount(<CustomizeHarness/>);
 
-        await expect(component.getByRole('checkbox', {name: /A small world map/})).toBeChecked();
-        await expect(component.getByRole('checkbox', {name: /Drawn in the channel/})).toBeChecked();
+        await expect(component.getByRole('checkbox', {name: 'Map', exact: true})).toBeChecked();
+        await expect(component.getByRole('checkbox', {name: 'Map under the post'})).toBeChecked();
     });
 
     test('unticks on its own without taking the panel map with it', async ({mount, page}) => {
@@ -186,8 +186,8 @@ test.describe('the map under a post', () => {
         await stubPreferencesRoute(page, {storedHiddenRows: ['inline']});
         const component = await mount(<CustomizeHarness/>);
 
-        await expect(component.getByRole('checkbox', {name: /Drawn in the channel/})).not.toBeChecked();
-        await expect(component.getByRole('checkbox', {name: /A small world map/})).toBeChecked();
+        await expect(component.getByRole('checkbox', {name: 'Map under the post'})).not.toBeChecked();
+        await expect(component.getByRole('checkbox', {name: 'Map', exact: true})).toBeChecked();
     });
 
     /*
@@ -205,7 +205,7 @@ test.describe('the map under a post', () => {
         // The two map boxes are offered only once the features route has answered,
         // so a snapshot taken on mount misses them and "uncheck everything" would
         // quietly leave two ticked and never fire the warning.
-        await expect(component.getByRole('checkbox', {name: /Drawn in the channel/})).toBeVisible();
+        await expect(component.getByRole('checkbox', {name: 'Map under the post'})).toBeVisible();
 
         const boxes = await component.getByRole('checkbox').all();
         await boxes.reduce(
@@ -214,7 +214,7 @@ test.describe('the map under a post', () => {
         );
         await expect(component.getByText(/Every row is hidden/)).toBeVisible();
 
-        await component.getByRole('checkbox', {name: /Drawn in the channel/}).check();
+        await component.getByRole('checkbox', {name: 'Map under the post'}).check();
 
         await expect(component.getByText(/Every row is hidden/)).toHaveCount(0);
     });
@@ -224,7 +224,7 @@ test.describe('the map under a post', () => {
         const calls = await stubPreferencesRoute(page);
         const component = await mount(<CustomizeHarness/>);
 
-        await component.getByRole('checkbox', {name: /Drawn in the channel/}).uncheck();
+        await component.getByRole('checkbox', {name: 'Map under the post'}).uncheck();
         await component.getByRole('button', {name: 'Save'}).click();
 
         await expect(component.getByTestId('closed')).toBeVisible();
@@ -247,8 +247,8 @@ test.describe('when the admin has turned a map surface off', () => {
         await stubPreferencesRoute(page);
         const component = await mount(<CustomizeHarness/>);
 
-        await expect(component.getByRole('checkbox', {name: /Drawn in the channel/})).toBeVisible();
-        await expect(component.getByRole('checkbox', {name: /A small world map/})).toHaveCount(0);
+        await expect(component.getByRole('checkbox', {name: 'Map under the post'})).toBeVisible();
+        await expect(component.getByRole('checkbox', {name: 'Map', exact: true})).toHaveCount(0);
     });
 
     test('offers no tick box for the map under a post', async ({mount, page}) => {
@@ -256,18 +256,23 @@ test.describe('when the admin has turned a map surface off', () => {
         await stubPreferencesRoute(page);
         const component = await mount(<CustomizeHarness/>);
 
-        await expect(component.getByRole('checkbox', {name: /A small world map/})).toBeVisible();
-        await expect(component.getByRole('checkbox', {name: /Drawn in the channel/})).toHaveCount(0);
+        await expect(component.getByRole('checkbox', {name: 'Map', exact: true})).toBeVisible();
+        await expect(component.getByRole('checkbox', {name: 'Map under the post'})).toHaveCount(0);
     });
 
     test('offers neither when maps are off entirely', async ({mount, page}) => {
         await stubFeaturesRoute(page, {mapPanel: false, mapInline: false, mapPage: false});
         await stubPreferencesRoute(page);
+        const answered = featuresAnswered(page);
         const component = await mount(<CustomizeHarness/>);
+        await answered;
 
+        // Barriered on the route. Both map boxes are absent before it answers,
+        // so without this the two assertions below held at t=0 and would have
+        // held against a build that never read the route.
         await expect(component.getByRole('checkbox', {name: /MGRS/})).toBeVisible();
-        await expect(component.getByRole('checkbox', {name: /A small world map/})).toHaveCount(0);
-        await expect(component.getByRole('checkbox', {name: /Drawn in the channel/})).toHaveCount(0);
+        await expect(component.getByRole('checkbox', {name: 'Map', exact: true})).toHaveCount(0);
+        await expect(component.getByRole('checkbox', {name: 'Map under the post'})).toHaveCount(0);
     });
 
     // The reader's own choice survives, so the switch coming back does not
@@ -285,4 +290,42 @@ test.describe('when the admin has turned a map surface off', () => {
         await expect(component.getByTestId('closed')).toBeVisible();
         expect(savedHiddenRows(calls)).toEqual(['inline']);
     });
+});
+
+/*
+ * The hints used to sit inside the label, so eight selectors matching on
+ * /Drawn in the channel/ pinned them as a side effect of naming the row.
+ * Extracting HideableEditor moved them to aria-describedby and every one of
+ * those selectors became an exact label match, which left nothing asserting
+ * that a location row explains itself at all. The CoT editor kept its own
+ * version of this test; this is its twin.
+ */
+test('a hint describes its checkbox rather than naming it', async ({mount, page}) => {
+    await stubFeaturesRoute(page);
+    await stubPreferencesRoute(page);
+    const component = await mount(<CustomizeHarness/>);
+
+    const box = component.getByRole('checkbox', {name: 'Map under the post', exact: true});
+    await expect(box).toBeVisible();
+
+    const describedBy = await box.getAttribute('aria-describedby');
+    expect(describedBy).not.toBeNull();
+    await expect(component.locator(`#${describedBy}`)).toHaveText(/Drawn in the channel/);
+});
+
+test('every row the editor offers carries a hint', async ({mount, page}) => {
+    await stubFeaturesRoute(page);
+    await stubPreferencesRoute(page);
+    const component = await mount(<CustomizeHarness/>);
+
+    const boxes = component.getByRole('checkbox');
+    await expect(boxes.first()).toBeVisible();
+
+    const described = await boxes.evaluateAll(
+        (nodes) => nodes.map((node) => node.getAttribute('aria-describedby')),
+    );
+    expect(described.length).toBeGreaterThan(0);
+    expect(described.filter((id) => id === null || id === '')).toEqual([]);
+
+    await Promise.all(described.map((id) => expect(component.locator(`#${id}`)).not.toBeEmpty()));
 });

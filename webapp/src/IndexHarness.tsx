@@ -9,7 +9,7 @@ import {getSelection, setSelection, subscribe} from './decorators/selection';
  * The entry point calls `window.registerPlugin(...)` at import time, so the stub
  * has to be in place before the module is pulled in: hence a dynamic import
  * rather than a top-level one. Everything `initialize` does to the registry is
- * recorded and serialised into a text node, which keeps the assertions in the
+ * recorded and serialized into a text node, which keeps the assertions in the
  * test file rather than in here.
  *
  * The registry is a Proxy so that *any* method the entry point reaches for is
@@ -155,7 +155,7 @@ const IndexHarness: React.FC = () => {
                     // Mattermost does not remove a plugin's components when it
                     // re-registers, so what lands here is the whole of the
                     // cleanup. Recorded in React state rather than in `result`,
-                    // because that is serialised as soon as initialize returns
+                    // because that is serialized as soon as initialize returns
                     // and these arrive when the test presses uninitialize.
                     unregisterComponent: ((componentId: string) => {
                         setUnregistered((ids) => [...ids, componentId]);

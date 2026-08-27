@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {forwardRef, useState} from 'react';
 
 /**
  * The resting look: Mattermost's link color, no underline until pointed at.
@@ -50,8 +50,12 @@ interface Props {
  *
  * One component rather than two so the hover and focus underline, which only
  * exists because inline styles cannot express `:hover`, is defined once.
+ *
+ * Forwards a ref to the button, because a panel that swaps one view for another
+ * has to put focus somewhere: without it the activated control unmounts and
+ * focus falls to the body.
  */
-const LinkButton: React.FC<Props> = ({onClick, href, disabled, style, children}) => {
+const LinkButton = forwardRef<HTMLButtonElement, Props>(({onClick, href, disabled, style, children}, ref) => {
     const [pointed, setPointed] = useState(false);
 
     const shared = {
@@ -75,12 +79,15 @@ const LinkButton: React.FC<Props> = ({onClick, href, disabled, style, children})
 
     return (
         <button
+            ref={ref}
             type='button'
             disabled={disabled}
             onClick={onClick}
             {...shared}
         >{children}</button>
     );
-};
+});
+
+LinkButton.displayName = 'LinkButton';
 
 export default LinkButton;

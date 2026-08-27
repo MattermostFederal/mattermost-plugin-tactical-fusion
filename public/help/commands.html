@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Slash Commands - Tactical Fusion</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="copy.js" defer></script>
 </head>
 <body>
 <div class="layout">
@@ -16,6 +17,12 @@
         <nav>
             <span class="nav-section">Documentation</span>
             <a href="help.html">Overview</a>
+            <span class="nav-section">Decorators</span>
+            <a href="dtg.html">Date-Time Groups</a>
+            <a href="location.html">Coordinates</a>
+            <a href="airfields.html">Airfields</a>
+            <a href="cot.html">Cursor on Target</a>
+            <span class="nav-section">Guides</span>
             <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
             <a href="admin.html">Admin Settings</a>
@@ -34,7 +41,7 @@
         </div>
 
         <h1>Slash Commands</h1>
-        <p class="tagline">One trigger, <code>/tactical-fusion</code>, with three subcommands.</p>
+        <p class="tagline">One trigger, <code>/tactical-fusion</code>, with two subcommands.</p>
 
         <table>
             <thead>
@@ -43,12 +50,7 @@
             <tbody>
                 <tr>
                     <td><a href="#examples"><code>/tactical-fusion examples</code></a></td>
-                    <td>Posts a short demonstration, one row per format, as a single message</td>
-                    <td><strong>Everyone in the channel</strong></td>
-                </tr>
-                <tr>
-                    <td><a href="#example-details"><code>/tactical-fusion example-details</code></a></td>
-                    <td>Posts every format, every edge case and every near miss that is deliberately declined, one message per decorator</td>
+                    <td>Posts a demonstration, one message per format, plus two Cursor on Target events as cards</td>
                     <td><strong>Everyone in the channel</strong></td>
                 </tr>
                 <tr>
@@ -60,12 +62,11 @@
         </table>
 
         <div class="alert alert-warning">
-            <p class="alert-title">Two of these write to the channel.</p>
+            <p class="alert-title">One of these writes to the channel.</p>
             <p>
-                <code>examples</code> and <code>example-details</code> create real posts that
-                everybody can see and that stay in the channel. Only <code>check</code> is
-                <strong>ephemeral</strong>. Run the first two where you mean to: the short
-                one is a handful of rows, the detailed one is a post per decorator.
+                <code>examples</code> creates real posts that everybody can see and that stay in
+                the channel, one per format and one per Cursor on Target event. <code>check</code>
+                is <strong>ephemeral</strong>. Run <code>examples</code> where you mean to.
             </p>
         </div>
 
@@ -78,25 +79,31 @@
         <h3>What it is for</h3>
 
         <p>
-            Introducing the plugin to a channel. It posts <strong>one message</strong> with a
-            row per format, each showing what you would type and the link it becomes, so a
-            team can click through them without every person having to run a command of
-            their own.
+            Introducing the plugin to a channel. It posts <strong>one message per format</strong>,
+            each row showing what you would type and the link it becomes, so a team can click
+            through them without every person having to run a command of their own.
+        </p>
+
+        <p>
+            Five posts, and none of them a reply: date-time groups, coordinates, airfields, and
+            then two <a href="cot.html">Cursor on Target</a> events, which arrive as cards. Each
+            is something you come back to rather than a remark on the one above it. A set with
+            nothing left to show is not posted at all.
         </p>
 
         <p>
             The rows read like this, one per format:
         </p>
 
-        <pre><code>Date/Time: `121411ZAUG26` &rarr; 121411ZAUG26 - 5 minutes out, so the countdown opens flagged as imminent
-MGRS: `18S UJ 23478 06483` &rarr; 18S UJ 23478 06483
-GEOREF: `GEOREF:GJNJ5753` &rarr; GEOREF:GJNJ5753 - the label is required, and longitude comes first</code></pre>
+        <pre tabindex="0"><code>Date/Time: `121411ZAUG26` &rarr; 121411ZAUG26 - 5 minutes out, so the countdown opens flagged as imminent
+MGRS: `4Q FJ 0906 5962` &rarr; 4Q FJ 0906 5962
+GEOREF: `GEOREF:XGKP55803503` &rarr; GEOREF:XGKP55803503 - the label is required, longitude comes first, and this one is on Guam</code></pre>
 
         <p>
             The GEOREF row shows the other thing worth noticing: a coordinate field label is
             <strong>consumed</strong>, so the label and the token together become the link.
-            <a href="formats.html#location-area">GEOREF and GARS</a> are matched behind their
-            labels only; a <a href="formats.html#location-area">Plus Code</a> needs none.
+            <a href="location.html#location-area">GEOREF and GARS</a> are matched behind their
+            labels only; a <a href="location.html#location-area">Plus Code</a> needs none.
         </p>
 
         <p>
@@ -113,9 +120,11 @@ GEOREF: `GEOREF:GJNJ5753` &rarr; GEOREF:GJNJ5753 - the label is required, and lo
 
         <p>
             Nothing exotic, and no near misses. Every boundary case, declined shape and
-            protected span is in <a href="#example-details"><code>example-details</code></a>.
-            This one is a single post that everybody reads, so it answers one question: what
-            does this plugin do to a message?
+            protected span is on the format pages: <a href="dtg.html#declined">date-time groups</a>,
+            <a href="location.html#location-declined">coordinates</a> and
+            <a href="airfields.html#airfield-declined">airfields</a> each list theirs, with the
+            reason on every row. These posts are read by a whole channel, so they answer one
+            question: what does this plugin do to a message?
         </p>
 
         <h3>When a format is switched off</h3>
@@ -133,84 +142,7 @@ GEOREF: `GEOREF:GJNJ5753` &rarr; GEOREF:GJNJ5753 - the label is required, and lo
             reaches the channel:
         </p>
 
-        <pre><code>Nothing would be decorated, so there is nothing to show. Every format is switched off in the System Console, under Plugins &gt; Tactical Fusion. (TF-16003)</code></pre>
-
-        <h2 id="example-details">/tactical-fusion example-details</h2>
-
-        <h3>Arguments</h3>
-
-        <p>None. It shows every decorator.</p>
-
-        <p>
-            This is the exhaustive one. Where <a href="#examples"><code>examples</code></a>
-            shows the ordinary shape of each format in a single post, this shows every
-            format, every boundary, and every near miss that is deliberately declined, with
-            the reason on each row. It is long, and being long is the point: the rows that
-            decline are worth as much as the rows that do not.
-        </p>
-
-        <div class="alert alert-info">
-            <p class="alert-title">It posts one message per decorator.</p>
-            <p>
-                Two separate posts: one for <strong>date-time groups</strong> and one for
-                <strong>coordinates</strong>. Not a thread, because each is a reference you
-                come back to rather than a remark about the one before it. Together they run
-                to around 17,500 characters, which is more than a single post can hold.
-            </p>
-            <p>
-                On a server with a smaller post size limit a decorator's own examples split
-                further, and the heading is numbered <em>(1 of 3)</em> when that happens. An
-                unnumbered heading means the whole of that decorator is in the post you are
-                reading. Nothing is ever truncated.
-            </p>
-        </div>
-
-        <p>
-            A <strong>subpath</strong> install puts the subpath into every link, and there
-            are a great many links here, which is the one thing that meaningfully changes
-            how many messages it takes.
-        </p>
-
-        <h3>What it shows</h3>
-
-        <p>
-            Each row is the text you would type, then the arrow, then what would be stored.
-            No arrow means nothing changed. Rows are grouped under a heading that states the
-            rule they share, which for a declined row is the whole content of the row:
-        </p>
-
-        <table class="field-table">
-            <tbody>
-                <tr><td>Live, from the moment you ran this</td><td>Date-time groups generated against the current clock, either side of the flash threshold and one in the past, so the countdown is actually moving.</td></tr>
-                <tr><td>One group per grammar</td><td>Military date-time groups, zone letters, RFC 3339 timestamps, the <code>DTG:</code> moniker, decimal degrees, degrees and minutes and seconds, the USMTF compact family, grid references, UTM, the area references (<a href="formats.html#location-area">GEOREF, GARS and Plus Codes</a>), and <a href="formats.html#airfield">airfield codes</a>.</td></tr>
-                <tr><td>Drawn as a map in the channel</td><td>Which coordinate messages draw their <a href="panel.html#location-inline">map under the post</a> and which get the link alone: a message that is only a coordinate qualifies, with or without a field label, and anything else in the message does not.</td></tr>
-                <tr><td>In a sentence</td><td>Tokens surrounded by ordinary prose, two on one line, and two different decorators on one line.</td></tr>
-                <tr><td>Declined</td><td>The <a href="formats.html#declined">near misses</a>, in groups by what is wrong with them: impossible dates, no single instant, out of range, needs a label or spacing, shapes where a false positive would rewrite the message, and <a href="formats.html#airfield-declined">airfield codes without an upper-case label</a>.</td></tr>
-                <tr><td>Left exactly as written</td><td>Tokens inside <a href="formats.html#protected">protected spans</a>: code, links, images, autolinks, HTML tags, reference definitions and bare URLs.</td></tr>
-                <tr><td>Standalone page</td><td>A ready-made link that opens the <a href="panel.html#page">server-rendered page</a> rather than the sidebar, so you can check it from a desktop browser.</td></tr>
-            </tbody>
-        </table>
-
-        <div class="alert alert-tip">
-            <p class="alert-title">The output is genuinely the matcher's, not a hand-written table.</p>
-            <p>
-                The command runs the matcher itself rather than relying on the message
-                hook, because its own output is full of code fences and links and so would
-                be skipped. That is also what keeps the "Declined" rows honest: they are
-                the real result, so they cannot drift away from the code. A format that is
-                switched off, such as <a href="admin.html#enable-location-utm">UTM</a>,
-                therefore shows its rows with no link, under a heading that says so.
-            </p>
-        </div>
-
-        <h3>When it cannot post</h3>
-
-        <p>
-            A channel that refuses the root post leaves nothing written and the reason is
-            reported to you alone. A reply that is refused costs its own examples only: the
-            rest are still attempted, and you are told how many are missing. Both carry
-            <code>TF-16006</code>.
-        </p>
+        <pre tabindex="0"><code>Nothing would be decorated, so there is nothing to show. Every format is switched off in the System Console, under Plugins &gt; Tactical Fusion. (TF-16003)</code></pre>
 
         <h2 id="check">/tactical-fusion check</h2>
 
@@ -227,7 +159,7 @@ GEOREF: `GEOREF:GJNJ5753` &rarr; GEOREF:GJNJ5753 - the label is required, and lo
             Decoration cannot explain itself. A coordinate that is recognized turns into a
             link and is obviously working; one that is declined does nothing at all, and
             nothing about the non-event says which rule decided it.
-            <code>34.0561, -118.2500</code> is linked and <code>34.0561, -118.25</code> is
+            <code>21.3353, -157.9483</code> is linked and <code>21.3353, -157.95</code> is
             not, and the difference is two characters that nobody would think to count.
         </p>
 
@@ -244,7 +176,7 @@ GEOREF: `GEOREF:GJNJ5753` &rarr; GEOREF:GJNJ5753 - the label is required, and lo
                 <tr><td>You typed</td><td>The text exactly as supplied.</td></tr>
                 <tr><td>Would be stored as</td><td>The decorated result, when anything matched. Anything still plain in that line was left alone.</td></tr>
                 <tr><td>Nothing would be decorated</td><td>Shown instead, when nothing matched at all.</td></tr>
-                <tr><td>Reasons</td><td>The rules that most often decline a coordinate, with the <a href="formats.html#location-declined">full list</a> linked.</td></tr>
+                <tr><td>Reasons</td><td>The rules that most often decline a coordinate, with the <a href="location.html#location-declined">full list</a> linked.</td></tr>
             </tbody>
         </table>
 
@@ -273,7 +205,7 @@ GEOREF: `GEOREF:GJNJ5753` &rarr; GEOREF:GJNJ5753 - the label is required, and lo
             registered, the command replies:
         </p>
 
-        <pre><code>Decorators are not registered yet. Try again once the plugin has finished activating. (TF-16002)</code></pre>
+        <pre tabindex="0"><code>Decorators are not registered yet. Try again once the plugin has finished activating. (TF-16002)</code></pre>
 
         <h2>Other input</h2>
 
@@ -284,11 +216,11 @@ GEOREF: `GEOREF:GJNJ5753` &rarr; GEOREF:GJNJ5753 - the label is required, and lo
             <tbody>
                 <tr>
                     <td><code>/tactical-fusion</code></td>
-                    <td><code>Available subcommands: examples, example-details, check</code></td>
+                    <td><code>Available subcommands: examples, check</code></td>
                 </tr>
                 <tr>
                     <td><code>/tactical-fusion nope</code></td>
-                    <td><code>Unknown subcommand. Available: examples, example-details, check (TF-16000)</code></td>
+                    <td><code>Unknown subcommand. Available: examples, check (TF-16000)</code></td>
                 </tr>
             </tbody>
         </table>

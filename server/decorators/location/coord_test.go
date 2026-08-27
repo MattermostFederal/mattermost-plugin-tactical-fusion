@@ -11,7 +11,7 @@ import (
 // reach them.
 
 // The FracUnit switch answers in the unit the field belongs to, and anything it
-// does not recognise contributes nothing rather than being read as degrees.
+// does not recognize contributes nothing rather than being read as degrees.
 func TestFracValueScalesByTheFieldItBelongsTo(t *testing.T) {
 	for _, tc := range []struct {
 		name string

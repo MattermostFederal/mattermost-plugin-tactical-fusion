@@ -20,9 +20,9 @@ const AT = {lat: 38.8895, lon: -77.0353};
 test.describe('every resolution yields a cell', () => {
     const cases: Array<[string, number]> = [
         ['a degree, about 111 km', 1],
-        ['ten kilometres', 10000 / 111320],
-        ['one kilometre', 1000 / 111320],
-        ['one metre', 1 / 111320],
+        ['ten kilometers', 10000 / 111320],
+        ['one kilometer', 1000 / 111320],
+        ['one meter', 1 / 111320],
     ];
 
     for (const [name, degrees] of cases) {

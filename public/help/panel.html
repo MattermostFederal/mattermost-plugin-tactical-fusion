@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Sidebar Panel - Tactical Fusion</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="copy.js" defer></script>
 </head>
 <body>
 <div class="layout">
@@ -16,6 +17,12 @@
         <nav>
             <span class="nav-section">Documentation</span>
             <a href="help.html">Overview</a>
+            <span class="nav-section">Decorators</span>
+            <a href="dtg.html">Date-Time Groups</a>
+            <a href="location.html">Coordinates</a>
+            <a href="airfields.html">Airfields</a>
+            <a href="cot.html">Cursor on Target</a>
+            <span class="nav-section">Guides</span>
             <a href="formats.html">Recognized Formats</a>
             <a href="panel.html" class="active">The Sidebar Panel</a>
             <a href="admin.html">Admin Settings</a>
@@ -34,7 +41,17 @@
         </div>
 
         <h1>The Sidebar Panel</h1>
-        <p class="tagline">Reading a date-time group, and making the table your own.</p>
+        <p class="tagline">How a hover, a click and a standalone page work, and how to make them your own.</p>
+
+        <div class="alert alert-info">
+            <p>
+                This page covers what every decorator's panel has in common. For what a particular
+                panel <em>shows</em>, see <a href="dtg.html#dtg-panel">Date-Time Groups</a>,
+                <a href="location.html#location-panel">Coordinates</a>,
+                <a href="airfields.html#airfield-panel">Airfields</a> or
+                <a href="cot.html#cot-panel">Cursor on Target</a>.
+            </p>
+        </div>
 
         <h2 id="hover">Hovering a link</h2>
 
@@ -50,11 +67,11 @@
             only</strong>, showing where it is and the square it names. It is not
             interactive: the controls and the wheel belong to the panel, which is one
             click away and carries every reading. See
-            <a href="#location-hover">the hover card</a> for the whole of it.
+            <a href="location.html#location-hover">the hover card</a> for the whole of it.
         </p>
 
         <p>
-            Point at an <a href="formats.html#airfield">airfield code</a> and the card
+            Point at an <a href="airfields.html#airfield">airfield code</a> and the card
             <strong>names the airfield</strong> and where it is, and shows nothing else.
             A four-letter code says nothing at all on its own, so naming it is exactly
             what a glance is asking; the readings are one click away.
@@ -64,47 +81,47 @@
 
         <p>
             Clicking opens the right-hand sidebar. The browser does not navigate, so you
-            do not lose your place in the channel. The panel has four parts:
+            do not lose your place in the channel, and the panel follows you as you click
+            other links in the same channel.
+        </p>
+
+        <p>
+            Every panel is built the same way: a heading naming what you clicked, the
+            readings that decorator produces, and the controls for hiding rows you do not
+            want. What fills the middle is the only part that differs:
         </p>
 
         <table class="field-table">
             <tbody>
                 <tr>
-                    <td>Countdown</td>
-                    <td>Time remaining until the instant, counting down live. It flashes once the instant is close, which by default means within 30 minutes.</td>
+                    <td><a href="dtg.html#dtg-panel">Date-Time Groups</a></td>
+                    <td>A live countdown, the instant written out, the canonical token, and the same instant in each of your timezones.</td>
                 </tr>
                 <tr>
-                    <td>Reading</td>
-                    <td>The instant written out in full, in the offset it was originally written in: <code>09 Aug 2026 16:30 Z</code>. Seconds appear only when there are seconds to show, so <code>2026-08-09T16:30:45Z</code> reads <code>09 Aug 2026 16:30:45 Z</code> while <code>2026-08-09T16:30:00Z</code> stays <code>16:30</code>: a written <code>:00</code> has nothing to lose, and padding it on would claim a field the row does not need. A date-time group has no seconds field, so it never shows one.</td>
+                    <td><a href="location.html#location-panel">Coordinates</a></td>
+                    <td>The position in every notation this build knows, each one copyable, with the resolution it was written to and a map.</td>
                 </tr>
                 <tr>
-                    <td>Canonical form</td>
-                    <td>The token as the parser understood it, in monospace. Useful for confirming that a short form was read the way you meant.</td>
+                    <td><a href="airfields.html#airfield-panel">Airfields</a></td>
+                    <td>The code, the place, the type, the elevation and the IATA code, with the position handed to the coordinate panel.</td>
                 </tr>
                 <tr>
-                    <td>Timezone table</td>
-                    <td>The same instant in each of your timezones, ordered west to east. Times follow the reading: to the minute, and to the second when the original text was written that finely.</td>
+                    <td><a href="cot.html#cot-panel">Cursor on Target</a></td>
+                    <td>Everything the card shows, plus the device, the position quality, the payload, the shape, the processing path, and the event as posted.</td>
                 </tr>
             </tbody>
         </table>
 
-        <h3>The date column badges</h3>
-
-        <p>
-            A <code>+1</code> or <code>-1</code> next to a date means that row falls on a
-            different calendar day from the token itself. The comparison is against the
-            <strong>token's own zone</strong>, not UTC, so a group written in
-            <code>+04:00</code> does not badge half the table as a day out.
-        </p>
-
-        <h3>Short forms say what they assumed</h3>
-
-        <p>
-            A short form such as <code>091630Z</code> carries no month and no year, so
-            both are taken from the date the message was posted. The panel states this
-            in italics beneath the reading rather than presenting an inferred date as
-            fact.
-        </p>
+        <div class="alert alert-info">
+            <p class="alert-title">Only one thing in the sidebar ticks.</p>
+            <p>
+                The date-time countdown and the Cursor on Target
+                <a href="cot.html#cot-panel">Goes stale</a> row are counted against your own
+                device's clock and update as you watch. Every other reading in every panel is
+                computed once, on the server, and does not move. A Cursor on Target event that
+                has already gone stale stops counting and says so.
+            </p>
+        </div>
 
         <h2 id="page">The standalone page</h2>
 
@@ -129,674 +146,10 @@
             <p>
                 The page does not ask who is reading it, even though it now requires
                 a login: it is rendered from the link alone. If you have
-                <a href="#customize">customised your view</a>, the sidebar and the page
+                <a href="#customize">customized your view</a>, the sidebar and the page
                 will disagree about the same date-time group.
             </p>
         </div>
-
-        <h2 id="location-panel">The location panel</h2>
-
-        <p>
-            Clicking a coordinate opens the same sidebar with a Location panel.
-        </p>
-
-        <p>
-            Most of it is worked out from the link alone and is on screen the instant the
-            panel opens. What is fetched is the two grid rows, because a grid reference is
-            a projection onto an ellipsoid and that projection runs on the server; the
-            three area-reference rows, which could be worked out here but are not worth a
-            second implementation of each notation to save a request the panel already
-            makes; and, when the link is <em>itself</em> a grid reference, the three
-            angular rows as well, since a grid reference has no latitude and longitude
-            until something projects it. The <a href="#location-region">country</a> is
-            always fetched, because it is looked up against outlines the browser does not
-            have. See
-            <a href="#location-degrades">what happens when the request does not arrive</a>,
-            which is never a blank panel.
-        </p>
-
-        <table class="field-table">
-            <tbody>
-                <tr><td>As written</td><td>The author's own text, exactly as they typed it. It opens the table, so every reading below it is visibly derived from the line above.</td></tr>
-                <tr><td>Lat / lon</td><td>Decimal degrees with hemisphere letters.</td></tr>
-                <tr><td>DMS</td><td>Degrees, minutes and seconds.</td></tr>
-                <tr><td>DDM</td><td>Degrees and decimal minutes.</td></tr>
-                <tr><td>MGRS</td><td>The military grid reference, at the resolution the original text carried. It follows the three angular readings rather than opening the table, so the notations that read the same way sit together.</td></tr>
-                <tr><td>USMTF</td><td>The fixed-width compact form, for pasting into an ATO or a USMTF field. The shape follows the resolution: <code>35N079W</code> for a degrees-only coordinate, <code>3510N07901W</code> at whole minutes, <code>400948N1221400W</code> at whole seconds, and <code>331000.0N1183000.0W</code> finer than that. Sized from the <a href="#location-resolution">pair</a> rather than per axis, because it is one shape covering both halves. It never carries <a href="formats.html#location-usmtf">confidence digits</a>: those say how well a position is known, which a derived reading cannot claim.</td></tr>
-                <tr><td>UTM</td><td>Zone, band, easting and northing, rounded to the same resolution.</td></tr>
-                <tr><td>GEOREF</td><td>A <a href="formats.html#location-area">World Geographic Reference System</a> code, at the coarsest of its four widths that is no coarser than the original text. Written longitude first, which is that standard's own order.</td></tr>
-                <tr><td>GARS</td><td>A <a href="formats.html#location-area">Global Area Reference System</a> cell: 30, 15 or 5 minutes, again chosen by the resolution.</td></tr>
-                <tr><td>Plus Code</td><td>An Open Location Code, which is what Google Maps calls a Plus Code. Its length follows the resolution too, so a coordinate written to whole degrees gets a padded <code>87730000+</code> rather than a full-length code implying it is known to the meter.</td></tr>
-                <tr><td>Resolution</td><td>How finely the original text was written, in meters. For a grid reference, how big the square is.</td></tr>
-                <tr><td>Confidence</td><td>Only for a <a href="formats.html#location-usmtf">verified USMTF coordinate</a>, which states one.</td></tr>
-                <tr><td>Datum</td><td>Always WGS 84.</td></tr>
-                <tr><td>Normalized</td><td>The canonical form, shown only when it differs from what the author typed.</td></tr>
-            </tbody>
-        </table>
-
-        <h3 id="location-map">The map</h3>
-
-        <p>
-            The panel draws a small world map above the table, centred on the coordinate,
-            and <strong>Open larger</strong> beneath it opens a page that is nothing but
-            the map. The <a href="#page">standalone page</a> the mobile app opens draws the
-            same map above the same table. All three are the same map: drag to pan, scroll
-            to zoom, the <code>+</code> and <code>&minus;</code> buttons in the top right,
-            the arrow and <code>+</code> / <code>&minus;</code> keys once the map has
-            focus, and <strong>Reset view</strong>, top left, to return to the opening
-            centre and zoom. A distance scale sits in the bottom right corner, in metric
-            units, and the current zoom in the bottom left, written <code>z6.3</code>.
-            Rotating is deliberately not possible: a map that can be turned without a
-            compass on it is a map every bearing is read off wrongly.
-        </p>
-
-        <p>
-            The map page carries one line beneath the picture: the coordinate exactly as
-            the author wrote it, and <strong>All readings</strong>, which opens the full
-            table for the same coordinate. Both pages open in whichever theme, light or
-            dark, you are using in Mattermost.
-        </p>
-
-        <p>
-            <strong>The map itself is dark in both themes</strong>, so a light Mattermost
-            draws a dark map inside a light panel. That is deliberate rather than a theme
-            that failed to apply: the dark palette carries the land and water edge better
-            at this size, and it keeps the pin and the square from competing with the
-            table beside them. Everything around the map still follows your theme, and
-            there is no setting for this.
-        </p>
-
-        <p>
-            Everything the map needs is bundled with the plugin and served from your own
-            Mattermost, so it works with no network at all: no tile service, no map API,
-            nothing fetched from outside. This is the one part of the plugin designed
-            first for disconnected and air-gapped installs rather than adapted to them.
-        </p>
-
-        <p>
-            The map is the first thing <a href="#location-customize">Customize your
-            view</a> offers to hide, and unticking it there is also how you get it back.
-            Hiding it costs you the <a href="#location-region">country</a> as well, which
-            has nowhere else to appear.
-        </p>
-
-        <p>
-            Your administrator can switch maps off for the whole workspace, in which case
-            the panel opens straight onto the readings and no tick box for the map is
-            offered. Nothing is lost from the table, and nothing on this page changes
-            except that there is no picture. See
-            <a href="admin.html#map-switches">the map switches</a> for what that governs;
-            if a map you expect is missing everywhere, that is the setting to ask about.
-        </p>
-
-        <p>
-            You can keep zooming in past the point where the basemap runs out of detail,
-            because the square around the pin can be smaller than anything the basemap
-            draws and you should be able to see it. Past that point the coastlines and
-            roads are simply the same shapes drawn larger, so a coastline may sit up to
-            five kilometres from where it really is, while the pin and the square stay
-            exact. The basemap's own detail stops at zoom 9, and the map shows its
-            current zoom at the bottom left. <strong>Reset view</strong> takes you back.
-        </p>
-
-        <h3 id="location-inline">The map under a post</h3>
-
-        <p>
-            When a message is <strong>nothing but a coordinate</strong>, the map is drawn
-            straight into the channel underneath it, so you do not have to click anything
-            to see where it is. The coordinate still appears as the same link it always
-            was, and clicking it still opens the panel with every reading. A label in
-            front of it is fine: <code>MGRS: 18SUJ2347806483</code> on its own counts, and
-            so does a plain <code>34.0561N,118.2500W</code>. A coordinate with anything
-            else around it, such as <code>target at 34.0561N,118.2500W</code>, or a
-            message with two coordinates in it, gets the link on its own as before.
-        </p>
-
-        <p>
-            It is the same map as everywhere else, with the same controls, so the same
-            caution applies: the scroll wheel over it zooms the map rather than scrolling
-            the channel. Move the pointer off the map to scroll past. Maps are drawn only
-            while their post is on or near the screen and are put away again once you
-            scroll well past, which is what keeps a channel full of coordinates from
-            running your browser out of graphics contexts. The space they occupy is held
-            open either way, so nothing jumps around as you scroll.
-        </p>
-
-        <p>
-            <a href="#location-customize">Customize your view</a> has a separate tick box
-            for this one, <strong>Map under the post</strong>, so you can turn it off in
-            the channel and keep the map in the panel, or the other way round. In compact
-            message display it is not drawn at all, and your administrator can switch it
-            off for everybody with
-            <a href="admin.html#enable-location-map-inline"><code>EnableLocationMapInline</code></a>.
-        </p>
-
-        <div class="alert alert-info">
-            <p class="alert-title">Only new posts, and only in the web and desktop apps.</p>
-            <p>
-                Whether a message is only a coordinate is decided when it is posted, so
-                editing a message afterwards does not add the map, and editing one that
-                has it leaves the message showing its raw text until you post it again.
-                The mobile apps show the link as normal. On installs that search with
-                Elasticsearch or OpenSearch, be aware that posts drawn this way do not
-                come back in search results or Recent Mentions.
-            </p>
-        </div>
-
-        <div class="alert alert-info">
-            <p class="alert-title">The standalone page needs JavaScript.</p>
-            <p>
-                The sidebar, the <a href="#page">standalone page</a> and the map page all
-                run the same code, which is what keeps them from disagreeing about a
-                coordinate. The readings on the standalone page are worked out on the
-                server and delivered with the page, so nothing waits on a second request,
-                but the page draws nothing until its script has loaded.
-            </p>
-        </div>
-
-        <div class="alert alert-info">
-            <p class="alert-title">The map needs WebGL2.</p>
-            <p>
-                Drawing happens in the browser, which on a hardened or virtualised desktop
-                with WebGL disabled means no map. The panel and the page both say so in
-                place of the map, and <strong>every reading in the table still renders</strong>:
-                the coordinate and the conversions are worked out on the server
-                and do not depend on it. The country is the exception: it is
-                <a href="#location-region">named by the map itself</a>, so no map
-                means no country either.
-            </p>
-        </div>
-
-        <p>
-            The basemap is Natural Earth, drawn from vector tiles. It carries coastlines
-            and lakes, country and province boundaries, major roads and railways, rivers,
-            built-up areas, airfields, and the names of countries, towns and provinces.
-            Detail follows how far
-            in you are: the whole world is drawn at 1:110&nbsp;million, and as you zoom
-            the map moves to 1:50&nbsp;million and then 1:10&nbsp;million, so features
-            sharpen rather than going blurry.
-        </p>
-
-        <p>
-            A coordinate opens on its region rather than its continent, framing roughly
-            400&nbsp;kilometres across. Zoom out for orientation, or in as far as the map
-            will go. <strong>Reset view</strong> returns to the opening frame.
-        </p>
-
-        <p>
-            <strong>Past zoom 10 the map changes source.</strong> Natural Earth is
-            accurate to roughly five kilometres, which reads as generalisation at zoom 9
-            and as fact by zoom 10, so above that this build draws
-            <strong>OpenStreetMap</strong> instead, for the areas it ships. Those areas
-            carry real road networks, coastlines, towns, named water and aerodromes.
-        </p>
-
-        <div class="alert alert-info">
-            <p class="alert-title">Past zoom 10 outside a covered area, the map keeps drawing but stops being exact.</p>
-            <p>
-                OpenStreetMap detail is shipped for selected areas rather than the whole
-                world, because the whole world at this detail is far larger than a plugin
-                can carry. Outside those areas the world map keeps drawing above zoom 10,
-                magnified past the detail it actually holds: coastlines, borders and major
-                roads stay in place but are <strong>generalized</strong>, and can sit a few
-                kilometres from where they really are. Read them as context, not as
-                position. Inside a covered area the accurate data takes over instead, and
-                the difference is visible in the map itself: real road networks, named
-                water and towns where the world map carried none. The credit below is not
-                the thing to read for this, and is described under the map.
-            </p>
-            <p>
-                This build ships <strong>Hawaii</strong> and <strong>Guam</strong>, and
-                whoever installed the plugin may have added more. The map itself does not
-                say which areas are covered; a coverage list is not built yet. If an area
-                was installed and still is not drawing, see
-                <a href="troubleshooting.html#detail-packages">a detail area that will not
-                install</a>.
-            </p>
-        </div>
-
-        <p>
-            Where the map carries OpenStreetMap at all, the credit for it appears beneath
-            the map. That is a licence condition rather than a courtesy, and it names both
-            OpenStreetMap's contributors and the OpenMapTiles schema the tiles are built
-            to. The Natural Earth half is public domain and carries no such requirement,
-            which is why a map built with no OpenStreetMap in it, such as a hover card,
-            carries no credit at all.
-        </p>
-
-        <div class="alert alert-info">
-            <p class="alert-title">The credit is not a coverage indicator.</p>
-            <p>
-                It is decided by whether this install's detail areas went into the map at
-                all, not by what is under the pin, so on an install that has any detail
-                area the credit shows at every zoom and everywhere in the world, including
-                views far outside every covered area and views below zoom 10 where no
-                OpenStreetMap is drawn yet. Attribution is a licence condition, and
-                showing it wherever the data is loaded is the safe way round; deciding
-                frame by frame whether any OpenStreetMap is currently visible would risk
-                dropping a credit that is owed. Read it as "this install has detail
-                areas", not as "you are looking at one".
-            </p>
-        </div>
-
-        <p>
-            It is still <strong>not a navigation chart</strong>. It carries no buildings,
-            no footpaths, no addresses and no terrain, and where it falls back to Natural
-            Earth it is accurate to roughly five kilometres. It answers <em>which part
-            of the world is this</em>, and the square around the pin, not the coastline
-            under it, is what states how precisely the original text located anything.
-        </p>
-
-        <p>
-            OpenStreetMap is a snapshot rather than a live feed, so it is as current as
-            the build. This one was cut on <strong>18 August 2026</strong>.
-        </p>
-
-        <div class="alert alert-info">
-            <p class="alert-title">About the names on the map.</p>
-            <p>
-                Every country Natural Earth lists is named, including disputed
-                territories, because leaving one out would be a judgement this plugin does
-                not make. Country names give way to town names as you zoom in, and which
-                names appear at all is decided by the room available and by Natural
-                Earth's own ranking, so zooming changes what is written on the map. Names
-                are drawn in a bundled Latin typeface and taken from Natural Earth's
-                English field, so a place whose local name is in another script is shown
-                under its English name.
-            </p>
-        </div>
-
-        <h4>The square around the pin</h4>
-
-        <p>
-            A coordinate written to whole degrees is drawn with a large rectangle around
-            it, and one written to a metre with a rectangle so small it reads as the dot
-            alone until you zoom in. The rectangle is the area the
-            original text actually names, so a coarse coordinate looks coarse. Without it
-            <code>35N079W</code>, which names a square about 111 km across, would be
-            indistinguishable from a ten-figure grid reference that names a square one
-            metre across.
-        </p>
-
-        <p>
-            It is drawn at the size of the square, not twice it, and each half of the
-            coordinate uses its own resolution, so a position written finely in latitude
-            and coarsely in longitude is drawn as the tall thin rectangle it is. Nothing is
-            ever dropped for being small: a very fine coordinate simply draws a rectangle
-            below a pixel, which becomes visible as you zoom toward it, because a threshold
-            guessing on your behalf would answer a question you had not asked. The
-            <a href="#location-resolution">Resolution</a> row carries the figure either
-            way.
-        </p>
-
-        <div class="alert alert-info">
-            <p class="alert-title">It is not a range ring.</p>
-            <p>
-                The shape around the pin says how precisely the coordinate was written. It
-                is not a weapons envelope, not a communications range, not a search radius
-                and not a GPS accuracy estimate. It is drawn as a rectangle rather than a
-                circle partly for that reason, and partly because a grid reference names a
-                square.
-            </p>
-        </div>
-
-        <h4>Positions the map cannot show</h4>
-
-        <p>
-            The projection the map uses runs out at about 85 degrees north and south. A
-            coordinate beyond that is a perfectly good position and every reading still
-            renders, but the map is left out and a line says so rather than drawing a pin
-            up to 550 km from where the coordinate actually is. Coordinates either side of
-            the 180th meridian are drawn correctly, with land on both sides.
-        </p>
-
-        <h3 id="location-region">Naming the country</h3>
-
-        <p>
-            The country a position falls in is worked out on the server, by testing the
-            point against bundled country outlines. Those outlines are a separate copy of
-            the data from the one the map draws, kept at 1:110&nbsp;million whatever the
-            map is showing, which is why the value cites that scale even when you have
-            zoomed past it. It is not a row in the table: the map speaks it in its
-            accessible label and nowhere else. So it is there when the map is, and not
-            when it is not.
-        </p>
-
-        <div class="alert alert-warning">
-            <p class="alert-title">This is a basemap lookup, not an authority on borders.</p>
-            <p>
-                It cites its source in the value itself, as
-                <code>United States of America (Natural Earth 110m)</code>, because that is
-                what it is: a point tested against a public-domain dataset whose borders are
-                generalised by roughly a kilometre. Near any border, and anywhere a border
-                is disputed, treat it as a hint about which part of the world you are
-                looking at and nothing more. It is not a determination of sovereignty and
-                must not be used as one.
-            </p>
-            <p>
-                Where the dataset gives more than one answer, the plugin does not choose
-                between them. It names the administering entity rather than a claimed
-                sovereign, and it is deliberately silent rather than approximate: a
-                position in no country at all, such as open ocean, omits the row rather
-                than naming the nearest land.
-            </p>
-        </div>
-
-        <h3 id="location-resolution">Resolution is not accuracy</h3>
-
-        <p>
-            The row says <em>about 11 m</em>, not <em>accurate to 11 m</em>.
-            It describes how finely the text was written and nothing else. A phone with
-            5 m of real accuracy still emits six decimals, and a row headed "precision"
-            would invite reading that as a claim about the fix.
-        </p>
-
-        <p>
-            Every other row is rendered at that same resolution. A coordinate written to
-            two decimals shows <code>34.06&deg; N</code>, and one written to whole degrees
-            shows <code>35&deg;N</code> rather than <code>35&deg;00'00"N</code>. Padding a
-            field the author never wrote would be a claim they did not make.
-        </p>
-
-        <p>
-            When the two halves were written to <strong>different</strong> precision, each
-            half keeps its own. <code>34.0561N,118.2W</code> shows
-            <code>34.0561&deg; N, 118.2&deg; W</code>, and the resolution row reads
-            <em>about 11.1 km</em>, which is what the coarser half is worth. The two are
-            not in conflict: the resolution describes how well the <em>pair</em> is known,
-            while each value shows every digit its author actually typed. Rendering the
-            latitude at the longitude's single decimal would move it 4.9 km north, which
-            is a loss of real information rather than a refusal to overstate.
-        </p>
-
-        <h3 id="location-grid-rows">Grid references name squares</h3>
-
-        <p>
-            <code>32U MV 12 34</code> is a 1 km square, and the latitude and longitude shown
-            for it are that square's <strong>center</strong>. The resolution row says so.
-            Read as a corner instead, a 10 km reference would put a reader 7 km from where
-            the grid points.
-        </p>
-
-        <p>
-            The grid rows follow the same resolution rule as everything else, which most
-            conversion tools do not: a coordinate written to whole degrees gets a 100 km
-            square, not a ten-figure reference implying it is known to the meter. The UTM
-            row is the same numbers as the grid reference whenever the link is a grid one,
-            because the digits of a grid reference are literally its south-west corner on
-            the UTM grid.
-        </p>
-
-        <p>
-            Above 84&deg; north and below 80&deg; south there is no UTM grid, so both rows
-            are simply absent. Everything else on the panel is unaffected, and the three
-            area-reference rows are the reason that matters less than it used to: GEOREF,
-            GARS and Plus Codes subdivide the graticule rather than a projected grid, so
-            they have no polar gap and are what remains at those latitudes.
-        </p>
-
-        <h3 id="location-degrades">When the conversion does not arrive</h3>
-
-        <p>
-            Losing the <a href="#location-panel">fetched rows</a> costs those rows and
-            nothing else. Everything the link carries by itself is computed in the browser
-            and is already on screen, including the resolution of a grid or area token,
-            which needs only the length of the code and never the position.
-        </p>
-
-        <table class="field-table">
-            <tbody>
-                <tr><td>While waiting</td><td>The fetched rows read <code>converting&hellip;</code></td></tr>
-                <tr><td>Request failed</td><td>They read <code>unavailable</code>. Nothing is blank and nothing shows a zero, because a row reading <code>0.0000&deg; N, 0.0000&deg; E</code> because a conversion failed would be a position, and a wrong one.</td></tr>
-                <tr><td>Server refused the link</td><td>The panel says <strong>Not a coordinate</strong> and shows nothing else.</td></tr>
-            </tbody>
-        </table>
-
-        <p>
-            For a <strong>grid reference</strong> the map goes with them, because a grid
-            reference has no latitude and longitude until the server works one out. Rather
-            than guess at a pin, the map is replaced by
-            <code>The position for this coordinate is unavailable.</code> and every reading
-            the link carries locally stays exactly where it is. For every other notation the
-            position comes from the link, so the map is unaffected and only the two grid
-            rows are lost.
-        </p>
-
-        <p>
-            That last case is a verdict rather than an outage, and the two are kept apart
-            deliberately. A hand-edited link can pass the checks the browser is able to make
-            and still not be one this plugin issued; only the server can tell, because the
-            check needs the coordinate grammar. Rather than render a position that might name
-            somewhere else entirely, the panel declines, exactly as
-            <a href="#page">the standalone page</a> does for the same link. If you see this
-            on a link you did not edit, it is worth reporting with
-            <a href="error-codes.html">code TF-13008</a>.
-        </p>
-
-        <h3 id="location-as-written">As written, and normalized</h3>
-
-        <p>
-            The <em>As written</em> row opens the table and carries the author's own
-            characters, including the symbols and spacing they used, so every reading under
-            it is visibly derived from that one line. <em>Normalized</em> closes the table
-            with the canonical form the link was validated against, and appears only when
-            the two differ, which is why it is usually absent for USMTF coordinates: those
-            are already canonical as typed.
-        </p>
-
-        <p>
-            Both rows matter on the <a href="#page">standalone page</a>, which is what
-            mobile clients open. That page shows only the link, not the message it came
-            from, so without the author's own text their spelling would be unreachable.
-        </p>
-
-        <h3 id="location-customize">Customize your view</h3>
-
-        <p>
-            The link below the table lets you choose what the panel shows. Everything is on
-            by default; untick what you never read and it is gone from every coordinate you
-            open. Stored per person, so it changes nothing for anybody else.
-        </p>
-
-        <p>
-            The first entry is <strong>Map</strong>, which is not a row: it hides the
-            picture above the table and leaves every reading in place. It is the one entry
-            that takes something else with it, since the
-            <a href="#location-region">country</a> is spoken by the map and appears nowhere
-            else. Below it, <strong>Map under the post</strong> is the other one that is
-            not a row: it controls the
-            <a href="#location-inline">map drawn in the channel</a> and nothing in the
-            panel, so the two can be turned on and off independently. The rest are the
-            table's own rows, in the order the table lists them.
-        </p>
-
-        <p>
-            Either map entry is absent when your administrator has
-            <a href="admin.html#map-switches">switched that surface off</a>, because a tick
-            box that changes nothing you can see is worse than no tick box. Whatever you
-            had chosen is kept, so if the setting is turned back on your choice returns
-            with it rather than resetting.
-        </p>
-
-        <p>
-            Two things follow from how it is stored, and both are deliberate. What is saved
-            is the list of rows you <strong>hid</strong>, not the ones you kept, so a row
-            added in a later version appears for you as well rather than being invisible to
-            exactly the people who bothered to choose. And <strong>Restore defaults</strong>
-            deletes your choice rather than writing today's rows into it, so you go back to
-            tracking whatever the panel shows next.
-        </p>
-
-        <p>
-            Hiding every row is allowed. The panel keeps the note and the links at the
-            bottom, and the same <em>Customize your view</em> link is how you get back.
-        </p>
-
-        <div class="alert alert-info">
-            <p class="alert-title">The standalone page always shows every row.</p>
-            <p>
-                The <a href="#page">page a link opens</a> outside the sidebar is
-                rendered from the link alone and does not ask who is reading it. It and
-                the sidebar can therefore show the same coordinate differently. The same
-                is true of the <a href="#customize">DTG timezone table</a>.
-            </p>
-        </div>
-
-        <h3 id="location-copy">Copy icons</h3>
-
-        <p>
-            Every row carrying a <strong>value</strong> has a copy icon at its right edge:
-            the grid reference, latitude and longitude, DMS, DDM, USMTF, UTM, GEOREF,
-            GARS, the Plus Code, the author's
-            text and the normalized form. The rows that carry prose rather than a value do not, since
-            copying <em>about 11 m</em> or <em>WGS 84</em> gets you a sentence rather than a
-            position.
-        </p>
-
-        <p>
-            The same icons appear on the <a href="#page">standalone page</a>, which is what
-            mobile clients open. On both surfaces they are hidden when the browser cannot
-            reach the clipboard, which is the case on any server reached over plain HTTP
-            rather than HTTPS, and in the sidebar an icon is also absent while its own value
-            has not arrived: offering one over <code>converting&hellip;</code> would put
-            that on the clipboard. Every value stays selectable either way.
-        </p>
-
-        <p>
-            The icon changes to a tick for a moment once the value is on the clipboard, and
-            the same acknowledgement is announced to screen readers. The button keeps its
-            name across that change rather than renaming itself to "Copied", which would
-            move it out from under a reader mid-sentence.
-        </p>
-
-        <p>
-            There is no button that opens the coordinate somewhere else. The
-            <a href="#location-map">map in the panel</a> is drawn from data bundled with
-            the plugin and served by your own Mattermost; a link out to a mapping service
-            would send a grid reference to a third party, which is an operational decision
-            rather than a default, and this release does not make it.
-        </p>
-
-        <h3 id="location-hover">The hover card</h3>
-
-        <p>
-            Pointing at a coordinate shows a card carrying
-            <a href="#location-map">the map</a> and nothing else, in a fixed landscape
-            frame. A glance at a coordinate is asking <em>where</em>, and
-            every reading, every other notation and every copy icon is one click away in
-            the panel, so repeating any of them here would only make the glance slower.
-            That is the same bar <a href="#hover">the date-time group's card</a> is held
-            to, where the answer is the countdown alone.
-        </p>
-
-        <p>
-            It is the panel's own map, not a second one built for the card, so the two
-            cannot disagree about where a coordinate is. Everything that makes the panel's map
-            operable is switched off, because a card is dismissed by moving the pointer:
-            no zoom buttons or scale bar, no <em>Reset view</em>, no zoom readout, no
-            dragging, and <strong>the wheel is left alone</strong>, so scrolling the
-            channel with the pointer over a card scrolls the channel. To pan or zoom,
-            click through to the panel.
-        </p>
-
-        <p>
-            A grid reference has no position until the server projects it, so pointing at
-            one costs a request. Each distinct coordinate costs at most one, however many
-            times a cursor crosses it, and the click that follows a hover joins the
-            request the hover already made rather than issuing a second, which is why a
-            coordinate you pointed at opens with its grid rows already on screen. The card
-            says <code>Loading map&hellip;</code> until that lands, and reports the same
-            failures the panel does.
-        </p>
-
-        <h2 id="airfield-panel">The airfield panel</h2>
-
-        <p>
-            Clicking an <a href="formats.html#airfield">airfield code</a> opens a panel
-            naming the field, where it is, its type, its elevation and its IATA code.
-            Each value you would paste somewhere has a copy button, exactly as the
-            coordinate panel does. <strong>Type</strong> does not: copying
-            <code>Large Airport</code> gets you a category rather than a value, which is
-            the same rule that leaves the coordinate panel's resolution and datum rows
-            without one.
-        </p>
-
-        <p>
-            <strong>Under the details is a map of the airfield.</strong> It is the same
-            map the coordinate panel draws, with the same controls, the same
-            <em>Reset view</em> and the same <em>Open larger</em>, because it is the same
-            component rather than a second one.
-        </p>
-
-        <p>
-            <strong>The readings are one link away, not on this panel.</strong>
-            The <em>Place</em> value is a link: following it switches the sidebar to the
-            <a href="#location-panel">coordinate panel</a> for the airfield's position,
-            which is where the eleven notations, the copy buttons and your own row
-            choices already live. Reprinting them here would be a second table saying the
-            same thing, and the two would drift. The place still has its own copy button,
-            since copying it is a different thing from following it.
-        </p>
-
-        <p>
-            The map honours <a href="admin.html#enable-location-map-panel">the same
-            switch</a> the coordinate panel's map does, since it is a map in the sidebar
-            like any other. With it off the airfield still renders in full and the
-            readings link still works; only the picture is gone. The standalone airfield
-            page draws no map at all and links to the coordinate page instead, because it
-            deliberately runs no JavaScript.
-        </p>
-
-        <p>
-            <strong>Everything on it comes from the server.</strong> The airfield
-            database is compiled into the plugin rather than sent to the browser, so the
-            panel is briefly empty while the lookup runs, and it says which of three
-            things happened if there is nothing to show: the code is not in this build's
-            database, the link was edited by hand and carries no valid code, or the
-            server could not be reached. Those are three different problems and the panel
-            never reports one as another.
-        </p>
-
-        <p>
-            The position is a <strong>reference point for the field</strong> quoted to
-            about 11 metres, not a survey of any particular part of it. Where the
-            airfield data comes from is on the
-            <a href="formats.html#airfield">formats page</a>.
-        </p>
-
-        <p>
-            An airfield whose database entry has no usable position gets no map, and its
-            place is plain text rather than a link to a view that would refuse it.
-        </p>
-
-        <h3 id="airfield-table">The airfield details under a post</h3>
-
-        <p>
-            When a message is <strong>nothing but one labeled airfield reference</strong>,
-            such as <code>ICAO:KIND</code>, the plugin replaces it with a small table of the field's details: its name, the code you
-            typed, where it is, what kind of field it is, its elevation and its IATA code.
-            The <strong>name is the link</strong> that opens this panel, which is where
-            the map and every coordinate reading are. A message with anything else around
-            the code, such as <code>divert to ICAO:KIND if the weather holds</code>, gets
-            the link on its own instead. A line ending <code>//</code>, as a USMTF set
-            line does, still counts, and the terminator stays with the code.
-        </p>
-
-        <p>
-            <strong>The table is part of the message.</strong> It is written in when you
-            post, not drawn on top afterwards, so it looks the same on every client
-            including mobile, it is included when messages are exported, and you can edit
-            or delete it like any other text in your own post. The details are the ones
-            the database held at the moment you posted: a later version of the plugin
-            that corrects an elevation does not change messages already sent.
-        </p>
-
-        <p>
-            Your administrator can switch it off for everybody with
-            <a href="admin.html#enable-airport-table"><code>EnableAirportTable</code></a>.
-            Airfield codes still become links; only the table goes, and only on messages
-            posted after the change.
-        </p>
 
         <h2 id="customize">Customize your view</h2>
 
@@ -808,7 +161,16 @@
             <strong>Back</strong> link returns without saving.
         </p>
 
-        <p>Two things are yours to set:</p>
+        <p>
+            Three panels carry the link, and each writes its own settings without touching
+            the other two: the date-time group panel below, the
+            <a href="location.html#location-customize">coordinate panel</a>, which chooses
+            which rows it shows, and the
+            <a href="cot.html#cot-customize">Cursor on Target panel</a>, which chooses which
+            groups it shows.
+        </p>
+
+        <p>On a date-time group, two things are yours to set:</p>
 
         <table class="field-table">
             <tbody>
@@ -832,8 +194,9 @@
         <h3>Restore defaults</h3>
 
         <p>
-            <strong>Restore defaults</strong> deletes your settings rather than writing
-            today's defaults into them. The difference matters: a reader who has never
+            <strong>Restore defaults</strong> is scoped to the panel you pressed it on. It
+            leaves the other two panels' settings exactly as they were, and deletes your
+            settings rather than writing today's defaults into them. The difference matters: a reader who has never
             chosen keeps tracking whatever the defaults become, instead of being frozen at
             the list that happened to ship in this version.
         </p>

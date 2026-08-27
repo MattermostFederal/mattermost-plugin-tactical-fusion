@@ -1,12 +1,19 @@
 import manifest from 'manifest';
 import React, {useEffect, useState} from 'react';
 
-import {get} from '../../decorators/registry';
 import type {Selection} from '../../decorators/selection';
 import {getSelection, subscribe} from '../../decorators/selection';
+import {getPanel} from '../../panels';
 
 const styles: Record<string, React.CSSProperties> = {
-    container: {padding: '16px'},
+    container: {
+        padding: '16px',
+        boxSizing: 'border-box',
+        flex: '1 1 auto',
+        minHeight: 0,
+        height: '100%',
+        overflowY: 'auto',
+    },
     empty: {color: 'var(--center-channel-color)'},
     emptyLead: {fontSize: '14px', margin: '0 0 8px'},
     emptyHint: {fontSize: '13px', opacity: 0.65, margin: 0},
@@ -31,17 +38,21 @@ export const EmptyState: React.FC = () => (
 );
 
 /**
- * Renders the selected decorator's panel.
+ * Renders the selected panel.
  *
- * A registry lookup rather than a branch per decorator, so adding one needs no
+ * A registry lookup rather than a branch per surface, so adding one needs no
  * change here. An unknown type falls back to the empty state, which is what a
  * stale link or an older bundle would produce.
+ *
+ * The lookup is the panel table rather than the decorator registry, because not
+ * everything with a panel is a decorator: Cursor on Target has no token and no
+ * link and could never be in that one.
  */
 export const RhsView: React.FC = () => {
     const selection = useSelection();
-    const decorator = selection ? get(selection.type) : undefined;
+    const entry = selection ? getPanel(selection.type) : undefined;
 
-    if (!selection || !decorator) {
+    if (!selection || !entry) {
         return (
             <div style={styles.container}>
                 <EmptyState/>
@@ -49,7 +60,7 @@ export const RhsView: React.FC = () => {
         );
     }
 
-    const {Panel} = decorator;
+    const {Panel} = entry;
     return (
         <div style={styles.container}>
             <Panel payload={selection.payload}/>
@@ -67,18 +78,18 @@ export const RhsView: React.FC = () => {
  */
 export const RhsTitle: React.FC = () => {
     const selection = useSelection();
-    const decorator = selection ? get(selection.type) : undefined;
+    const entry = selection ? getPanel(selection.type) : undefined;
 
-    if (!selection || !decorator) {
+    if (!selection || !entry) {
         return <span>{'Tactical Fusion'}</span>;
     }
 
-    const {Title} = decorator;
+    const {Title} = entry;
     if (Title) {
         return <span><Title payload={selection.payload}/></span>;
     }
 
-    return <span>{decorator.summary(selection.payload)}</span>;
+    return <span>{entry.summary(selection.payload)}</span>;
 };
 
 export default RhsView;

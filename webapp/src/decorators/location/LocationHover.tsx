@@ -52,7 +52,7 @@ const LocationHoverCard: React.FC<{payload: LocationPayload}> = ({payload}) => {
     const conversion = useConversion(format, canonical, raw);
 
     // A link the server refused says so, rather than drawing a pin for it. That
-    // is the verdict LocationReadings already honours by refusing the table; the
+    // is the verdict LocationReadings already honors by refusing the table; the
     // card used to branch on `ready` alone, so a hand-edited link whose author
     // text failed validation showed a confident pin here and "Not a coordinate"
     // on the panel one click later.

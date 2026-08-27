@@ -407,7 +407,7 @@ func TestWebappGridZoneIsBounded(t *testing.T) {
 			"point this test at the new name rather than deleting it")
 	}
 
-	// Asserted behaviourally rather than by comparing the expression text, so a
+	// Asserted behaviorally rather than by comparing the expression text, so a
 	// different but equivalent spelling is free to differ.
 	zone := regexp.MustCompile(`^(?:` + m[1] + `)$`)
 
@@ -561,7 +561,7 @@ func TestWebappMapSurfaceAttributeMatches(t *testing.T) {
 		t.Run(surface, func(t *testing.T) {
 			if !strings.Contains(source, `has('`+surface+`')`) {
 				t.Errorf("the webapp never matches the %q surface; a token it does not "+
-					"recognise reads as that surface being off", surface)
+					"recognize reads as that surface being off", surface)
 			}
 		})
 	}

@@ -70,10 +70,10 @@ well defined.
 
 **Signed decimal degrees is the weakest grammar** and has its own switch for that
 reason. It requires a comma and at least four fractional digits on both values.
-`34.05, -118.25` is declined, deliberately, and that is documented rather than
+`21.34, -157.95` is declined, deliberately, and that is documented rather than
 hidden.
 
-**`latd` has no bare pattern.** `35N079W` is seven characters resolving to a
+**`latd` has no bare pattern.** `21N157W` is seven characters resolving to a
 111 km square, and is reachable behind a USMTF label only. Turning everything off
 except `EnableLocationUSMTF` and `EnableLocationMoniker` reproduces the posture of
 `mattermost-plugin-aocanywhere`, whose `enhanced_text/patterns.ts` decorates a
@@ -96,7 +96,7 @@ matched in the text, and `TestUTMSwitchedOffStillRendersTheUTMRow` says so.
 that distinction is per-*expression* rather than per-format, which is why it
 lives in `bareExprs` in `grammar.go` rather than in `bareFormats`.
 
-A run-together `18SUJ2347806483` **is** detected unlabeled, under two
+A run-together `4QFJ0906059620` **is** detected unlabeled, under two
 restrictions that were arrived at by measuring rather than by arguing. The
 argument they replaced was wrong in an instructive way: the stated worry was
 part numbers, and the real collision is **hexadecimal**. Over 200,000 generated
@@ -137,7 +137,7 @@ band alphabet and there is no separate `utmBandLetter` class.
 An earlier version refused `N` and `S` outright as ambiguous. That declined the
 ordinary military spelling of a position in order to protect a civilian reading
 this audience does not write, and the coordinate that exposed it,
-`11S 384640E 3769080N`, is as plain a paste as this feature gets.
+`55P 276020E 1502660N`, is as plain a paste as this feature gets.
 
 **The cost is not symmetric between the two letters**, which is what to know
 before touching this again:
@@ -159,11 +159,11 @@ declined by the band check rather than silently relocated. The assertion is a
 loose bound (20%) because the number is a property of the notation, not of this
 code; it exists to fail if the band check is ever weakened.
 
-**The axis letters are optional**: `11S 384640E 3769080N` and
-`11S 384640mE 3769080mN` parse to the same canonical form as the bare pair, so
+**The axis letters are optional**: `55P 276020E 1502660N` and
+`55P 276020mE 1502660mN` parse to the same canonical form as the bare pair, so
 they are display only and the `r` parameter carries the author's spelling. They
 must be **adjacent to their digits**. An optional letter separated by a space
-would reach into the following word: in `11S 384640 3769080 East` the token
+would reach into the following word: in `55P 276020 1502660 East` the token
 would swallow the `E`, the boundary guard would then see a letter, and a token
 that decorates today would silently stop.
 `TestUTMAxisLettersDoNotReachIntoTheNextWord` pins it.
@@ -198,8 +198,8 @@ failure, it is a position in a different hemisphere, so
 `TestGEOREFIsLongitudeFirst` pins it against a worked example rather than
 against a round trip of itself.
 
-**GEOREF and GARS are label-only, and Plus Codes are not.** `GJNJ5753` is four
-letters and four digits and `006AG39` is seven alphanumerics; neither has
+**GEOREF and GARS are label-only, and Plus Codes are not.** `XGKP5535` is four
+letters and four digits and `045KG14` is seven alphanumerics; neither has
 anything in it a part number does not, so both sit in `labeledFormats` beside
 LATD. A Plus Code's alphabet is twenty characters with no vowel among them and
 its separator sits at a fixed position, which is a shape ordinary text mostly
@@ -220,7 +220,7 @@ The test keeps the lower-case corpora it was failing against rather than
 swapping them for ones that pass.
 
 Short Plus Codes (`CWC8+R9`) stay declined: resolving one needs a reference
-location this plugin does not have. **Padded** codes (`849V0000+`) are accepted,
+location this plugin does not have. **Padded** codes (`73H40000+`) are accepted,
 and that is not generosity: a padded code is the only way the notation writes
 anything coarser than a 275 m cell, and a whole-degree coordinate's derived row
 needs exactly that.
@@ -295,8 +295,8 @@ code alone, so that row is on screen at once and survives the request never
 landing.
 
 **Monikers are the USMTF field labels**, taken from the standard rather than
-invented, and like `DTG:` they are **consumed**: `LATM:3510N07901W` becomes a
-link reading `3510N07901W`, with the label gone. The label says what kind of
+invented, and like `DTG:` they are **consumed**: `LATM:2120N15757W` becomes a
+link reading `2120N15757W`, with the label gone. The label says what kind of
 thing follows, and once the thing is a link that says so itself the label is
 repeating it.
 
@@ -326,7 +326,7 @@ and there is a regression test for exactly it.
 
 **The labeled patterns use the same guard as the bare ones.** They did not: the
 moniker guard refused only a letter or a digit on the leading side, so
-`logs/MGRS:18SUJ2347806483` was rewritten in place while the bare token in the
+`logs/MGRS:4QFJ0906059620` was rewritten in place while the bare token in the
 identical position was correctly declined, because `badNeighbor` rejects `/` and
 the moniker guard did not. Rewriting the middle of a path is the failure this
 file is arranged around. The cost, named rather than hidden: a USMTF line quoted
@@ -337,8 +337,8 @@ side of the same guard.
 So the guard lives in `Pattern.Boundary`, which the framework calls with the
 runes flanking a match. `.` and `,` are rejected on the trailing side, which
 costs a decoration when a coordinate ends a sentence with no space. That is a
-deliberate trade: at the point the guard runs, `-118.2500.` and the middle of
-`-118.2500..-118.2600` are the same thing, and a missed decoration is a feature
+deliberate trade: at the point the guard runs, `-157.9483.` and the middle of
+`-157.9483..-157.9583` are the same thing, and a missed decoration is a feature
 gap while rewriting a range is corruption.
 
 ### Rendering
@@ -362,13 +362,13 @@ truncates minutes, which biases every result up to 1.8 km south and west.
 "No finer" is a **ceiling and not a floor**, which is why a **value** renders
 per axis while the **resolution** renders for the pair. The two halves need not
 have been written to the same precision, and `ddh` admits that from ordinary
-text: `34.0561N,118.2W` is a thing people paste. Rendering its latitude at the
-longitude's one decimal gave `34.1° N`, **4.9 km north of what the author
+text: `21.3353N,157.9W` is a thing people paste. Rendering its latitude at the
+longitude's one decimal gave `21.3° N`, **3.9 km south of what the author
 wrote**. That is the identical defect `canonicalString` is held away from, with
 the identical magnitude, so it is fixed the identical way: `Location.Digits()`
 (the coarser half) sizes `ResolutionText` and every derived grid row, and
 `axisResolutionDegrees` sizes the decimal, DMS and DDM rows from each half's own
-`Axis.Digits()`. A pair reading `34.0561° N, 118.2° W` beside "about 11.1 km" is
+`Axis.Digits()`. A pair reading `21.3353° N, 157.9° W` beside "about 11.1 km" is
 telling the truth twice rather than contradicting itself, and `Digits()` must
 reach nothing that writes a value out.
 
@@ -422,7 +422,7 @@ wrote.
 It is sized from the **pair**, unlike the DMS and DDM rows and like the grid
 rows, because a USMTF token is one fixed-width shape covering both halves: there
 is no spelling of it in which latitude carries seconds and longitude only
-minutes. `34.0561N,118.2W` therefore renders `3403N11812W`, losing the fine
+minutes. `21.3353N,157.9W` therefore renders `2120N15754W`, losing the fine
 half's digits in that column alone, and a fixture pins exactly that.
 
 It never carries **confidence**. A verified token states how well its position is
@@ -451,7 +451,7 @@ refused by the next tool along.
 The resolution rule applies to the **derived** grid rows too, which is where it
 is easiest to break: every conversion tool in existence hands back a ten-figure
 grid reference whatever it was given. `gridDigitsFor` picks the largest square
-that is no bigger than the token's resolution, so `35N079W` renders `17S PU`, a
+that is no bigger than the token's resolution, so `21N157W` renders `4Q GJ`, a
 100 km square with no digits at all, rather than a one meter one.
 
 **`roundTo` normalizes negative zero, and that is not tidiness.** On arm64 the

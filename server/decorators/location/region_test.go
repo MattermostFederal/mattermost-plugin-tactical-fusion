@@ -102,7 +102,7 @@ func TestRegionTextIsEmptyWhereThereIsNoAnswer(t *testing.T) {
 //
 // This cannot be tested through regionAt: Countries is sorted by name and the
 // first match wins, so "Lesotho" is returned whether or not the interior ring is
-// honoured. It is also the ONLY multi-ring polygon in the 110m dataset, so the
+// honored. It is also the ONLY multi-ring polygon in the 110m dataset, so the
 // hole branch has a sample size of one and no coverage without this.
 func TestCountryPolygonHolesAreSubtracted(t *testing.T) {
 	var za mapdata.Country
@@ -118,7 +118,7 @@ func TestCountryPolygonHolesAreSubtracted(t *testing.T) {
 
 	if countryContains(za, 28.2, -29.6) {
 		t.Fatal("South Africa's polygon claims Maseru; the interior ring is not " +
-			"being subtracted, so an enclave would be named as its neighbour")
+			"being subtracted, so an enclave would be named as its neighbor")
 	}
 	if !countryContains(za, 24.0, -29.0) {
 		t.Fatal("South Africa's polygon excludes a point that is plainly inside it")

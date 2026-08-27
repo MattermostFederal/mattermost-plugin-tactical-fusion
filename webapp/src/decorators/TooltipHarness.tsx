@@ -65,7 +65,7 @@ interface Props {
  *
  * Playwright runs the test body in Node but mounts the component in the
  * browser, so the registry has to be populated in here, driven by plain
- * serialisable props.
+ * serializable props.
  */
 const TooltipHarness: React.FC<Props> = ({href, show = true, withHover = true, emptyHover = false}) => {
     useState(() => {

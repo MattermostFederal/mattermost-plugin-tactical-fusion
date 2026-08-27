@@ -14,38 +14,26 @@ import (
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
-// The post size limits, and why there are two of them.
+// The post size limit, and why it is the floor.
 //
 // There is no way to ask for the real one. `Post.IsValid` takes it as an
 // argument, the server computes it, and neither `plugin.API` nor the
-// `model.Config` it hands back exposes it. So this plugin works from the two
-// constants the SDK does offer, and uses each where its failure mode is
-// survivable.
+// `model.Config` it hands back exposes it. So this plugin works from the one
+// constant the SDK offers that is safe to be wrong about in only one direction.
 //
-// The two directions are not symmetric, which is the whole reason for the
-// split. A limit set too high in `decoratePost` means a decorated message the
-// server then refuses, so the AUTHOR CANNOT POST AT ALL. Too low there only
-// means occasionally skipping decoration. In the slash commands it is the
-// difference between a post that lands and one that is refused, which is
-// reported and recoverable.
+// There used to be two. `defaultPostRunes`, PostMessageMaxRunesV2, was the
+// larger guess the example-details command packed against, and it fell out with
+// that command: everything left here either has to fit everywhere or is better
+// off refusing. See "The slash command" in docs/design/decorators.md.
 const (
 	// safePostRunes is the floor every server accepts. PostMessageMaxRunesV1
 	// is what the model validated against before the column widened, and no
 	// store returns less, so a message under this is never refused for length.
 	//
-	// This is what `decoratePost` uses, because that is the call site where
-	// being wrong stops somebody posting.
+	// `decoratePost` uses it because that is the call site where being wrong
+	// stops somebody posting; `examples` uses it because it writes several
+	// posts and a partial demonstration is worse than a refusal.
 	safePostRunes = model.PostMessageMaxRunesV1
-
-	// defaultPostRunes is what a server normally accepts: PostMessageMaxRunesV2
-	// is PostMessageMaxBytesV2/4, the worst-case rune count for the TEXT column
-	// the message is stored in, and is what the Postgres and MySQL stores
-	// report by default.
-	//
-	// Used by the slash commands, which write their own posts and can be told
-	// they were refused. It is a good guess and not a guarantee: an admin or a
-	// store can report less, so anything using this has to survive being wrong.
-	defaultPostRunes = model.PostMessageMaxRunesV2
 )
 
 // MessageWillBePosted decorates a message once, as it is created.
@@ -75,7 +63,37 @@ func referenceTime(post *model.Post) time.Time {
 // nil is the documented "allow without modification" value. The second return
 // value of the hook is always the empty string: a bug in here must never stop
 // somebody from posting.
-func (p *Plugin) decoratePost(post *model.Post, ref time.Time) (result *model.Post) {
+func (p *Plugin) decoratePost(post *model.Post, ref time.Time) *model.Post {
+	if post == nil {
+		return nil
+	}
+
+	// A stamped post is finished: the card owns the body, so decoration must not
+	// also rewrite the text underneath it.
+	//
+	// A STRIPPED one is not. cotStamp hands back a clone with a forged type
+	// removed, and that clone is an ordinary message again: returning it here
+	// would cost it its decoration for no reason other than somebody having
+	// spoofed a type on it.
+	result, stamped := p.cotStamp(post)
+	if stamped {
+		return result
+	}
+	if result != nil {
+		post = result
+	}
+
+	// decorateMessage answers nil for "nothing changed", so the strip has to be
+	// handed back itself when decoration finds nothing. Returning its nil would
+	// mean "no change" to the hook and put the forged type straight back on.
+	if decorated := p.decorateMessage(post, ref); decorated != nil {
+		return decorated
+	}
+
+	return result
+}
+
+func (p *Plugin) decorateMessage(post *model.Post, ref time.Time) (result *model.Post) {
 	// Capture the API before the deferred call. If a nil or broken API was what
 	// panicked in the first place, logging through p.API inside the recover
 	// would panic again from within the deferred function, which escapes the
@@ -92,7 +110,7 @@ func (p *Plugin) decoratePost(post *model.Post, ref time.Time) (result *model.Po
 		}
 	}()
 
-	if post == nil || post.Message == "" {
+	if post.Message == "" {
 		return nil
 	}
 	if p.decorators == nil {

@@ -39,7 +39,7 @@ export interface PageData {
 /**
  * The shell's parameters, or null when there is no shell to read.
  *
- * An unrecognised format id DEGRADES rather than refusing, for the same reason
+ * An unrecognized format id DEGRADES rather than refusing, for the same reason
  * `payloadFor` degrades on a canonical-shape disagreement: on a page there is
  * nothing to fall through to. Refusing rendered a wholly blank document, on the
  * route the mobile app opens, with nothing logged, while the conversion the
@@ -148,7 +148,7 @@ function payloadFor(format: LocationFormat, canonical: string, raw: string): Loc
 
     // eslint-disable-next-line no-console
     console.warn(
-        '[tactical-fusion] this build does not recognise a token the server issued; ' +
+        '[tactical-fusion] this build does not recognize a token the server issued; ' +
         'rendering from the server conversion alone',
         {format, canonical},
     );

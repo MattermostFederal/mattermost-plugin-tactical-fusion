@@ -1,0 +1,1007 @@
+path,label
+A,Air Track
+A-C,Civil Aircraft
+A-C-F,Civil Fixed Wing Aircraft
+A-C-F-q,Civil Fixed Wing Drone (RPV/UAV)
+A-C-H,Civil Rotary Wing Aircraft
+A-C-L,Civil Lighter than Air
+A-M,Military Aircraft
+A-M-F,Military Fixed Wing Aircraft
+A-M-F-A,Fixed Wing Attack/Strike
+A-M-F-B,Fixed Wing Bomber
+A-M-F-C,Fixed Wing Cargo Airlift (Transport)
+A-M-F-C-H,Fixed Wing Cargo Airlift (Heavy)
+A-M-F-C-L,Fixed Wing Cargo Airlift (Light)
+A-M-F-C-M,Fixed Wing Cargo Airlift (Medium)
+A-M-F-D,Fixed Wing Airborne Command Post (C2)
+A-M-F-F,Fixed Wing Fighter
+A-M-F-F-I,Fixed Wing Interceptor
+A-M-F-H,Fixed Wing Combat Search and Rescue (CSAR)
+A-M-F-J,Fixed Wing Electronic Countermeasures (ECM/Jammer)
+A-M-F-K,Fixed Wing Tanker
+A-M-F-L,Fixed Wing VSTOL
+A-M-F-M,Fixed Wing Special Operations Forces (SOF)
+A-M-F-O,Fixed Wing Medevac
+A-M-F-P,Fixed Wing Patrol
+A-M-F-P-M,Fixed Wing Mine Countermeasures
+A-M-F-P-N,Fixed Wing Antisurface Warfare (ASUW)
+A-M-F-Q,Fixed Wing Drone (RPV/UAV)
+A-M-F-R,Fixed Wing Reconnaissance
+A-M-F-R-W,Fixed Wing Airborne Early Warning (AEW)
+A-M-F-R-X,Fixed Wing Photographic Reconnaissance
+A-M-F-R-Z,Fixed Wing Electronic Surveillance Measures
+A-M-F-S,Fixed Wing Antisubmarine Warfare (ASW) Carrier Based
+A-M-F-T,Fixed Wing Trainer
+A-M-F-U,Fixed Wing Utility
+A-M-F-U-H,Fixed Wing Utility (Heavy)
+A-M-F-U-L,Fixed Wing Utility (Light)
+A-M-F-U-M,Fixed Wing Utility (Medium)
+A-M-F-Y,Fixed Wing Communications (C3I)
+A-M-F-g,Fixed Wing Gunship
+A-M-H,Military Rotary Wing Aircraft
+A-M-H-A,Rotary Wing Attack
+A-M-H-C,Rotary Wing Cargo Airlift (Transport)
+A-M-H-C-H,Rotary Wing Cargo Airlift (Heavy)
+A-M-H-C-L,Rotary Wing Cargo Airlift (Light)
+A-M-H-C-M,Rotary Wing Cargo Airlift (Medium)
+A-M-H-D,Rotary Wing Airborne Command Post (C2)
+A-M-H-H,Rotary Wing Combat Search and Rescue (CSAR)
+A-M-H-I,Rotary Wing Mine Countermeasures
+A-M-H-J,Rotary Wing Electronic Countermeasures (ECM/Jammer)
+A-M-H-K,Rotary Wing Tanker
+A-M-H-M,Rotary Wing Special Operations Forces (SOF)
+A-M-H-O,Rotary Wing Medevac
+A-M-H-Q,Rotary Wing Drone (RPV/UAV)
+A-M-H-R,Rotary Wing Reconnaissance
+A-M-H-S,Rotary Wing Antisubmarine Warfare (MPA)
+A-M-H-T,Rotary Wing Trainer
+A-M-H-U,Rotary Wing Utility
+A-M-H-U-H,Rotary Wing Utility (Heavy)
+A-M-H-U-L,Rotary Wing Utility (Light)
+A-M-H-U-M,Rotary Wing Utility (Medium)
+A-M-L,Military Lighter than Air
+A-W,Air Weapon
+A-W-D,Air Decoy
+A-W-M,Missile In Flight
+A-W-M-A,Air Launched Missile
+A-W-M-A-A,Air to Air Missile (AAM)
+A-W-M-A-S,Air to Surface Missile (ASM)
+A-W-M-L,Land Attack Missile
+A-W-M-S,Surface/Land Launched Missile
+A-W-M-S-A,Surface to Air Missile (SAM)
+A-W-M-S-A-f,SAM (Fixed Site)
+A-W-M-S-A-i,SAM (Manpad)
+A-W-M-S-A-m,SAM (Mobile)
+A-W-M-S-S,Surface to Surface Missile (SSM)
+A-W-M-U,Subsurface to Surface Missile (S/SSM)
+G,Ground Track
+G-E,Ground Equipment
+G-E-S,Sensor
+G-E-S-E,Emplaced Sensor
+G-E-S-R,Radar
+G-E-V,Ground Vehicle
+G-E-V-A,Armor (Gun)
+G-E-V-A-A,Armor (APC)
+G-E-V-A-A-R,Armored Personnel Carrier Recovery
+G-E-V-A-C,C2V/ACV
+G-E-V-A-I,Armored Infantry
+G-E-V-A-L,Light Armored Vehicle
+G-E-V-A-S,Combat Service Support Vehicle
+G-E-V-A-T,Tank
+G-E-V-A-T-H,Tank Heavy
+G-E-V-A-T-H-R,Tank Heavy Recovery
+G-E-V-A-T-L,Tank Light
+G-E-V-A-T-L-R,Tank Light Recovery
+G-E-V-A-T-M,Tank Medium
+G-E-V-A-T-M-R,Tank Medium Recovery
+G-E-V-C,Civilian Vehicle
+G-E-V-E,Engineer Vehicle
+G-E-V-E-A,Mine Clearing Vehicle
+G-E-V-E-A-A,Armored Mounted Mine Clearing Vehicle
+G-E-V-E-A-T,Trailer Mounted Mine Clearing Vehicle
+G-E-V-E-B,Bridging Vehicle
+G-E-V-E-C,Construction Vehicle
+G-E-V-E-D,Dozer
+G-E-V-E-E,Earthmover
+G-E-V-E-M,Mine Laying Vehicle
+G-E-V-E-M-L,Truck Mounted with Volcano
+G-E-V-E-M-V,Armored Carrier with Volcano
+G-E-V-T,Locomotive
+G-E-V-U,Utility Vehicle
+G-E-V-U-B,Bus
+G-E-V-U-L,Limited Cross Country Truck
+G-E-V-U-R,Water Craft
+G-E-V-U-R-l,Boat (Large)
+G-E-V-U-R-m,Boat (Med)
+G-E-V-U-R-s,Boat (Small)
+G-E-V-U-S,Semi
+G-E-V-U-X,Cross Country Truck
+G-E-V-m,Ambulance
+G-E-W,Weapon
+G-E-W-A,Air Defense Gun
+G-E-W-A-H,AAA (Heavy)
+G-E-W-A-L,AAA (Light)
+G-E-W-A-M,AAA (Medium)
+G-E-W-D,Direct Fire Gun
+G-E-W-D-H,Direct Fire Gun Heavy
+G-E-W-D-H-S,Direct Fire Gun Heavy Self Propelled
+G-E-W-D-L,Direct Fire Gun Light
+G-E-W-D-L-S,Direct Fire Gun Light Self Propelled
+G-E-W-D-M,Direct Fire Gun Medium
+G-E-W-D-M-S,Direct Fire Gun Medium Self Propelled
+G-E-W-G,Anti Tank Gun
+G-E-W-G-H,Anti Tank Gun Heavy
+G-E-W-G-L,Anti Tank Gun Light
+G-E-W-G-M,Anti Tank Gun Medium
+G-E-W-G-R,Anti Tank Gun Recoilless
+G-E-W-H,Howitzer
+G-E-W-H-H,Howitzer Heavy
+G-E-W-H-H-S,Howitzer Heavy Self Propelled
+G-E-W-H-L,Howitzer Light
+G-E-W-H-L-S,Howitzer Light Self Propelled
+G-E-W-H-M,Howitzer Medium
+G-E-W-H-M-S,Howitzer Medium Self Propelled
+G-E-W-M,Missile Launcher
+G-E-W-M-A,Air Defense (AD) Missile Launcher
+G-E-W-M-A-I,Intermediate Range AD Missile Launcher
+G-E-W-M-A-L,Long Range AD Missile Launcher
+G-E-W-M-A-S,Short Range AD Missile Launcher
+G-E-W-M-A-T,AD Missile Launcher Theater
+G-E-W-M-S,Surf Surf (SS) Missile Launcher
+G-E-W-M-S-I,Intermediate Range SS Missile Launcher
+G-E-W-M-S-L,Long Range SS Missile Launcher
+G-E-W-M-S-S,Short Range SS Missile Launcher
+G-E-W-M-T,Missile Launcher Antitank (AT)
+G-E-W-M-T-H,Missile Launcher AT Heavy
+G-E-W-M-T-L,Missile Launcher AT Light
+G-E-W-M-T-M,Missile Launcher AT Medium
+G-E-W-O,Mortar
+G-E-W-O-H,Mortar Heavy
+G-E-W-O-L,Mortar Light
+G-E-W-O-M,Mortar Medium
+G-E-W-R,Rifle/Automatic Weapon
+G-E-W-R-H,Heavy Machine Gun
+G-E-W-R-L,Light Machine Gun
+G-E-W-R-R,Rifle
+G-E-W-S,Single Rocket Launcher
+G-E-W-S-H,Single Rocket Launcher Heavy
+G-E-W-S-L,Single Rocket Launcher Light
+G-E-W-S-M,Single Rocket Launcher Medium
+G-E-W-T,Anti Tank Rocket Launcher
+G-E-W-T-H,Anti Tank Rocket Launcher Heavy
+G-E-W-T-L,Anti Tank Rocket Launcher Light
+G-E-W-T-M,Anti Tank Rocket Launcher Medium
+G-E-W-X,Multiple Rocket Launcher
+G-E-W-X-H,Multiple Rocket Launcher Heavy
+G-E-W-X-L,Multiple Rocket Launcher Light
+G-E-W-X-M,Multiple Rocket Launcher Medium
+G-E-W-Z,Grenade Launcher
+G-E-W-Z-H,Grenade Launcher Heavy
+G-E-W-Z-L,Grenade Launcher Light
+G-E-W-Z-M,Grenade Launcher Medium
+G-E-X,Special Equipment
+G-E-X-F,Flame Thrower
+G-E-X-L,Laser
+G-E-X-M,Land Mines
+G-E-X-M-C,Claymore
+G-E-X-M-L,Less than Lethal
+G-E-X-N,NBC Equipment
+G-I,Ground Installation
+G-I-B,Military Base/Facility
+G-I-B-A,Airport/Airbase
+G-I-B-N,Seaport/Naval Base
+G-I-E,Equipment Manufacture
+G-I-E-h,Heavy Equipment Manufacture
+G-I-E-l,Light Equipment Manufacture
+G-I-E-o,Plant Other
+G-I-G,Government Leadership
+G-I-M,Military Materiel Facility
+G-I-M-A,Aircraft Production/Assembly
+G-I-M-C,Chemical/Biological Warfare Production
+G-I-M-E,Ammunition and Explosives Production
+G-I-M-F,Nuclear Energy
+G-I-M-F-A,Atomic Energy Reactor
+G-I-M-F-P,Nuclear Material Production
+G-I-M-F-P-W,Weapons Grade
+G-I-M-F-S,Nuclear Material Storage
+G-I-M-G,Armament Production
+G-I-M-M,Missile/Space System Production
+G-I-M-N,Engineering Equipment Production
+G-I-M-N-B,Bridge Manufacture
+G-I-M-N-B-l,Bridge (Large)
+G-I-M-N-B-m,Bridge (Med)
+G-I-M-N-B-s,Bridge (Small)
+G-I-M-N-c,Canal Engineering
+G-I-M-S,Ship Construction
+G-I-M-V,Military Vehicle Production
+G-I-P,Processing Facility
+G-I-P-D,Decon
+G-I-R,Raw Material Production/Storage
+G-I-R-M,Mine
+G-I-R-N,NBC
+G-I-R-N-B,Biological Facility
+G-I-R-N-C,Chemical Facility
+G-I-R-N-N,Nuclear Facility
+G-I-R-P,Petroleum/Gas/Oil
+G-I-R-P-r,Refinery
+G-I-T,Transport Facility
+G-I-T-a,Airport
+G-I-T-hb,Helibase
+G-I-T-hs,Helispot
+G-I-T-l,Land Port
+G-I-T-pg,Parking Garage
+G-I-T-r,Railroad
+G-I-T-s,Seaport
+G-I-U,"Service, Research, Utility Facility"
+G-I-U-E,Electric Power Facility
+G-I-U-E-D,Dam
+G-I-U-E-F,Fossil Fuel
+G-I-U-E-N,Nuclear Plant
+G-I-U-E-c,Coal Power Plant
+G-I-U-E-h,Hydroelectric Power Plant
+G-I-U-E-o,Other Power
+G-I-U-E-ps,Power Substation
+G-I-U-P,Public Water Services
+G-I-U-R,Technological Research Facility
+G-I-U-T,Telecommunications Facility
+G-I-U-T-com,Communications
+G-I-U-T-com-af,Antenna Farm
+G-I-U-T-com-sat,Satellite Communications
+G-I-U-T-com-tow,Tower
+G-I-U-T-r,Radio
+G-I-U-T-r-s,Radio Station
+G-I-U-T-tp,Telephone
+G-I-U-T-tp-ts,Telephone Switching
+G-I-U-T-tv,Television
+G-I-U-T-tv-c,Cable
+G-I-U-T-tv-s,Television Station
+G-I-X,Medical Facility
+G-I-X-H,Hospital
+G-I-X-hcf,Hospital Care Facility
+G-I-c,Civilian
+G-I-c-b,Bridge
+G-I-c-bar,Fence/Wall/Barrier
+G-I-c-can,Canal
+G-I-c-can-l,Canal Lock
+G-I-c-frm,Farm
+G-I-c-l,Levy
+G-I-c-mon,Monument
+G-I-c-o,Offices
+G-I-c-rah,Residence/Apartment/Hotel
+G-I-c-rel,Religous
+G-I-c-res,Resevoir
+G-I-c-ret,Retail
+G-I-c-sch,School
+G-I-c-vip,VIP
+G-I-c-whs,Warehouse
+G-I-i,IM Facilities
+G-I-i-e,Emergency Management Facility
+G-I-i-e-eoc,Emergency Operations Center
+G-I-i-e-ic,Incident Commander
+G-I-i-e-icc,Incident Communications Center
+G-I-i-e-icp,Incident Command Post
+G-I-i-e-wr,War Room
+G-I-i-f,Fire/Hazmat
+G-I-i-f-fd,Fire Department
+G-I-i-h,Health and Medical Facility
+G-I-i-h-md,Medical Dispatch
+G-I-i-l,Law Enforcement Facility
+G-I-i-l-cp,Police Checkpoint
+G-I-i-l-hp,Highway Patrol
+G-I-i-l-lp,Local Police
+G-I-i-l-ntz,No Trespassing Zone
+G-I-i-l-sd,Sheriffs Department
+G-I-i-l-sp,State Police
+G-I-i-m,Emergency Medical Services Facility
+G-I-i-o,Other Facility
+G-I-i-o-ad,Agency Dispatch
+G-I-i-o-ad-ems,EMS (Agency Dispatch)
+G-I-i-o-ad-f,Fire (Agency Dispatch)
+G-I-i-o-ad-hwy,Highway (Agency Dispatch)
+G-I-i-o-ad-mda,Media (Agency Dispatch)
+G-I-i-o-ad-pl,Police Local (Agency Dispatch)
+G-I-i-o-ad-ps,Police Station (Agency Dispatch)
+G-I-i-o-ad-tow,Tow (Agency Dispatch)
+G-I-i-o-ad-ts,Transit (Agency Dispatch)
+G-I-i-o-bcc,Border Control Checkpoint
+G-I-i-o-dmz,DMZ
+G-I-i-o-isp,Independent Service Provider
+G-I-i-o-mc,Mobile Center
+G-I-i-o-mc-f,Fire (Mobile Center)
+G-I-i-o-mc-h,Medical (Mobile Center)
+G-I-i-o-mc-l,Law Enforcement (Mobile Center)
+G-I-i-o-mes,Message Center
+G-I-i-o-mob,Mobilization Center
+G-I-i-o-mob-ems,EMS (Mobilization Center)
+G-I-i-o-mob-es,Transit (Mobilization Center)
+G-I-i-o-mob-f,Fire (Mobilization Center)
+G-I-i-o-mob-hwy,Highway (Mobilization Center)
+G-I-i-o-mob-mda,Media (Mobilization Center)
+G-I-i-o-mob-pl,Ploce Local
+G-I-i-o-mob-ps,Police Station (Mobilization Center)
+G-I-i-o-mob-tow,Tow (Mobilization Center)
+G-I-i-o-ps,Public Safety
+G-I-i-o-rl,Reporting Locations
+G-I-i-o-sa,Staging Area
+G-I-i-o-sa-ems,EMS (Staging Area)
+G-I-i-o-sa-f,Fire (Staging Area)
+G-I-i-o-sa-hwy,Highway (Staging Area)
+G-I-i-o-sa-mda,Media (Staging Area)
+G-I-i-o-sa-pl,Police Local (Staging Area)
+G-I-i-o-sa-ps,Police Station (Staging Area)
+G-I-i-o-sa-tow,Tow (Staging Area)
+G-I-i-o-sa-ts,Transit (Staging Area)
+G-I-i-o-sc,Security Checkpoint
+G-I-i-o-seg,Segment
+G-I-i-o-t,Transportation
+G-I-i-o-t-im,Transit Incident Management Center
+G-I-i-o-t-tc,Transit Management Center
+G-I-i-o-t-td,Traffic Inc Service Patrol Dispatch
+G-I-i-o-t-tm,Traffic Management Center
+G-I-i-o-tmp,Temporary
+G-I-i-o-tmp-f,Fire (Temporary)
+G-I-i-o-tmp-h,Medical (Temporary)
+G-I-i-o-tmp-l,Law Enforcement (Temporary)
+G-I-i-p,Public Works Facility
+G-I-r,Road
+G-I-r-h,Road (Highway)
+G-I-r-i,Road (Improved)
+G-I-r-ra,Rest Area
+G-I-r-u,Road (Un-improved)
+G-U,Ground Unit
+G-U-C,Ground Combat Unit
+G-U-C-A,Armor Unit
+G-U-C-A-A,Anti Armor
+G-U-C-A-A-A,Anti Armor Armored
+G-U-C-A-A-A-S,Anti Armor Armored Air Assault
+G-U-C-A-A-A-T,Anti Armor Armored Tracked
+G-U-C-A-A-A-W,Anti Armor Armored Wheeled
+G-U-C-A-A-C,Anti Armor Arctic
+G-U-C-A-A-D,Anti Armor Dismounted
+G-U-C-A-A-L,Anti Armor Light
+G-U-C-A-A-M,Anti Armor Airborne
+G-U-C-A-A-O,Anti Armor Motorized
+G-U-C-A-A-O-S,Anti Armor Motorized Air Assault
+G-U-C-A-A-S,Anti Armor Air Assault
+G-U-C-A-A-U,Anti Armor Mountain
+G-U-C-A-T,Armor Track
+G-U-C-A-T-A,Armor Track Airborne
+G-U-C-A-T-H,"Armor Track, Heavy"
+G-U-C-A-T-L,"Armor Track, Light"
+G-U-C-A-T-M,"Armor Track, Medium"
+G-U-C-A-T-R,"Armor Track, Recovery"
+G-U-C-A-T-W,Armor Track Amphibious
+G-U-C-A-T-W-R,Armor Track Amphibious Recovery
+G-U-C-A-W,"Armor, Wheeled"
+G-U-C-A-W-A,"Armor, Wheeled Airborne"
+G-U-C-A-W-H,"Armor, Wheeled Heavy"
+G-U-C-A-W-L,"Armor, Wheeled Light"
+G-U-C-A-W-M,"Armor, Wheeled Medium"
+G-U-C-A-W-R,"Armor, Wheeled Recovery"
+G-U-C-A-W-S,"Armor, Wheeled Air Assault"
+G-U-C-A-W-W,"Armor, Wheeled Amphibious"
+G-U-C-A-W-W-R,"Armor, Wheeled Amphibious Recovery"
+G-U-C-D,Air Defense Unit
+G-U-C-D-C,Air Defense Composite
+G-U-C-D-G,Gun Unit
+G-U-C-D-H,H/MAD
+G-U-C-D-H-H,HAWK
+G-U-C-D-H-P,Patriot
+G-U-C-D-M,Air Defense Missile
+G-U-C-D-M-H,Air Defense Missile Heavy
+G-U-C-D-M-L,Air Defense Missile Light
+G-U-C-D-M-L-A,Air Defense Missile Motorized (Avenger)
+G-U-C-D-M-M,Air Defense Missile Medium
+G-U-C-D-O,Theater Missile Defense Unit
+G-U-C-D-S,Short Range
+G-U-C-D-S-S,Stinger
+G-U-C-D-S-V,VULCAN
+G-U-C-D-T,Targeting Unit
+G-U-C-E,Engineer Unit
+G-U-C-E-C,Engineer Combat
+G-U-C-E-C-A,Engineer Combat Airborne
+G-U-C-E-C-C,Engineer Combat Arctic
+G-U-C-E-C-H,Engineer Combat Heavy
+G-U-C-E-C-L,Engineer Combat Light (Sapper)
+G-U-C-E-C-M,Engineer Combat Medium
+G-U-C-E-C-O,Engineer Combat Mountain
+G-U-C-E-C-R,Engineer Combat Recon
+G-U-C-E-C-S,Engineer Combat Air Assault
+G-U-C-E-C-T,Engineer Combat Mechanized (Track)
+G-U-C-E-C-W,Engineer Combat Motorized
+G-U-C-E-N,Engineer Construction
+G-U-C-E-N-N,Engineer Naval Construction
+G-U-C-F,Field Artillery Unit
+G-U-C-F-H,Howitzer/Gun
+G-U-C-F-H-A,Howitzer/Gun (Airborne)
+G-U-C-F-H-C,Arctic
+G-U-C-F-H-E,Artillery (Mobile)
+G-U-C-F-H-H,Howitzer/Gun (Heavy)
+G-U-C-F-H-L,Howitzer/Gun (Light)
+G-U-C-F-H-M,Medium
+G-U-C-F-H-O,Howitzer/Gun (Mountain)
+G-U-C-F-H-S,Howitzer/Gun (Air Assault)
+G-U-C-F-H-X,Amphibious
+G-U-C-F-M,Mortar Unit
+G-U-C-F-M-L,Amphibious Mortar
+G-U-C-F-M-S,Self Propelled (SP) Tracked Mortar
+G-U-C-F-M-T,Towed Mortar
+G-U-C-F-M-T-A,Towed Airborne Mortar
+G-U-C-F-M-T-C,Towed Arctic Mortar
+G-U-C-F-M-T-O,Towed Mountain Mortar
+G-U-C-F-M-T-S,Towed Air Assault Mortar
+G-U-C-F-M-W,SP Wheeled Mortar
+G-U-C-F-O,Field Artillery Meteorological
+G-U-C-F-O-A,Airborne Meteorological
+G-U-C-F-O-L,Light Meteorological
+G-U-C-F-O-O,Mountain Meteorological
+G-U-C-F-O-S,Air Assault Meteorological
+G-U-C-F-R,Rocket
+G-U-C-F-R-M,Rockets (Fixed)
+G-U-C-F-R-M-R,Rockets (Mobile)
+G-U-C-F-R-M-S,Multi Rocket Self Propelled
+G-U-C-F-R-M-T,Multi Rocket Towed
+G-U-C-F-R-S,Single Rocket Launcher Unit
+G-U-C-F-R-S-R,Single Rocket Truck
+G-U-C-F-R-S-S,Single Rocket Self Propelled
+G-U-C-F-R-S-T,Single Rocket Towed
+G-U-C-F-S,Artillery Survey
+G-U-C-F-S-A,Artillery Survey (Airborne)
+G-U-C-F-S-L,Artillery Survey (Light)
+G-U-C-F-S-O,Artillery Survey (Mountain)
+G-U-C-F-S-S,Artillery Survey (Air Assault)
+G-U-C-F-T,Target Acquisition
+G-U-C-F-T-A,Anglico
+G-U-C-F-T-C,COLT/FIST
+G-U-C-F-T-C-D,Dismounted COLT/FIST
+G-U-C-F-T-C-M,Tracked COLT/FIST
+G-U-C-F-T-F,Flash (Optical)
+G-U-C-F-T-R,Target Acquisition Radar
+G-U-C-F-T-S,Sound
+G-U-C-I,Infantry Unit
+G-U-C-I-A,Infantry Airborne
+G-U-C-I-C,Infantry Arctic
+G-U-C-I-I,Infantry Fighting Vehicle
+G-U-C-I-L,Infantry Light
+G-U-C-I-M,Infantry Motorized
+G-U-C-I-N,Infantry Naval
+G-U-C-I-O,Infantry Mountain
+G-U-C-I-S,Infantry Air Assault
+G-U-C-I-Z,Infantry Mechanized
+G-U-C-I-d,Troops (DugIn)
+G-U-C-M,Missile (Surf Surf)
+G-U-C-M-S,Missile (Surf Surf) Strategic
+G-U-C-M-T,Missile (Surf Surf) Tactical
+G-U-C-R,Reconnaissance Unit
+G-U-C-R-A,Reconnaissance Airborne
+G-U-C-R-C,Reconnaissance Arctic
+G-U-C-R-H,Reconnaissance Horse
+G-U-C-R-L,Reconnaissance Light
+G-U-C-R-O,Reconnaissance Mountain
+G-U-C-R-R,Reconnaissance Marine
+G-U-C-R-R-D,Reconnaissance Marine Division
+G-U-C-R-R-F,Reconnaissance Marine Force
+G-U-C-R-R-L,Reconnaissance Marine Light Armored
+G-U-C-R-S,Reconnaissance Air Assault
+G-U-C-R-V,Reconnaissance Cavalry
+G-U-C-R-V-A,Reconnaissance Cavalry Armored
+G-U-C-R-V-G,Reconnaissance Cavalry Ground
+G-U-C-R-V-M,Reconnaissance Cavalry Motorized
+G-U-C-R-V-O,Reconnaissance Cavalry Air
+G-U-C-R-X,Reconnaissance Long Range Surveillance
+G-U-C-S,Internal Security Forces
+G-U-C-S-A,Aviation
+G-U-C-S-G,Ground
+G-U-C-S-G-A,Mechanized Ground
+G-U-C-S-G-D,Dismounted Ground
+G-U-C-S-G-M,Motorized Ground
+G-U-C-S-M,Wheeled Mechanized
+G-U-C-S-R,Rail
+G-U-C-S-W,Riverine
+G-U-C-V,Army Aviation Unit
+G-U-C-V-C,Army Aviation Composite
+G-U-C-V-F,Fixed Wing
+G-U-C-V-F-A,Attack Fixed Wing
+G-U-C-V-F-R,Recon Fixed Wing
+G-U-C-V-F-U,Utility Fixed Wing
+G-U-C-V-R,Rotary Wing
+G-U-C-V-R-A,Attack Rotary Wing
+G-U-C-V-R-M,Mine Countermeasure Rotary Wing
+G-U-C-V-R-S,Scout Rotary Wing
+G-U-C-V-R-U,Utility Rotary Wing
+G-U-C-V-R-U-C,C2 Rotary Wing
+G-U-C-V-R-U-E,Medevac Rotary Wing
+G-U-C-V-R-U-H,Heavy Utility Rotary Wing
+G-U-C-V-R-U-L,Light Utility Rotary Wing
+G-U-C-V-R-U-M,Medium Utility Rotary Wing
+G-U-C-V-R-W,Antisubmarine Warfare Rotary Wing
+G-U-C-V-R-d,Helo ground unit (Dual)
+G-U-C-V-R-s,Helo ground unit (Single)
+G-U-C-V-S,Army Aviation Search and Rescue
+G-U-C-V-U,Unmanned Aerial Vehicle
+G-U-C-V-U-F,Unmanned Aerial Vehicle Fixed Wing
+G-U-C-V-U-R,Unmanned Aerial Vehicle Rotary Wing
+G-U-C-V-V,Vertical/Short Takeoff and Landing
+G-U-H,Special C2 Headquarters Component
+G-U-S,Combat Service Support Unit
+G-U-S-A,Administrative Unit
+G-U-S-A-C,Admin Corps
+G-U-S-A-F,Finance
+G-U-S-A-F-C,Finance Corps
+G-U-S-A-F-T,Finance Theater
+G-U-S-A-J,Judge Advocate General (JAG)
+G-U-S-A-J-C,JAG Corps
+G-U-S-A-J-T,JAG Theater
+G-U-S-A-L,Labor
+G-U-S-A-L-C,Labor Corps
+G-U-S-A-L-T,Labor Theater
+G-U-S-A-M,Mortuary/Graves Registry
+G-U-S-A-M-C,Mortuary/Graves Registry Corps
+G-U-S-A-M-T,Mortuary/Graves Registry Theater
+G-U-S-A-O,Postal
+G-U-S-A-O-C,Postal Corps
+G-U-S-A-O-T,Postal Theater
+G-U-S-A-P,Public Affairs
+G-U-S-A-P-B,Public Affairs Broadcast
+G-U-S-A-P-B-C,Public Affairs Broadcast Corps
+G-U-S-A-P-B-T,Public Affairs Broadcast Theater
+G-U-S-A-P-C,Public Affairs Corps
+G-U-S-A-P-M,Public Affairs Joint Information Bureau
+G-U-S-A-P-M-C,Public Affairs Jib Corps
+G-U-S-A-P-M-T,Public Affairs Jib Theater
+G-U-S-A-P-T,Public Affairs Theater
+G-U-S-A-Q,Quartermaster (Supply)
+G-U-S-A-Q-C,Quartermaster (Supply) Corps
+G-U-S-A-Q-T,Quartermaster (Supply) Theater
+G-U-S-A-R,Religious/Chaplain
+G-U-S-A-R-C,Religious/Chaplain Corps
+G-U-S-A-R-T,Religious/Chaplain Theater
+G-U-S-A-S,Personnel Services
+G-U-S-A-S-C,Personnel Corps
+G-U-S-A-S-T,Personnel Theater
+G-U-S-A-T,Admin Theater
+G-U-S-A-W,"Morale, Welfare, Recreation (MWR)"
+G-U-S-A-W-C,MWR Corps
+G-U-S-A-W-T,MWR Theater
+G-U-S-A-X,Replacement Holding Unit (RHU)
+G-U-S-A-X-C,RHU Corps
+G-U-S-A-X-T,RHU Theater
+G-U-S-M,Medical Unit
+G-U-S-M-C,Medical Corps
+G-U-S-M-D,Medical Dental
+G-U-S-M-D-C,Medical Dental Corps
+G-U-S-M-D-T,Medical Dental Theater
+G-U-S-M-M,Medical Treatment Facility
+G-U-S-M-M-C,Medical Treatment Facility Corps
+G-U-S-M-M-T,Medical Treatment Facility Theater
+G-U-S-M-P,Medical Psychological
+G-U-S-M-P-C,Medical Psychological Corps
+G-U-S-M-P-T,Medical Psychological Theater
+G-U-S-M-T,Medical Theater
+G-U-S-M-V,Medical Veterinary
+G-U-S-M-V-C,Medical Veterinary Corps
+G-U-S-M-V-T,Medical Veterinary Theater
+G-U-S-S,Supply Unit
+G-U-S-S-1,Supply Class I
+G-U-S-S-1-C,Supply Class I Corps
+G-U-S-S-1-T,Supply Class I Theater
+G-U-S-S-2,Supply Class II
+G-U-S-S-2-C,Supply Class II Corps
+G-U-S-S-2-T,Supply Class II Theater
+G-U-S-S-3,Supply Class III
+G-U-S-S-3-A,Supply Class III Aviation
+G-U-S-S-3-A-C,Supply Class III Aviation Corps
+G-U-S-S-3-A-T,Supply Class III Aviation Theater
+G-U-S-S-3-C,Supply Class III Corps
+G-U-S-S-3-T,Supply Class III Theater
+G-U-S-S-4,Supply Class IV
+G-U-S-S-4-C,Supply Class IV Corps
+G-U-S-S-4-T,Supply Class IV Theater
+G-U-S-S-5,Supply Class V
+G-U-S-S-5-C,Supply Class V Corps
+G-U-S-S-5-T,Supply Class V Theater
+G-U-S-S-6,Supply Class VI
+G-U-S-S-6-C,Supply Class VI Corps
+G-U-S-S-6-T,Supply Class VI Theater
+G-U-S-S-7,Supply Class VII
+G-U-S-S-7-C,Supply Class VII Corps
+G-U-S-S-7-T,Supply Class VII Theater
+G-U-S-S-8,Supply Class VIII
+G-U-S-S-8-C,Supply Class VIII Corps
+G-U-S-S-8-T,Supply Class VIII Theater
+G-U-S-S-9,Supply Class IX
+G-U-S-S-9-C,Supply Class IX Corps
+G-U-S-S-9-T,Supply Class IX Theater
+G-U-S-S-C,Supply Corps
+G-U-S-S-L,Supply Laundry/Bath
+G-U-S-S-L-C,Supply Laundry/Bath Corps
+G-U-S-S-L-T,Supply Laundry/Bath Theater
+G-U-S-S-T,Supply Theater
+G-U-S-S-W,Supply Water
+G-U-S-S-W-C,Supply Water Corps
+G-U-S-S-W-P,Supply Water Purification
+G-U-S-S-W-P-C,Supply Water Purification Corps
+G-U-S-S-W-P-T,Supply Water Purification Theater
+G-U-S-S-W-T,Supply Water Theater
+G-U-S-S-X,Supply Class X
+G-U-S-S-X-C,Supply Class X Corps
+G-U-S-S-X-T,Supply Class X Theater
+G-U-S-S-d,SupplyDepot
+G-U-S-T,Transportation Unit
+G-U-S-T-A,APOD/APOE
+G-U-S-T-A-C,APOD/APOE Corps
+G-U-S-T-A-T,APOD/APOE Theater
+G-U-S-T-C,Transportation Corps
+G-U-S-T-I,Missile
+G-U-S-T-I-C,Missile Corps
+G-U-S-T-I-T,Missile Theater
+G-U-S-T-M,Movement Control Center(MCC)
+G-U-S-T-M-C,MCC Corps
+G-U-S-T-M-T,MCC Theater
+G-U-S-T-R,Railhead
+G-U-S-T-R-C,Railhead Corps
+G-U-S-T-R-T,Railhead Theater
+G-U-S-T-S,SPOD/SPOE
+G-U-S-T-S-C,SPOD/SPOE Corps
+G-U-S-T-S-T,SPOD/SPOE Theater
+G-U-S-T-T,Transportation Theater
+G-U-S-X,Maintenance Unit
+G-U-S-X-C,Maintenance Corps
+G-U-S-X-E,Electro Optical
+G-U-S-X-E-C,Electro Optical Corps
+G-U-S-X-E-T,Electro Optical Theater
+G-U-S-X-H,Maintenance Heavy
+G-U-S-X-H-C,Maintenance Heavy Corps
+G-U-S-X-H-T,Maintenance Heavy Theater
+G-U-S-X-O,Ordnance
+G-U-S-X-O-C,Ordnance Corps
+G-U-S-X-O-M,Ordnance Missile
+G-U-S-X-O-M-C,Ordnance Missile Corps
+G-U-S-X-O-M-T,Ordnance Missile Theater
+G-U-S-X-O-T,Ordnance Theater
+G-U-S-X-R,Maintenance Recovery
+G-U-S-X-R-C,Maintenance Recovery Corps
+G-U-S-X-R-T,Maintenance Recovery Theater
+G-U-S-X-T,Maintenance Theater
+G-U-U,Ground Support Unit
+G-U-U-A,Combat Support NBC
+G-U-U-A-B,Biological Unit
+G-U-U-A-B-R,Recon Equipped
+G-U-U-A-C,Chemical Unit
+G-U-U-A-C-C,Smoke/Decon
+G-U-U-A-C-C-K,Mechanized Smoke/Decon
+G-U-U-A-C-C-M,Motorized Smoke/Decon
+G-U-U-A-C-R,Chemical Recon
+G-U-U-A-C-R-S,Chemical Recon Armored Vehicle
+G-U-U-A-C-R-W,Chemical Recon Wheeled Armored Vehicle
+G-U-U-A-C-S,Smoke
+G-U-U-A-C-S-A,Armor Smoke
+G-U-U-A-C-S-M,Motorized Smoke
+G-U-U-A-D,Decontamination
+G-U-U-A-N,Nuclear Unit
+G-U-U-E,Explosive Ordinance Disposal
+G-U-U-I,Information Warfare Unit
+G-U-U-L,Law Enforcement Unit
+G-U-U-L-C,Civilian Law Enforcement
+G-U-U-L-D,Central Intelligence Division (CID)
+G-U-U-L-F,Security Police (Air)
+G-U-U-L-M,Military Police
+G-U-U-L-S,Shore Patrol
+G-U-U-M,Military Intelligence
+G-U-U-M-A,Aerial Exploitation
+G-U-U-M-C,Counter Intelligence
+G-U-U-M-J,Joint Intelligence Center
+G-U-U-M-M-O,Military Intelligence Meteorological
+G-U-U-M-O,Operations
+G-U-U-M-Q,Interrogation
+G-U-U-M-R,Surveillance
+G-U-U-M-R-G,Ground Surveillance Radar
+G-U-U-M-R-S,Military Intelligence Sensor
+G-U-U-M-R-S-S,Sensor SCM
+G-U-U-M-R-X,Ground Station Module
+G-U-U-M-S,Signal Intelligence (SIGINT)
+G-U-U-M-S-E,Electronic Warfare
+G-U-U-M-S-E-A,Armored Wheeled Vehicle
+G-U-U-M-S-E-C,Corps
+G-U-U-M-S-E-D,Direction Finding
+G-U-U-M-S-E-I,Intercept
+G-U-U-M-S-E-J,Jamming
+G-U-U-M-S-E-T,Theater
+G-U-U-M-T,Tactical Exploit
+G-U-U-P,Landing Support
+G-U-U-S,Signal Unit
+G-U-U-S-A,Area
+G-U-U-S-C,Communication Configured Package
+G-U-U-S-C-L,Large Communication Configured Package
+G-U-U-S-F,Forward Communications
+G-U-U-S-M,Multiple Subscriber Element
+G-U-U-S-M-L,Large Extension Node
+G-U-U-S-M-N,Node Center
+G-U-U-S-M-S,Small Extension Node
+G-U-U-S-O,Command Operations
+G-U-U-S-R,Radio Unit
+G-U-U-S-R-S,Tactical Satellite
+G-U-U-S-R-T,Teletype Center
+G-U-U-S-R-W,Relay
+G-U-U-S-S,Signal Support
+G-U-U-S-W,Telephone Switch
+G-U-U-S-X,Electronic Ranging
+G-U-i,Incident Management Resources
+G-U-i-a,Animal Health
+G-U-i-a-imt,Incident Management Team Animal Protection
+G-U-i-a-lar,Large Animal Rescue Strike Team
+G-U-i-a-las,Large Animal Sheltering Team
+G-U-i-a-lat,Large Animal Transport Team
+G-U-i-a-sar,Small Animal Rescue Strike Team
+G-U-i-a-sas,Small Animal Sheltering Team
+G-U-i-a-sat,Small Animal Transport Team
+G-U-i-e,Emergency Management Resources
+G-U-i-e-acrc,Airborne Communications Relay(CAP)
+G-U-i-e-acrt,Airborne Communications Relay Team
+G-U-i-e-att,Airborne Transport Team
+G-U-i-e-cis,Critical Incident Stress Management Team
+G-U-i-e-cst,Communications Support Team
+G-U-i-e-dc,Donations Coordinator
+G-U-i-e-dmt,Donations Management Personnel Team
+G-U-i-e-ect,Evacuation Coordination Team
+G-U-i-e-efa,EOC Finance Administration
+G-U-i-e-elt,Evacuation Liaison Team
+G-U-i-e-ems,EOC Management Support Team
+G-U-i-e-eos,EOC Operations Section Chief
+G-U-i-e-eps,EOC Planning Section Chief
+G-U-i-e-ial,Individual Assistance Disaster Assessment Team Leader
+G-U-i-e-iat,Individual Assistance Disaster Assessment Team
+G-U-i-e-imt,Incident Management Team
+G-U-i-e-mcc,Mobile Communications Center
+G-U-i-e-mfk,Mobile Feeding Kitchen
+G-U-i-e-pac,Public Assistance Coordinator
+G-U-i-e-rna,Rapid Needs Assessment Team
+G-U-i-e-smt,Shelter Management Team
+G-U-i-e-val,Volunteer Agency Liaison
+G-U-i-f,Fire HAZMAT
+G-U-i-f-act,"Area Command Team, Firefighting"
+G-U-i-f-bp,Brush Patrol
+G-U-i-f-ct,Crew Transport
+G-U-i-f-efp,"Engine, Fire (Pumper)"
+G-U-i-f-fb,Fire Boat
+G-U-i-f-ft,Fuel Tender
+G-U-i-f-fta,Fire Truck
+G-U-i-f-ftf,Foam Tender
+G-U-i-f-hc,Hand Crew
+G-U-i-f-het,HazMat Entry Team
+G-U-i-f-hf,"Helicopters, Firefighting"
+G-U-i-f-ht,Helitanker
+G-U-i-f-ibt,Interagency Buying Team Firefighting
+G-U-i-f-imt,Incident Management Team Firefighting
+G-U-i-f-mcu,Mobile Communications Unit
+G-U-i-f-nsf,USCG National Strike Force
+G-U-i-f-pp,Portable Pump
+G-U-i-f-st,"Strike Team, Engine (Fire)"
+G-U-i-f-wt,"Water Tender, Firefighting (Tanker)"
+G-U-i-h,Health and Medical Resources
+G-U-i-h-dmb,Disaster Medical Assistance Team - Basic
+G-U-i-h-dmc,Disaster Medical Assistance Team - Crush Injury Specialty
+G-U-i-h-dmm,Disaster Medical Assistance Team - Mental Health
+G-U-i-h-dmp,Disaster Medical Assistance Team - Pediatric
+G-U-i-h-dms,Disaster Medical Assistance Team - Burn
+G-U-i-h-mor,Disaster Mortuary Operational Response Team
+G-U-i-h-msr,International Medical Surgical Response Team
+G-U-i-h-mst,NDMS Management Support Team
+G-U-i-h-vma,Veterinary Medical Assistance Team
+G-U-i-l,Law Enforcement Resources
+G-U-i-l-bs,Bomb Squad Explosives Team
+G-U-i-l-cct,Crowd Control Team
+G-U-i-l-dt,Public Safety Dive Team
+G-U-i-l-hps,Aviation-Helicopters Patrol Surveillance
+G-U-i-l-oa,Observation Aircraft
+G-U-i-l-tt,SWAT Tactical Team
+G-U-i-m,Emergency Medical Services Resources
+G-U-i-m-aaf,Air Ambulance (Fixed-Wing)
+G-U-i-m-aar,Air Ambulance (Rotary-Wing)
+G-U-i-m-ag,Ambulances (Ground)
+G-U-i-m-ast,Ambulance Strike Team
+G-U-i-m-atf,Ambulance Task Force
+G-U-i-m-etf,Emergency Medical Task Force
+G-U-i-o,Other Resources
+G-U-i-p,Public Works Resources
+G-U-i-p-acf,Air Curtain Burners (Above Ground)
+G-U-i-p-ach,Air Conditioner Heater
+G-U-i-p-act,Air Curtain Burners (In Ground)
+G-U-i-p-atc,All Terrain Cranes
+G-U-i-p-bh,Backhoe Loader
+G-U-i-p-cah,Chillers Air Handlers
+G-U-i-p-cc,Crawler Cranes
+G-U-i-p-cce,Concrete Cutter Multi-Processor for Hydraulic Excavator
+G-U-i-p-dat,Disaster Assessment Team
+G-U-i-p-dmm,Debris Management Monitoring Team
+G-U-i-p-dmr,Debris Management Site Reduction Team
+G-U-i-p-dmt,Debris Management Team
+G-U-i-p-drt,Disaster Recovery Team
+G-U-i-p-dt,Dump Trailer
+G-U-i-p-dtf,Dump Truck Off Road
+G-U-i-p-dtn,Dump Truck On Road
+G-U-i-p-epr,Electrical Power Restoration Team
+G-U-i-p-es,Engineering Services
+G-U-i-p-fbt,Flat Bed Trailer Truck
+G-U-i-p-gen,Generators
+G-U-i-p-hel,Hydraulic Excavator (Large)
+G-U-i-p-hem,Hydraulic Excavator (Medium)
+G-U-i-p-htc,Hydraulic Truck Cranes
+G-U-i-p-ltc,Lattice Truck Cranes
+G-U-i-p-tb,Tug Boat
+G-U-i-p-td,Track Dozer
+G-U-i-p-tg,Tub Grinder
+G-U-i-p-tt,Tractor Trailer
+G-U-i-p-wd,Wheel Dozer
+G-U-i-p-wll,Wheel Loaders (Large)
+G-U-i-p-wlm,Wheel Loaders (Medium)
+G-U-i-p-wls,Wheel Loaders (Small)
+G-U-i-p-wpt,Water Purification Team
+G-U-i-p-wt,Water Truck
+G-U-i-s,Search and Rescue Resources
+G-U-i-s-ar,Airborne Reconnaissance
+G-U-i-s-ast,Air Search Team
+G-U-i-s-cas,Canine SAR Team Avalanche Snow
+G-U-i-s-cav,Cave SAR Team
+G-U-i-s-cdr,Canine SAR Team Disaster Response
+G-U-i-s-clc,Canine SAR Team Land Cadaver
+G-U-i-s-col,Collapse SAR Team
+G-U-i-s-cwa,Canine SAR Team Water
+G-U-i-s-cwi,Canine SAR Team Wilderness
+G-U-i-s-cwt,Canine SAR Team Wilderness Tracking
+G-U-i-s-mnt,Mountain SAR Team
+G-U-i-s-mt,Mine Tunnel SAR Team
+G-U-i-s-rdf,Radio Direction Finding Team
+G-U-i-s-sfd,Swiftwater Flood Search and Dive Rescue Team
+G-U-i-s-uis,USAR Incident Support Team
+G-U-i-s-utf,USAR Task Force
+G-U-i-s-wi,Wilderness SAR Team
+S,Sea Surface Track
+S-C,Surface Combatant
+S-C-A,Amphibious Warfare Ship
+S-C-A-L-A,Assault Vessel
+S-C-A-L-C,Landing Craft
+S-C-A-L-S,Landing Ship
+S-C-H,Combatant Hovercraft
+S-C-L,Line
+S-C-L-B-B,Battleship
+S-C-L-C-C,Cruiser
+S-C-L-C-V,Carrier
+S-C-L-D-D,Destroyer
+S-C-L-F-F,Frigate/Corvette
+S-C-M,Mine Warfare Vessel
+S-C-M-M-A,MCM Support
+S-C-M-M-D,MCM Drone
+S-C-M-M-H,Minehunter
+S-C-M-M-L,Minelayer
+S-C-M-M-S,Minesweeper
+S-C-P,Patrol
+S-C-P-S-B,Antisubmarine Warfare
+S-C-P-S-U,Antisurface Warfare
+S-G,Navy Group
+S-G-C,Convoy
+S-G-G,Navy Task Group
+S-G-T,Navy Task Force
+S-G-U,Navy Task Unit
+S-N,Surface Noncombatant
+S-N-F,Fleet Support
+S-N-H,Noncombatant Hovercraft
+S-N-I,Intelligence
+S-N-M,Hospital Ship
+S-N-N,Surface Station
+S-N-N-R,Rescue Station
+S-N-R,Underway Replenishment
+S-N-S,Service/Support Harbor
+S-O,Own Track
+S-S,Sea Station
+S-S-A,ASW Ship
+S-S-P,Picket
+S-X,Non Military Surface
+S-X-F,Fishing
+S-X-F-D-F,Drifter
+S-X-F-D-R,Dredge
+S-X-F-T-R,Trawler
+S-X-H,Non Military Hovercraft
+S-X-L,Law Enforcement Vessel
+S-X-M,Merchant
+S-X-M-C,Cargo
+S-X-M-F,Ferry
+S-X-M-H,Hazardous Materials (Hazmat)
+S-X-M-O,Oiler/Tanker
+S-X-M-P,Passenger
+S-X-M-R,Roll On/Roll Off
+S-X-M-T-O,Towing Vessel
+S-X-M-T-U,Tug
+S-X-R,Leisure Craft
+U,Subsurface Track
+U-N,Non Submarine
+U-N-D,Diver
+U-S,Submarine
+U-S-C,Submarine Conventional Propulsion
+U-S-N,Submarine Nuclear Propulsion
+U-S-O,Other Submersible
+U-S-S,Submarine Station
+U-S-S-A,ASW Submarine
+U-S-U,Unmanned Underwater Vehicle (UUV)
+U-W,Underwater Weapon
+U-W-D,Underwater Decoy
+U-W-D-M,Sea Mine Decoy
+U-W-M,Sea Mine
+U-W-M-D,Sea Mine Dealt
+U-W-M-F,Sea Mine (Floating)
+U-W-M-F-D,Sea Mine (Floating) Dealt
+U-W-M-G,Sea Mine (Ground)
+U-W-M-G-D,Sea Mine (Ground) Dealt
+U-W-M-M,Sea Mine (Moored)
+U-W-M-M-D,Sea Mine (Moored) Dealt
+U-W-M-O,Sea Mine (In Other Position)
+U-W-M-O-D,Sea Mine (In Other Position) Dealt
+U-W-T,Torpedo
+X,Other
+X-i,Incident
+X-i-c,CBRNE
+X-i-e,Pollution and other Environmental
+X-i-f,Incident Fire
+X-i-f-h,Incident Fire Hot Spot
+X-i-f-n,Incident Fire Non-residential
+X-i-f-n-h,Incident Fire Non-residential Special Need
+X-i-f-n-s,Incident Fire Non-residential School
+X-i-f-o,Incident Fire Origin
+X-i-f-p,Incident Fire Special Needs
+X-i-f-r,Incident Fire Residential
+X-i-f-s,Incident Fire Smoke
+X-i-f-w,Incident Fire Wild
+X-i-g,Geophysical
+X-i-g-a,Geophysical Avalanche
+X-i-g-e,Geophysical Earthquake
+X-i-g-e-a,Geophysical Earthquake Aftershock
+X-i-g-e-e,Geophysical Earthquake Epicenter
+X-i-g-l,Geophysical Landslide
+X-i-g-s,Geophysical Subsistance
+X-i-g-v,Geophysical Volcano
+X-i-g-v-e,Geophysical Volcano Eruption
+X-i-g-v-t,Geophysical Volcano Threat
+X-i-h,Medical and Public Health
+X-i-i,Infrastructure
+X-i-l,Security
+X-i-l-c,Security Civil Disturbance
+X-i-l-c-d,Security Civil Disturbance Demonstration
+X-i-l-c-p,Security Civil Disturbance Displaced Population
+X-i-l-c-r,Security Civil Disturbance Rioting
+X-i-l-l,Security Law Enforcement Activity
+X-i-l-l-b,Security Law Enforcement Activity Bombing
+X-i-l-l-b-e,Security Law Enforcement Activity Bombing Explosion
+X-i-l-l-b-t,Security Law Enforcement Activity Bombing Threat
+X-i-l-l-l,Security Law Enforcement Activity Looting
+X-i-l-l-p,Security Law Enforcement Activity Poisoning
+X-i-l-l-s,Security Law Enforcement Activity Shooting
+X-i-m,Meteorological Incident
+X-i-m-a,Meteorological Sandstorm
+X-i-m-c,Meteorological Cyclone
+X-i-m-d,Meteorological Drought
+X-i-m-f,Meteorological Flood
+X-i-m-g,Meteorological Fog
+X-i-m-h,Meteorological Hail
+X-i-m-i,Meteorological Inversion
+X-i-m-n,Meteorological Tsunami
+X-i-m-r,Meteorological Rain
+X-i-m-s,Meteorological Snow
+X-i-m-t,Meteorological Tornado
+X-i-m-u,Meteorological Thunderstorm
+X-i-m-z,Meteorological Drizzle
+X-i-o,Other Incident
+X-i-r,Rescue Incident
+X-i-s,Safety
+X-i-t,Public and Private transportation
+X-i-t-a,Public and Private transportation Air Incident
+X-i-t-a-a,Public and Private transportation Air Accident
+X-i-t-a-h,Public and Private transportation Air Hijacking
+X-i-t-m,Public and Private transportation Maritime Incident
+X-i-t-m-a,Public and Private transportation Maritime Accident
+X-i-t-m-h,Public and Private transportation Maritime Hijacking
+X-i-t-r,Public and Private transportation Rail Incident
+X-i-t-r-a,Public and Private transportation Rail Accident
+X-i-t-r-h,Public and Private transportation Rail Hijacking
+X-i-t-v,Public and Private transportation Vehicle Incident
+X-i-t-v-a,Public and Private transportation Vehicle Accident
+X-i-t-v-h,Public and Private transportation Vehicle Hijacking

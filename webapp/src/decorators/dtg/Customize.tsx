@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 
 import {editableZoneIds, normalizeZoneSelection} from './preferences';
 import {DEFAULT_URGENT_WITHIN_MS} from './relative';
@@ -145,13 +145,21 @@ interface Props {
  * only ever read.
  */
 const Customize: React.FC<Props> = ({instant, onClose}) => {
-    const {preferences, loading, error: loadError} = usePreferences();
+    const {preferences, loading, error: loadError, loaded} = usePreferences();
 
     const [zones, setZones] = useState<ZoneSelection[]>(() => editableZoneIds(preferences.dtg));
     const [minutes, setMinutes] = useState<string>(
         () => (preferences.dtg.urgentWithinMinutes === 0 ? '' : String(preferences.dtg.urgentWithinMinutes)),
     );
     const [busy, setBusy] = useState(false);
+    const saveRef = useRef<HTMLButtonElement>(null);
+
+    // Nothing is EDITABLE until a read has succeeded: a failed first read
+    // degrades to the defaults, and saving an edit made on top of those
+    // replaces the reader's real section. Back is deliberately not sealed by
+    // this, since leaving is not editing. See preferences/HideableEditor.tsx,
+    // which carries the same pair.
+    const sealed = busy || loading || !loaded;
     const [status, setStatus] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -234,6 +242,11 @@ const Customize: React.FC<Props> = ({instant, onClose}) => {
             onClose();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Could not save your settings.');
+
+            // Disabling the button while it held focus blurred it to the body,
+            // so the reader has nowhere to retry from. The message is announced
+            // either way; this is what lets them act on it.
+            window.setTimeout(() => saveRef.current?.focus(), 0);
         } finally {
             setBusy(false);
         }
@@ -249,6 +262,7 @@ const Customize: React.FC<Props> = ({instant, onClose}) => {
             onClose();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Could not restore the defaults.');
+            window.setTimeout(() => saveRef.current?.focus(), 0);
         } finally {
             setBusy(false);
         }
@@ -258,7 +272,13 @@ const Customize: React.FC<Props> = ({instant, onClose}) => {
         <div style={styles.root}>
             <LinkButton
                 style={styles.back}
-                disabled={busy || loading}
+
+                // Gated on this editor's own work, never on the read. A first
+                // read that fails leaves `loaded` false for good, and Back on
+                // `sealed` was then dead for the life of the panel: the reader
+                // was left in the editor with no way back to the timestamp they
+                // opened it from. HideableEditor already gets this right.
+                disabled={busy}
                 onClick={onClose}
             >{'← Back'}</LinkButton>
 
@@ -279,7 +299,7 @@ const Customize: React.FC<Props> = ({instant, onClose}) => {
                             type='button'
                             style={styles.remove}
                             aria-label={`Remove ${zone.name}`}
-                            disabled={busy || loading}
+                            disabled={sealed}
 
                             // By identity, not by position: the rows are
                             // ordered by offset, which is not the order the
@@ -310,7 +330,7 @@ const Customize: React.FC<Props> = ({instant, onClose}) => {
                         max={MAX_MINUTES}
                         step={1}
                         value={minutes}
-                        disabled={busy || loading}
+                        disabled={sealed}
                         placeholder={String(DEFAULT_MINUTES)}
                         style={{...styles.control, ...styles.minutes}}
                         onChange={(event) => {
@@ -328,14 +348,15 @@ const Customize: React.FC<Props> = ({instant, onClose}) => {
             <div style={styles.actions}>
                 <button
                     type='button'
+                    ref={saveRef}
                     style={styles.save}
-                    disabled={busy || loading}
+                    disabled={sealed}
                     onClick={onSave}
                 >{'Save'}</button>
                 <button
                     type='button'
                     style={styles.reset}
-                    disabled={busy || loading}
+                    disabled={sealed}
                     onClick={onReset}
                 >{'Restore defaults'}</button>
             </div>

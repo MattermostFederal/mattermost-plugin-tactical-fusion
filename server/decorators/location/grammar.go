@@ -193,7 +193,7 @@ var (
 	// misread only when its northing also happens to land inside the band its
 	// letter names, which TestSouthernHemisphereTokensMostlyFail measures.
 	//
-	// The axis letters are optional and may carry a metre unit: "384640E" and
+	// The axis letters are optional and may carry a meter unit: "384640E" and
 	// "384640mE". They must be adjacent to their digits. Allowing a space
 	// before them would reach into the following word: in
 	// "11S 384640 3769080 East" the token would swallow the E, and the boundary

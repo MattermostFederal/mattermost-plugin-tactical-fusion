@@ -232,7 +232,7 @@ export function displayZoneFor(entry: ZoneSelection, instant: Date): DisplayZone
 
         // No fall back to the curated name. A reader who picked the bare
         // Europe/Berlin out of "All timezones" chose the zone, not the base, and
-        // labelling it "Ramstein" would put a second identical-looking row
+        // labeling it "Ramstein" would put a second identical-looking row
         // beside the Ramstein they may already have.
         name: entry.name ?? humanize(entry.iana),
 

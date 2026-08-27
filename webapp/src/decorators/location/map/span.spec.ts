@@ -1,12 +1,14 @@
 import {expect, test} from '@playwright/test';
 
+import {MARKER_SIZE} from './maplibre';
 import {
-    DATA_MAX_ZOOM, MAX_ZOOM, MERCATOR_LIMIT, TARGET_SPAN_METERS, cellBounds, isRenderable, zoomForSpan,
+    DATA_MAX_ZOOM, MAX_PADDING_SHARE, MAX_ZOOM, MERCATOR_LIMIT, TARGET_SPAN_METERS, cellBounds, fitPadding,
+    isRenderable, zoomForSpan,
 } from './span';
 
 /*
  * The map's arithmetic, which is duplicated in Go and pinned to it by
- * TestWebappMapConstantsMatch. These cover the behaviour rather than the
+ * TestWebappMapConstantsMatch. These cover the behavior rather than the
  * numbers: that a constant ground span is not a constant zoom, and that a
  * position the projection cannot represent is refused rather than clamped.
  */
@@ -123,4 +125,99 @@ test('the camera may overzoom and the opening view may not', () => {
             expect(zoomForSpan(lat, width)).toBeLessThanOrEqual(DATA_MAX_ZOOM);
         }
     }
+});
+
+/*
+ * The padding a block of events is framed with.
+ *
+ * The bug these cover: every corner of the map has chrome in it, and one
+ * uniform number small enough not to waste the canvas is smaller than the
+ * tallest of them, so markers opened underneath the zoom buttons and the scale
+ * bar. What matters is that the padding is asymmetric, that it survives a small
+ * canvas, and that it never inverts the viewport.
+ */
+test('padding clears the chrome on the edge each control sits against', () => {
+    const padding = fitPadding(320, 200, true);
+
+    // The zoom buttons are 10px in from the right and 29px wide.
+    expect(padding.right).toBeGreaterThan(39);
+
+    // The Reset button is 8px down and 24px tall, so it reaches 32. At the
+    // bottom the readout reaches 30 and the scale bar 28, so the readout is the
+    // one that has to be cleared.
+    expect(padding.top).toBeGreaterThan(32);
+    expect(padding.bottom).toBeGreaterThan(30);
+});
+
+/*
+ * Half a marker, on a canvas with room for it.
+ *
+ * The precondition is the point. Below roughly 64px on an axis the share ceiling
+ * scales the padding under half a marker and a crosshair does hang over the
+ * edge, which is unavoidable: the chrome alone wants more than such a canvas
+ * has. This used to be asserted at one size with no precondition stated, which
+ * made it read as a guarantee the function does not give.
+ */
+test('padding clears half a marker wherever the canvas has room', () => {
+    const half = MARKER_SIZE / 2;
+
+    for (const chrome of [true, false]) {
+        for (const [w, h] of [[320, 200], [360, 216], [640, 360], [120, 80], [64, 48]]) {
+            const padding = fitPadding(w, h, chrome);
+            for (const edge of [padding.top, padding.right, padding.bottom, padding.left]) {
+                expect(edge, `${w}x${h} chrome=${chrome}`).toBeGreaterThanOrEqual(half);
+            }
+        }
+    }
+});
+
+test('a canvas too small for the chrome degrades rather than inverting', () => {
+    const padding = fitPadding(40, 200, true);
+
+    // Still a usable viewport, still ordered, just no longer clearing a marker.
+    expect(padding.left + padding.right).toBeLessThanOrEqual(40 * MAX_PADDING_SHARE);
+    expect(padding.left).toBeGreaterThan(0);
+    expect(padding.right).toBeGreaterThan(padding.left);
+});
+
+/*
+ * A surface with no chrome does not pay for chrome it does not draw. The hover
+ * card is 320x180 and has no controls, no readout and no Reset button.
+ */
+test('a bare surface is padded less than one carrying controls', () => {
+    const bare = fitPadding(320, 180, false);
+    const chromed = fitPadding(320, 180, true);
+
+    expect(bare.right).toBeLessThan(chromed.right);
+    expect(bare.top).toBeLessThan(chromed.top);
+});
+
+/*
+ * Padding is in pixels and the canvas is not. Past the share it may take, both
+ * edges scale together rather than one being clipped, which would flatten the
+ * asymmetry that is the whole point.
+ */
+test('padding never takes more of an axis than it can afford', () => {
+    for (const [width, height] of [[320, 200], [200, 120], [120, 80], [64, 48], [1, 1], [0, 0]]) {
+        const padding = fitPadding(width, height, true);
+
+        // Against the SHARE, not against the axis. Asserting only that padding
+        // fits inside the canvas passes with MAX_PADDING_SHARE raised to 1,
+        // which is the degenerate zero-width viewport this ceiling exists to
+        // prevent.
+        expect(padding.left + padding.right).toBeLessThanOrEqual(Math.max(width, 0) * MAX_PADDING_SHARE);
+        expect(padding.top + padding.bottom).toBeLessThanOrEqual(Math.max(height, 0) * MAX_PADDING_SHARE);
+
+        for (const edge of [padding.top, padding.right, padding.bottom, padding.left]) {
+            expect(edge).toBeGreaterThanOrEqual(0);
+            expect(Number.isFinite(edge)).toBe(true);
+        }
+    }
+});
+
+test('a squeezed axis keeps the wider edge wider', () => {
+    const padding = fitPadding(80, 200, true);
+
+    // right (52) started wider than left (26) and must still be.
+    expect(padding.right).toBeGreaterThan(padding.left);
 });

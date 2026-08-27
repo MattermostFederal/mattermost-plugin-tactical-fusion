@@ -272,7 +272,7 @@ func TestMapPaletteCarriesItsContrast(t *testing.T) {
 		// same floor the land/water edge is. The other context layers (urban
 		// areas, railways, province lines) are deliberately below it, between
 		// 1.2:1 and 2.3:1, and are absent here on purpose: they exist to be
-		// recognised when looked for, not read, and the coordinate has to stay
+		// recognized when looked for, not read, and the coordinate has to stay
 		// the loudest thing on screen when a city's worth of them is drawn
 		// underneath it.
 		{"light", "roads against land", "#2b3542", "#76889f", 3},
@@ -280,7 +280,7 @@ func TestMapPaletteCarriesItsContrast(t *testing.T) {
 
 		// An airfield is a landmark rather than context, so it is held to the
 		// same floor rather than left among the things that are only meant to
-		// be recognised when looked for.
+		// be recognized when looked for.
 		{"light", "airports against land", "#382d12", "#76889f", 3},
 		{"dark", "airports against land", "#edc67e", "#5a6472", 3},
 	}
@@ -291,7 +291,7 @@ func TestMapPaletteCarriesItsContrast(t *testing.T) {
 				t.Errorf("contrast is %.2f:1, want at least %.0f:1", got, p.min)
 			}
 			if !strings.Contains(source, p.a) {
-				t.Errorf("%s is not in maplibre.ts, so this test is checking a colour "+
+				t.Errorf("%s is not in maplibre.ts, so this test is checking a color "+
 					"no surface draws", p.a)
 			}
 		})
@@ -314,7 +314,7 @@ func relativeLuminance(t *testing.T, hex string) float64 {
 
 	v, err := strconv.ParseUint(strings.TrimPrefix(hex, "#"), 16, 32)
 	if err != nil {
-		t.Fatalf("%q is not a hex colour: %v", hex, err)
+		t.Fatalf("%q is not a hex color: %v", hex, err)
 	}
 
 	channel := func(c uint64) float64 {

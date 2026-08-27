@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tactical Fusion Plugin Documentation</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="copy.js" defer></script>
 </head>
 <body>
 <div class="layout">
@@ -16,6 +17,12 @@
         <nav>
             <span class="nav-section">Documentation</span>
             <a href="help.html" class="active">Overview</a>
+            <span class="nav-section">Decorators</span>
+            <a href="dtg.html">Date-Time Groups</a>
+            <a href="location.html">Coordinates</a>
+            <a href="airfields.html">Airfields</a>
+            <a href="cot.html">Cursor on Target</a>
+            <span class="nav-section">Guides</span>
             <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
             <a href="admin.html">Admin Settings</a>
@@ -43,8 +50,8 @@
             in every timezone you care about, with a countdown to it. Write a coordinate
             in any of the recognized notations and it becomes a link showing the same
             position in the others, including its
-            <a href="formats.html#location-grid">military grid reference</a>. Write an
-            <a href="formats.html#airfield">ICAO airfield code</a> behind a USMTF field
+            <a href="location.html#location-grid">military grid reference</a>. Write an
+            <a href="airfields.html#airfield">ICAO airfield code</a> behind a USMTF field
             label and it becomes a link naming the field and where it is.
         </p>
 
@@ -60,12 +67,12 @@
             link, and renders the detail behind that link. Post this:
         </p>
 
-        <pre><code>Rendezvous at 091630ZAUG26, DZ is 3510N07901W</code></pre>
+        <pre tabindex="0"><code>Rendezvous at 091630ZAUG26, DZ is 2120N15757W</code></pre>
 
         <p>and what is stored is this:</p>
 
-        <pre><code>Rendezvous at [091630ZAUG26](/plugins/com.mattermost.plugin-tactical-fusion/decorate/dtg?...),
-DZ is [3510N07901W](/plugins/com.mattermost.plugin-tactical-fusion/decorate/location?...)</code></pre>
+        <pre tabindex="0"><code>Rendezvous at [091630ZAUG26](/plugins/com.mattermost.plugin-tactical-fusion/decorate/dtg?...),
+DZ is [2120N15757W](/plugins/com.mattermost.plugin-tactical-fusion/decorate/location?...)</code></pre>
 
         <p>
             Readers see the original text, unchanged, as a link. Clicking opens the
@@ -126,8 +133,8 @@ DZ is [3510N07901W](/plugins/com.mattermost.plugin-tactical-fusion/decorate/loca
         <p>
             The same caution runs through what is recognized at all. A coordinate has to be
             unmistakably one before it is rewritten, which is why
-            <code>34.05, -118.25</code> is
-            <a href="formats.html#location-declined">deliberately left alone</a>: a false
+            <code>21.34, -157.95</code> is
+            <a href="location.html#location-declined">deliberately left alone</a>: a false
             positive here edits a message somebody wrote. If something you expected to link
             did not, <a href="commands.html#check"><code>/tactical-fusion check</code></a>
             will tell you which rule decided it.
@@ -136,13 +143,29 @@ DZ is [3510N07901W](/plugins/com.mattermost.plugin-tactical-fusion/decorate/loca
         <h2>Where to go next</h2>
 
         <div class="nav-cards">
+            <a href="dtg.html" class="nav-card">
+                <h3>Date-Time Groups</h3>
+                <p>Military date-time groups, RFC 3339 timestamps, the zone letters, and the countdown the panel builds from them.</p>
+            </a>
+            <a href="location.html" class="nav-card">
+                <h3>Coordinates</h3>
+                <p>Twelve grammars from decimal degrees to Plus Codes, what each one renders, and the map.</p>
+            </a>
+            <a href="airfields.html" class="nav-card">
+                <h3>Airfields</h3>
+                <p>ICAO codes behind a field label, the embedded database behind them, and why a bare code is never linked.</p>
+            </a>
+            <a href="cot.html" class="nav-card">
+                <h3>Cursor on Target</h3>
+                <p>The schema this build reads, every element and attribute, what it refuses, and worked examples of each kind of event.</p>
+            </a>
             <a href="formats.html" class="nav-card">
                 <h3>Recognized Formats</h3>
-                <p>Every time and coordinate format that is recognized, and, just as importantly, the ones that are deliberately declined and why.</p>
+                <p>The rules every decorator shares: clean edges, consumed labels, and the spans that are never rewritten.</p>
             </a>
             <a href="panel.html" class="nav-card">
                 <h3>The Sidebar Panel</h3>
-                <p>Reading the countdown, the timezone table, the coordinate conversions and the offline map, and choosing your own timezones and flash threshold.</p>
+                <p>What a hover, a click and a standalone page are, and how to hide rows, choose your own timezones and set the flash threshold.</p>
             </a>
             <a href="admin.html" class="nav-card">
                 <h3>Admin Settings</h3>
@@ -150,7 +173,7 @@ DZ is [3510N07901W](/plugins/com.mattermost.plugin-tactical-fusion/decorate/loca
             </a>
             <a href="commands.html" class="nav-card">
                 <h3>Slash Commands</h3>
-                <p><code>examples</code> posts a short live demonstration to a channel, <code>example-details</code> posts every format, edge case and near miss, and <code>check</code> privately explains what would happen to your own text.</p>
+                <p><code>examples</code> posts a live demonstration to a channel, one message per format, and <code>check</code> privately explains what would happen to your own text.</p>
             </a>
             <a href="troubleshooting.html" class="nav-card">
                 <h3>Troubleshooting</h3>

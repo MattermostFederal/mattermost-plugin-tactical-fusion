@@ -46,6 +46,18 @@ export const DecoratorTooltip: React.FC<Props> = ({href, show}) => {
         return null;
     }
 
+    return <DecoratorHoverCard href={href}/>;
+};
+
+/**
+ * The card for one link, without the question of whether to show it.
+ *
+ * Split out because Mattermost only offers a link to `registerLinkTooltipComponent`
+ * when ITS OWN markdown renderer drew it. A plugin that owns a post body draws
+ * its own anchors, so nothing offers them here and the reader gets no hover at
+ * all. A surface in that position renders this itself; see `HoverLink`.
+ */
+export const DecoratorHoverCard: React.FC<{href: string}> = ({href}) => {
     const parsed = parseDecoratorHref(href);
     if (!parsed) {
         return null;

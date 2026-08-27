@@ -164,5 +164,5 @@ test('counts down on its own', async ({mount, page}) => {
 // There is deliberately no test for an invalid target. `fromParams` rejects a
 // `t` that is not an integer inside the allowed range before it ever builds the
 // instant, so an unparseable Date cannot reach here from a decorator link.
-// Playwright CT cannot serialise one across the component boundary either,
+// Playwright CT cannot serialize one across the component boundary either,
 // which is the same fact showing up twice.

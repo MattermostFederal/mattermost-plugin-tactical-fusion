@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coordinates - Tactical Fusion</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="copy.js" defer></script>
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <h2>Tactical Fusion</h2>
+            <span class="version">Plugin Documentation</span>
+        </div>
+        <nav>
+            <span class="nav-section">Documentation</span>
+            <a href="help.html">Overview</a>
+            <span class="nav-section">Decorators</span>
+            <a href="dtg.html">Date-Time Groups</a>
+            <a href="location.html" class="active">Coordinates</a>
+            <a href="airfields.html">Airfields</a>
+            <a href="cot.html">Cursor on Target</a>
+            <span class="nav-section">Guides</span>
+            <a href="formats.html">Recognized Formats</a>
+            <a href="panel.html">The Sidebar Panel</a>
+            <a href="admin.html">Admin Settings</a>
+            <a href="commands.html">Slash Commands</a>
+            <span class="nav-section">Reference</span>
+            <a href="troubleshooting.html">Troubleshooting</a>
+            <a href="error-codes.html">Error Codes</a>
+        </nav>
+    </aside>
+
+    <main class="content">
+        <div class="breadcrumb">
+            <a href="help.html">Docs</a>
+            <span class="separator">/</span>
+            Coordinates
+        </div>
+
+        <h1>Coordinates</h1>
+        <p class="tagline">Twelve coordinate grammars, what each renders, and why the declined list is as long as it is.</p>
+
+        <div class="alert alert-info">
+            <p>
+                Every grammar on this page can be switched off individually in the System
+                Console. See <a href="admin.html#enable-location">Admin Settings</a>. To see what
+                your own server does rather than what this page says, run
+                <a href="commands.html#examples"><code>/tactical-fusion examples</code></a>.
+                Every example below is one of that command's own rows.
+            </p>
+        </div>
+
+        <h2 id="location">The twelve grammars</h2>
+
+        <p>
+            Some are recognized on their own. Others are recognized only behind a USMTF field
+            label, because bare they would rewrite text that is not a coordinate at all.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Format</th><th>Looks like</th><th>Bare?</th><th>Setting</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Signed decimal degrees</td><td><code class="copyable">21.3353, -157.9483</code></td><td><span class="pill pill-yes">yes</span></td><td><a href="admin.html#enable-location-dd-signed"><code>EnableLocationDDSigned</code></a></td></tr>
+                <tr><td>Decimal degrees with hemisphere</td><td><code class="copyable">21.3353 N, 157.9483 W</code></td><td><span class="pill pill-yes">yes</span></td><td><a href="admin.html#enable-location-lat-lon"><code>EnableLocationLatLon</code></a></td></tr>
+                <tr><td>Degrees, minutes, seconds</td><td><code class="copyable">212007N1575654W</code></td><td><span class="pill pill-yes">yes</span></td><td><a href="admin.html#enable-location-lat-lon"><code>EnableLocationLatLon</code></a></td></tr>
+                <tr><td>Degrees and decimal minutes</td><td><code class="copyable">21&#176;20.118'N 157&#176;56.898'W</code></td><td><span class="pill pill-yes">yes</span></td><td><a href="admin.html#enable-location-lat-lon"><code>EnableLocationLatLon</code></a></td></tr>
+                <tr><td>USMTF degrees only</td><td><code class="copyable">LATD:21N157W</code></td><td><span class="pill pill-no">label only</span></td><td><a href="admin.html#enable-location-usmtf"><code>EnableLocationUSMTF</code></a></td></tr>
+                <tr><td>USMTF degrees and minutes</td><td><code class="copyable">2120N15757W</code></td><td><span class="pill pill-yes">yes</span></td><td><a href="admin.html#enable-location-usmtf"><code>EnableLocationUSMTF</code></a></td></tr>
+                <tr><td>USMTF with confidence</td><td><code class="copyable">2120N9-15757W7</code></td><td><span class="pill pill-yes">yes</span></td><td><a href="admin.html#enable-location-usmtf"><code>EnableLocationUSMTF</code></a></td></tr>
+                <tr><td>Military grid reference</td><td><code class="copyable">4Q FJ 09060 59620</code></td><td><span class="pill pill-optional">narrowed</span></td><td><a href="admin.html#enable-location-mgrs"><code>EnableLocationMGRS</code></a></td></tr>
+                <tr><td>UTM</td><td><code class="copyable">4Q 609060 2359620</code></td><td><span class="pill pill-optional">spaced only</span></td><td><a href="admin.html#enable-location-utm"><code>EnableLocationUTM</code></a></td></tr>
+                <tr><td>GEOREF</td><td><code class="copyable">GEOREF:XGKP5535</code></td><td><span class="pill pill-no">label only</span></td><td><a href="admin.html#enable-location-georef"><code>EnableLocationGEOREF</code></a></td></tr>
+                <tr><td>GARS</td><td><code class="copyable">GARS:045KG14</code></td><td><span class="pill pill-no">label only</span></td><td><a href="admin.html#enable-location-gars"><code>EnableLocationGARS</code></a></td></tr>
+                <tr><td>Plus Code</td><td><code class="copyable">73H483P2+4MG</code></td><td><span class="pill pill-optional">upper case</span></td><td><a href="admin.html#enable-location-pluscode"><code>EnableLocationPlusCode</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">UTM ships switched off.</p>
+            <p>
+                It is the only grammar here that does. The letter after the zone is a
+                <a href="#location-band">latitude band, not a hemisphere</a>, and the two readings
+                put a southern point in very different places. An admin turns it on with
+                <a href="admin.html#enable-location-utm"><code>EnableLocationUTM</code></a>.
+            </p>
+        </div>
+
+        <h2 id="location-decimal">Decimal degrees</h2>
+
+        <p>Settings: <a href="admin.html#enable-location-dd-signed"><code>EnableLocationDDSigned</code></a> and <a href="admin.html#enable-location-lat-lon"><code>EnableLocationLatLon</code></a></p>
+
+        <table>
+            <thead>
+                <tr><th>Example</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code class="copyable">21.3353, -157.9483</code></td><td>signed, and four decimals on both is the minimum</td></tr>
+                <tr><td><code class="copyable">21.3353,-157.9483</code></td><td>the space is optional</td></tr>
+                <tr><td><code class="copyable">-33.8688, 151.2093</code></td><td>south and east</td></tr>
+                <tr><td><code class="copyable">21.3353 N, 157.9483 W</code></td><td>hemisphere letters instead of signs</td></tr>
+                <tr><td><code class="copyable">21.3353N,157.9483W</code></td><td>run together</td></tr>
+                <tr><td><code class="copyable">21.3353N 157.9W</code></td><td>mixed precision: each axis renders at its own</td></tr>
+                <tr><td><code class="copyable">90.0000, 180.0000</code></td><td>the pole and the antimeridian</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            <strong>Four fractional digits are required on both halves</strong>, which is about
+            11 meters. Fewer than that and the shape is indistinguishable from an ordinary pair
+            of numbers in a sentence, and decoration rewrites the stored message permanently.
+        </p>
+
+        <div class="alert alert-tip">
+            <p>
+                A decimal point is required even when hemisphere letters are present, because
+                <code>N</code>, <code>S</code>, <code>E</code> and <code>W</code> are also newton,
+                siemens, east and watt. <code>Load 12 N, 5 W</code> is a load rating, not a
+                position.
+            </p>
+        </div>
+
+        <h2 id="location-dms">Degrees, minutes and seconds</h2>
+
+        <p>Setting: <a href="admin.html#enable-location-lat-lon"><code>EnableLocationLatLon</code></a></p>
+
+        <table>
+            <thead>
+                <tr><th>Example</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code class="copyable">21°21'53"N 157°57'00"W</code></td><td>the typewriter quote and double quote</td></tr>
+                <tr><td><code class="copyable">21°20′07″N 157°56′53″W</code></td><td>and the typographic prime and double prime</td></tr>
+                <tr><td><code class="copyable">21 20 07 N 157 56 53 W</code></td><td>spaces instead of symbols</td></tr>
+                <tr><td><code class="copyable">21°20.118'N 157°56.898'W</code></td><td>degrees and decimal minutes</td></tr>
+                <tr><td><code class="copyable">21°20.118′N 157°56.898′W</code></td><td></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Spaced or run together, with symbols or without. The typographic variants are
+            accepted because a phone keyboard produces them unbidden: the prime and the smart
+            single quote for minutes, the double prime and the smart double quote for seconds,
+            and both the degree sign and the masculine ordinal for degrees.
+        </p>
+
+        <h2 id="location-usmtf">USMTF compact</h2>
+
+        <p>Settings: <a href="admin.html#enable-location-usmtf"><code>EnableLocationUSMTF</code></a> and <a href="admin.html#enable-location-moniker"><code>EnableLocationMoniker</code></a></p>
+
+        <p>The fixed-width forms, and the field labels that introduce them:</p>
+
+        <table>
+            <thead>
+                <tr><th>Example</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code class="copyable">2120N15757W</code></td><td>LATM, degrees and whole minutes</td></tr>
+                <tr><td><code class="copyable">212007N1575654W</code></td><td>LATS, with seconds</td></tr>
+                <tr><td><code class="copyable">212007.1N1575653.9W</code></td><td>LATDS, a fractional second</td></tr>
+                <tr><td><code class="copyable">2120N9-15757W7</code></td><td>verified, and the confidence digits are kept</td></tr>
+                <tr><td><code class="copyable">LATM:2130N15730W</code></td><td>the field label is kept, not consumed</td></tr>
+                <tr><td><code class="copyable">LATD:21N157W</code></td><td>the shortest shape, which is reachable only behind a label</td></tr>
+                <tr><td><code class="copyable">GEOK:2120.118N15756.898W</code></td><td></td></tr>
+                <tr><td><code class="copyable">DMPID:133502.0N1445548.0E</code></td><td></td></tr>
+                <tr><td><code class="copyable">VLATM:2120N9-15757W7</code></td><td></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            A confidence-bearing token such as <code>2120N9-15757W7</code> states how well each
+            axis is known. The digits are read and shown as a separate row; they never move the
+            position, so it is byte for byte the position <code>2120N15757W</code> names.
+        </p>
+
+        <h3 id="location-moniker">Field labels</h3>
+
+        <p>
+            A label is <strong>matched and then dropped</strong>, so the link text is the token
+            alone. These are recognized, longest first so that <code>LATDS</code> cannot lose to
+            <code>LATD</code>:
+        </p>
+
+        <p>
+            <code>LATDS</code>, <code>DEPLATM</code>, <code>ARRLATM</code>, <code>VLATD</code>,
+            <code>VLATM</code>, <code>VLATS</code>, <code>VGEOT</code>, <code>DMPID</code>,
+            <code>GEOK</code>, <code>LATD</code>, <code>LATM</code>, <code>LATS</code>,
+            <code>DEPUTMO</code>, <code>ARRUTMO</code>, <code>UTMO</code>, <code>UTMT</code>,
+            <code>MGRS</code>, <code>USNG</code>, <code>GEOREF</code>, <code>GARS</code>,
+            <code>PLUSCODE</code>, <code>OLC</code>.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">Four labels belong to airfields instead.</p>
+            <p>
+                <code>LOC</code>, <code>DEPLOC</code>, <code>ARRLOC</code> and <code>ICAO</code>
+                introduce an airfield code in USMTF, not a coordinate. They are claimed by the
+                <a href="airfields.html">airfield decorator</a>.
+            </p>
+        </div>
+
+        <p>
+            <code>USNG</code> is a label rather than a format of its own. USNG is MGRS on WGS 84
+            character for character, so a separate format id would make the name on the page a
+            guess.
+        </p>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">A genuine USMTF set line is left alone.</p>
+            <p>
+                A set line ends <code>//</code>, and the trailing boundary rule refuses a slash,
+                so <code>LATM:2130N15730W//</code> is never decorated in the first place. The
+                label is only consumed where the text is prose rather than a message set.
+            </p>
+        </div>
+
+        <h2 id="location-grid">Military grid references</h2>
+
+        <p>Setting: <a href="admin.html#enable-location-mgrs"><code>EnableLocationMGRS</code></a></p>
+
+        <table>
+            <thead>
+                <tr><th>Example</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code class="copyable">4Q FJ 09060 59620</code></td><td>MGRS at 1 m, spaced into its parts</td></tr>
+                <tr><td><code class="copyable">4QFJ0906059620</code></td><td>and run together, in upper case with five digits an axis</td></tr>
+                <tr><td><code class="copyable">55P BR 76 02</code></td><td>a 1 km square rather than a point</td></tr>
+                <tr><td><code class="copyable">5Q KB 80970 82920</code></td><td></td></tr>
+                <tr><td><code class="copyable">MGRS:4QFJ0959</code></td><td>coarser than 100 m needs its label</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            A grid reference is validated by <strong>geometry, not just by shape</strong>. Only
+            eight of the twenty-four column letters are legal in any given zone, and the square
+            has to lie inside the band the token claims. A token whose square and band are each
+            real but not real together is declined.
+        </p>
+
+        <h3 id="location-bare-grid">Why a bare grid reference is narrowed</h3>
+
+        <p>
+            Run together and bare, a grid reference has to compete with commit hashes and part
+            numbers. Two restrictions apply to the bare form only, and both were measured rather
+            than guessed:
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Restriction</th><th>Why</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Upper case only</td><td>An any-case pattern matched roughly one in every 3,900 short git hashes. <code>58cbe40</code> reads as zone 58, band C, square BE.</td></tr>
+                <tr><td>At least three digits per axis</td><td>At two digits per axis, uppercase alphanumeric runs matched about one in 75,000.</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Behind an <code>MGRS:</code> label neither restriction applies, because the label is
+            the author saying what they meant.
+        </p>
+
+        <h2 id="location-utm">UTM</h2>
+
+        <p>Setting: <a href="admin.html#enable-location-utm"><code>EnableLocationUTM</code></a>, which ships <strong>off</strong></p>
+
+        <table>
+            <thead>
+                <tr><th>Example</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code class="copyable">4Q 609060 2359620</code></td><td>zone, band, easting, northing</td></tr>
+                <tr><td><code class="copyable">55P 276020E 1502660N</code></td><td>the axis letters are optional, and may carry a meter unit</td></tr>
+                <tr><td><code class="copyable">11S 385000 3769000</code></td><td>N and S are read as latitude bands, not as hemispheres</td></tr>
+                <tr><td><code class="copyable">UTMO:4Q609060 2359620</code></td><td>the USMTF grid labels</td></tr>
+                <tr><td><code class="copyable">UTMT:4Q6090602359620</code></td><td>run together, which is label-only for UTM</td></tr>
+            </tbody>
+        </table>
+
+        <h3 id="location-band">The letter is a band, not a hemisphere</h3>
+
+        <p>
+            In <code>11S 385000 3769000</code>, the <code>S</code> is latitude band S, at about
+            34 degrees <em>north</em>. It does not mean "zone 11, southern hemisphere". That is a
+            convention chosen for a military audience rather than a deduction, and its cost is
+            asymmetric: read as a band, a northern token lands in the same place either way,
+            while a southern one can be wrong by up to 90 degrees of latitude.
+        </p>
+
+        <p>
+            The northing has to fall inside the band the token names, which declines roughly nine
+            in ten civilian southern-hemisphere tokens rather than placing them wrongly.
+        </p>
+
+        <p>
+            Axis letters must sit against their digits. In <code>11S 384640 3769080 East</code>
+            the token stops before <code>East</code>, so the word is left in the sentence.
+        </p>
+
+        <h2 id="location-area">Area references</h2>
+
+        <p>Settings: <a href="admin.html#enable-location-georef"><code>EnableLocationGEOREF</code></a>, <a href="admin.html#enable-location-gars"><code>EnableLocationGARS</code></a> and <a href="admin.html#enable-location-pluscode"><code>EnableLocationPlusCode</code></a></p>
+
+        <p>
+            These three name a cell rather than a point. GEOREF and GARS are recognized behind
+            their labels only; a Plus Code needs none, because its alphabet and its
+            <code>+</code> are distinctive enough on their own.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Example</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code class="copyable">GEOREF:XGKP5535</code></td><td>longitude first: zone, band, degree, then minutes</td></tr>
+                <tr><td><code class="copyable">GEOREF:XGKP553350</code></td><td>tenths of a minute</td></tr>
+                <tr><td><code class="copyable">GEOREF:XGKP55803503</code></td><td>and hundredths</td></tr>
+                <tr><td><code class="copyable">GARS:045KG</code></td><td>a 30 minute cell</td></tr>
+                <tr><td><code class="copyable">GARS:045KG1</code></td><td>quadrant 1 of it, 15 minutes</td></tr>
+                <tr><td><code class="copyable">GARS:045KG14</code></td><td>and keypad cell 4 of that, 5 minutes</td></tr>
+                <tr><td><code class="copyable">GARS:006AG39</code></td><td>the same shape near the south pole</td></tr>
+                <tr><td><code class="copyable">73H483P2+4M</code></td><td>a Plus Code, matched without a label</td></tr>
+                <tr><td><code class="copyable">73H483P2+4MG</code></td><td>one character finer</td></tr>
+                <tr><td><code class="copyable">73H40000+</code></td><td>padded, which is how the notation writes a coarse cell</td></tr>
+                <tr><td><code class="copyable">PLUSCODE:73h483p2+4m</code></td><td>lower case needs the label</td></tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-tip">
+            <p>
+                <strong>GEOREF is written longitude first</strong>, which is the standard's own
+                order and the opposite of every other grammar on this page.
+            </p>
+        </div>
+
+        <p>
+            Each of the three has a resolution ladder: more characters name a smaller cell. The
+            panel says which cell size a token named, and reads the position at its center.
+        </p>
+
+        <h2 id="location-inline">Drawn as a map in the channel</h2>
+
+        <p>Setting: <a href="admin.html#enable-location-map-inline"><code>EnableLocationMapInline</code></a></p>
+
+        <p>
+            A message whose <strong>whole text</strong> is one coordinate gets a map drawn under
+            it, with or without a field label. Anything else in the message and it gets the link
+            alone:
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Example</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code class="copyable">21.3353, -157.9483</code></td><td>a message that is only a coordinate draws its map below it</td></tr>
+                <tr><td><code class="copyable">MGRS: 4QFJ0906059620</code></td><td>a field label in front of it still counts</td></tr>
+                <tr><td><code class="copyable">2120N15757W</code></td><td>any grammar, so long as it is the whole message</td></tr>
+                <tr><td><code class="copyable">target at 55P BR 76 02</code></td><td>anything else in the message and it is the link alone</td></tr>
+                <tr><td><code class="copyable">4Q FJ 09060 59620 55P BR 76 02</code></td><td>two coordinates, so neither one is the message</td></tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">An inline map changes what the post is.</p>
+            <p>
+                Drawing the map sets the post's type, and a typed post loses its
+                Elasticsearch and OpenSearch matches, its auto-translation, its embeds and its
+                file attachment list. That is why it is limited to messages that are nothing but
+                a coordinate, and why
+                <a href="admin.html#enable-location-map-inline"><code>EnableLocationMapInline</code></a>
+                exists to turn it off.
+            </p>
+        </div>
+
+        <h2 id="location-sentence">In a sentence</h2>
+
+        <table>
+            <thead>
+                <tr><th>Example</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code class="copyable">21.3353, -157.9483 21.3354, -157.9484</code></td><td>two on one line, both linked</td></tr>
+                <tr><td><code class="copyable">4Q FJ 09060 59620 and 55P BR 76 02</code></td><td></td></tr>
+                <tr><td><code class="copyable">part 5 of 21.3353, -157.9483 and more</code></td><td></td></tr>
+                <tr><td><code class="copyable">a `code` span then 2120N15757W</code></td><td>the span is protected, the rest is not</td></tr>
+            </tbody>
+        </table>
+
+        <h2 id="location-declined">Deliberately declined</h2>
+
+        <h3 id="location-declined-shape">Not a coordinate</h3>
+
+        <p>
+            Every one of these has been seen in ordinary text. Decoration is permanent, so a
+            grammar that is merely plausible is not enough.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Example</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>21.34, -157.95</code></td><td>fewer than four decimals</td></tr>
+                <tr><td><code>21.3353 -157.9483</code></td><td>no comma, so not a pair</td></tr>
+                <tr><td><code>Load 12 N, 5 W</code></td><td>newtons and watts</td></tr>
+                <tr><td><code>0.1234, 0.5678, 0.9012</code></td><td>part of a numeric list</td></tr>
+                <tr><td><code>-157.9483..-157.9583</code></td><td>a range, not a position</td></tr>
+                <tr><td><code>0.0000, 0.0000</code></td><td>Null Island: a pair of exact zeroes is an unset field</td></tr>
+                <tr><td><code>0000N00000E</code></td><td>the same pair written in USMTF</td></tr>
+            </tbody>
+        </table>
+
+        <h3 id="location-declined-range">Out of range</h3>
+
+        <p>The shape is right and the numbers are not on the earth, or not in the cell the token claims.</p>
+
+        <table>
+            <thead>
+                <tr><th>Example</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>9999N99999W</code></td><td>latitude 99</td></tr>
+                <tr><td><code>LATM:9999N99999W</code></td><td>the label vouches for nothing</td></tr>
+                <tr><td><code>91.0000, 181.0000</code></td><td>past the pole and the antimeridian</td></tr>
+                <tr><td><code>4QJJ123123</code></td><td>J is not a 100 km column letter in zone 4</td></tr>
+                <tr><td><code>11N 385000 3769000</code></td><td>that northing is 34 north, which is band S and not band N</td></tr>
+                <tr><td><code>33C 291000 5628000</code></td><td>nor is it in the band, the other way round</td></tr>
+            </tbody>
+        </table>
+
+        <h3 id="location-declined-label">Needs a label or spacing</h3>
+
+        <p>
+            These are real coordinates written in a way that is not safe to detect bare. Add the
+            field label, or the spacing, and they are recognized.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Example</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>21N157W</code></td><td>seven characters for a 111 km square</td></tr>
+                <tr><td><code>4QFJ0959</code></td><td>coarser than 100 m, too short to detect unlabeled</td></tr>
+                <tr><td><code>4qfj0906059620</code></td><td>a lower-case run of that shape is a short commit hash</td></tr>
+                <tr><td><code>XGKP5535</code></td><td>GEOREF: four letters and four digits is also a part number</td></tr>
+                <tr><td><code>045KG14</code></td><td>GARS: seven alphanumerics with almost nothing to check</td></tr>
+                <tr><td><code>73h483p2+4m</code></td><td>a lower-case Plus Code is what a version string looks like</td></tr>
+                <tr><td><code>9372+X2</code></td><td>a short Plus Code needs a reference location we do not have</td></tr>
+                <tr><td><code>LOC:2120N15757W</code></td><td>LOC introduces an airfield code, so the coordinate behind it is not read as one</td></tr>
+                <tr><td><code>21.3353, -157.9483.</code></td><td>ending a sentence: at the guard this and a range look alike</td></tr>
+            </tbody>
+        </table>
+
+        <h3 id="location-declined-protected">Left exactly as written</h3>
+
+        <p>
+            See <a href="formats.html#protected">spans that are never rewritten</a> for the full
+            list of what protects text.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Example</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>the grid is `2120N15757W`</code></td><td>inside code</td></tr>
+                <tr><td><code>see https://example.com/g/2120N15757W</code></td><td>inside a URL</td></tr>
+                <tr><td><code>![map 2120N15757W](https://example.com/m.png)</code></td><td>inside an image</td></tr>
+                <tr><td><code>[ref]: https://example.com/2120N15757W</code></td><td>a reference definition</td></tr>
+            </tbody>
+        </table>
+
+        <h2 id="location-panel">What the panel shows</h2>
+
+        <p>
+            Clicking a coordinate opens the right-hand sidebar with the position written every
+            way this build knows, each row copyable. See
+            <a href="panel.html#panel">the sidebar panel</a> for the shared mechanics.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Row</th><th>Shows</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>As written</td><td>Exactly what the author typed.</td></tr>
+                <tr><td>Lat / lon</td><td>Decimal degrees.</td></tr>
+                <tr><td>DMS</td><td>Degrees, minutes and seconds.</td></tr>
+                <tr><td>DDM</td><td>Degrees and decimal minutes.</td></tr>
+                <tr><td>MGRS</td><td>Military grid reference.</td></tr>
+                <tr><td>USMTF</td><td>The fixed-width compact form.</td></tr>
+                <tr><td>UTM</td><td>Zone, band, easting and northing.</td></tr>
+                <tr><td>GEOREF</td><td>World Geographic Reference System.</td></tr>
+                <tr><td>GARS</td><td>Global Area Reference System.</td></tr>
+                <tr><td>Plus Code</td><td>Open Location Code.</td></tr>
+                <tr><td>Resolution</td><td>How finely the original text was written.</td></tr>
+                <tr><td>Confidence</td><td>Only for a verified USMTF coordinate.</td></tr>
+                <tr><td>Datum</td><td>Always WGS 84.</td></tr>
+                <tr><td>Normalized</td><td>Shown only when it differs from what the author wrote.</td></tr>
+            </tbody>
+        </table>
+
+        <h3 id="location-customize">Choosing which rows you see</h3>
+
+        <p>
+            You can hide any row you never use, and the choice is yours alone: it changes nothing
+            for anybody else reading the same message. Hiding every row is allowed and leaves the
+            map. See <a href="panel.html#customize">Customize your view</a> for where the controls
+            live and how to restore the defaults.
+        </p>
+
+        <p>
+            Row choices are stored per reader rather than per message, so they follow you to every
+            coordinate you open.
+        </p>
+
+        <h3 id="location-degrades">When a conversion does not arrive</h3>
+
+        <p>
+            The rows are converted by the server. Until that answer arrives, or if it never does,
+            the panel shows the reading it already has and marks the rest as unavailable rather
+            than blanking the panel or showing a spinner in place of a position.
+        </p>
+
+        <p>
+            The position itself never depends on the conversion: <strong>As written</strong> and
+            the map are drawn from what the link carries. A failed conversion costs you the
+            alternative notations, not the coordinate.
+        </p>
+
+        <h3 id="location-resolution">Resolution is not accuracy</h3>
+
+        <p>
+            Every row renders at the resolution the token carried and <strong>no finer</strong>.
+            Padding a field the author never wrote would be a claim the plugin is not entitled to
+            make. Values round rather than truncate, except grid and area cells, which are chosen
+            by containment.
+        </p>
+
+        <p>
+            A value renders at its own axis's digits while the Resolution row reports the coarser
+            half of the pair. <code>21.3353N 157.9W</code> shows both halves as written and calls
+            the resolution about 11 kilometers. That is telling the truth twice, not
+            contradicting itself.
+        </p>
+
+        <p>
+            Resolution says how precisely the position was <em>written</em>. It says nothing about
+            how accurately it was <em>measured</em>.
+        </p>
+
+        <h3 id="location-region">Naming the country</h3>
+
+        <p>
+            The panel names the country a position falls in, from outlines compiled into the
+            plugin at about 1:110 million. That is coarse on purpose: it is a label, not a border
+            ruling, and near a coastline or a disputed boundary it can be wrong by roughly a
+            kilometer. The row names its source so the reader can weigh it.
+        </p>
+
+        <h3 id="location-grid-rows">Grid rows name squares</h3>
+
+        <p>
+            The two grid rows are blank above 84 north and below 80 south, which is Universal
+            Polar Stereographic territory that MGRS and UTM do not cover. The three area rows
+            still render there.
+        </p>
+
+        <h2 id="location-map">The map</h2>
+
+        <p>Settings: <a href="admin.html#enable-location-map"><code>EnableLocationMap</code></a> and the three surfaces under it</p>
+
+        <p>
+            The basemap is bundled with the plugin rather than fetched, so it draws on a host with
+            no route out.
+        </p>
+
+        <h3 id="location-hover">The hover card</h3>
+
+        <p>
+            <strong>Hovering a coordinate shows the map and nothing else.</strong> A hover answers
+            "where is this" at a glance, which for a coordinate is a picture rather than a number.
+            Every reading is a click away in the panel.
+        </p>
+
+        <p>
+            The hover map obeys
+            <a href="admin.html#enable-location-map-panel"><code>EnableLocationMapPanel</code></a>,
+            the same switch as the panel's own map. With maps off, hovering a coordinate shows
+            nothing and clicking still opens the full panel.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">Map switches are read when the map is drawn.</p>
+            <p>
+                Unlike format switches, which govern decoration only, the map switches reach links
+                that were written long ago. A map is drawn afresh every time somebody looks and is
+                written into nothing, so turning one off has to take effect everywhere at once.
+            </p>
+        </div>
+
+        <h2 id="location-settings">Settings and troubleshooting</h2>
+
+        <p>
+            Every switch on this page is documented in
+            <a href="admin.html#location-switches">Admin Settings</a>. If a coordinate you expected to be
+            linked was not, see <a href="troubleshooting.html">Troubleshooting</a>.
+        </p>
+
+    </main>
+</div>
+</body>
+</html>

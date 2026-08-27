@@ -10,6 +10,9 @@ import {
 } from './maplibre';
 import {cellBounds, DATA_MAX_ZOOM, MAX_ZOOM, SEAM_ZOOM, zoomForSpan} from './span';
 
+import type {CotEvent} from '../../../cot/types';
+import {AFFILIATION_COLORS, affiliationColor} from '../../../cot/types';
+
 /*
  * The style object is where the air-gap promise lives, so it is asserted rather
  * than described. This is the webapp counterpart of the Go page's
@@ -262,7 +265,7 @@ test('an empty collection is a valid empty source', () => {
  * worker setup, the style never finishes, and the panel sits on "Loading map…"
  * forever with nothing logged.
  */
-test('an asset URL is recognised whatever shape the bundler gives it', () => {
+test('an asset URL is recognized whatever shape the bundler gives it', () => {
     expect(assetUrl('/static/plugins/x/worker.mjs')).toBe('/static/plugins/x/worker.mjs');
     expect(assetUrl({default: '/static/plugins/x/worker.mjs'})).toBe('/static/plugins/x/worker.mjs');
 });
@@ -303,7 +306,7 @@ test('the unused light palette is still whole', () => {
 
     expect(Object.keys(light).sort()).toEqual(Object.keys(dark).sort());
     for (const [name, value] of Object.entries(light)) {
-        expect(value, `${name} is not a colour`).toMatch(/^(#[0-9a-f]{6}|rgba\()/i);
+        expect(value, `${name} is not a color`).toMatch(/^(#[0-9a-f]{6}|rgba\()/i);
         expect(value, `${name} is the same in both themes`).not.toBe(dark[name as keyof typeof dark]);
     }
 });
@@ -315,7 +318,7 @@ test('the unused light palette is still whole', () => {
  * Natural Earth layer capped at SEAM_ZOOM and an OpenStreetMap layer starting
  * at SEAM_ZOOM partition exactly, with no zoom at which neither draws and none
  * at which both do. The failure in one direction is a blank band; in the other
- * it is the same road drawn twice, kilometres apart, which reads as a rendering
+ * it is the same road drawn twice, kilometers apart, which reads as a rendering
  * artefact rather than as two sources disagreeing.
  */
 const NE_CAPPED = [
@@ -439,13 +442,13 @@ test('without a detail archive the style carries no detail source at all', () =>
 });
 
 /*
- * The credit is a licence condition rather than a courtesy, which is what makes
+ * The credit is a license condition rather than a courtesy, which is what makes
  * it unlike the Natural Earth credit this plugin deliberately dropped:
  * OpenStreetMap is ODbL and the OpenMapTiles schema is CC-BY. Written once and
  * read by both the style and the line the component renders, so the two cannot
  * disagree about what was credited.
  */
-test('the detail source carries the credit its licences require', () => {
+test('the detail source carries the credit its licenses require', () => {
     const style = buildStyle(ARCHIVE, [PACKAGE], mapColors());
     const attribution = (style.sources[`detail:${PACKAGE_NAME_FIXTURE}`] as {attribution?: string}).attribution ?? '';
 
@@ -482,16 +485,16 @@ test('a view meeting a package bbox is covered and one clear of it is not', () =
 });
 
 /*
- * The centre test this replaced said "not covered" here, which uncapped the
+ * The center test this replaced said "not covered" here, which uncapped the
  * generalised tier across a view the accurate one was still drawing into.
  */
-test('a view whose centre has left coverage is still covered while any of it is on screen', () => {
-    // Centre is -153.25, east of the package's -154.6 edge, but its western
+test('a view whose center has left coverage is still covered while any of it is on screen', () => {
+    // Center is -153.25, east of the package's -154.6 edge, but its western
     // half still holds covered ground.
     const straddling: Bounds = [-155.5, 19.0, -151.0, 22.0];
-    const centre: Bounds = [-153.25, 20.5, -153.25, 20.5];
+    const center: Bounds = [-153.25, 20.5, -153.25, 20.5];
 
-    expect(coveredBy([PACKAGE], centre)).toBe(false);
+    expect(coveredBy([PACKAGE], center)).toBe(false);
     expect(coveredBy([PACKAGE], straddling)).toBe(true);
 });
 
@@ -597,4 +600,218 @@ test('a label layer keeps its own minzoom when the cap moves', () => {
 
     expect(zooms.get('place-label')?.minzoom).toBe(before.minzoom);
     expect(zooms.get('place-label')?.maxzoom).toBe(MAX_ZOOM);
+});
+
+/*
+ * The circle is the whole reason this feature draws accuracy rather than only
+ * stating it, so its layers are pinned here. Without this, deleting them or
+ * ordering the fill above the pin left the entire frontend suite green.
+ */
+test.describe('the accuracy circle', () => {
+    /*
+     * Built on every surface, even one whose first position states no accuracy.
+     * A panel reuses one map across selections, so a source decided at
+     * construction is a source the next selection cannot have: an event stating
+     * accuracy drew no ring at all after one that stated none, for the life of
+     * the panel. An empty collection costs nothing.
+     */
+    test('is built on every surface, since the next selection may state one', () => {
+        const style = buildStyle(ARCHIVE, [], palette(false));
+
+        expect(style.sources).toHaveProperty('accuracy');
+        expect(style.layers.map((layer) => layer.id)).toContain('accuracy-fill');
+        expect(style.layers.map((layer) => layer.id)).toContain('accuracy-outline');
+    });
+
+    test('draws nothing until a position states an accuracy', () => {
+        const style = buildStyle(ARCHIVE, [], palette(false));
+        const source = style.sources.accuracy;
+
+        expect(source).toMatchObject({type: 'geojson'});
+        expect(JSON.stringify(source)).toContain('"features":[]');
+    });
+
+    // Order is the contract. A fill drawn over the marker would hide the
+    // position the circle exists to qualify.
+    test('is drawn under the pin, never over it', () => {
+        const ids = buildStyle(ARCHIVE, [], palette(false), false, true).layers.map((layer) => layer.id);
+
+        const pin = ids.indexOf('pin');
+        expect(pin).toBeGreaterThan(ids.indexOf('accuracy-fill'));
+        expect(pin).toBeGreaterThan(ids.indexOf('accuracy-outline'));
+    });
+
+    test('draws from its own source and nothing else does', () => {
+        const style = buildStyle(ARCHIVE, [], palette(false), false, true);
+
+        const fromAccuracy = style.layers.
+            filter((layer) => 'source' in layer && layer.source === 'accuracy').
+            map((layer) => layer.id);
+
+        expect(fromAccuracy).toEqual(['accuracy-fill', 'accuracy-outline']);
+    });
+});
+
+/*
+ * The shape layers, pinned for the reason the accuracy circle's are. Their
+ * failure is quieter still: LocationMap writes through `outline?.setData(...)`,
+ * so a missing source is an optional chain that no-ops and reports nothing.
+ */
+test.describe('the geometry layers', () => {
+    test('are built on every surface, because a panel reuses one map', () => {
+        const style = buildStyle(ARCHIVE, [], palette(false));
+
+        expect(style.sources).toHaveProperty('geometry');
+        expect(style.layers.map((layer) => layer.id)).toContain('geometry-fill');
+        expect(style.layers.map((layer) => layer.id)).toContain('geometry-outline');
+    });
+
+    // A shape qualifies a position the same way an accuracy ring does, so it
+    // goes under the marker for the same reason.
+    test('are drawn under the pin, never over it', () => {
+        const ids = buildStyle(ARCHIVE, [], palette(false), false, true).layers.map((layer) => layer.id);
+
+        const pin = ids.indexOf('pin');
+        expect(pin).toBeGreaterThan(ids.indexOf('geometry-fill'));
+        expect(pin).toBeGreaterThan(ids.indexOf('geometry-outline'));
+    });
+
+    test('draw from their own source and nothing else does', () => {
+        const style = buildStyle(ARCHIVE, [], palette(false));
+
+        const fromGeometry = style.layers.
+            filter((layer) => 'source' in layer && layer.source === 'geometry').
+            map((layer) => layer.id);
+
+        expect(fromGeometry).toEqual(['geometry-fill', 'geometry-outline']);
+    });
+});
+
+/*
+ * The marker layer.
+ *
+ * A location surface states no marker color and keeps the dot it has always
+ * drawn. A Cursor on Target card states one, which asks for the reticle: a dot
+ * says "somewhere around here" and a reticle says "this point".
+ */
+test.describe('the marker', () => {
+    function pinLayer(withMarker: boolean) {
+        const style = buildStyle(ARCHIVE, [], palette(false), false, withMarker);
+        return style.layers.find((layer) => layer.id === 'pin');
+    }
+
+    test('is the circle every location surface has always drawn', () => {
+        const pin = pinLayer(false);
+
+        expect(pin?.type).toBe('circle');
+        expect(JSON.stringify(buildStyle(ARCHIVE, [], palette(false)))).not.toContain('tf-marker');
+    });
+
+    test('becomes a reticle for a surface that colors it', () => {
+        const pin = pinLayer(true);
+
+        expect(pin?.type).toBe('symbol');
+
+        // Read from the feature rather than fixed on the layer, because a block
+        // of events is a block of affiliations and one icon for the layer would
+        // paint a hostile track in a friendly color.
+        expect((pin as {layout?: Record<string, unknown>}).layout?.['icon-image']).
+            toEqual(['get', 'icon']);
+    });
+
+    // The reticle marks the one point the map is drawn to show, so a label
+    // arriving first must not displace it.
+    test('is never dropped for a label', () => {
+        const layout = (pinLayer(true) as {layout?: Record<string, unknown>}).layout ?? {};
+
+        expect(layout['icon-allow-overlap']).toBe(true);
+        expect(layout['icon-ignore-placement']).toBe(true);
+    });
+
+    test('stays the last thing drawn, whichever shape it is', () => {
+        for (const withMarker of [false, true]) {
+            const style = buildStyle(ARCHIVE, [], palette(false), false, withMarker);
+            const ids = style.layers.map((layer) => layer.id);
+
+            expect(ids[ids.length - 1], `marker=${withMarker}`).toBe('pin');
+        }
+    });
+});
+
+/*
+ * The location pin is not any affiliation's color, and cannot become one.
+ *
+ * These maps draw two different kinds of thing. A Cursor on Target marker's
+ * color is a CLAIM: red is hostile and suspect, blue is friend, green is
+ * neutral, amber is unknown and pending. A location is a place somebody typed
+ * and has no affiliation at all, so a pin wearing one of those hues asserts
+ * something about a coordinate that nothing in the coordinate said.
+ *
+ * Compared by HUE, not by hex. The pin used to be #c92a2a and hostile is
+ * #c0392b: different values, both unmistakably red, and an equality check calls
+ * that a pass. What a reader sees is the hue, so that is what is asserted.
+ *
+ * Read out of the affiliation table itself rather than from a copied list, so
+ * an affiliation added in a hue near the pin's fails here rather than shipping.
+ * The keys used to be hand-copied here, which meant a NEW affiliation was never
+ * checked at all while the comment claimed the opposite.
+ */
+
+/** Degrees of hue the pin must keep from every affiliation. */
+const HUE_CLEARANCE_DEG = 45;
+
+function hueOf(hex: string): number {
+    const value = parseInt(hex.replace('#', ''), 16);
+    const r = ((value >> 16) & 0xff) / 255;
+    const g = ((value >> 8) & 0xff) / 255;
+    const b = (value & 0xff) / 255;
+
+    const max = Math.max(r, g, b);
+    const span = max - Math.min(r, g, b);
+    if (span === 0) {
+        return 0;
+    }
+
+    let hue = 0;
+    if (max === r) {
+        hue = ((g - b) / span) % 6;
+    } else if (max === g) {
+        hue = ((b - r) / span) + 2;
+    } else {
+        hue = ((r - g) / span) + 4;
+    }
+
+    return ((hue * 60) + 360) % 360;
+}
+
+/** The shorter way round the wheel. */
+function hueGap(a: number, b: number): number {
+    const raw = Math.abs(a - b) % 360;
+    return raw > 180 ? 360 - raw : raw;
+}
+
+test('the location pin wears no affiliation color', () => {
+    const affiliations = Object.keys(AFFILIATION_COLORS);
+    const claimed = affiliations.
+        map((affiliation) => affiliationColor({affiliation} as CotEvent)).
+        filter((color): color is string => color !== undefined);
+
+    // Every key must reach a color. A filter that silently dropped one would
+    // leave this passing while checking less than it claims to.
+    expect(affiliations.length).toBeGreaterThan(0);
+    expect(claimed).toHaveLength(affiliations.length);
+
+    for (const dark of [false, true]) {
+        const style = buildStyle(ARCHIVE, [], palette(dark));
+        const pin = style.layers.find((layer) => layer.id === 'pin');
+        const fill = (pin as {paint: {'circle-color': string}}).paint['circle-color'];
+
+        for (const color of claimed) {
+            const gap = hueGap(hueOf(fill), hueOf(color));
+            expect(
+                gap,
+                `the ${dark ? 'dark' : 'light'} pin ${fill} is ${gap.toFixed(0)}° from the affiliation color ${color}`,
+            ).toBeGreaterThanOrEqual(HUE_CLEARANCE_DEG);
+        }
+    }
 });

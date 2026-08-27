@@ -1,6 +1,7 @@
 package dtg
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -424,5 +425,56 @@ func TestFormatOffsetRoundTripsWhatParseISORead(t *testing.T) {
 					parsed.OffsetMinutes, got, written)
 			}
 		})
+	}
+}
+
+func TestParamsForZuluRoundTripsToTheSameInstant(t *testing.T) {
+	cases := []string{
+		"2026-08-23T11:43:38Z",
+		"2000-01-01T00:00:00Z",
+		"2099-12-31T23:59:00Z",
+	}
+
+	for _, raw := range cases {
+		instant, err := time.Parse(time.RFC3339, raw)
+		if err != nil {
+			t.Fatalf("bad fixture %q: %v", raw, err)
+		}
+
+		params, ok := ParamsForZulu(instant)
+		if !ok {
+			t.Fatalf("ParamsForZulu refused %q", raw)
+		}
+
+		millis, err := strconv.ParseInt(params.Get("t"), 10, 64)
+		if err != nil {
+			t.Fatalf("t is not a number for %q: %v", raw, err)
+		}
+
+		// Seconds are dropped by the canonical form, so the link points at the
+		// minute. It must not point anywhere else.
+		want := instant.UTC().Truncate(time.Minute)
+		if got := time.UnixMilli(millis).UTC(); !got.Equal(want) {
+			t.Errorf("%q linked to %s, want %s", raw, got, want)
+		}
+		if params.Get("dtg") != FormatZulu(instant) {
+			t.Errorf("dtg = %q, want %q", params.Get("dtg"), FormatZulu(instant))
+		}
+	}
+}
+
+// A two-digit year is read as 2000-2099, so an instant outside that century
+// round trips cleanly to the wrong one. The refusal is the only thing that
+// catches it.
+func TestParamsForZuluRefusesAnInstantItCannotSpell(t *testing.T) {
+	for _, raw := range []string{"1999-01-01T00:00:00Z", "2100-01-01T00:00:00Z", "1970-01-01T00:00:00Z"} {
+		instant, err := time.Parse(time.RFC3339, raw)
+		if err != nil {
+			t.Fatalf("bad fixture %q: %v", raw, err)
+		}
+
+		if _, ok := ParamsForZulu(instant); ok {
+			t.Errorf("ParamsForZulu accepted %q, which its own grammar cannot spell", raw)
+		}
 	}
 }

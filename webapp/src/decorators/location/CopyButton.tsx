@@ -41,7 +41,7 @@ const styles: Record<string, React.CSSProperties> = {
     },
 };
 
-/** How long the copied acknowledgement stays on the button. */
+/** How long the copied acknowledgment stays on the button. */
 const COPIED_MS = 1500;
 
 const CopyGlyph: React.FC = () => (
@@ -102,7 +102,7 @@ interface Props {
 /**
  * A copy control that sits beside the value it copies.
  *
- * Icon rather than a labelled button because there is one per row: a column of
+ * Icon rather than a labeled button because there is one per row: a column of
  * "Copy MGRS", "Copy lat/lon", "Copy DMS" would be wider than the coordinates
  * and would read as the point of the panel rather than as an affordance on it.
  */

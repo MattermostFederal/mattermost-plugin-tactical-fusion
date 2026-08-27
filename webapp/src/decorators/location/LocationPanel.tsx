@@ -1,4 +1,4 @@
-import React, {useLayoutEffect} from 'react';
+import React, {useEffect, useLayoutEffect, useRef} from 'react';
 
 import {useConversion} from './convert';
 import Customize from './Customize';
@@ -27,6 +27,17 @@ const LocationPanel: React.FC<{payload: LocationPayload}> = ({payload}) => {
     const {preferences} = usePreferences();
     const {features} = useFeatures();
     const customizing = useEditing();
+
+    // Returning from the editor unmounts it, so focus would fall to the body.
+    // Put the reader back on the control they opened it from.
+    const customizeRef = useRef<HTMLButtonElement>(null);
+    const wasCustomizing = useRef(customizing);
+    useEffect(() => {
+        if (wasCustomizing.current && !customizing) {
+            customizeRef.current?.focus();
+        }
+        wasCustomizing.current = customizing;
+    }, [customizing]);
 
     // Clicking a different coordinate while the editor is open would otherwise
     // land on the editor rather than on the coordinate that was clicked. React
@@ -58,8 +69,11 @@ const LocationPanel: React.FC<{payload: LocationPayload}> = ({payload}) => {
             maps={features}
             footer={
                 <>
-                    <LinkButton onClick={() => setEditing(true)}>{'Customize your view'}</LinkButton>
-                    {' · '}
+                    <LinkButton
+                        ref={customizeRef}
+                        onClick={() => setEditing(true)}
+                    >{'Customize your view'}</LinkButton>
+                    <span aria-hidden={true}>{' · '}</span>
                     <LinkButton href={docsUrl()}>{'Documentation'}</LinkButton>
                 </>
             }

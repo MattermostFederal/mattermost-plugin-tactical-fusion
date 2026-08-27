@@ -58,6 +58,51 @@ const (
 	// undecorated rather than rejected.
 	HooksDecorationTooLong = 11001
 
+	// HooksCotPanic is a warn recording that recognizing a Cursor on Target
+	// event panicked. The post was left exactly as it arrived, and decoration
+	// still had its turn.
+	HooksCotPanic = 11002
+
+	// HooksCotFileUnreadable is a warn recording that an attached file could
+	// not be read or described. The post was left as an ordinary one.
+	HooksCotFileUnreadable = 11003
+
+	// HooksCotPropsTooLarge is a warn recording that the parsed event would
+	// have pushed the post's whole props map over what the server accepts, so
+	// nothing was stamped rather than risking a post the server refuses.
+	HooksCotPropsTooLarge = 11004
+
+	// HooksCotFileNotOwned is a warn recording that an attached file was not
+	// the poster's own, so it was left unread.
+	//
+	// Its own code rather than HooksCotFileUnreadable, because the two say
+	// opposite things to an operator: that one means the filestore did not
+	// answer, and this one means it answered and the answer was somebody else's
+	// file. Folding them together filed the only line that would ever betray an
+	// attempted disclosure under a code whose guidance is to check that storage
+	// is reachable.
+	HooksCotFileNotOwned = 11006
+
+	// HooksCotUnreadable is the code an author is given when a fence they
+	// explicitly labeled cot could not be read as a Cursor on Target event.
+	HooksCotUnreadable = 11005
+
+	// HooksCotDetailDropped is a warn recording that the parsed event carried
+	// more <detail> than the post's props map had room for, so the card was
+	// stamped without them rather than not stamped at all.
+	HooksCotDetailDropped = 11007
+
+	// HooksCotPropsUnmeasurable is a warn recording that the post's props map
+	// could not be marshalled, so its size could not be checked and nothing was
+	// stamped.
+	//
+	// Its own code rather than HooksCotPropsTooLarge, because the two say
+	// different things to an operator and only one of them is the author's to
+	// act on. The value that cannot be marshalled came from somewhere else on
+	// the post, so telling the author their event was too big is both false and
+	// useless advice.
+	HooksCotPropsUnmeasurable = 11008
+
 	// server/http.go (12000-12999)
 
 	// HTTPMethodNotAllowed is returned for anything other than GET on the
@@ -177,6 +222,10 @@ const (
 	// settings must never be able to take the panel down with them.
 	PreferencesBlobUnreadable = 14007
 
+	// PreferencesSectionUnknown rejects a hidden-section id the Cursor on
+	// Target panel does not have a section for.
+	PreferencesSectionUnknown = 14009
+
 	// server/preferences_cache.go (15000-15999)
 
 	// PreferencesCachePublishFailed is a warn recording that a cache
@@ -206,17 +255,17 @@ const (
 	// post one.
 	CommandExamplesNothingEnabled = 16003
 
-	// CommandExamplesTooLong is returned when the examples post would not fit
-	// in one post, which needs a long enough install subpath to reach.
+	// CommandExamplesTooLong is returned when one of the examples messages would
+	// not fit in a post, which needs a long enough install subpath to reach.
 	CommandExamplesTooLong = 16004
 
-	// CommandDetailsNotReady is returned when /tactical-fusion example-details
-	// runs before OnActivate has built the registry.
-	CommandDetailsNotReady = 16005
+	// 16005 was CommandDetailsNotReady, for the example-details subcommand.
+	// That command was folded into examples, which reports the same condition
+	// through CommandExamplesNotReady. Retired rather than reused.
 
-	// CommandDetailsPostFailed is returned, and logged, when the example
-	// details thread could not be created or a reply in it was refused.
-	CommandDetailsPostFailed = 16006
+	// CommandExamplesPostFailed is returned, and logged, when one of the
+	// examples messages could not be posted to the channel.
+	CommandExamplesPostFailed = 16006
 
 	// server/decorators/ (17000-17999)
 
@@ -286,6 +335,13 @@ var AllCodes = []int{
 
 	HooksDecoratePanic,
 	HooksDecorationTooLong,
+	HooksCotPanic,
+	HooksCotFileUnreadable,
+	HooksCotFileNotOwned,
+	HooksCotPropsTooLarge,
+	HooksCotUnreadable,
+	HooksCotDetailDropped,
+	HooksCotPropsUnmeasurable,
 
 	HTTPMethodNotAllowed,
 	HTTPDecoratePathInvalid,
@@ -316,6 +372,7 @@ var AllCodes = []int{
 	PreferencesThresholdOutOfRange,
 	PreferencesRowUnknown,
 	PreferencesBlobUnreadable,
+	PreferencesSectionUnknown,
 
 	PreferencesCachePublishFailed,
 
@@ -324,8 +381,7 @@ var AllCodes = []int{
 	CommandCheckNotReady,
 	CommandExamplesNothingEnabled,
 	CommandExamplesTooLong,
-	CommandDetailsNotReady,
-	CommandDetailsPostFailed,
+	CommandExamplesPostFailed,
 
 	DTGPageParamsInvalid,
 	LocationPageParamsInvalid,

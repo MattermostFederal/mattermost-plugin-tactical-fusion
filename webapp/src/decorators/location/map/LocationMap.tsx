@@ -7,10 +7,17 @@ import {loadBasemap, loadPackages} from './basemap';
 import {
     OSM_CREDIT,
     SEAM_CAPPED_LAYERS,
-    buildStyle, cellFeature, coveredBy, emptyCollection, hasWebGL2, loadMapLibre,
-    mapColors, pointFeature, syncGlobalReach,
+    MARKER_PIXEL_RATIO,
+    accuracyFeature,
+    buildStyle, cellFeature, coveredBy, crosshairImage, ellipseFeature, emptyCollection, hasWebGL2,
+    loadMapLibre,
+    markedPoints, markerImageID,
+    mapColors, outlineFeature, pointFeature, syncGlobalReach,
 } from './maplibre';
-import {MAX_ZOOM, cellBounds, isRenderable, zoomForSpan} from './span';
+import {
+    DEGREE_METERS, MAX_ZOOM, MERCATOR_LIMIT,
+    cellBounds, fitPadding, isRenderable, spansTheWorld, unwrapLongitudes, zoomForSpan,
+} from './span';
 import type {View} from './view';
 
 import {loadPackageNames} from '../../../packages/store';
@@ -69,7 +76,7 @@ const NO_POSITION = 'The position for this coordinate is unavailable.';
 
 // One label across all three maps. The pages call it the same thing, and a
 // reader who moves between them should not have to learn a second word for the
-// same button. It resets the zoom as well as the centre, which is why it is not
+// same button. It resets the zoom as well as the center, which is why it is not
 // "Recenter".
 const RESET_LABEL = 'Reset view';
 const TOO_FAR_NORTH = 'This position is too far north for the map.';
@@ -117,6 +124,59 @@ interface Props extends View {
      * one thing a glance is asking: where.
      */
     preview?: boolean;
+
+    /**
+     * A stated circular error, in meters, drawn on the ground around the pin.
+     *
+     * Absent means the source stated no accuracy, and nothing is drawn: a
+     * default radius would be one this component invented. Every location
+     * surface omits it, so a coordinate's own precision keeps being carried by
+     * the cell rather than by a circle.
+     */
+    accuracyMeters?: number;
+
+    /**
+     * How the accuracy reads, already rendered by whoever stated it.
+     *
+     * Taken rather than formatted here so the label and the row a reader sees
+     * beside it cannot say different things: rounding meters a second time
+     * turned a stated 0.4 into "within 0 meters", which is a claim of a perfect
+     * fix made only to a screen reader.
+     */
+    accuracyLabel?: string;
+
+    /**
+     * Every point to mark, each in its own color, which also asks for the
+     * reticle shape rather than the plain dot.
+     *
+     * Absent on every location surface, which keeps the single pin they have
+     * always drawn from `lat` and `lon`. A Cursor on Target card passes one per
+     * event, so a block of them draws each track in its own affiliation's
+     * color, and `lat` and `lon` stay the primary position that decides
+     * whether there is anything to draw at all.
+     */
+    markers?: ReadonlyArray<{lat: number; lon: number; color: string}>;
+
+    /**
+     * What the marker IS, in words.
+     *
+     * Required alongside `markerColor` in practice, because the color is
+     * carrying a meaning and a color cannot be the only way to read one: the
+     * affiliation hues are near enough in luminance that red and green are the
+     * same mark to a good share of readers. This is the other channel.
+     */
+    markerLabel?: string;
+
+    /**
+     * A shape to draw, in meters on the ground rather than in pixels.
+     *
+     * Vertices are deliberately not markers: routing them through `markers`
+     * would be less code and would put a reticle on every corner of a polygon,
+     * which says each corner is a position somebody reported.
+     */
+    geometry?: MapGeometry;
+
+    geometryColor?: string;
 }
 
 const styles: Record<string, React.CSSProperties> = {
@@ -198,7 +258,8 @@ const styles: Record<string, React.CSSProperties> = {
 };
 
 const LocationMap: React.FC<Props> = ({
-    lat, lon, cellDegLat, cellDegLon, region, pageHref, pending, fill, preview,
+    lat, lon, cellDegLat, cellDegLon, region, pageHref, pending, fill, preview, accuracyMeters,
+    accuracyLabel, markers, markerLabel, geometry, geometryColor,
 }) => {
     const container = useRef<HTMLDivElement | null>(null);
     const map = useRef<MapLibreMap | null>(null);
@@ -242,14 +303,34 @@ const LocationMap: React.FC<Props> = ({
     const view = useRef<View>({lat, lon, cellDegLat, cellDegLon});
     view.current = {lat, lon, cellDegLat, cellDegLon};
 
+    const radius = useRef<number | undefined>(accuracyMeters);
+    radius.current = accuracyMeters;
+
+    const drawn = useRef<Props['markers']>(markers);
+    drawn.current = markers;
+
+    const shape = useRef<Props['geometry']>(geometry);
+    shape.current = geometry;
+
+    const shapeColor = useRef<Props['geometryColor']>(geometryColor);
+    shapeColor.current = geometryColor;
+
     const applyView = useCallback(() => {
         const instance = map.current;
         if (!instance || !ready.current) {
             return;
         }
 
+        // Here rather than once at load. The image a marker names is keyed by
+        // its color, and a panel reuses one map across selections, so a color
+        // the first event did not carry had no image and the symbol layer drew
+        // nothing at all for it.
+        addMarkerImages(instance, drawn.current);
+
         const pin = instance.getSource<GeoJSONSource>('pin');
         const cell = instance.getSource<GeoJSONSource>('cell');
+        const accuracy = instance.getSource<GeoJSONSource>('accuracy');
+        const outline = instance.getSource<GeoJSONSource>('geometry');
         const current = view.current;
 
         // A stale pin is worse than no pin. Clicking a grid coordinate while an
@@ -259,20 +340,42 @@ const LocationMap: React.FC<Props> = ({
         if (current.lat === null || current.lon === null || outsideMercator(current.lat)) {
             pin?.setData(emptyCollection());
             cell?.setData(emptyCollection());
+            accuracy?.setData(emptyCollection());
+            outline?.setData(emptyCollection());
             return;
         }
 
         const width = container.current?.clientWidth || DEFAULT_WIDTH_PX;
+        const height = container.current?.clientHeight || MAP_MIN_HEIGHT_PX;
 
         // jumpTo, never flyTo: a world-crossing animation on every click is a
         // vestibular risk and says nothing in a box this size.
-        instance.jumpTo({
-            center: [current.lon, current.lat],
-            zoom: zoomForSpan(current.lat, width),
-        });
+        //
+        // Several markers frame all of them instead, because a block of events
+        // opening on the first one would put the rest off screen with nothing
+        // to say they were there.
+        // The union, not the marker spread alone. A shape larger than its own
+        // <point> would otherwise open half off screen, or at a zoom chosen for
+        // a point that happens to sit inside it.
+        const spread = withinMercator(unionOf(spreadOf(drawn.current), shapeBounds(shape.current, current.lat, current.lon)));
+        if (spread === null) {
+            instance.jumpTo({
+                center: [current.lon, current.lat],
+                zoom: zoomForSpan(current.lat, width),
+            });
+        } else {
+            instance.fitBounds(spread, {
+                padding: fitPadding(width, height, !previewRef.current),
+                animate: false,
+                maxZoom: MAX_ZOOM,
+            });
+        }
 
-        pin?.setData(pointFeature(current.lat, current.lon));
+        pin?.setData(drawableMarkers(drawn.current, current.lat, current.lon));
         cell?.setData(drawableCell(current));
+        accuracy?.setData(drawableAccuracy(current.lat, current.lon, radius.current));
+        outline?.setData(drawableGeometry(shape.current, current.lat, current.lon));
+        paintGeometry(instance, shapeColor.current);
     }, []);
 
     // A verdict belongs to the coordinate that produced it, so a change of
@@ -366,7 +469,10 @@ const LocationMap: React.FC<Props> = ({
             const opening: Bounds = [
                 start.lon ?? 0, start.lat ?? 0, start.lon ?? 0, start.lat ?? 0,
             ];
-            const style = buildStyle(basemap, details, mapColors(), !coveredBy(details, opening));
+            const style = buildStyle(
+                basemap, details, mapColors(), !coveredBy(details, opening),
+                hasMarkers(drawn.current),
+            );
 
             let instance: MapLibreMap | undefined;
             try {
@@ -473,6 +579,7 @@ const LocationMap: React.FC<Props> = ({
                 if (map.current !== instance) {
                     return;
                 }
+
                 ready.current = true;
                 setLoaded(true);
 
@@ -504,9 +611,17 @@ const LocationMap: React.FC<Props> = ({
 
     // Movement. The map itself survives; only its camera and its two overlay
     // sources change.
+    //
+    // Keyed on what the overlays ARE rather than on the objects carrying them.
+    // A caller that builds its geometry inline hands over a new object every
+    // render, which re-framed the camera under a reader who had panned; and
+    // markers were read through a ref and named nowhere, so a changed marker
+    // set over an unchanged position never redrew at all.
+    const overlayKey = overlayDigest(markers, geometry, geometryColor);
+
     useEffect(() => {
         applyView();
-    }, [applyView, lat, lon, cellDegLat, cellDegLon]);
+    }, [applyView, lat, lon, cellDegLat, cellDegLon, accuracyMeters, overlayKey]);
 
     // Torn down on unmount only. Browsers cap live WebGL contexts at about
     // sixteen, and the panel outlives any one coordinate.
@@ -562,7 +677,7 @@ const LocationMap: React.FC<Props> = ({
                 {note === null && !preview && zoomLevel !== null && (
                     <p style={styles.zoomLevel}>{`z${zoomLevel.toFixed(1)}`}</p>
                 )}
-                <span style={styles.srOnly}>{label(region, note)}</span>
+                <span style={styles.srOnly}>{label(region, note, accuracyLabel, markerLabel, markers?.length ?? 1)}</span>
             </div>
             {!preview && (credited || (!fill && pageHref !== undefined)) && (
                 <div style={styles.caption}>
@@ -628,7 +743,7 @@ function drawableCell(current: View): FeatureCollection {
     }
 
     // No minimum size, and no threshold below which the cell is dropped. These
-    // surfaces zoom, so there is no one scale to test against: a metre-wide cell
+    // surfaces zoom, so there is no one scale to test against: a meter-wide cell
     // is invisible until the reader zooms far enough to see it, which is more
     // honest than a number guessing on their behalf.
     //
@@ -637,6 +752,254 @@ function drawableCell(current: View): FeatureCollection {
     // finer than about 45km permanently, including a 10km grid reference that
     // would have been 11px across at maximum zoom.
     return cellFeature(cellBounds(lat, lon, cellDegLat, cellDegLon));
+}
+
+/**
+ * What to draw at the marked points, or the single pin when nothing asked for
+ * markers, which is every location surface.
+ */
+function drawableMarkers(
+    markers: Props['markers'], lat: number, lon: number,
+): FeatureCollection {
+    if (!hasMarkers(markers)) {
+        return pointFeature(lat, lon);
+    }
+
+    return markedPoints((markers ?? []).map((marker) => ({
+        lat: marker.lat,
+        lon: marker.lon,
+        icon: markerImageID(marker.color),
+    })));
+}
+
+/**
+ * Everything the overlays draw, as one string.
+ *
+ * The effect that redraws them compares this instead of object identity, so a
+ * caller may build its geometry inline without re-framing the camera, and a
+ * marker set that changed over an unchanged position still redraws.
+ */
+export function overlayDigest(
+    markers: Props['markers'], geometry: Props['geometry'], geometryColor: Props['geometryColor'],
+): string {
+    const pins = (markers ?? []).map((marker) => `${marker.lat},${marker.lon},${marker.color}`).join('|');
+
+    if (geometry === undefined) {
+        return `${pins}#`;
+    }
+
+    const shape = geometry.kind === 'ellipse' ? `e:${geometry.major},${geometry.minor},${geometry.angle}` : `o:${geometry.closed}:${geometry.points.map((point) => `${point.lat},${point.lon}`).join(' ')}`;
+
+    return `${pins}#${shape}#${geometryColor ?? ''}`;
+}
+
+/** What a surface may ask this map to draw beyond its pin. */
+export type MapGeometry =
+    | {kind: 'outline'; points: ReadonlyArray<{lat: number; lon: number}>; closed: boolean}
+    | {kind: 'ellipse'; major: number; minor: number; angle: number};
+
+const GEOMETRY_FILL_ALPHA = 0.16;
+
+const HEX_COLOR = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i;
+
+function fillOf(color: string): string | null {
+    const parsed = HEX_COLOR.exec(color);
+    if (parsed === null) {
+        return null;
+    }
+
+    const [red, green, blue] = parsed.slice(1).map((part) => parseInt(part, 16));
+    return `rgba(${red}, ${green}, ${blue}, ${GEOMETRY_FILL_ALPHA})`;
+}
+
+function paintGeometry(instance: MapLibreMap, color: string | undefined): void {
+    const colors = mapColors();
+    const fill = color === undefined ? null : fillOf(color);
+
+    instance.setPaintProperty('geometry-outline', 'line-color', fill === null ? colors.cell : color);
+    instance.setPaintProperty('geometry-fill', 'fill-color', fill ?? colors.cellFill);
+}
+
+function drawableGeometry(
+    geometry: Props['geometry'], lat: number, lon: number,
+): FeatureCollection {
+    if (geometry === undefined) {
+        return emptyCollection();
+    }
+
+    if (geometry.kind === 'ellipse') {
+        return ellipseFeature(lat, lon, geometry.major, geometry.minor, geometry.angle);
+    }
+
+    return outlineFeature(geometry.points, geometry.closed);
+}
+
+/** The box the shape occupies, so the camera can frame it with the markers. */
+function shapeBounds(
+    geometry: Props['geometry'], lat: number, lon: number,
+): [[number, number], [number, number]] | null {
+    if (geometry === undefined) {
+        return null;
+    }
+
+    if (geometry.kind === 'ellipse') {
+        const cosLat = Math.cos((lat * Math.PI) / 180);
+        const reach = Math.max(geometry.major, geometry.minor);
+        if (!Number.isFinite(reach) || reach <= 0 || Math.abs(cosLat) < 1e-9) {
+            return null;
+        }
+
+        const dLat = reach / DEGREE_METERS;
+        const dLon = reach / (DEGREE_METERS * cosLat);
+        return [[lon - dLon, lat - dLat], [lon + dLon, lat + dLat]];
+    }
+
+    const usable = geometry.points.filter(
+        (point) => Number.isFinite(point.lat) && Number.isFinite(point.lon),
+    );
+    if (usable.length < 2) {
+        return null;
+    }
+
+    // Unwrapped first, or a shape crossing the antimeridian reads as one
+    // spanning the planet the other way round.
+    const lats = usable.map((point) => point.lat);
+    const lons = unwrapLongitudes(usable.map((point) => point.lon));
+
+    return [
+        [Math.min(...lons), Math.min(...lats)],
+        [Math.max(...lons), Math.max(...lats)],
+    ];
+}
+
+/** @internal exported for tests */
+export function _frameBoundsForTesting( // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
+    markers: Props['markers'], geometry: Props['geometry'], lat: number, lon: number,
+): [[number, number], [number, number]] | null {
+    return withinMercator(unionOf(spreadOf(markers), shapeBounds(geometry, lat, lon)));
+}
+
+function withinMercator(
+    box: [[number, number], [number, number]] | null,
+): [[number, number], [number, number]] | null {
+    if (box === null) {
+        return null;
+    }
+
+    const [[west, south], [east, north]] = box;
+    if (![west, south, east, north].every((value) => Number.isFinite(value))) {
+        return null;
+    }
+
+    // Latitude only. fitBounds throws past 90 rather than clamping, so that one
+    // has to be brought in. Longitude is deliberately left continuous: a box
+    // running 179 to 181 is the two degrees a shape crossing the antimeridian
+    // occupies, and clamping it to 180 would collapse it to nothing.
+    const inRange: [[number, number], [number, number]] = [
+        [west, Math.max(-MERCATOR_LIMIT, south)],
+        [east, Math.min(MERCATOR_LIMIT, north)],
+    ];
+
+    if (spansTheWorld(west, east)) {
+        return [[-180, inRange[0][1]], [180, inRange[1][1]]];
+    }
+
+    return inRange;
+}
+
+function unionOf(
+    a: [[number, number], [number, number]] | null,
+    b: [[number, number], [number, number]] | null,
+): [[number, number], [number, number]] | null {
+    if (a === null) {
+        return b;
+    }
+    if (b === null) {
+        return a;
+    }
+
+    return [
+        [Math.min(a[0][0], b[0][0]), Math.min(a[0][1], b[0][1])],
+        [Math.max(a[1][0], b[1][0]), Math.max(a[1][1], b[1][1])],
+    ];
+}
+
+/**
+ * The box every marker fits in, or null when there is nothing to frame that the
+ * single-position camera does not already handle.
+ */
+function spreadOf(markers: Props['markers']): [[number, number], [number, number]] | null {
+    if (markers === undefined || markers.length < 2) {
+        return null;
+    }
+
+    // Unwrapped for the reason shapeBounds is: a block of events straddling the
+    // antimeridian reads as one spanning the planet the other way round, and
+    // 358 degrees is not close enough to 360 for spansTheWorld to catch it.
+    const lats = markers.map((marker) => marker.lat);
+    const lons = unwrapLongitudes(markers.map((marker) => marker.lon));
+
+    return [
+        [Math.min(...lons), Math.min(...lats)],
+        [Math.max(...lons), Math.max(...lats)],
+    ];
+}
+
+function hasMarkers(markers: Props['markers']): boolean {
+    return markers !== undefined && markers.length > 0;
+}
+
+/**
+ * Registers one reticle per color the markers ask for.
+ *
+ * Per color rather than per marker, so a block of twenty friendly tracks costs
+ * one image. Nothing to do for a map with no markers, which is every location
+ * surface: those draw the circle layer and never reference an image.
+ */
+function addMarkerImages(instance: MapLibreMap, markers: Props['markers']): void {
+    if (!hasMarkers(markers)) {
+        return;
+    }
+
+    const edge = mapColors().pinEdge;
+    for (const color of new Set((markers ?? []).map((marker) => marker.color))) {
+        const id = markerImageID(color);
+        const image = crosshairImage(color, edge);
+
+        if (instance.hasImage(id)) {
+            instance.updateImage(id, image);
+        } else {
+            instance.addImage(id, image, {pixelRatio: MARKER_PIXEL_RATIO});
+        }
+    }
+}
+
+function drawableAccuracy(lat: number, lon: number, meters: number | undefined): FeatureCollection {
+    if (meters === undefined || !(meters > 0)) {
+        return emptyCollection();
+    }
+
+    return accuracyFeature(lat, lon, meters);
+}
+
+function accuracyClause(reading: string | undefined): string {
+    if (reading === undefined || reading === '') {
+        return '';
+    }
+
+    return ` The stated circular error is ${reading}.`;
+}
+
+function markerClause(what: string | undefined, marked: number): string {
+    if (what === undefined || what === '') {
+        return '';
+    }
+
+    if (marked > 1) {
+        return ` The markers are ${what}.`;
+    }
+
+    return ` The marker is ${what}.`;
 }
 
 /**
@@ -649,16 +1012,24 @@ function drawableCell(current: View): FeatureCollection {
  * The basemap is not named. The region's own value carries its citation, and
  * naming the source again here printed it twice in one line.
  */
-function label(region: string, note: string | null): string {
+function label(
+    region: string, note: string | null, reading?: string, what?: string, marked = 1,
+): string {
     if (note !== null) {
         return note;
     }
 
-    if (region === '') {
-        return 'World map with the position marked.';
+    const clauses = `${markerClause(what, marked)}${accuracyClause(reading)}`;
+
+    if (marked > 1) {
+        return `World map with ${marked} positions marked.${clauses}`;
     }
 
-    return `World map. The marked position is in ${region}.`;
+    if (region === '') {
+        return `World map with the position marked.${clauses}`;
+    }
+
+    return `World map. The marked position is in ${region}.${clauses}`;
 }
 
 export default LocationMap;

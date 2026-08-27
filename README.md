@@ -62,19 +62,19 @@ else's words. The plugin declines anything ambiguous rather than guessing:
 and zoneless times, epoch seconds, `CST`-style zone abbreviations. Text inside
 code blocks, code spans, links and URLs is never touched.
 
-Three slash commands make this visible:
+Two slash commands make this visible:
 
-- `/tactical-fusion examples` posts a short demonstration **to the channel**, one
-  row per format in a single message, with two live date-time groups either side
-  of now so the countdown is actually moving. This is the one for introducing the
-  plugin to a team.
-- `/tactical-fusion example-details` posts every format, every edge case and every
-  near miss that is deliberately declined, with the reason on each row. It goes to
-  the channel as one post per decorator: one for times, one for coordinates.
+- `/tactical-fusion examples` posts a demonstration **to the channel**, one message
+  per format, each row showing what you would type and the link it becomes. Two of
+  the date-time rows are live, either side of now, so the countdown is actually
+  moving, and it ends with two Cursor on Target events that arrive as cards. This
+  is the one for introducing the plugin to a team.
 - `/tactical-fusion check <text>` tells you what would be decorated in some text,
   and what would not, without posting anything.
 
-The first two write to the channel; only `check` is visible to you alone.
+The first writes to the channel; `check` is visible to you alone. Every boundary
+case and every near miss that is deliberately declined is in the built-in help,
+on the page for that format.
 
 ### Customizing your view
 
@@ -212,7 +212,9 @@ own running server instead, via the bundled `pluginctl`.
 | `make check-style` | Lint Go and webapp code |
 | `make test` | Run tests |
 | `make coverage` | Backend and frontend coverage summary |
-| `make sbom-audit` | SBOM + CVE scan, fails on HIGH/CRITICAL |
+| `make license-check` | Enforces `.licenses.json` over the shipped dependencies (after `make sbom`) |
+| `make bundle` | Also writes `THIRD-PARTY-NOTICES.txt` into the bundle |
+| `make sbom-audit` | SBOM + CVE scan + license policy |
 | `make release` | The full security-gated pipeline CI runs on a tag |
 
 CI runs the same targets: `pr.yml` (style, tests, build), `security.yml` (SBOM +

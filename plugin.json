@@ -159,7 +159,7 @@
                         "display_name": "Map under a coordinate-only post",
                         "type": "bool",
                         "default": true,
-                        "help_text": "Draw the map in the channel, under a message whose whole text is one coordinate. This is the one setting here that changes the message itself: a post drawn this way is marked with a custom type, and Elasticsearch and OpenSearch index such a post but never match it, so it is missing from search and from Recent Mentions. Link previews, image embeds and automatic translation are dropped for it as well. Turning this off leaves those posts as ordinary messages and restores all of that. Installs searching through Postgres are unaffected either way. Only applies while \"Decorate coordinates\" and \"Draw maps for coordinates\" are on."
+                        "help_text": "Draw the map in the channel, under a post whose body this plugin renders: a message whose whole text is one coordinate, and a Cursor on Target event. This is the one setting here that changes the message itself: a post drawn this way is marked with a custom type, and Elasticsearch and OpenSearch index such a post but never match it, so it is missing from search and from Recent Mentions. Link previews, image embeds and automatic translation are dropped for it as well. Turning this off leaves those posts as ordinary messages and restores all of that. Installs searching through Postgres are unaffected either way. Only applies while \"Decorate coordinates\" and \"Draw maps for coordinates\" are on."
                     },
                     {
                         "key": "EnableLocationMapPage",
@@ -202,6 +202,27 @@
                         "type": "bool",
                         "default": true,
                         "help_text": "When a message is nothing but one labeled airfield reference, such as \"ICAO:KIND\" or \"DEPLOC:KIND//\", add a table of the field's details under it: its name, where it is, what kind of field it is, its elevation and its IATA code. The table is written into the message itself, so it appears on every client, is included when messages are exported, and is what the author sees if they edit the post. The values are fixed when the message is posted and are not updated when a later plugin version corrects the database. Turning this off stops new messages being expanded; messages already posted keep their table. Only applies while \"Decorate airfield codes\" is on."
+                    }
+                ]
+            },
+            {
+                "key": "cot",
+                "title": "Cursor on Target",
+                "subtitle": "Render a Cursor on Target event pasted into a message or attached to a post, with its position on a map.",
+                "settings": [
+                    {
+                        "key": "EnableCot",
+                        "display_name": "Render Cursor on Target events",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Recognize a Cursor on Target event written in a fenced code block labeled cot or xml, and render it as a card with the event's identity, position, timing and accuracy. A post rendered this way is marked with a custom type, and Elasticsearch and OpenSearch index such a post but never match it, so it is missing from search and from Recent Mentions. Link previews, image embeds, file attachment lists and automatic translation are dropped for it as well, and any text written around the event renders without Markdown formatting. Turning this off leaves new posts as ordinary messages and restores all of that; posts already rendered keep their card. Installs searching through Postgres are unaffected either way."
+                    },
+                    {
+                        "key": "EnableCotFile",
+                        "display_name": "Read a Cursor on Target file attached to a post",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "When a post carries exactly one attachment named .xml or .cot, read it and render the event it contains. This is the only setting in this plugin that reads a file while a message is being posted, so an install whose file storage is slow or remote may prefer to turn it off and keep the fenced code block, which costs nothing extra. Files over 64 KB are ignored either way. Only applies while \"Render Cursor on Target events\" is on."
                     }
                 ]
             }

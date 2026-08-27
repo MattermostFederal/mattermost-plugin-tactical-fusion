@@ -133,6 +133,15 @@ func (p *Plugin) locationMaps() location.Maps {
 	}
 }
 
+func (p *Plugin) cotEnabled() bool {
+	return p.configurationLoaded() && p.getConfiguration().EnableCot
+}
+
+func (p *Plugin) cotFilesEnabled() bool {
+	config := p.getConfiguration()
+	return config.EnableCot && config.EnableCotFile
+}
+
 // decorationEnabled reports whether any decorator would contribute a pattern.
 //
 // Asked of the registry rather than of one decorator's switches, so the

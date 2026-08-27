@@ -1,6 +1,7 @@
 import type {GeoJSONSource, Map as MapLibreMap} from 'maplibre-gl';
 import React, {useEffect, useRef, useState} from 'react';
 
+import type {MapGeometry} from './LocationMap';
 import LocationMap, {_setMapObserverForTesting} from './LocationMap';
 import {DATA_MAX_ZOOM} from './span';
 import type {View} from './view';
@@ -122,9 +123,9 @@ function labelsIn(map: MapLibreMap | null): number {
 }
 
 /**
- * Whether the map draws land under its own centre, or -1 when there is no map.
+ * Whether the map draws land under its own center, or -1 when there is no map.
  *
- * Queried at the projected centre pixel rather than by testing geometry, because
+ * Queried at the projected center pixel rather than by testing geometry, because
  * what matters is the fill a reader sees at the coordinate: a basemap shifted or
  * clipped in tiling would still contain the right polygons somewhere.
  */
@@ -165,6 +166,44 @@ function wasRemoved(map: MapLibreMap | null): boolean {
     return Boolean((map as {_removed?: boolean} | null)?._removed);
 }
 
+/**
+ * Where each marker actually lands on the canvas, in CSS pixels, with the size
+ * of the canvas it landed on.
+ *
+ * The geometry of what counts as obscured lives in the spec rather than here:
+ * this reports where MapLibre put things, and the test owns the rectangles the
+ * chrome occupies. A harness that decided "clear" for itself would be asserting
+ * against its own copy of the thing under test.
+ */
+function projectedPins(
+    map: MapLibreMap | null,
+    markers: ReadonlyArray<{lat: number; lon: number}> | undefined,
+): string {
+    if (map === null || wasRemoved(map) || markers === undefined) {
+        return '';
+    }
+
+    const canvas = map.getCanvas();
+    const at = markers.map((marker) => {
+        const point = map.project([marker.lon, marker.lat]);
+        return [Math.round(point.x), Math.round(point.y)];
+    });
+
+    return JSON.stringify({
+        w: Math.round(canvas.clientWidth),
+        h: Math.round(canvas.clientHeight),
+        at,
+    });
+}
+
+function paintOf(map: MapLibreMap | null, layer: string, property: 'line-color' | 'fill-color'): string {
+    if (map === null || wasRemoved(map) || map.getLayer(layer) === undefined) {
+        return '';
+    }
+
+    return String(map.getPaintProperty(layer, property) ?? '');
+}
+
 interface Props {
 
     /** Which of the named views to open on. */
@@ -183,10 +222,23 @@ interface Props {
 
     /** Renders the card-sized map: no controls, no gestures, no readout. */
     preview?: boolean;
+
+    /** A block of events, which the map frames all of rather than opening on one. */
+    markers?: ReadonlyArray<{lat: number; lon: number; color: string}>;
+
+    /** What the marker or markers are, for the accessible label. */
+    markerLabel?: string;
+
+    accuracyMeters?: number;
+    accuracyLabel?: string;
+
+    geometry?: MapGeometry;
+    geometryColor?: string;
 }
 
 const LocationMapHarness: React.FC<Props> = ({
-    start = 'Los Angeles', region = '', pending = false, pageHref, fill, noWebGL, preview,
+    start = 'Los Angeles', region = '', pending = false, pageHref, fill, noWebGL, preview, markers,
+    markerLabel, accuracyMeters, accuracyLabel, geometry, geometryColor,
 }) => {
     // Assigned during render, never installed during render: the patch above is
     // already in place, so this only has to be decided before the child probes
@@ -206,6 +258,10 @@ zoom: -1,
         tiles: 'pending',
 center: 'none',
 removed: false,
+        pins: '',
+        shapeLine: '',
+        shapeFill: '',
+        wheelZoom: 'unknown',
     });
 
     // The last instance, kept past the observer's null so the unmount test can
@@ -237,6 +293,14 @@ removed: false,
             center: at ? `${at.lat.toFixed(3)},${at.lng.toFixed(3)}` : 'none',
             zoom: map && !wasRemoved(map) ? Number(map.getZoom().toFixed(2)) : -1,
             removed: wasRemoved(map),
+            pins: projectedPins(map, markers),
+            shapeLine: paintOf(map, 'geometry-outline', 'line-color'),
+            shapeFill: paintOf(map, 'geometry-fill', 'fill-color'),
+
+            // The handler itself, so a test proving the wheel does not zoom can
+            // assert a state rather than wait out a duration it hopes is long
+            // enough. A re-enabled handler with a slow easing beat the sleep.
+            wheelZoom: map && !wasRemoved(map) && map.scrollZoom.isEnabled() ? 'on' : 'off',
         });
     };
 
@@ -255,6 +319,12 @@ removed: false,
                     pageHref={pageHref}
                     fill={fill}
                     preview={preview}
+                    markers={markers}
+                    markerLabel={markerLabel}
+                    accuracyMeters={accuracyMeters}
+                    accuracyLabel={accuracyLabel}
+                    geometry={geometry}
+                    geometryColor={geometryColor}
                 />
             )}
             {Object.keys(VIEWS).map((key) => (
@@ -290,11 +360,15 @@ removed: false,
             <output data-testid='pin-features'>{String(reading.pin)}</output>
             <output data-testid='cell-features'>{String(reading.cell)}</output>
             <output data-testid='labels-drawn'>{String(reading.labels)}</output>
-            <output data-testid='land-at-centre'>{String(reading.land)}</output>
+            <output data-testid='land-at-center'>{String(reading.land)}</output>
             <output data-testid='tiles'>{reading.tiles}</output>
             <output data-testid='camera'>{reading.center}</output>
             <output data-testid='zoom'>{String(reading.zoom)}</output>
             <output data-testid='removed'>{reading.removed ? 'yes' : 'no'}</output>
+            <output data-testid='pins'>{reading.pins}</output>
+            <output data-testid='shape-line'>{reading.shapeLine}</output>
+            <output data-testid='shape-fill'>{reading.shapeFill}</output>
+            <output data-testid='wheel-zoom'>{reading.wheelZoom}</output>
         </div>
     );
 };

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Troubleshooting - Tactical Fusion</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="copy.js" defer></script>
 </head>
 <body>
 <div class="layout">
@@ -16,6 +17,12 @@
         <nav>
             <span class="nav-section">Documentation</span>
             <a href="help.html">Overview</a>
+            <span class="nav-section">Decorators</span>
+            <a href="dtg.html">Date-Time Groups</a>
+            <a href="location.html">Coordinates</a>
+            <a href="airfields.html">Airfields</a>
+            <a href="cot.html">Cursor on Target</a>
+            <span class="nav-section">Guides</span>
             <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
             <a href="admin.html">Admin Settings</a>
@@ -47,8 +54,8 @@
             <tbody>
                 <tr>
                     <td>The format is not one that is recognized</td>
-                    <td>Compare against the <a href="formats.html#declined">declined list</a>. Epoch seconds, 12 hour clocks, bare dates and <code>CST</code> style abbreviations are all deliberately absent.</td>
-                    <td>Write it as a <a href="formats.html#military">date-time group</a> or an <a href="formats.html#timestamp">RFC 3339 timestamp</a>.</td>
+                    <td>Compare against the <a href="dtg.html#declined">declined list</a>. Epoch seconds, 12 hour clocks, bare dates and <code>CST</code> style abbreviations are all deliberately absent.</td>
+                    <td>Write it as a <a href="dtg.html#military">date-time group</a> or an <a href="dtg.html#timestamp">RFC 3339 timestamp</a>.</td>
                 </tr>
                 <tr>
                     <td>It is inside a protected span</td>
@@ -57,7 +64,7 @@
                 </tr>
                 <tr>
                     <td>The format is switched off</td>
-                    <td>Run <a href="commands.html#example-details"><code>/tactical-fusion example-details</code></a>. It ends with a note when decoration is off, and shows each format's real result.</td>
+                    <td>Run <a href="commands.html#examples"><code>/tactical-fusion examples</code></a>. It ends with a note when decoration is off, and shows each format's real result.</td>
                     <td>Turn the format on in <a href="admin.html">System Console, Plugins, Tactical Fusion</a>.</td>
                 </tr>
                 <tr>
@@ -101,54 +108,54 @@
             </thead>
             <tbody>
                 <tr>
-                    <td><code>34.05, -118.25</code> did nothing, but <code>34.0561, -118.2500</code> works</td>
+                    <td><code>21.34, -157.95</code> did nothing, but <code>21.3353, -157.9483</code> works</td>
                     <td>Signed decimal degrees needs at least four decimals on both values.</td>
-                    <td>Write the full precision, or add hemisphere letters: <code>34.05 N, 118.25 W</code> is accepted.</td>
+                    <td>Write the full precision, or add hemisphere letters: <code>21.34 N, 157.95 W</code> is accepted.</td>
                 </tr>
                 <tr>
                     <td>A coordinate at the end of a sentence did nothing</td>
                     <td>A full stop or comma directly against the last digit is indistinguishable from a range or a list at the point the check runs.</td>
-                    <td>Put a space before the punctuation, or accept it. This is a deliberate trade against rewriting the middle of <code>-118.2500..-118.2600</code>.</td>
+                    <td>Put a space before the punctuation, or accept it. This is a deliberate trade against rewriting the middle of <code>-157.9483..-157.9583</code>.</td>
                 </tr>
                 <tr>
-                    <td><code>35N079W</code> did nothing</td>
+                    <td><code>21N157W</code> did nothing</td>
                     <td>The shortest USMTF shape is only matched behind a field label.</td>
-                    <td>Write <code>LATD:35N079W</code>.</td>
+                    <td>Write <code>LATD:21N157W</code>.</td>
                 </tr>
                 <tr>
-                    <td><code>18suj2347806483</code> did nothing, but <code>18SUJ2347806483</code> works</td>
+                    <td><code>4qfj0906059620</code> did nothing, but <code>4QFJ0906059620</code> works</td>
                     <td>A run-together grid reference has to be upper case. Lower-case hexadecimal of that shape is what a short git commit hash looks like, and about one in 3,900 of them is a valid grid reference.</td>
                     <td>Write it in upper case, space it out, or write <code>MGRS:</code> in front.</td>
                 </tr>
                 <tr>
-                    <td><code>18SUJ2306</code> did nothing, but <code>18SUJ234064</code> works</td>
+                    <td><code>4QFJ0959</code> did nothing, but <code>4QFJ090596</code> works</td>
                     <td>A run-together reference needs at least three digits per axis, a 100 m square. Shorter runs are what part numbers look like: <code>26HMA1997</code> is a valid grid reference, and about one uppercase run in 75,000 collides at two digits.</td>
-                    <td>Space it as <code>18S UJ 23 06</code>, or write <code>MGRS:18SUJ2306</code>.</td>
+                    <td>Space it as <code>4Q FJ 09 59</code>, or write <code>MGRS:4QFJ0959</code>.</td>
                 </tr>
                 <tr>
-                    <td><code>33U2910005628000</code> did nothing, but <code>33U 291000 5628000</code> works</td>
+                    <td><code>4Q6090602359620</code> did nothing, but <code>4Q 609060 2359620</code> works</td>
                     <td>UTM run together has no letters to check: after the zone and band it is thirteen bare digits.</td>
                     <td>Space it out, or write <code>UTMO:</code> in front.</td>
                 </tr>
                 <tr>
-                    <td><code>GJNJ5753</code> did nothing, but <code>GEOREF:GJNJ5753</code> works</td>
+                    <td><code>XGKP5535</code> did nothing, but <code>GEOREF:XGKP5535</code> works</td>
                     <td>GEOREF is matched behind its label and never bare. Four letters and four digits has nothing in it that a part number does not.</td>
                     <td>Write <code>GEOREF:</code> in front. <a href="admin.html#enable-location-moniker"><code>EnableLocationMoniker</code></a> also has to be on, or the label is not read either.</td>
                 </tr>
                 <tr>
-                    <td><code>006AG39</code> did nothing, but <code>GARS:006AG39</code> works</td>
+                    <td><code>045KG14</code> did nothing, but <code>GARS:045KG14</code> works</td>
                     <td>GARS is label-only too, and it is the weaker of the two: seven alphanumerics whose only structural check is that a third of the letter pairs name no band.</td>
                     <td>Write <code>GARS:</code> in front, and check <a href="admin.html#enable-location-moniker"><code>EnableLocationMoniker</code></a> is on.</td>
                 </tr>
                 <tr>
-                    <td><code>849vcwc8+r9</code> did nothing, but <code>849VCWC8+R9</code> works</td>
+                    <td><code>73h483p2+4m</code> did nothing, but <code>73H483P2+4M</code> works</td>
                     <td>A bare Plus Code has to be upper case. A lower-case run of that shape is what a version string with build metadata looks like, and roughly one in 50,000 of those is a well-formed code.</td>
                     <td>Write it in upper case, which is how Plus Codes are normally written, or put <code>PLUSCODE:</code> or <code>OLC:</code> in front.</td>
                 </tr>
                 <tr>
                     <td><code>CWC8+R9</code> did nothing</td>
                     <td>That is a <strong>short</strong> Plus Code. It only means anything relative to a nearby place, which this plugin has no way of knowing.</td>
-                    <td>Use the full code, <code>849VCWC8+R9</code>. Google Maps shows the full form beside the short one.</td>
+                    <td>Use the full code, <code>73H483P2+4M</code>. Google Maps shows the full form beside the short one.</td>
                 </tr>
                 <tr>
                     <td>A UTM position did nothing, but MGRS and lat/lon work</td>
@@ -162,13 +169,13 @@
                 </tr>
                 <tr>
                     <td>A grid reference with plausible-looking letters did nothing</td>
-                    <td>Only eight of the twenty-four 100 km column letters are legal in any given zone, and the row letters are staggered in even-numbered zones. <code>32WDL123123</code> names no real square.</td>
+                    <td>Only eight of the twenty-four 100 km column letters are legal in any given zone, and the row letters are staggered in even-numbered zones. <code>4QJJ123123</code> names no real square.</td>
                     <td>Check the letters against the zone. <code>check</code> will confirm.</td>
                 </tr>
                 <tr>
                     <td>A polar coordinate has no MGRS or UTM row</td>
                     <td>Above 84&deg; north and below 80&deg; south there is no UTM grid. That is Universal Polar Stereographic, a different system this plugin does not implement.</td>
-                    <td>Nothing to do, and less is missing than it looks. The coordinate is still decorated, still shows latitude and longitude, and still shows its <a href="formats.html#location-area">GEOREF, GARS and Plus Code</a> rows: those three subdivide the graticule rather than a projected grid, so they have no polar gap and are what remains at those latitudes.</td>
+                    <td>Nothing to do, and less is missing than it looks. The coordinate is still decorated, still shows latitude and longitude, and still shows its <a href="location.html#location-area">GEOREF, GARS and Plus Code</a> rows: those three subdivide the graticule rather than a projected grid, so they have no polar gap and are what remains at those latitudes.</td>
                 </tr>
                 <tr>
                     <td>One coordinate in a list linked and the others did not</td>
@@ -224,15 +231,15 @@
                 <tr>
                     <td><code>KIND</code> on its own did nothing</td>
                     <td>There is no bare grammar, permanently. Of the airfield codes this plugin ships, 343 are ordinary English words: <code>FACT</code> is Cape Town International, <code>USCG</code> is an airfield in Russia, <code>LIMA</code> is in Turin. Reading them bare would rewrite ordinary prose.</td>
-                    <td>Write a <a href="formats.html#airfield">USMTF field label</a> in front: <code>ICAO:KIND</code>, <code>LOC:</code>, <code>DEPLOC:</code> or <code>ARRLOC:</code>.</td>
+                    <td>Write a <a href="airfields.html#airfield">USMTF field label</a> in front: <code>ICAO:PHNL</code>, <code>LOC:</code>, <code>DEPLOC:</code> or <code>ARRLOC:</code>.</td>
                 </tr>
                 <tr>
-                    <td><code>icao:kind</code> did nothing, but <code>ICAO:KIND</code> works</td>
+                    <td><code>icao:phnl</code> did nothing, but <code>ICAO:PHNL</code> works</td>
                     <td>The label and the code are both matched in upper case only. Coordinate labels accept any case because their tokens carry digits; four letters do not, and <code>loc: fast turnaround on the ramp</code> would link <code>FAST</code>.</td>
                     <td>Write both in upper case, which is how USMTF writes them.</td>
                 </tr>
                 <tr>
-                    <td><code>ICAO: KIND</code> did nothing, but <code>ICAO:KIND</code> works</td>
+                    <td><code>ICAO: PHNL</code> did nothing, but <code>ICAO:PHNL</code> works</td>
                     <td>Nothing may follow the colon. A space there would let the label reach the next word of an ordinary sentence, and this traffic is often written in capitals: <code>LOC: FAST TURNAROUND ON THE RAMP</code> would rewrite <code>FAST</code> into a link to an airfield in South Africa, permanently.</td>
                     <td>Write the code directly against the colon, which is how a USMTF field is written. A space <em>before</em> the colon is still fine.</td>
                 </tr>
@@ -242,14 +249,14 @@
                     <td>Check the code. If it is right and simply new, a later plugin build may hold it: the database ships with the plugin.</td>
                 </tr>
                 <tr>
-                    <td><code>ICAO:KIN</code> or <code>ICAO:KINDX</code> did nothing</td>
+                    <td><code>ICAO:PHN</code> or <code>ICAO:PHNLX</code> did nothing</td>
                     <td>An ICAO ident is exactly four letters. Three is an IATA code, which this plugin does not read.</td>
                     <td>Write the four-letter ICAO ident. The IATA code is shown in the panel for a field that has one.</td>
                 </tr>
                 <tr>
-                    <td><code>logs/ICAO:KIND</code> did nothing</td>
+                    <td><code>logs/ICAO:PHNL</code> did nothing</td>
                     <td>A slash on either side declines the match, so a label inside a path is not read as a field label. Rewriting the middle of a path is exactly what that guard exists to prevent.</td>
-                    <td>Nothing to do. A genuine set line ending <code>DEPLOC:KIND//</code> does decorate: the trailing <code>//</code> is matched and left in the message.</td>
+                    <td>Nothing to do. A genuine set line ending <code>DEPLOC:PHNL//</code> does decorate: the trailing <code>//</code> is matched and left in the message.</td>
                 </tr>
                 <tr>
                     <td>The label was consumed and only the code is left</td>
@@ -300,6 +307,68 @@
                 </tr>
             </tbody>
         </table>
+
+        <h2 id="cot-not-rendered">A Cursor on Target event was left as plain text</h2>
+
+        <p>
+            An event that cannot be rendered is never refused: the post goes out with the
+            XML as ordinary text, which is exactly what you typed. When the event was in a
+            block you labeled <code>cot</code> the plugin also sends you a message,
+            visible only to you, saying which of the two happened.
+        </p>
+
+        <p>
+            <strong>Only a <code>cot</code> block gets that message.</strong> A block
+            labeled <code>xml</code>, a bare event with no fence, and an attachment all
+            fail silently, because plenty of XML is not Cursor on Target and a message on
+            every one of those would fire constantly on ordinary posts. Labeling a block
+            <code>cot</code> is how you say you meant it, and asking is what earns you the
+            answer.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>The Cursor on Target event you just posted could not be read, so it was left as ordinary text.</code></td>
+                    <td>The XML did not parse, or it parsed into something this plugin refuses: a document type declaration, a processing instruction other than the XML declaration, an event with no <code>uid</code>, <code>type</code> or <code>time</code>, more than 32 events, or text that is not valid UTF-8. Code <a href="error-codes.html#hooks"><code>TF-11005</code></a>.</td>
+                    <td>Check the event against <a href="cot.html#cot-limits">what is and is not rendered</a>. The message text is unchanged, so nothing was lost.</td>
+                </tr>
+                <tr>
+                    <td><code>The Cursor on Target event you just posted carries too much detail to render, so it was left as ordinary text.</code></td>
+                    <td>The event parsed, but the card's data would have been larger than the space a post has for it. A very long <code>remarks</code>, or a large block of events, is the usual reason. Code <a href="error-codes.html#hooks"><code>TF-11004</code></a>.</td>
+                    <td>Shorten the remarks, or split the block across two posts. The whole event is still in the message.</td>
+                </tr>
+                <tr>
+                    <td>An attached <code>.xml</code> or <code>.cot</code> file did nothing, and nothing said why</td>
+                    <td><strong>Attachments fail silently</strong>, for the reason above. What reaches the server log depends on where it stopped: <a href="error-codes.html#hooks"><code>TF-11003</code></a> when the file could not be read at all; <a href="error-codes.html#hooks"><code>TF-11006</code></a> when it was read but is not yours, is already on another post, or has been deleted; <a href="error-codes.html#hooks"><code>TF-11005</code></a> when it was read but its contents did not parse; <a href="error-codes.html#hooks"><code>TF-11004</code></a> when it parsed but carried too much detail. A file whose name does not end <code>.xml</code> or <code>.cot</code>, and one over 64 KB, are passed over with nothing logged at all.</td>
+                    <td>Check the rules in <a href="cot.html#cot-file">as an attached file</a>: exactly one file, under 64 KB, one you attached to this post. A file your integration uploaded through the plugin API also counts, since those are credited to the server rather than to a person. Pasting the same event into a <code>cot</code> fence gives you the reason directly, which is faster than asking an administrator to read the log.</td>
+                </tr>
+                <tr>
+                    <td>A time on a card is a full timestamp rather than a date-time group, and is not a link</td>
+                    <td>The instant falls outside <a href="dtg.html#military">2000 to 2099</a>, which is every year two year digits can name. A device whose clock has never been set reports 1970, so this is usually a clock rather than a bad event. Spelling it anyway would have read as this century.</td>
+                    <td>Nothing to fix here: the card is showing what the event said. If the times are wrong across a whole feed, check the clock on the device that sent them.</td>
+                </tr>
+                <tr>
+                    <td>The event renders for me but not for a colleague</td>
+                    <td>The card is drawn by the webapp. A client that has not loaded the plugin's bundle, or has an older one, falls back to the post's text. Mobile shows the text for the same reason.</td>
+                    <td>Reload. The text is always there underneath, so nobody sees nothing.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-info">
+            <p class="alert-title">Editing the post removes the card for good.</p>
+            <p>
+                The card is drawn from data captured when the post was made, and there is
+                no hook that recaptures it on an edit. Once a post carrying an event has
+                been edited, the event is shown as text from then on. This is deliberate:
+                a card that kept claiming readings the edited message no longer contains
+                would be worse than no card.
+            </p>
+        </div>
 
         <h2 id="only-me">Nobody else sees the link, or only some clients do</h2>
 
@@ -417,7 +486,7 @@
         <p>
             Clicking a decorator link is meant to open the right-hand sidebar without the
             browser navigating anywhere. Landing on a full page instead means the webapp
-            did not recognise the link as one of its own and stood aside, letting the
+            did not recognize the link as one of its own and stood aside, letting the
             browser follow it.
         </p>
 
@@ -437,7 +506,7 @@
             <strong>Every reading in the table renders regardless</strong>: the coordinate
             and its conversions are worked out on the server. The one thing that goes with
             the map is the
-            <a href="panel.html#location-region">country</a>, which the map speaks and
+            <a href="location.html#location-region">country</a>, which the map speaks and
             nothing else does.
         </p>
 
@@ -456,7 +525,7 @@
         <div class="alert alert-info">
             <p class="alert-title">Two things about the map under an airfield.</p>
             <p>
-                The <a href="panel.html#airfield-panel">airfield panel</a> draws the
+                The <a href="airfields.html#airfield-panel">airfield panel</a> draws the
                 coordinate decorator's own map, so it follows the same panel-map switch,
                 and that switch is combined with coordinate decoration itself: an install
                 that turns <em>coordinates</em> off loses the airfield map too, even
@@ -492,12 +561,12 @@
                 <tr>
                     <td><code>The position for this coordinate is unavailable.</code></td>
                     <td>Nothing is wrong with the map. Either the conversion did not arrive for a grid reference, which has no latitude and longitude until the server works one out, or the position is a polar one outside the grid entirely. Rather than guess at a pin, the map says so.</td>
-                    <td>For a conversion that did not arrive, reopen the coordinate. Every reading the link carries by itself stays on screen either way. See <a href="panel.html#location-degrades">when the conversion does not arrive</a>.</td>
+                    <td>For a conversion that did not arrive, reopen the coordinate. Every reading the link carries by itself stays on screen either way. See <a href="location.html#location-degrades">when the conversion does not arrive</a>.</td>
                 </tr>
                 <tr>
                     <td><code>This position is too far north for the map.</code><br><code>This position is too far south for the map.</code></td>
                     <td>Expected, and not a failure. The projection the map uses runs out at about 85 degrees north and south, so a coordinate beyond that is left off rather than pinned up to 550 km from where it actually is.</td>
-                    <td>None. The coordinate is fine and every reading renders. See <a href="panel.html#location-map">the map</a>.</td>
+                    <td>None. The coordinate is fine and every reading renders. See <a href="location.html#location-map">the map</a>.</td>
                 </tr>
             </tbody>
         </table>
@@ -536,7 +605,7 @@
         <h2 id="detail-packages">A detail area will not install, or never appears</h2>
 
         <p>
-            Above zoom 10 the map draws <a href="panel.html#location-map">OpenStreetMap
+            Above zoom 10 the map draws <a href="location.html#location-map">OpenStreetMap
             detail</a> for the areas this install has, and each area is one file on disk.
             Two very different things send people here, and the fix has nothing in common
             between them.
@@ -548,7 +617,7 @@
                 Detail is shipped per area rather than for the whole world. Outside a
                 covered area the world map keeps drawing, magnified past the detail it
                 holds, which is the expected behavior and is described under
-                <a href="panel.html#location-map">the map</a>. This build ships Hawaii and
+                <a href="location.html#location-map">the map</a>. This build ships Hawaii and
                 Guam; anything else was added by whoever installed the plugin, through
                 <a href="admin.html#location-map-packages-dir">the package directory</a>.
                 The credit beneath the map does not answer this: it is drawn whenever this
@@ -556,7 +625,7 @@
                 zoom and everywhere in the world once any area is installed. What tells
                 you an area is covered is the map itself, real road networks and named
                 water where the world map carried none. See
-                <a href="panel.html#location-map">the map</a>.
+                <a href="location.html#location-map">the map</a>.
             </p>
         </div>
 
@@ -790,15 +859,15 @@
             land and water edge better at the size a sidebar gives it, and it keeps the pin
             and the square around it from competing with the readings beside them. There is
             no setting for it, in the System Console or under
-            <a href="panel.html#location-customize">Customize your view</a>. If the map is
+            <a href="location.html#location-customize">Customize your view</a>. If the map is
             unwanted in a light theme, hiding it is the only lever, and it is
-            <a href="panel.html#location-map">yours to pull per person</a>.
+            <a href="location.html#location-map">yours to pull per person</a>.
         </p>
 
         <h2 id="wrong-timezones">The panel and the standalone page show different timezones</h2>
 
         <p>
-            Expected if you have <a href="panel.html#customize">customised your view</a>.
+            Expected if you have <a href="panel.html#customize">customized your view</a>.
             The standalone page is rendered from the link alone and does not ask who is
             reading it, so it always shows the built-in defaults. It requires a login, but
             it does not consult your settings. There is no fix for this today.
@@ -882,14 +951,14 @@
             </thead>
             <tbody>
                 <tr>
-                    <td><code>Unknown subcommand. Available: examples, example-details, check</code></td>
+                    <td><code>Unknown subcommand. Available: examples, check</code></td>
                     <td><a href="error-codes.html#command"><code>TF-16000</code></a></td>
                     <td>A typo, or a subcommand from a newer version. The list in the message is what this build has; see <a href="commands.html">Commands</a>.</td>
                 </tr>
                 <tr>
                     <td><code>Decorators are not registered yet. Try again once the plugin has finished activating.</code></td>
-                    <td><a href="error-codes.html#command"><code>TF-16001</code></a>, <a href="error-codes.html#command"><code>TF-16002</code></a>, <a href="error-codes.html#command"><code>TF-16005</code></a></td>
-                    <td>The command ran between the plugin being enabled and <code>OnActivate</code> finishing. Wait a moment and run it again. Three codes because the same condition is reached through <a href="commands.html#examples"><code>examples</code></a>, <a href="commands.html#check"><code>check</code></a> and <a href="commands.html#example-details"><code>example-details</code></a> respectively, and knowing which one asked is worth a code. If it persists, the plugin did not activate: see <a href="#plugin-wont-start">below</a>.</td>
+                    <td><a href="error-codes.html#command"><code>TF-16001</code></a>, <a href="error-codes.html#command"><code>TF-16002</code></a></td>
+                    <td>The command ran between the plugin being enabled and <code>OnActivate</code> finishing. Wait a moment and run it again. Two codes because the same condition is reached through <a href="commands.html#examples"><code>examples</code></a> and <a href="commands.html#check"><code>check</code></a> respectively, and knowing which one asked is worth a code. If it persists, the plugin did not activate: see <a href="#plugin-wont-start">below</a>.</td>
                 </tr>
                 <tr>
                     <td><code>Nothing would be decorated, so there is nothing to show. Every format is switched off in the System Console, under Plugins &gt; Tactical Fusion.</code></td>
@@ -897,7 +966,7 @@
                     <td>Exactly what it says, and it is a refusal rather than an empty post on purpose: a message advertising the plugin while demonstrating nothing would be permanent. Turn a format on in <a href="admin.html">Admin settings</a>.</td>
                 </tr>
                 <tr>
-                    <td><code>The examples do not fit in one post on this server. Run /tactical-fusion example-details instead, which spreads itself over several posts.</code></td>
+                    <td><code>The examples do not fit in one post on this server. Run /tactical-fusion examples instead, which spreads itself over several posts.</code></td>
                     <td><a href="error-codes.html#command"><code>TF-16004</code></a></td>
                     <td><a href="commands.html#examples"><code>examples</code></a> is one post by definition, so it measures itself against the smallest limit any store reports and refuses rather than letting the server reject it. A long install subpath reaches this, because every link in the post carries it.</td>
                 </tr>
@@ -1001,6 +1070,11 @@
                     <td><a href="error-codes.html#preferences"><code>TF-14008</code></a></td>
                     <td>The saved view named a row this version does not have. Not reachable from the editor, which offers one checkbox per row that exists. Note the asymmetry: writing an unknown row is refused, but reading one is not, so retiring a row can never lock you out of your own settings.</td>
                 </tr>
+                <tr>
+                    <td><code>"..." is not a section of the Cursor on Target panel</code></td>
+                    <td><a href="error-codes.html#preferences"><code>TF-14009</code></a></td>
+                    <td>The same thing for the <a href="cot.html#cot-customize">Cursor on Target panel</a>, which stores the groups you hid rather than rows. The two are separate namespaces, so a coordinate row id sent as a section is refused as well. The same read/write asymmetry applies.</td>
+                </tr>
             </tbody>
         </table>
 
@@ -1025,7 +1099,7 @@
         <ul>
             <li>The <code>TF-NNNN</code> code, from the message or the server log</li>
             <li>The exact text you typed, and what was stored</li>
-            <li>The output of <a href="commands.html#example-details"><code>/tactical-fusion example-details</code></a>, which shows the live behavior of your server</li>
+            <li>The output of <a href="commands.html#examples"><code>/tactical-fusion examples</code></a>, which shows the live behavior of your server</li>
             <li>Which <a href="admin.html">settings</a> are on. There are eleven, and one of them, <code>EnableLocationUTM</code>, is off until an admin turns it on</li>
         </ul>
     </main>

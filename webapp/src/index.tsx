@@ -6,6 +6,9 @@ import type {PluginRegistry} from 'types/mattermost-webapp';
 
 import PackageUploader from './admin/PackageUploader';
 import {RhsTitle, RhsView} from './components/rhs/RhsView';
+import CotPostBody from './cot/CotPostBody';
+import {registerCotPanel} from './cot/index';
+import {COT_POST_TYPE} from './cot/types';
 import {installDecoratorClickHandler} from './decorators/click_handler';
 import {registerBuiltinDecorators} from './decorators/index';
 import {DecoratorPostBody} from './decorators/PostBody';
@@ -37,6 +40,7 @@ export default class Plugin {
 
     public async initialize(registry: PluginRegistry, store: Store) {
         registerBuiltinDecorators();
+        registerCotPanel();
 
         const {id: rhsId, showRHSPlugin, toggleRHSPlugin} = registry.registerRightHandSidebarComponent(
             RhsView,
@@ -67,6 +71,12 @@ export default class Plugin {
             const bodyId = registry.registerPostTypeComponent(decorator.postType, DecoratorPostBody);
             this.disposers.push(() => registry.unregisterPostTypeComponent(bodyId));
         }
+
+        // Registered unconditionally, the posture every decorator takes with its
+        // switches off: a post already stamped must keep rendering after an
+        // admin turns the feature off, or its body falls through to raw XML.
+        const cotId = registry.registerPostTypeComponent(COT_POST_TYPE, CotPostBody);
+        this.disposers.push(() => registry.unregisterPostTypeComponent(cotId));
 
         const headerId = registry.registerChannelHeaderButtonAction(
             <HeaderIcon/>,

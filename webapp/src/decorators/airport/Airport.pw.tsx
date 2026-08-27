@@ -157,7 +157,7 @@ test.describe('the panel', () => {
     });
 
     /*
-     * A fifth mount site for the map, so it has to honour the same switch the
+     * A fifth mount site for the map, so it has to honor the same switch the
      * other four do. Off means nothing is FETCHED rather than nothing drawn,
      * which gating the mount site is what achieves: the archive, the glyph
      * ranges and the library are all reached from this component and nowhere

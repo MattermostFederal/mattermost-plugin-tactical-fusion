@@ -10,7 +10,7 @@ without anyone having fetched anything first.
 |---|---|
 | Upstream | `airport-codes.csv`, the DataHub `airport-codes` dataset |
 | Origin | [OurAirports](https://ourairports.com/data/) |
-| Licence | Public domain |
+| License | Public domain |
 | Retrieved | 2026-08-18 |
 | Upstream SHA-256 | `a916fd8b262c9ab87be40229d93bc6ee9756f2a99dcc2b05b8b7a014f7cdeed6` |
 | Upstream size | 8,584,060 bytes, 82,808 rows |

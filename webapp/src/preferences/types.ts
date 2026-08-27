@@ -1,3 +1,5 @@
+import {isSectionID} from '../cot/sections';
+import type {SectionID} from '../cot/sections';
 import type {ZoneSelection} from '../decorators/dtg/zones';
 import {isHideableID} from '../decorators/location/rows';
 import type {HideableID} from '../decorators/location/rows';
@@ -42,6 +44,24 @@ export interface LocationPreferences {
 }
 
 /**
+ * One reader's view of a Cursor on Target event. Mirrors CotPreferences in
+ * server/preferences.go.
+ */
+export interface CotPreferences {
+
+    /**
+     * The groups to leave out of the sidebar panel, by id. Empty means every
+     * section.
+     *
+     * The HIDDEN sections rather than the shown ones, for the reason
+     * LocationPreferences.hiddenRows records: empty means "all of them", so a
+     * reader who never chose is stored as nothing at all, and a section added
+     * in a later version appears for everybody.
+     */
+    hiddenSections: SectionID[];
+}
+
+/**
  * The whole per-reader blob.
  *
  * Decorators get a key of their own rather than a flat namespace, so a second
@@ -50,10 +70,11 @@ export interface LocationPreferences {
 export interface Preferences {
     dtg: DtgPreferences;
     location: LocationPreferences;
+    cot: CotPreferences;
 }
 
 /**
- * The blob of a reader who has customised nothing.
+ * The blob of a reader who has customized nothing.
  *
  * A module constant rather than a factory: it is the fallback snapshot for
  * `useSyncExternalStore`, which compares snapshots by identity and would
@@ -62,6 +83,7 @@ export interface Preferences {
 export const EMPTY_PREFERENCES: Preferences = {
     dtg: {zones: [], urgentWithinMinutes: 0},
     location: {hiddenRows: []},
+    cot: {hiddenSections: []},
 };
 
 /** A finite, non-negative integer, or 0 for anything else. */
@@ -107,9 +129,10 @@ function asZones(value: unknown): ZoneSelection[] {
  * default instead of reaching `Intl` or a style calculation.
  */
 export function fromWire(raw: unknown): Preferences {
-    const blob = (typeof raw === 'object' && raw !== null ? raw : {}) as {dtg?: unknown; location?: unknown};
+    const blob = (typeof raw === 'object' && raw !== null ? raw : {}) as {dtg?: unknown; location?: unknown; cot?: unknown};
     const dtg = (typeof blob.dtg === 'object' && blob.dtg !== null ? blob.dtg : {}) as Record<string, unknown>;
     const location = (typeof blob.location === 'object' && blob.location !== null ? blob.location : {}) as Record<string, unknown>;
+    const cot = (typeof blob.cot === 'object' && blob.cot !== null ? blob.cot : {}) as Record<string, unknown>;
 
     return {
         dtg: {
@@ -118,6 +141,9 @@ export function fromWire(raw: unknown): Preferences {
         },
         location: {
             hiddenRows: asRowIDs(location.hidden_rows),
+        },
+        cot: {
+            hiddenSections: asSectionIDs(cot.hidden_sections),
         },
     };
 }
@@ -145,15 +171,94 @@ function asRowIDs(value: unknown): HideableID[] {
     return ids;
 }
 
+/**
+ * The section ids in an array, dropping anything this build does not render.
+ *
+ * Forgiving on the way in and strict on the way out, for the reason asRowIDs is.
+ */
+function asSectionIDs(value: unknown): SectionID[] {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    const ids: SectionID[] = [];
+    for (const raw of value) {
+        if (typeof raw === 'string' && isSectionID(raw) && !ids.includes(raw)) {
+            ids.push(raw);
+        }
+    }
+
+    return ids;
+}
+
 /** Builds the JSON the server expects. The wire names are snake_case. */
 export function toWire(preferences: Preferences): unknown {
     return {
-        dtg: {
-            zones: preferences.dtg.zones,
-            urgent_within_minutes: preferences.dtg.urgentWithinMinutes,
-        },
-        location: {
-            hidden_rows: preferences.location.hiddenRows,
-        },
+        dtg: sectionToWire('dtg', preferences.dtg),
+        location: sectionToWire('location', preferences.location),
+        cot: sectionToWire('cot', preferences.cot),
     };
+}
+
+function sectionToWire<K extends keyof Preferences>(section: K, value: Preferences[K]): unknown {
+    if (section === 'dtg') {
+        const dtg = value as DtgPreferences;
+        return {zones: dtg.zones, urgent_within_minutes: dtg.urgentWithinMinutes};
+    }
+    if (section === 'location') {
+        return {hidden_rows: (value as LocationPreferences).hiddenRows};
+    }
+
+    return {hidden_sections: (value as CotPreferences).hiddenSections};
+}
+
+/**
+ * The blob the server sent, with ONE section replaced.
+ *
+ * A PUT replaces the whole blob, so a save has to send back the sections it did
+ * not touch. Rebuilding them from the PARSED shape silently rewrote them:
+ * fromWire drops an id this build does not know, deliberately, so that retiring
+ * one cannot lock a reader out. Sending the parsed shape back turned that
+ * forgiving read into a destructive write, and a reader on a cached older
+ * bundle lost a hidden id by saving an unrelated section. The untouched
+ * sections now travel back exactly as they arrived.
+ */
+export function withSection<K extends keyof Preferences>(
+    base: unknown, section: K, value: Preferences[K],
+): unknown {
+    const blob = typeof base === 'object' && base !== null ? {...base as Record<string, unknown>} : {};
+    blob[section] = sectionToWire(section, value);
+
+    return blob;
+}
+
+/**
+ * Whether a blob the server sent records no choice at all.
+ *
+ * Read off the WIRE rather than the parsed shape, for the reason withSection
+ * exists: a hidden id this build does not know parses away to nothing, and
+ * deciding to DELETE on that would throw away the very settings the forgiving
+ * read exists to preserve.
+ */
+export function wireHasNoChoices(base: unknown): boolean {
+    if (typeof base !== 'object' || base === null) {
+        return true;
+    }
+
+    const blob = base as {dtg?: unknown; location?: unknown; cot?: unknown};
+    const dtg = record(blob.dtg);
+    const minutes = dtg.urgent_within_minutes;
+
+    return listLength(dtg.zones) === 0 &&
+        (typeof minutes !== 'number' || minutes === 0) &&
+        listLength(record(blob.location).hidden_rows) === 0 &&
+        listLength(record(blob.cot).hidden_sections) === 0;
+}
+
+function record(value: unknown): Record<string, unknown> {
+    return typeof value === 'object' && value !== null ? value as Record<string, unknown> : {};
+}
+
+function listLength(value: unknown): number {
+    return Array.isArray(value) ? value.length : 0;
 }

@@ -7,7 +7,8 @@ geospatial data, CoT, time zones, IP intelligence, CVEs, and other operational
 information. The server is Go, the webapp TypeScript/React.
 
 Shipped today: the decorator framework and three decorators, DTG, Location and
-Airfields, plus the bundled offline map. The rest is not implemented.
+Airfields, plus the bundled offline map and the Cursor on Target renderer. The
+rest is not implemented.
 
 A decorator finds a token in a posted message, rewrites it in
 `MessageWillBePosted` into a markdown link whose query string carries the
@@ -33,6 +34,7 @@ right-hand sidebar, and a standalone server-rendered page.
 | `decorators/dtg/` | Date-time groups and RFC 3339 timestamps |
 | `decorators/location/` | Coordinate grammars, geodesy, MGRS, rendering, conversion; `mapdata/` holds the generated country polygons |
 | `decorators/airport/` | ICAO airfields; `data/` holds the embedded CSV and its provenance |
+| `cot/` | Cursor on Target: the bounded XML parse, the type tables, the post props |
 
 ### `webapp/`
 
@@ -41,6 +43,7 @@ right-hand sidebar, and a standalone server-rendered page.
 | `src/index.tsx` | `initialize()`, registration, the disposer list run by `uninitialize()` |
 | `src/decorators/` | Framework: registry, click handler, styles, selection store, theme, `Tooltip` |
 | `src/decorators/{dtg,location,airport}/` | Panels, hovers, and per-decorator clients |
+| `src/cot/` | The Cursor on Target post body, its card and its map |
 | `src/decorators/location/map/` | `LocationMap`, MapLibre loading, the basemap reader, span arithmetic |
 | `src/page/` | Standalone pages' entry point, built by a second webpack config into `public/app/page.js` |
 | `src/components/rhs/` | `RhsView` and `RhsTitle` |
@@ -66,9 +69,10 @@ there rather than here or in a comment.
 | [`docs/design/decorators.md`](docs/design/decorators.md) | The framework, the DTG grammars, the tagger and protected spans, `siteURLPath`, page CSP, the slash command, adding a decorator, the post size limit |
 | [`docs/design/location.md`](docs/design/location.md) | Every coordinate grammar, boundary guards, rendering and resolution, geodesy, `/api/v1/convert`, copy buttons, prior art |
 | [`docs/design/airfields.md`](docs/design/airfields.md) | The label-only ICAO grammar, the embedded database, `/api/v1/airport`, the page and panel |
+| [`docs/design/cot.md`](docs/design/cot.md) | Cursor on Target: why it is not a decorator, the exclusivity rule, the props budget, `edit_at` over a digest, the parser's refusals, the CE circle |
 | [`docs/design/mapping.md`](docs/design/mapping.md) | The vector basemap, the OpenStreetMap detail tier and its seam, detail map packages, `PageStatic` vs `PageMapping`, the page bundle, zoom numbers, the country lookup, `Conversion`, the map page, the panel map, turning maps off, the map under a post |
 | [`docs/design/preferences.md`](docs/design/preferences.md) | The KV store, both caches, the location hover, the location rows, the zone picker and ordering |
-| [`docs/design/admin-settings.md`](docs/design/admin-settings.md) | The twenty switches, the two map-package settings, the four sections, why `EnableLocationUTM` ships off |
+| [`docs/design/admin-settings.md`](docs/design/admin-settings.md) | The twenty-two switches, the two map-package settings, the five sections, why `EnableLocationUTM` ships off |
 | [`docs/design/help-and-errors.md`](docs/design/help-and-errors.md) | `public/help/` and the `TF-NNNN` catalog |
 | [`docs/design/unverified.md`](docs/design/unverified.md) | Claims that need a running server or a phone and have never been checked |
 
@@ -84,7 +88,7 @@ recover logs through an API handle captured before the deferred call. There is
 no `MessageWillBeUpdated` hook and a test asserts it stays absent.
 
 **`findProtectedRanges` is the entire safety story.** Anything it fails to
-recognise is a corruption bug. Widen it only with a regression test per
+recognize is a corruption bug. Widen it only with a regression test per
 construct, and never let overlapping spans be discarded rather than merged.
 
 **Boundary guards live in `Pattern.Boundary`, never in the regex.** A pattern
@@ -117,23 +121,39 @@ exception and the `Formats` doc comment names it.
 
 **`Page.Capability` decides the whole CSP.** `PageStatic` is what a page should
 want; `PageMapping` gives back `script-src 'self'`, `worker-src`, `img-src data:`
-and `connect-src 'self'` and makes escaping the only defence on a route that
+and `connect-src 'self'` and makes escaping the only defense on a route that
 echoes author text. `ScriptSrc` must be relative.
 
 **Setting `Post.Type` costs the post its Elasticsearch/OpenSearch matches**,
-its auto-translation and its embeds. Only the inline map does it, and
-`EnableLocationMapInline` is how an install opts out.
+its auto-translation, its embeds and its file attachment list. The inline map
+and the Cursor on Target card are the only two things that do it;
+`EnableLocationMapInline` and `EnableCot` are how an install opts out of each.
+
+**A stamped post is never decorated, and the stamp is atomic.** CoT is tried
+first and wins, because the card renders the text around an event as plain text
+and a decorator link written into that text could not render there. The type and
+the props are committed together on a clone, after the whole props map has been
+measured against `PostPropsMaxUserRunes`: a half-stamp costs the post its search
+matches forever, and props sized off the event alone can have the server refuse
+the post outright.
+
+**`plugin.json` may not contain a backtick.** Both generated manifests embed it
+inside a literal a backtick terminates, so one breaks the Go and the webapp build
+at once, hundreds of lines from the cause.
 
 **The post size limit cannot be read from the API.** `decoratePost` uses the
-floor (`safePostRunes`), the slash commands use the default and
-`example-details` retries smaller on the first post.
+floor (`safePostRunes`), and `examples` measures every message against the same
+floor before it writes any of them, refusing the whole run rather than posting
+some of it.
 
 **Every user-facing failure and every `p.API.Log*` call carries a `TF-NNNN`.**
 Adding one is four edits that go together: the constant, the `AllCodes` entry,
 the call site, and a row in `public/help/error-codes.html`.
 
 **Anchor ids in `public/help/` are a contract**, and those pages must stay
-static, light-only and self-contained so they render air-gapped.
+light-only and self-contained so they render air-gapped. The only script they
+may load is their own `copy.js`, which enhances and never enables: every page
+must still work with scripting off.
 
 ### Cross-language sync points
 
@@ -156,6 +176,15 @@ side moves alone. Change both halves together.
 | The package name grammar: `packageNamePattern` and `PACKAGE_NAME` | `TestWebappPackageNameGrammarMatches` |
 | The same grammar again, as the `case` in the Makefile's bundle guard | `TestBundleGuardAcceptsExactlyWhatDiscoveryDoes`, which compares behavior rather than text and holds the guard to `LC_ALL=C` |
 | The `data-packages` attribute and its separator | `TestWebappPackagesAttributeMatches` |
+| The CoT post type, props key and props version | `TestWebappCotPostTypeMatches` |
+| The CoT props shape: every key Go writes and the webapp reads | `TestWebappCotShapeMatches`, on a fixture built from `cot.FixtureDetail()` |
+| The `<detail>` extension registry: every key it can write | Same test, plus `TestEveryRegisteredKeyIsWrittenFromTheFixture` |
+| The CoT semantic classes | `TestWebappCotClassesMatch` |
+| The CoT panel's hideable sections: ids, labels, order | `TestWebappCotSectionCatalogMatches` |
+| The caps a forged blob is held to: vertices, checklist kinds, events | `TestWebappBlobCapsMatch` |
+| The source kinds a stamped post may name | `TestWebappCotPostTypeMatches` |
+| The processing path, which is an array rather than a rendered string | `TestWebappReadsTheProcessingPath` |
+| A checklist, counted by element name rather than decoded | `TestWebappReadsTheChecklist` |
 | The package list's 60 second lifetime | `TestWebappPackageCacheLifetimeMatches` |
 | The map schema: `mapSchemaVersion` and `schemaPrefix`, and `MAP_SCHEMA` and `SCHEMA_PREFIX` in `build/maposm/build.sh` | `TestMapSchemaMatchesTheGenerator` |
 | Rendering fixtures | `format_test.go` and `format.spec.ts` hold the same table |
@@ -246,3 +275,33 @@ or pin. See [`docs/SECURITY.md`](docs/SECURITY.md).
 GitHub Actions are pinned to full commit SHAs with a `# vX.Y.Z` comment. Resolve
 the tag to its SHA when adding or bumping one, and keep the comment accurate.
 Never use floating tags.
+
+
+## Dependency Licensing
+
+The plugin bundle ships to customers, so **no copyleft dependencies in
+anything that ends up in the bundle** (Go modules in `go.mod`, npm packages in
+`webapp/package.json`, or vendored code under `public/`).
+
+- Forbidden: GPL (v2/v3), AGPL (v3), SSPL, CC BY-SA, and other strong or
+  network copyleft licenses.
+- Weak copyleft (LGPL, MPL 2.0, EPL) is off limits by default. Ask before
+  adding one.
+- Preferred: MIT, BSD-2/3-Clause, Apache 2.0, ISC, Unlicense, CC0.
+- Check the license before adding any dependency, including transitive ones.
+  Unclear or unstated license means treat it as forbidden and ask.
+- `make license-check` enforces this from the SBOMs, and `make sbom-audit`
+  runs it alongside the CVE scan. Both run in CI on every PR, so a copyleft
+  dependency fails the build rather than being caught by review.
+- An unavoidable exception goes in `.licenses.json`, keyed to one component and
+  one license, with a reason. `docs/SECURITY.md` explains what is already there
+  and why.
+- `make bundle` writes `THIRD-PARTY-NOTICES.txt` into every bundle from the
+  dependencies' own license files, and fails on one that ships no license text.
+  Adding a dependency that publishes none means recording what it does declare
+  under `noticeFallbacks`.
+- If a copyleft library seems unavoidable, present alternatives and tradeoffs
+  instead of adding it.
+
+Copyleft is fine in tooling that never ships: scripts under `scripts/`, dev
+containers, CI workflows, and test-only tooling that stays out of the bundle.
