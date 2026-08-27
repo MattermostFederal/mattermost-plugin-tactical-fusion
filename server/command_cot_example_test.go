@@ -296,3 +296,24 @@ func TestNoCotExampleIsTabIndented(t *testing.T) {
 		}
 	}
 }
+
+// UploadFile answers a file and an error, and the branch that reads the error
+// admits the case where there is none. Reading it there panicked, and
+// ExecuteCommand is the one Cursor on Target path with no recover over it.
+func TestAnUploadThatAnswersNothingIsSurvived(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	api := p.API.(*fakeAPI)
+	api.uploadNothing = true
+
+	runExamplePosts(t, p)
+
+	for _, post := range api.created {
+		if len(post.FileIds) != 0 {
+			t.Errorf("an example was posted with %d file(s) after the upload answered nothing", len(post.FileIds))
+		}
+	}
+
+	if len(api.created) == 0 {
+		t.Error("the whole run was lost, but only the attachment example should have been")
+	}
+}

@@ -110,9 +110,12 @@ type fakeAPI struct {
 	fileContent map[string][]byte
 
 	// uploaded records every file a command asked the plugin API to store, and
-	// uploadErr forces that to fail.
-	uploaded  []*model.FileInfo
-	uploadErr *model.AppError
+	// uploadErr forces that to fail. uploadNothing is the other failure the
+	// signature allows, no info and no error, which the caller must survive
+	// without reading the error it was not given.
+	uploaded      []*model.FileInfo
+	uploadErr     *model.AppError
+	uploadNothing bool
 
 	// fileInfoErr and fileErr force the corresponding failure, which is the
 	// only way to prove the post survives a filestore that will not answer.
@@ -150,6 +153,9 @@ func (a *fakeAPI) GetFileInfo(fileID string) (*model.FileInfo, *model.AppError) 
 func (a *fakeAPI) UploadFile(data []byte, channelID, name string) (*model.FileInfo, *model.AppError) {
 	if a.uploadErr != nil {
 		return nil, a.uploadErr
+	}
+	if a.uploadNothing {
+		return nil, nil
 	}
 
 	if a.files == nil {

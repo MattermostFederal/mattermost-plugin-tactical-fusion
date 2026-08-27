@@ -185,8 +185,13 @@ func (p *Plugin) cotExamplePost(args *model.CommandArgs, example cotExample) (*m
 
 	info, appErr := p.API.UploadFile([]byte(example.source), args.ChannelId, example.file)
 	if appErr != nil || info == nil {
+		reason := "the server returned no file info"
+		if appErr != nil {
+			reason = appErr.Error()
+		}
+
 		p.API.LogError("tactical-fusion: could not upload the Cursor on Target example attachment",
-			"error_code", errcode.CommandExamplesPostFailed, "error", appErr.Error())
+			"error_code", errcode.CommandExamplesPostFailed, "error", reason)
 		return nil, false
 	}
 
