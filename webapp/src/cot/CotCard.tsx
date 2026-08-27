@@ -24,7 +24,6 @@ const styles: Record<string, React.CSSProperties> = {
         marginTop: 8,
         maxWidth: 640,
         overflow: 'hidden',
-        cursor: 'pointer',
     },
     kind: {
         fontWeight: 700,
@@ -277,20 +276,6 @@ function EventList({events}: {events: readonly CotEvent[]}) {
     );
 }
 
-function openFrom(clicked: React.MouseEvent, payload: CotPayload): void {
-    const target = clicked.target as Element | null;
-    if (target?.closest?.('a, button, [data-cot-noopen]')) {
-        return;
-    }
-
-    const selected = typeof window === 'undefined' ? '' : (window.getSelection()?.toString() ?? '');
-    if (selected !== '') {
-        return;
-    }
-
-    showCotEvent(payload);
-}
-
 export const CotCard: React.FC<Props> = ({payload, compactDisplay}) => {
     const {events} = payload;
     const only = events.length === 1 ? events[0] : undefined;
@@ -302,7 +287,6 @@ export const CotCard: React.FC<Props> = ({payload, compactDisplay}) => {
             <div
                 style={styles.card}
                 data-testid='cot-card'
-                onClick={(clicked) => openFrom(clicked, payload)}
             >
                 <p style={styles.kind}>
                     {only ? `${CARD_KIND}:` : `${CARD_KIND}: ${events.length} events`}

@@ -255,7 +255,6 @@ const CotMap: React.FC<{events: readonly CotEvent[]}> = ({events}) => {
             ref={setBox}
             style={styles.frame}
             data-testid='cot-map'
-            data-cot-noopen=''
         >
             {near ? (
                 <CotMapCanvas

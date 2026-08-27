@@ -24,39 +24,20 @@ test('the card opens the sidebar on its own event', async ({mount}) => {
     await expect(component.getByTestId('rhs')).toContainText('ANDROID-1');
 });
 
-test.describe('the card is its own click target', () => {
-    test('clicking the card body opens the sidebar', async ({mount}) => {
-        const component = await mount(
-            <CotPanelHarness event={{callsign: 'DELTA1', uid: 'ANDROID-1'}}/>,
-        );
+// The button is the only way in, deliberately.
+//
+// A card-wide click handler was tried and removed: a card is a block of readings
+// somebody selects text out of, and every guard it needed (links, buttons, the
+// map, a click that ends a selection) was a way of saying it should not have
+// been clickable in the first place.
+test('the card body does not open the sidebar', async ({mount}) => {
+    const component = await mount(
+        <CotPanelHarness event={{callsign: 'DELTA1', uid: 'ANDROID-1'}}/>,
+    );
 
-        await component.getByTestId('cot-card').getByText('DELTA1').click();
+    await component.getByTestId('cot-card').getByText('DELTA1').click();
 
-        await expect(component.getByTestId('rhs')).toContainText('ANDROID-1');
-    });
-
-    test('clicking a link inside the card does not', async ({mount}) => {
-        const component = await mount(
-            <CotPanelHarness
-                event={{lat: '34.0561', lon: '-118.2500', format: 'dd', value: '34.0561,-118.2500'}}
-            />,
-        );
-
-        // The anchor is a real one, so the navigation is stopped rather than
-        // the click, which would take the harness with it.
-        await component.evaluate(() => {
-            document.addEventListener('click', (clicked) => {
-                if ((clicked.target as Element).closest('a')) {
-                    clicked.preventDefault();
-                }
-            });
-        });
-
-        await component.getByTestId('cot-card').
-            getByRole('link', {name: '34.0561, -118.2500'}).click();
-
-        await expect(component.getByTestId('rhs')).not.toContainText('Readings for the');
-    });
+    await expect(component.getByTestId('rhs')).not.toContainText('Readings for the');
 });
 
 test('the sidebar header names the event rather than the feature', async ({mount}) => {

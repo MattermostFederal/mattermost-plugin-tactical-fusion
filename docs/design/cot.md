@@ -265,18 +265,17 @@ location decorator's, inside its `<summary>`, in a span that calls
 hides itself on a plain-HTTP origin, which for an air-gapped install is the
 norm, and the `<pre>` stays selectable there.
 
-### The whole card opens the sidebar
+### Only the button opens the sidebar
 
-"Open details" was the only way in, which made a 640px card a click target the
-size of a link. The card wrapper now opens the panel too, and skips the click
-when it landed on an `a`, a `button`, or anything under `[data-cot-noopen]`,
-which is what the map frame carries: those three mean something else by a click,
-and a map is dragged rather than clicked. A click that ends a text selection is
-skipped as well, since that is a reader finishing a drag.
+A card-wide click handler was tried and removed. It made the whole 640px card
+open the panel, and needed a guard for every part of it that means something
+else by a click: an `a`, a `button`, the map frame, and a click that merely ends
+a text selection. Four exceptions to one rule is the rule saying it was wrong.
 
-"Open details" stays. It is the keyboard and screen reader path, and it is why
-the wrapper takes no `role` and no `tabIndex`: an interactive wrapper around an
-interactive button announces the same action twice.
+A card is a block of readings people select text out of and links they follow.
+"Open details" is the affordance, it is already a button, and it is the keyboard
+and screen reader path. The wrapper takes no `onClick`, no `role` and no
+`tabIndex`.
 
 ### Several events in one source
 
