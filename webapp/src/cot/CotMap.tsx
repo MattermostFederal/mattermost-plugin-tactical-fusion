@@ -156,6 +156,32 @@ function geometryFor(event: CotEvent | undefined): MapGeometry | undefined {
     return {kind: 'outline', points: geometry.points, closed: geometry.closed};
 }
 
+/**
+ * The one event in a block that draws an outline, or undefined.
+ *
+ * A block of shapes on one map is a pile of outlines with nothing saying which
+ * belongs to which track, which is why more than one draws none. Exactly one is
+ * unambiguous, and a suspected area beside the tracks inside it is the case this
+ * exists for.
+ *
+ * Outlines only, and that is not a simplification. An outline carries absolute
+ * vertices, so it lands where the event put it whatever else is on the map. An
+ * ellipse is drawn around the map's PRIMARY position, which in a block is the
+ * first event's, so a circle belonging to the third would be drawn around the
+ * first one's marker.
+ */
+function soleOutline(drawn: readonly CotEvent[]): CotEvent | undefined {
+    const outlined = drawn.filter((event) => geometryFor(event)?.kind === 'outline');
+    return outlined.length === 1 ? outlined[0] : undefined;
+}
+
+/** @internal exported for tests */
+export function _soleOutlineForTesting( // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
+    drawn: readonly CotEvent[],
+): CotEvent | undefined {
+    return soleOutline(drawn);
+}
+
 /** @internal exported for tests */
 export function _geometryForTesting( // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
     event: CotEvent | undefined,
@@ -181,6 +207,7 @@ const CotMapCanvas: React.FC<{events: readonly CotEvent[]; pageEnabled: boolean}
     // event's accuracy ring and its Open larger link on a map the other two
     // are missing from, and say nothing about the two.
     const only = events.length === 1 && drawn.length === 1 ? drawn[0] : undefined;
+    const shaped = only ?? soleOutline(drawn);
 
     return (
         <LocationMap
@@ -193,8 +220,8 @@ const CotMapCanvas: React.FC<{events: readonly CotEvent[]; pageEnabled: boolean}
             accuracyMeters={only && accuracyMeters(only)}
             accuracyLabel={only?.ce}
             markers={markers}
-            geometry={geometryFor(only)}
-            geometryColor={only && statedColor(only)}
+            geometry={geometryFor(shaped)}
+            geometryColor={shaped && statedColor(shaped)}
             markerLabel={only ? only.typeLabel : blockLabel(drawn, events.length)}
             pageHref={pageEnabled && only ? mapPageHref(only) : undefined}
         />

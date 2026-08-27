@@ -1,6 +1,10 @@
 import {expect, test} from '@playwright/test';
 
-import {_blockLabelForTesting as blockLabel, _drawableEventsForTesting as drawableEvents} from './CotMap';
+import {
+    _blockLabelForTesting as blockLabel,
+    _drawableEventsForTesting as drawableEvents,
+    _soleOutlineForTesting as soleOutline,
+} from './CotMap';
 import type {CotEvent} from './types';
 
 function ev(affiliation: string, lat = '21.3353', lon = '-157.9483'): CotEvent {
@@ -73,4 +77,52 @@ test('an event with no position is not drawable', () => {
 
 test('an event past the projection is not drawable', () => {
     expect(drawableEvents([ev('friend', '88.0000', '10.0000')])).toHaveLength(0);
+});
+
+function outlined(uid: string, points: Array<{lat: string; lon: string}>): CotEvent {
+    return {
+        ...ev('unknown'),
+        uid,
+        geometry: {kind: 'polyline', closed: true, count: String(points.length), points, note: ''},
+    } as unknown as CotEvent;
+}
+
+const SQUARE = [
+    {lat: '21.34', lon: '-157.95'},
+    {lat: '21.35', lon: '-157.94'},
+    {lat: '21.33', lon: '-157.93'},
+];
+
+/*
+ * A drawn area beside the tracks inside it is the case this exists for, and it
+ * arrives in a block rather than alone. More than one outline is still refused:
+ * a map of overlapping outlines says nothing about which belongs to which.
+ */
+test('one outline in a block is drawn', () => {
+    const drawn = [ev('friend'), ev('hostile'), outlined('AREA-1', SQUARE)];
+
+    expect(soleOutline(drawn)?.uid).toBe('AREA-1');
+});
+
+test('two outlines in a block are not', () => {
+    const drawn = [ev('friend'), outlined('AREA-1', SQUARE), outlined('AREA-2', SQUARE)];
+
+    expect(soleOutline(drawn)).toBeUndefined();
+});
+
+test('a block with no outline draws none', () => {
+    expect(soleOutline([ev('friend'), ev('hostile')])).toBeUndefined();
+});
+
+// An ellipse is drawn around the map's primary position, which in a block is the
+// first event's, so one belonging to a later event would land on the wrong
+// marker. Outlines carry absolute vertices and do not have that problem.
+test('an ellipse in a block is left undrawn rather than drawn in the wrong place', () => {
+    const ellipse = {
+        ...ev('unknown'),
+        uid: 'RING-1',
+        geometry: {kind: 'ellipse', majorMeters: 400, minorMeters: 250, angleDegrees: 30, note: ''},
+    } as unknown as CotEvent;
+
+    expect(soleOutline([ev('friend'), ellipse])).toBeUndefined();
 });
