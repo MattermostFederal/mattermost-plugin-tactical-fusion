@@ -65,6 +65,22 @@ func loadAtomPaths() map[string]string {
 	return paths
 }
 
+// maxAtomCodes is the deepest path the table holds, read from the table so it
+// cannot disagree with it. A type carries author text of any length, and
+// walking past this can match nothing.
+var maxAtomCodes = deepestAtomPath()
+
+func deepestAtomPath() int {
+	deepest := 0
+	for path := range atomPaths {
+		if codes := strings.Count(path, "-") + 1; codes > deepest {
+			deepest = codes
+		}
+	}
+
+	return deepest
+}
+
 // Title Case, matching the atom table, because both reach the same row on the
 // card and a reader meets them side by side.
 var wholeTypes = map[string]string{
@@ -142,10 +158,20 @@ func decodeAtom(raw string) decodedType {
 // actually known, so an unrecognized tail costs the letters after it and not
 // the ones before.
 func longestAtomPath(codes []string) string {
-	best := ""
+	if len(codes) > maxAtomCodes {
+		codes = codes[:maxAtomCodes]
+	}
 
-	for i := range codes {
-		if label, ok := atomPaths[strings.Join(codes[:i+1], "-")]; ok {
+	best := ""
+	var path strings.Builder
+
+	for i, code := range codes {
+		if i > 0 {
+			path.WriteByte('-')
+		}
+		path.WriteString(code)
+
+		if label, ok := atomPaths[path.String()]; ok {
 			best = label
 		}
 	}

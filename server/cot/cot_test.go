@@ -797,3 +797,35 @@ func TestEveryHowSourceHasAMethod(t *testing.T) {
 		}
 	}
 }
+
+// A type attribute is author text of unbounded length, and the walk over its
+// codes used to rebuild the whole path on every step: a 64 KB type cost
+// seconds of CPU inside MessageWillBePosted, which any member could repeat.
+func TestALongTypeCostsNoMoreThanAShortOne(t *testing.T) {
+	long := "a-f" + strings.Repeat("-x", 32_000)
+
+	start := time.Now()
+	decoded := decodeType(long)
+	elapsed := time.Since(start)
+
+	if decoded.Affiliation != "friend" {
+		t.Errorf("affiliation = %q, want the letter to still be read", decoded.Affiliation)
+	}
+
+	if elapsed > 50*time.Millisecond {
+		t.Errorf("decodeType over %d codes took %v; the walk is quadratic again", 32_000, elapsed)
+	}
+}
+
+// The cap is read from the table, so a deeper row raises it on its own.
+func TestTheAtomWalkStopsAtTheDeepestPathTheTableHolds(t *testing.T) {
+	if maxAtomCodes < 1 {
+		t.Fatalf("maxAtomCodes = %d, want the depth of the loaded table", maxAtomCodes)
+	}
+
+	for path := range atomPaths {
+		if codes := strings.Count(path, "-") + 1; codes > maxAtomCodes {
+			t.Errorf("%q has %d codes, past the cap of %d, so it can never match", path, codes, maxAtomCodes)
+		}
+	}
+}

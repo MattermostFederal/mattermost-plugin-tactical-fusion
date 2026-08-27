@@ -1260,6 +1260,30 @@ classifies as chat, and its remarks are promoted into a message-shaped block:
 ten bytes, chosen by the author, to re-shape somebody else's contact report. An
 `a-*` atom is never re-classed by a `<detail>` child.
 
+### The atom walk is bounded by the table it reads
+
+`type` is an attribute, and no attribute value is length-capped: the parser
+bounds the source at 64 KB, the element and attribute count at 4096 and the
+depth at 32, but one attribute may hold all 64 KB on its own. `decodeType` gets
+the raw value rather than the sanitized one, because the label describes the
+event and not the truncation.
+
+`longestAtomPath` therefore walks author-controlled input. Rebuilding the whole
+prefix on each step, which `strings.Join(codes[:i+1], "-")` did, made the walk
+quadratic in that length: a measured **3.7 seconds of CPU for one 64 KB type**,
+inside `MessageWillBePosted`, synchronous on the poster's request and repeatable
+by any member. Nothing panicked, so the recover did not help, and the invariant
+that nothing on this path may stop somebody from posting was broken by cost
+rather than by refusal.
+
+Two changes, both needed. The prefix is built once and extended, so the walk is
+linear. And it stops at `maxAtomCodes`, which is **derived from `atomPaths` at
+init** rather than written down: no key is deeper than the deepest key, so
+truncating there can only drop prefixes that could never have matched, and a
+deeper row added to `data/types.csv` raises the cap on its own.
+`TestTheAtomWalkStopsAtTheDeepestPathTheTableHolds` is what keeps the derivation
+honest, and `TestALongTypeCostsNoMoreThanAShortOne` pins the cost.
+
 **Matching is case-sensitive**, because case is part of a CoT code everywhere
 else in this package and a `classify` that folded it would disagree with the
 label rendered beside it. Match kind (exact or prefix) is a field on the row
