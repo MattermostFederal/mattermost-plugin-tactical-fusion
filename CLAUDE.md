@@ -142,8 +142,9 @@ inside a literal a backtick terminates, so one breaks the Go and the webapp buil
 at once, hundreds of lines from the cause.
 
 **The post size limit cannot be read from the API.** `decoratePost` uses the
-floor (`safePostRunes`), the slash commands use the default and
-`example-details` retries smaller on the first post.
+floor (`safePostRunes`), and `examples` measures every message against the same
+floor before it writes any of them, refusing the whole run rather than posting
+some of it.
 
 **Every user-facing failure and every `p.API.Log*` call carries a `TF-NNNN`.**
 Adding one is four edits that go together: the constant, the `AllCodes` entry,

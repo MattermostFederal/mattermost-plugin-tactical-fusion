@@ -13,170 +13,181 @@ import (
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
 )
 
-func runExamples(t *testing.T, p *Plugin) *model.CommandResponse {
+func examplesResponse(t *testing.T, p *Plugin) *model.CommandResponse {
 	t.Helper()
 
 	response, appErr := p.ExecuteCommand(&plugin.Context{}, &model.CommandArgs{
-		Command: "/tactical-fusion examples",
+		Command:   "/tactical-fusion examples",
+		UserId:    "user1",
+		ChannelId: "channel1",
 	})
 	if appErr != nil {
 		t.Fatalf("ExecuteCommand returned an error: %v", appErr)
 	}
-
 	return response
 }
 
-// It goes in the channel, which is the point of it.
+// One post per set, and none of them a reply.
 //
-// Pinned because it is a one-word change away from being ephemeral, and an
-// ephemeral post is indistinguishable from a working one to whoever ran it.
-func TestExamplesPostsToTheChannel(t *testing.T) {
+// The unit a reader thinks in is one format at a time, and a reply would file
+// each under the one above it and read as a remark about it, which coordinates
+// are not to date-time groups.
+func TestExamplesPostOneMessagePerSet(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 
-	response := runExamples(t, p)
+	messages := runExamplePosts(t, p)
 
-	if response.ResponseType != model.CommandResponseTypeInChannel {
-		t.Fatalf("ResponseType = %q, want in_channel", response.ResponseType)
+	want := len(exampleSetOrder) + len(cotExampleOrder)
+	if len(messages) != want {
+		t.Fatalf("got %d messages for %d sets plus %d Cursor on Target events",
+			len(messages), len(exampleSetOrder), len(cotExampleOrder))
 	}
-}
 
-// Every row that survives is a real decorated link, in the label → link shape.
-func TestExamplesRowsAreDecorated(t *testing.T) {
-	p := newTestPlugin(t, "https://example.com", true)
+	for i, key := range exampleSetOrder {
+		heading := "#### " + exampleSets[key].name
+		if !strings.HasPrefix(messages[i], heading) {
+			t.Errorf("message %d does not start %q:\n%s", i+1, heading, first(messages[i]))
+		}
 
-	text := runExamples(t, p).Text
-
-	for _, row := range exampleFixedRows {
-		t.Run(row.text, func(t *testing.T) {
-			// The link does not always begin at the arrow. A location field
-			// label is matched but NOT consumed, so a labeled row renders
-			// "→ GEOREF:[GJNJ5753](...)": the label stays in the message and
-			// only the token is linked. Asserting the link starts at the arrow
-			// would have declined that on the grounds it is working correctly.
-			prefix := "**" + row.label + ":** " + inlineCode(row.text) + " → "
-
-			_, rest, found := strings.Cut(text, prefix)
-			if !found {
-				t.Fatalf("row is missing, wanted a line starting %q:\n%s", prefix, text)
+		// Nothing else belongs in it. A set sharing a post with the next one is
+		// the thing this shape exists to prevent.
+		for _, other := range exampleSetOrder {
+			if other == key {
+				continue
 			}
-
-			line, _, _ := strings.Cut(rest, "\n")
-			if !strings.Contains(line, "](/plugins/"+manifest.Id+"/decorate/") {
-				t.Fatalf("row is undecorated: %q", line)
+			if strings.Contains(messages[i], "#### "+exampleSets[other].name) {
+				t.Errorf("message %d carries the %q section as well", i+1, exampleSets[other].name)
 			}
-		})
-	}
-
-	if !strings.Contains(text, "](/plugins/"+manifest.Id+"/decorate/") {
-		t.Fatal("no decorator link in the examples post")
-	}
-}
-
-// Between them the rows have to cover every registered decorator, or the post
-// would silently stop mentioning one the day it was added.
-func TestExamplesCoversEveryRegisteredDecorator(t *testing.T) {
-	p := newTestPlugin(t, "https://example.com", true)
-
-	text := runExamples(t, p).Text
-
-	for _, d := range p.decorators.All() {
-		if !strings.Contains(text, "/decorate/"+d.Type()+"?") {
-			t.Errorf("the examples post has no row for the %q decorator", d.Type())
 		}
 	}
 }
 
-// The two live rows are the reason this command is worth running rather than
-// reading: one opens inside the flash threshold and one counts up.
-func TestExamplesLiveRowsStraddleTheThreshold(t *testing.T) {
+// Read from the registry rather than listed, so a decorator added without a set
+// fails here rather than being quietly left out of the demonstration.
+func TestExamplesCoverEveryRegisteredDecorator(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
+	joined := strings.Join(runExamplePosts(t, p), "\n")
 
-	before := time.Now().UTC()
-	text := runExamples(t, p).Text
-	after := time.Now().UTC()
-
-	for _, live := range exampleLiveRows {
-		t.Run(live.note, func(t *testing.T) {
-			if !strings.Contains(text, " - "+live.note) {
-				t.Fatalf("the %q row is missing:\n%s", live.note, text)
-			}
-
-			// The command reads its own clock, so a minute boundary can fall
-			// between that and this test's. Either token is correct.
-			earliest := dtg.FormatZulu(before.Add(live.offset))
-			latest := dtg.FormatZulu(after.Add(live.offset))
-
-			if !strings.Contains(text, "["+earliest+"](/plugins/") &&
-				!strings.Contains(text, "["+latest+"](/plugins/") {
-				t.Fatalf("no decorated link for %q or %q", earliest, latest)
-			}
-		})
+	for _, d := range p.decorators.All() {
+		if !strings.Contains(joined, "/decorate/"+d.Type()+"?") {
+			t.Errorf("no example links to the %q decorator", d.Type())
+		}
+		if _, ok := exampleSets[d.Type()]; !ok {
+			t.Errorf("the %q decorator has no example set", d.Type())
+		}
 	}
 
-	// One either side of zero, which is what makes the pair worth having: a
-	// countdown and a count-up. Read off the offsets rather than the rendered
-	// text, so this still holds if the wording changes.
-	var ahead, behind bool
-	for _, live := range exampleLiveRows {
-		ahead = ahead || live.offset > 0
-		behind = behind || live.offset < 0
-	}
-	if !ahead || !behind {
-		t.Fatalf("exampleLiveRows has no future row (%v) or no past row (%v)", ahead, behind)
+	for key := range exampleSets {
+		if p.decorators.Get(key) == nil {
+			t.Errorf("there is an example set for %q, which is not a registered decorator", key)
+		}
 	}
 }
 
-// The examples post is one post, and it stays one however long the install's subpath makes
-// the links.
-func TestExamplesFitsInOnePost(t *testing.T) {
+// Every row is read from its set rather than listed here, so a row added to a
+// set is covered without touching this test.
+func TestEveryExampleRowIsDecorated(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	joined := strings.Join(runExamplePosts(t, p), "\n")
+
+	checked := 0
+	for _, key := range exampleSetOrder {
+		for _, row := range exampleSets[key].rows {
+			// UTM ships off, so its row is legitimately absent.
+			if row.label == "UTM" {
+				continue
+			}
+			checked++
+
+			want := "**" + row.label + ":** " + inlineCode(row.text) + " → "
+			at := strings.Index(joined, want)
+			if at < 0 {
+				t.Errorf("no decorated row for %q", row.text)
+				continue
+			}
+			if !strings.Contains(joined[at:at+len(want)+400], "](/plugins/") {
+				t.Errorf("the row for %q carries no link", row.text)
+			}
+		}
+	}
+
+	if checked == 0 {
+		t.Fatal("checked no rows; the sets are not being read")
+	}
+}
+
+// The two live rows straddle the flash threshold on purpose: one opens the
+// countdown already warning, and one counts up rather than down.
+func TestExamplesLiveRowsStraddleTheThreshold(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	tagger := &decorators.Tagger{Registry: p.decorators, URLPrefix: p.decorateURLPrefix()}
+	ref := time.Now().UTC()
+
+	set := exampleSets[dtg.Type]
+	if len(set.live) == 0 {
+		t.Fatal("the date-time set has no live rows")
+	}
+
+	joined := strings.Join(exampleSetLines(tagger, ref, set), "")
+
+	future, past := false, false
+	for _, live := range set.live {
+		if !strings.Contains(joined, inlineCode(dtg.FormatZulu(ref.Add(live.offset)))) {
+			t.Errorf("no row for the %s offset", live.offset)
+		}
+		if live.offset > 0 {
+			future = true
+		}
+		if live.offset < 0 {
+			past = true
+		}
+	}
+
+	if !future || !past {
+		t.Error("the live rows do not straddle now; one has to count down and one up")
+	}
+}
+
+// A message that does not fit is refused before anything is written, so a
+// long install subpath cannot leave half a demonstration in the channel.
+func TestExamplesFitInTheirPosts(t *testing.T) {
 	for _, siteURL := range []string{
 		"https://example.com",
 		"https://example.com/mattermost",
-		"https://example.com/apps/collaboration/mattermost",
+		"https://example.com/a/rather/long/subpath/for/mattermost",
 	} {
-		t.Run(siteURL, func(t *testing.T) {
-			p := newTestPlugin(t, siteURL, true)
+		p := newTestPlugin(t, siteURL, true)
 
-			response := runExamples(t, p)
-			if response.ResponseType != model.CommandResponseTypeInChannel {
-				t.Fatalf("the examples post was declined on %s: %s", siteURL, response.Text)
+		for i, message := range runExamplePosts(t, p) {
+			if n := utf8.RuneCountInString(message); n > safePostRunes {
+				t.Errorf("%s: message %d is %d runes, over the %d floor", siteURL, i+1, n, safePostRunes)
 			}
-
-			if runes := utf8.RuneCountInString(response.Text); runes > safePostRunes {
-				t.Fatalf("the examples post is %d runes, over the %d limit", runes, safePostRunes)
-			}
-		})
+		}
 	}
 }
 
-// Past the limit the command says so, ephemerally, rather than letting the
-// server refuse the post with an error nobody can act on.
-//
-// The subpath here is absurd, and that is the finding rather than a flaw in the
-// test: examples measures itself against safePostRunes, the 4,000-rune floor,
-// so the subpath needed to overflow it is long but not absurd, which is why
-// this drives it with one. It is kept because the real limit cannot be read
-// from the plugin API and safePostRunes is an assumption tracked by hand, and
-// the day it is wrong is the day an ordinary post starts crossing it.
-func TestExamplesRefusesRatherThanOverflowing(t *testing.T) {
-	p := newTestPlugin(t, "https://example.com/"+strings.Repeat("longsubpath/", 2200), true)
+func TestExamplesRefuseRatherThanOverflowing(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com/"+strings.Repeat("subpath/", 400), true)
+	api := p.API.(*fakeAPI)
+	api.created = nil
 
-	response := runExamples(t, p)
+	response := examplesResponse(t, p)
 
 	if response.ResponseType != model.CommandResponseTypeEphemeral {
-		t.Fatalf("ResponseType = %q, want the refusal to stay private", response.ResponseType)
+		t.Fatalf("the refusal is %q, want ephemeral so a misfire never reaches the channel", response.ResponseType)
 	}
 	if !strings.Contains(response.Text, "TF-16004") {
-		t.Fatalf("the refusal does not carry its code:\n%s", response.Text)
+		t.Errorf("the refusal carries no code: %s", response.Text)
 	}
-	if !strings.Contains(response.Text, "example-details") {
-		t.Fatalf("the refusal does not point anywhere useful:\n%s", response.Text)
+	if len(api.created) != 0 {
+		t.Errorf("it posted %d message(s) before refusing; nothing should be written", len(api.created))
 	}
 }
 
-// A row whose format is switched off has nothing to demonstrate, so it is left
-// out rather than posted as a bare token beside rows that did become links.
-func TestExamplesDropsRowsThatDoNotDecorate(t *testing.T) {
+// A row whose format is switched off is dropped rather than posted undecorated.
+// A bare token beside rows that became links is a permanent post advertising
+// that the plugin does nothing.
+func TestExamplesDropRowsThatDoNotDecorate(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 	p.setConfiguration(&configuration{
 		EnableLocation:         true,
@@ -184,102 +195,87 @@ func TestExamplesDropsRowsThatDoNotDecorate(t *testing.T) {
 		EnableLocationDDSigned: true,
 		EnableLocationUSMTF:    true,
 		EnableLocationMGRS:     true,
-		EnableLocationUTM:      true,
 		EnableLocationMoniker:  true,
 	})
 
-	text := runExamples(t, p).Text
+	joined := strings.Join(runExamplePosts(t, p), "\n")
 
-	if strings.Contains(text, "/decorate/dtg?") {
-		t.Fatalf("date-time groups are off but the examples post still links one:\n%s", text)
+	if strings.Contains(joined, "/decorate/dtg?") {
+		t.Error("a date-time row was posted although every date-time format is off")
 	}
-	if !strings.Contains(text, "/decorate/location?") {
-		t.Fatalf("coordinates are on but the examples post shows none:\n%s", text)
-	}
-
-	// And no row is left showing a token that never became a link.
-	for line := range strings.SplitSeq(text, "\n") {
+	for line := range strings.SplitSeq(joined, "\n") {
 		if strings.HasPrefix(line, "- **") && !strings.Contains(line, "](/plugins/") {
-			t.Errorf("undecorated row left in the examples post: %q", line)
+			t.Errorf("a row was posted with no link: %s", line)
 		}
 	}
 }
 
-// With nothing enabled there is nothing to post, and the refusal stays private:
-// a channel post saying the plugin does nothing is worse than no post at all.
-func TestExamplesWithEverythingOffRefusesPrivately(t *testing.T) {
-	p := newTestPlugin(t, "https://example.com", false)
+// A set with nothing left to show is left out entirely rather than posted as a
+// heading over an empty list.
+func TestAnEmptySetIsNotPosted(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	p.setConfiguration(&configuration{
+		EnableDTG:         true,
+		EnableDTGMilitary: true,
+	})
 
-	response := runExamples(t, p)
-
-	if response.ResponseType != model.CommandResponseTypeEphemeral {
-		t.Fatalf("ResponseType = %q, want the refusal to stay private", response.ResponseType)
-	}
-	if !strings.Contains(response.Text, "TF-16003") {
-		t.Fatalf("the refusal does not carry its code:\n%s", response.Text)
+	for _, message := range runExamplePosts(t, p) {
+		if strings.HasPrefix(message, "#### "+exampleSets["airport"].name) {
+			t.Error("the airfields set was posted although its only format is off")
+		}
 	}
 }
 
-func TestExamplesBeforeActivationSaysSo(t *testing.T) {
+func TestExamplesWithEverythingOffRefusePrivately(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", false)
+
+	response := examplesResponse(t, p)
+
+	if response.ResponseType != model.CommandResponseTypeEphemeral {
+		t.Fatalf("the refusal is %q, want ephemeral", response.ResponseType)
+	}
+	if !strings.Contains(response.Text, "TF-16003") {
+		t.Errorf("the refusal carries no code: %s", response.Text)
+	}
+}
+
+func TestExamplesBeforeActivationSaySo(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 	p.decorators = nil
 
-	response := runExamples(t, p)
+	response := examplesResponse(t, p)
+
+	if !strings.Contains(response.Text, "TF-16001") {
+		t.Errorf("the refusal carries no code: %s", response.Text)
+	}
+}
+
+// The examples are already decorated, so running the hook over them must not
+// write a link inside a link.
+func TestExamplesSurviveTheMessageHook(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	for i, message := range runExamplePosts(t, p) {
+		decorated := p.decoratePost(&model.Post{Message: message}, time.Now().UTC())
+		if decorated != nil && decorated.Message != message {
+			t.Errorf("message %d was rewritten by the hook, so a link was written inside a link", i+1)
+		}
+	}
+}
+
+// Reported rather than silent, and the count is the reader's only way to know
+// how much of the demonstration is missing.
+func TestExamplesReportWhenAPostIsRefused(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	api := p.API.(*fakeAPI)
+	api.createPostErr = &model.AppError{Message: "channel is read only"}
+
+	response := examplesResponse(t, p)
 
 	if response.ResponseType != model.CommandResponseTypeEphemeral {
-		t.Fatalf("ResponseType = %q, want ephemeral before activation", response.ResponseType)
+		t.Fatalf("the report is %q, want ephemeral", response.ResponseType)
 	}
-	if !strings.Contains(response.Text, "TF-16001") {
-		t.Fatalf("the reply does not carry its code:\n%s", response.Text)
-	}
-}
-
-// The examples post is decorated by the command rather than by the message hook, so it
-// is already a set of links by the time it is posted. If an in-channel command
-// response does reach MessageWillBePosted, running the hook over it must change
-// nothing: a decorator link is a protected span, so Decorate is idempotent.
-//
-// Pinned because the alternative failure is a nested link written inside a real
-// one, which is corruption rather than a cosmetic problem, and because whether
-// that hook fires for a command response is not something this plugin controls.
-func TestExamplesSurvivesTheMessageHook(t *testing.T) {
-	p := newTestPlugin(t, "https://example.com", true)
-
-	text := runExamples(t, p).Text
-
-	if again := p.decoratePost(&model.Post{Message: text}, hookRef); again != nil {
-		t.Fatalf("the hook rewrote an already-decorated examples post:\n%s", again.Message)
-	}
-}
-
-// The examples post shows the ordinary shape of each grammar and nothing else. A near
-// miss in here would be a permanent post telling a channel that something works
-// when it is deliberately declined.
-func TestExamplesShowsNothingThatIsDeclinedElsewhere(t *testing.T) {
-	p := newTestPlugin(t, "https://example.com", true)
-	tagger := &decorators.Tagger{Registry: p.decorators, URLPrefix: p.decorateURLPrefix()}
-
-	declined := map[string]string{}
-	for _, typ := range detailSetOrder {
-		for _, group := range detailSets[typ].groups {
-			if group.decorates {
-				continue
-			}
-			for _, example := range group.examples {
-				declined[example.text] = group.heading
-			}
-		}
-	}
-
-	for _, row := range exampleFixedRows {
-		if heading, found := declined[row.text]; found {
-			t.Errorf("the examples post shows %q, which examples lists under %q", row.text, heading)
-		}
-
-		// And it is genuinely a decoration rather than a row that happens to
-		// survive because nothing tried.
-		if tagger.Decorate(row.text, hookRef) == row.text {
-			t.Errorf("the examples row %q is not decorated at all", row.text)
-		}
+	if !strings.Contains(response.Text, "TF-16006") {
+		t.Errorf("the report carries no code: %s", response.Text)
 	}
 }

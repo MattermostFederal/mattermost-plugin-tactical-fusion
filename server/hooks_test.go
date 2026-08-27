@@ -109,6 +109,11 @@ type fakeAPI struct {
 	files       map[string]*model.FileInfo
 	fileContent map[string][]byte
 
+	// uploaded records every file a command asked the plugin API to store, and
+	// uploadErr forces that to fail.
+	uploaded  []*model.FileInfo
+	uploadErr *model.AppError
+
 	// fileInfoErr and fileErr force the corresponding failure, which is the
 	// only way to prove the post survives a filestore that will not answer.
 	fileInfoErr *model.AppError
@@ -136,6 +141,35 @@ func (a *fakeAPI) GetFileInfo(fileID string) (*model.FileInfo, *model.AppError) 
 	if !ok {
 		return nil, &model.AppError{Message: "no such file"}
 	}
+	return info, nil
+}
+
+// UploadFile is the plugin-side upload, which credits the file to no user at
+// all. That is what cotFileCreator's model.UploadNoUserID branch exists for, so
+// a fake that credited it to somebody would test a path the server never takes.
+func (a *fakeAPI) UploadFile(data []byte, channelID, name string) (*model.FileInfo, *model.AppError) {
+	if a.uploadErr != nil {
+		return nil, a.uploadErr
+	}
+
+	if a.files == nil {
+		a.files = map[string]*model.FileInfo{}
+	}
+	if a.fileContent == nil {
+		a.fileContent = map[string][]byte{}
+	}
+
+	info := &model.FileInfo{
+		Id:        model.NewId(),
+		CreatorId: model.UploadNoUserID,
+		ChannelId: channelID,
+		Name:      name,
+		Size:      int64(len(data)),
+	}
+	a.files[info.Id] = info
+	a.fileContent[info.Id] = data
+	a.uploaded = append(a.uploaded, info)
+
 	return info, nil
 }
 

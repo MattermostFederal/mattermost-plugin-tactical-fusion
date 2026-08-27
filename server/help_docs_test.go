@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/cot"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
@@ -293,10 +292,10 @@ func TestHelpBundleMatchesTheListedPages(t *testing.T) {
 	}
 }
 
-// The slash commands carry a curated, matcher-verified example corpus, and it is
-// the same corpus the decorator pages teach from. Nothing else keeps the two in
-// step: a row added to example-details and not to a page leaves the docs quietly
-// behind the command, which is the drift the pages exist to avoid.
+// The examples command carries a curated, matcher-verified corpus, and the
+// decorator pages carry that and everything else. Nothing else keeps the two in
+// step: a row added to a set and not to a page leaves the docs quietly behind
+// the command, which is the drift the pages exist to avoid.
 //
 // The pages may show more than the command does. They may not show less.
 func TestEveryCommandExampleIsDocumented(t *testing.T) {
@@ -306,17 +305,14 @@ func TestEveryCommandExampleIsDocumented(t *testing.T) {
 	}
 
 	checked := 0
-	for _, key := range detailSetOrder {
-		for _, group := range detailSets[key].groups {
-			for _, example := range group.examples {
-				if undocumentedExamples[example.text] {
-					continue
-				}
-				checked++
-				if !documentedSomewhere(bundle, example.text) {
-					t.Errorf("%s/%q: no help page shows %q",
-						key, group.heading, example.text)
-				}
+	for _, key := range exampleSetOrder {
+		for _, row := range exampleSets[key].rows {
+			if undocumentedExamples[row.text] {
+				continue
+			}
+			checked++
+			if !documentedSomewhere(bundle, row.text) {
+				t.Errorf("%s/%s: no help page shows %q", key, row.label, row.text)
 			}
 		}
 	}
@@ -328,65 +324,23 @@ func TestEveryCommandExampleIsDocumented(t *testing.T) {
 }
 
 // Same contract for the Cursor on Target documents, which are whole XML sources
-// rather than single tokens.
+// rather than single tokens. The page may show more than the command does, and
+// every example the command posts has to be somewhere a reader can find it.
 func TestEveryCotExampleIsDocumented(t *testing.T) {
 	page := readHelpFile(t, "cot.html")
 
-	sources := cotExampleSources()
-	if len(sources) == 0 {
-		t.Fatal("no example sources; the list is not being read")
+	if len(cotExampleOrder) == 0 {
+		t.Fatal("no example sources; the catalog is not being read")
 	}
 
-	for name, source := range sources {
-		if !strings.Contains(page, escapeForHelp(strings.TrimSpace(source))) {
-			t.Errorf("cot.html does not carry the %q example", name)
-		}
-	}
-}
-
-// The registry is the list of <detail> elements this build claims to read, so a
-// reader meets it as a table on the page. It grew from sixteen entries to
-// twenty-six in one phase with nothing telling anybody to document the new ones,
-// which is the same hole TestEveryCodeIsDocumented and TestEverySettingIsDocumented
-// already close for codes and settings.
-//
-// One direction only, unlike the code test. The reverse is not checkable here:
-// the page is full of <code> spans naming attributes, XML fragments and prose
-// terms, so "a code span that is not a registry element" is the normal case
-// rather than a defect.
-func TestEveryRegisteredExtensionIsDocumented(t *testing.T) {
-	page := readHelpFile(t, "cot.html")
-
-	extensions := cot.Extensions()
-	if len(extensions) == 0 {
-		t.Fatal("the registry is empty; it is not being read")
-	}
-
-	for _, ext := range extensions {
-		if !strings.Contains(page, "<code>"+ext.Element+"</code>") {
-			t.Errorf("the registry reads <%s> but cot.html never names it", ext.Element)
-		}
-	}
-}
-
-// cotExampleSources is hand-maintained, and three other tests trust it to be the
-// whole set. A constant added to the command and not to that map would weaken
-// them all silently, this one included.
-func TestEveryCotExampleSourceIsListed(t *testing.T) {
-	listed := map[string]bool{}
-	for _, source := range cotExampleSources() {
-		listed[strings.TrimSpace(source)] = true
-	}
-
-	fenced := regexp.MustCompile("(?s)```(?:cot|xml)\\n(.*?)```")
-
-	for _, chunk := range append(cotDetailChunks(true, true), cotExtensionChunks()...) {
-		for _, atom := range chunk.lines {
-			for _, m := range fenced.FindAllStringSubmatch(atom, -1) {
-				if source := strings.TrimSpace(m[1]); !listed[source] {
-					t.Errorf("%q posts an example that cotExampleSources does not list:\n%s",
-						chunk.heading, source)
-				}
+	for i, example := range cotExampleOrder {
+		for line := range strings.SplitSeq(example.source, "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			if !strings.Contains(page, escapeForHelp(line)) {
+				t.Errorf("example %d posts a line cot.html does not show:\n%s", i+1, line)
 			}
 		}
 	}

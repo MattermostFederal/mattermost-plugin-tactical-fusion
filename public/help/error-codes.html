@@ -342,7 +342,7 @@
                 <tr>
                     <td><code>TF-16000</code></td>
                     <td><code>CommandUnknownSubcommand</code></td>
-                    <td><code>Unknown subcommand. Available: examples, example-details, check</code></td>
+                    <td><code>Unknown subcommand. Available: examples, check</code></td>
                 </tr>
                 <tr>
                     <td><code>TF-16001</code></td>
@@ -362,17 +362,12 @@
                 <tr>
                     <td><code>TF-16004</code></td>
                     <td><code>CommandExamplesTooLong</code></td>
-                    <td><code>The examples do not fit in one post on this server.</code> Every link carries the install's subpath, and a long enough one pushes the post past the maximum size. <a href="commands.html#example-details"><code>example-details</code></a> spreads itself over several posts and is unaffected.</td>
-                </tr>
-                <tr>
-                    <td><code>TF-16005</code></td>
-                    <td><code>CommandDetailsNotReady</code></td>
-                    <td><code>Decorators are not registered yet. Try again once the plugin has finished activating.</code> The same condition as TF-16001, reached through <a href="commands.html#example-details"><code>example-details</code></a>.</td>
+                    <td><code>The examples do not fit in a post on this server.</code> Every link carries the install's subpath, and a long enough one pushes a message past the maximum size. Nothing is written when this happens: the built-in help carries the same examples.</td>
                 </tr>
                 <tr>
                     <td><code>TF-16006</code></td>
-                    <td><code>CommandDetailsPostFailed</code></td>
-                    <td><code>There are no examples to post.</code>, <code>Could not post the examples to this channel</code>, or <code>N of M messages could not be posted, so the examples are incomplete.</code> The first is not reachable in a normal build and is worth reporting; the second means nothing was written; the third means some posts landed and others did not. Both are also logged. A read-only or archived channel is the usual cause.</td>
+                    <td><code>CommandExamplesPostFailed</code></td>
+                    <td><code>Could not post the examples to this channel.</code> or <code>N of M messages could not be posted, so the examples are incomplete.</code> The first means nothing was written; the second means some messages landed and others did not. Both are also logged. A read-only or archived channel is the usual cause.</td>
                 </tr>
             </tbody>
         </table>

@@ -299,140 +299,84 @@ can name their own params freely. There are two:
 
 ### The slash command
 
-Three subcommands. `examples` and `example-details` both **post to the channel**;
-only `check` is ephemeral. The split between the first two is scope, not
-audience: `examples` is one message showing the ordinary shape of each grammar,
-`example-details` is the exhaustive set. Both run the tagger themselves rather
-than relying on the message hook, because their own output is full of fences and
-links and would therefore be skipped. That is also what keeps the declined rows
-honest, since they are genuinely the tagger's output rather than hand-written,
-and the live rows go through the decorator's own `FormatZulu`, so an example
-cannot drift into something the decorator declines.
+Two subcommands. `examples` **posts to the channel**; `check` is ephemeral. Both
+run the tagger themselves rather than relying on the message hook, because their
+own output is full of fences and links and would therefore be skipped. That is
+also what keeps the live rows honest, since they go through the decorator's own
+`FormatZulu` and an example cannot drift into something the decorator declines.
 
-`/tactical-fusion examples` is a `CommandResponseTypeInChannel` reply, one row
-per format, in the shape `Label: <typed> → <link> - note`. It exists for
-introducing the plugin to a team, so one person runs it and everybody clicks
-through. Everything exotic stays in `example-details`.
+`/tactical-fusion examples` posts through `p.API.CreatePost`, **one top-level
+post per decorator and none of them a reply**. Each is a reference somebody comes
+back to; a reply is filed under the post above it and read as a remark about it,
+which coordinates are not to date-time groups. `examplePost` builds every one of
+them in one place so nothing can set a `RootId` by accident.
 
-Being public shapes its failure modes. A row that does not decorate is
-**dropped**, because a bare token beside rows that did become links is a
-permanent post advertising that the plugin does nothing (with UTM shipping off,
-this is the ordinary case rather than an edge one); with nothing left, the
-command **refuses ephemerally** rather than posting an empty message; and it
-measures itself against the post limit and refuses rather than letting the
-server reject it with an error nobody can act on, which a long enough install
-subpath does reach. All three refusals carry a `TF-NNNN` code.
+**One post per decorator**, which is the unit a reader thinks in, and then one
+per Cursor on Target event. Five posts on a default install. The sets are keyed
+by the decorator's own `Type()`, so `TestExamplesCoverEveryRegisteredDecorator`
+fails in both directions: a decorator with no set, and a set naming a decorator
+that is not registered.
+
+**There was a second command, `example-details`, and it is gone.** It posted the
+exhaustive corpus: every format, every boundary, every near miss, around 25,000
+characters over six posts, with a packer that split a set across messages and a
+retry that repacked at the floor when the first post was refused. All of that
+content now lives in `public/help/`, which is where somebody reading through
+edge cases actually wants it: a page can be scrolled, searched and linked to,
+and it does not put 25,000 characters into a channel that everybody in it then
+has to scroll past. The packer, the `(n of m)` numbering, the reserved
+`headingBudget` and the canary retry went with it, because each message is now
+small by construction.
+
+`TestEveryCommandExampleIsDocumented` is what keeps the split honest. It holds
+the pages to the command in one direction: **the pages may show more than the
+command does, and may not show less.** So a row added to a set fails until it is
+documented, and the exhaustive material the pages carry is free to grow.
 
 Its two live rows are five minutes ahead and four hours behind. That pair is the
 point of the command being live at all: five minutes opens the countdown already
 inside the flash threshold, and four hours behind counts up. A fixed date shows
 neither.
 
-`/tactical-fusion example-details` is the exhaustive one and posts through
-`p.API.CreatePost`, **one top-level post per decorator and none of them a
-reply**. Each is a reference somebody comes back to; a reply is filed under the
-post above it and read as a remark about it, which the coordinate examples are
-not. `detailPost` builds every one of them, in one place, so neither caller can
-set a `RootId` by accident, and `runDetails` checks it on every post.
-
-**One post per decorator**, which is the unit a reader thinks in: one for
-date-time groups, one for coordinates. Both fit at the ordinary post limit, so
-that is the shape rather than an aspiration. A set that does not fit continues
-into another message rather than being packed in beside its neighbor; sharing a
-post between two decorators saves a message and costs the thing that made the
-output readable.
-
-The set heading is applied **after** its own packing, against a reserved
-`headingBudget`, and is numbered `(n of m)` only when that set needed more than
-one message. Unnumbered is the ordinary case, since the heading alone already
-says which decorator it is.
-
-Its rows are organized as `detailGroup`s: a heading, a `decorates` flag, and
-rows. The heading is where the **rule** gets stated, which for a declined row is
-the entire content of the row, and the flag is what
-`TestEveryDetailDoesWhatItsGroupClaims` holds every row to **in both
-directions**. Both directions matter: a "recognized" row the tagger silently
-leaves alone is how a whole format once sat in that list decorating nothing, and
-a "declined" row it rewrites would advertise a near miss as safe. That test
-reads the row out of the posted output rather than calling the tagger, and
-scopes each check to the row, because the output deliberately carries an example
-beside its own labeled variant and `LATD:21N157W` contains `21N157W`.
-
-UTM has a group of its own, headed with the fact that it ships off, because on a
-default install every row in it renders with no link and under a generic grid
-heading that reads as a bug.
+Being public shapes the failure modes. A row that does not decorate is
+**dropped**, because a bare token beside rows that did become links is a
+permanent post advertising that the plugin does nothing (with UTM shipping off,
+this is the ordinary case rather than an edge one). A set left with no rows is
+not posted at all, rather than posted as a heading over nothing. With nothing
+left anywhere and Cursor on Target off, the command **refuses ephemerally**.
+Every message is measured against the floor **before anything is written**, so a
+long enough install subpath refuses rather than leaving half a demonstration in
+the channel. All three refusals carry a `TF-NNNN` code.
 
 **The rows sit in Hawaii and on Guam**, because those are the two detail map
 packages this plugin bundles. Every example is something a reader clicks, and a
 coordinate outside the bundled coverage opens on the global tier's coastline
 outline: the reader's first encounter with the feature then shows the map at its
-worst, on a default install, with nothing wrong. Hickam carries the Hawaii
-rows and Andersen and Apra carry the Guam ones, which also gives the eastern
-hemisphere and a second UTM zone for free.
+worst, on a default install, with nothing wrong.
 
 **Hickam rather than Pearl Harbor**, and the difference is not cosmetic. Pearl
 Harbor is the name that comes to mind first and the middle of it is open water,
 so a marker placed there sits in East Loch on every surface that draws one. The
 value used is the airfield reference point `PHIK` carries in this plugin's own
-airfield database, which also means the coordinate rows and the `ICAO:PHIK` row
-name the same place and cannot drift apart.
+airfield database, which also means the coordinate rows and the Cursor on Target
+example name the same place and cannot drift apart.
 
-Five rows deliberately stay outside that coverage, because their subject is
-arithmetic no in-theater position can demonstrate: the pole and the antimeridian,
-Null Island, a south-and-east pair, the south polar GARS cell, and the UTM band
-trio. Hawaii is band Q and Guam is band P, so neither can show that `N` and `S`
-in a UTM token are latitude bands rather than hemispheres, which is the whole
-content of those three rows.
+`/tactical-fusion check <text>` decorates supplied text and explains the rules
+that most often decline a coordinate, without posting anything.
 
-**"Drawn as a map in the channel" is the one group whose claim is per row rather
-than per group**, carried by `detailExample.inline`. Every row in it decorates,
-so `decorates` says nothing about what the group is for, and the group
-deliberately holds both answers because the distinction *is* the content: what a
-reader needs is which messages qualify, and a group of only-qualifying rows would
-not teach that. The rows cannot demonstrate it, only describe it, since an
-inline map needs the whole message and every row here lives inside a post full of
-other rows. A reader copies one and posts it alone.
-
-`TestEveryInlineDetailDrawsWhatItClaims` holds those rows to the flag in both
-directions **through `decoratePost`**, not through the tagger, so a row promising
-a map fails if anything on the stamping path stops working rather than only if
-the tagger's verdict moves. It is scoped to that one group, because most single
-coordinates elsewhere in the list would also stamp and marking each of them would
-turn an incidental property into thirty claims nobody reads; a second loop
-refuses the flag anywhere outside the group, which is what keeps that scoping
-honest rather than merely narrow.
-
-The first group is generated from the moment the command runs, at offsets either
-side of the flash threshold plus a negative one, which counts up and is the half
-of the behavior easiest to forget exists. A live group has no fixed text, so the
-tests that look for rows by their text skip it and `TestDetailsIncludeLiveTimes`
-covers it instead, accepting either side of a minute boundary.
-
-Within a set the split is driven by the **post size limit** and nothing else.
-The atomic unit is a line and at least one always goes in, so packing cannot
-stall however long the links get, and a **group heading is repeated with
-"(continued)"** when its rows are split, because a continuation opening on a
-bare list of rows would have lost the one thing saying what they are.
-
-`packDetails` takes its budget as a **parameter** rather than reading a
-constant, both so `postDetails` can retry smaller and so the splitting can
-be exercised: at the ordinary limit each set fits in one message, which would
-otherwise leave every branch that deals with a message running out of room as
-dead code held only by the hope that nobody deletes it.
-`TestDetailsSplitWhenAMessageRunsOutOfRoom` drives it at four budgets and checks
-that every message still belongs to exactly one decorator however finely it
-split. The reply loop is tested through `postRemainingDetails` directly for the
-same reason.
+`/tactical-fusion` with no subcommand lists the subcommands; an unknown one is
+`TF-16000`. `TestEverySubcommandIsAdvertised` parses the dispatch switch out of
+`command.go` and cross-checks it against the autocomplete data and
+`subcommandList`, in both directions, so the three cannot drift.
 
 An earlier version made the reader choose (`examples dtg`, `examples location`),
 which put the size limit in front of them as a decision they had no way to make.
 
-Whether a post these commands create reaches `MessageWillBePosted` is
-**unverified** (see below), and both are correct either way: the text is already
+Whether a post this command creates reaches `MessageWillBePosted` is
+**unverified** (see below), and it is correct either way: the text is already
 decorated, and a decorator link is a protected span, so `Decorate` is
-idempotent. `TestExamplesSurvivesTheMessageHook` and
-`TestDetailsSurviveTheMessageHook` pin that, since the alternative failure is a
-nested link written inside a real one.
+idempotent. `TestExamplesSurviveTheMessageHook` pins that, since the alternative
+failure is a nested link written inside a real one.
 
 `/tactical-fusion check <text>` decorates supplied text and explains the rules
 that most often decline a coordinate, without posting anything.
@@ -482,23 +426,20 @@ occasionally skipping decoration. So the hook uses the floor. In the slash
 commands the same mistake is a post that is refused, which is reported and
 recoverable, so they use the default.
 
-**`example-details` does not trust either.** It packs at `defaultPostRunes`,
-and if the first post is refused it repacks at `safePostRunes` and starts again.
-The **first post is the canary**: every message in a packing shares one budget,
-so if it fits the rest do, and until it lands nothing has been written, so
-starting again costs a reader nothing. Once anything has landed there is no
-going back, which is why the retry is there and not around the ones that
-follow.
+`examples` measures every message against the **floor** before it writes any of
+them, and refuses the whole run rather than posting some. For it the only two
+choices are "fits everywhere" and "might be refused", and half a demonstration
+in a channel is worse than none.
 
-That retry is not defensive programming for its own sake. This was hard-coded at
-1 MiB for exactly one iteration and the real limit turned out to be 16,383, so a
-17,442-rune post came back as *"Post Message property is longer than the maximum
-permitted length (TF-16006)"*. A guess that cannot be checked will be wrong
-again; the command now survives it rather than reporting it.
-
-`examples` has no fallback, because it is one post by definition, so it measures
-against the **floor**: for it the only choices are "fits everywhere" and "might
-be refused".
+`example-details` used to trust neither: it packed at `defaultPostRunes` and, if
+the first post was refused, repacked at `safePostRunes` and started again. That
+retry existed because the limit was hard-coded at 1 MiB for exactly one
+iteration and the real limit turned out to be 16,383, so a 17,442-rune post came
+back as *"Post Message property is longer than the maximum permitted length"*. A
+guess that cannot be checked will be wrong again. The command is gone and the
+retry with it, and the reason it is not missed is that each message `examples`
+builds is a handful of rows rather than a packed set: measuring is enough, and
+there is nothing to repack.
 
 The fake API's `postSizeLimit` refuses an over-long message with the same
 `AppError` the server produces, which is the only way to test code whose job is

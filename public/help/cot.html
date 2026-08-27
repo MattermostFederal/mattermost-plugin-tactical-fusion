@@ -47,7 +47,7 @@
                 Settings: <a href="admin.html#enable-cot"><code>EnableCot</code></a> and
                 <a href="admin.html#enable-cot-file"><code>EnableCotFile</code></a>. Every example
                 on this page is one this build's own
-                <a href="commands.html#example-details"><code>/tactical-fusion example-details</code></a>
+                <a href="commands.html#examples"><code>/tactical-fusion examples</code></a>
                 posts, so what you read here is what your server will do.
             </p>
         </div>
@@ -951,6 +951,102 @@
         <h2 id="cot-examples">Worked examples</h2>
 
         <p>Each of these is a complete, postable event.</p>
+
+        <h3 id="cot-example-attachment">A MEDEVAC request, sent as a file</h3>
+
+        <p>
+            The third event <a href="commands.html#examples"><code>examples</code></a> posts, and it
+            arrives as an attachment rather than as a fenced block. A <code>.cot</code> or
+            <code>.xml</code> file is read exactly as a fence is, which is how an event exported from
+            ATAK travels, and an XML declaration at the top is accepted. The card replaces the
+            attachment rather than sitting beside it.
+        </p>
+
+        <pre class="copyable"><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;event version="2.0" uid="MED-4C1E" type="b-r-f-h-c" how="h-g-i-g-o"
+       time="2026-08-09T16:31:00Z" start="2026-08-09T16:31:00Z" stale="2026-08-09T17:31:00Z"&gt;
+  &lt;point lat="21.330100" lon="-157.939900" hae="6.0" ce="20.0" le="30.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="MEDEVAC-1"/&gt;
+    &lt;_medevac_ title="MED.1.281630" urgent="1" priority="2" litter="1" ambulatory="2"
+               equipment_detail="hoist" security="1" hlz_marking="3" freq="42.5"
+               nationality="1" zone_prot_selection="2"/&gt;
+    &lt;remarks&gt;one urgent, two priority, hoist required&lt;/remarks&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;</code></pre>
+
+        <h3 id="cot-example-rich">A block with most of a detail block filled in</h3>
+
+        <p>
+            This is the second event <a href="commands.html#examples"><code>examples</code></a> posts,
+            and it is deliberately dense: four events in one message carrying team and role, device
+            and battery, position quality, track and attitude, a sensor, a stated display color, an
+            event that names its parent, and a drawn area. The card lists them all and the map draws
+            them together.
+        </p>
+
+        <p>
+            The last event is a <code>u-d-f</code> drawing rather than a track: a closed
+            <a href="#cot-geometry">polyline</a> of six vertices outlining a suspected hostile area,
+            with the contacts inside it. <strong>One outline in a block is drawn; two are not</strong>,
+            because a map of overlapping outlines says nothing about which belongs to which track.
+        </p>
+
+        <pre class="copyable"><code>&lt;event version="2.0" uid="ANDROID-88" type="a-f-G-U-C" how="m-g"
+       time="2026-08-09T16:30:00Z" start="2026-08-09T16:30:00Z" stale="2026-08-09T16:40:00Z"&gt;
+  &lt;point lat="21.318700" lon="-157.922500" hae="12.0" ce="9.5" le="15.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="ALPHA" endpoint="192.168.1.20:4242:tcp"/&gt;
+    &lt;__group name="Cyan" role="Team Lead"/&gt;
+    &lt;takv platform="ATAK-CIV" device="SAMSUNG SM-G950U" os="29" version="4.10.0"/&gt;
+    &lt;uid Droid="ALPHA"/&gt;
+    &lt;status battery="87" readiness="true"/&gt;
+    &lt;precisionlocation geopointsrc="GPS" altsrc="DTED2" pdop="1.4" hdop="0.9" vdop="1.1"/&gt;
+    &lt;track speed="1.4" course="271.5"/&gt;
+    &lt;remarks&gt;on foot, moving west&lt;/remarks&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;
+&lt;event version="2.0" uid="REAPER1" type="a-f-A-M-F-Q" how="m-g"
+       time="2026-08-09T16:30:05Z" start="2026-08-09T16:30:05Z" stale="2026-08-09T16:35:05Z"&gt;
+  &lt;point lat="21.402000" lon="-157.880000" hae="3200.0" ce="12.0" le="20.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="REAPER1"/&gt;
+    &lt;link uid="ANDROID-88" relation="p-p" parent_callsign="ALPHA"/&gt;
+    &lt;track speed="58.0" course="94.0" slope="-2.5"/&gt;
+    &lt;Attitude roll="1.5" pitch="-3.0" yaw="94.0"/&gt;
+    &lt;sensor azimuth="94.0" elevation="-18.0" range="4200.0" fov="12.0" vfov="7.0" model="MTS-B"/&gt;
+    &lt;remarks&gt;orbiting, sensor on the coast road&lt;/remarks&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;
+&lt;event version="2.0" uid="TGT-9F2A1C7B" type="a-h-G-U-C-A" how="h-e"
+       time="2026-08-09T16:30:10Z" start="2026-08-09T16:30:10Z" stale="2026-08-09T16:32:10Z"&gt;
+  &lt;point lat="21.335300" lon="-157.948300" hae="4.0" ce="45.0" le="60.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="TGT01"/&gt;
+    &lt;color argb="-65536"/&gt;
+    &lt;usericon iconsetpath="COT_MAPPING_2525C/a-h/a-h-G-U-C-A"/&gt;
+    &lt;remarks&gt;two vehicles, stationary&lt;/remarks&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;
+&lt;event version="2.0" uid="AREA-7C3" type="u-d-f" how="h-e"
+       time="2026-08-09T16:30:12Z" start="2026-08-09T16:30:12Z" stale="2026-08-09T17:30:12Z"&gt;
+  &lt;point lat="21.337800" lon="-157.945000" hae="9999999.0" ce="9999999.0" le="9999999.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="SUSPECTED AREA"/&gt;
+    &lt;color argb="-65536"/&gt;
+    &lt;shape&gt;
+      &lt;polyline closed="true"&gt;
+        &lt;vertex lat="21.344100" lon="-157.955200"/&gt;
+        &lt;vertex lat="21.346800" lon="-157.941300"/&gt;
+        &lt;vertex lat="21.339500" lon="-157.933900"/&gt;
+        &lt;vertex lat="21.331200" lon="-157.936700"/&gt;
+        &lt;vertex lat="21.327400" lon="-157.947800"/&gt;
+        &lt;vertex lat="21.334600" lon="-157.957100"/&gt;
+      &lt;/polyline&gt;
+    &lt;/shape&gt;
+    &lt;remarks&gt;suspected hostile area, six point outline&lt;/remarks&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;</code></pre>
 
         <h3 id="cot-example-multi">Several events in one post</h3>
 

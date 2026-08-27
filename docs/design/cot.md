@@ -673,20 +673,68 @@ the card itself renders from, and `TestTheExampleRowQuotesTheCardsOwnLabel` hold
 the two together. Changing the type, or its row in `types.csv`, moves the prose
 with it.
 
-### The examples section, and why it cannot use the decorator machinery
+### The examples the command posts, and why there are two
 
-`example-details` posts one message per set, and Cursor on Target earns one
-without being a decorator. `detailSet` is the wrong home for it twice over. Its
-rows are run through the tagger and asserted to decorate or not, which is a
-question about tokens rather than about post types; and running an event through
-the tagger would find the RFC 3339 timestamps inside it and hang a date-time
-link off the row, which says something false about how an event is read.
+`examples` posts one message per decorator and then the Cursor on Target events,
+which are not a decorator and never belonged in that machinery. An example set is
+run through the tagger and asserted to decorate or not, which is a question about
+tokens rather than about post types, and running an event through the tagger
+would find the RFC 3339 timestamps inside it and hang a date-time link off it,
+which says something false about how an event is read. So the events are
+appended by `postCotExamples` rather than being a set.
 
-So `packDetails` walks `detailMessageSets`, a catalog of named chunk producers,
-and Cursor on Target is the last entry. The catalog exists so a test asking
-"which post does this heading belong to" reads it rather than listing the
-decorators and quietly ignoring anything that is not one, which is exactly how
-this section first went in with three tests still green.
+**Two of them, and one each per post.** A card owns the whole post body, so an
+event sharing a post with anything else renders that as plain text underneath it.
+That settles the count as one post per event rather than one post with two.
+
+They are deliberately different shapes. The first is a single hostile contact:
+one event, a callsign, a position and remarks, which is the smallest thing that
+still produces a card worth looking at, and it is what a reader meets the feature
+through. The second carries three events and most of what a `<detail>` block can
+say, so a reader sees the block layout, the affiliation colors on one map and the
+extension groups in the sidebar all at once.
+
+The rich one also carries a **drawn area**: a closed six-vertex polyline under a
+`u-d-f` event, outlining a suspected hostile area with the contacts inside it.
+That is what a shape is for in practice, and it is deliberately irregular rather
+than a rectangle, because a rectangle is the one outline a reader can mistake for
+a bounding box the plugin drew itself.
+
+Drawing it needed a change. `CotMap` drew geometry only for a single-event card,
+so the polygon would have appeared in the panel's Shape section and on no map,
+which is the panel and the map disagreeing in front of the reader. **Exactly one
+outline in a block is now drawn.** The argument against N shapes still holds, and
+is why it is one rather than all: a pile of outlines says nothing about which
+belongs to which track.
+
+**Outlines only, and that is not laziness.** An outline carries absolute
+vertices, so it lands where the event put it whatever else is on the map. An
+ellipse is drawn around the map's PRIMARY position, which in a block is the first
+event's, so a circle belonging to the third would be drawn around the first one's
+marker. `soleOutline` refuses ellipses in a block for that reason, and
+`label.spec.ts` pins it.
+
+The accuracy ring is unchanged and stays single-event: a ring per track is a map
+of overlapping blobs, and unlike a drawn area a ring qualifies one specific
+position.
+
+**The third example is an attachment.** It posts a MEDEVAC request as a
+`medevac.cot` file rather than a fence, because the file path is a whole second
+way in and nothing else demonstrates it: `plugin.API.UploadFile` credits the file
+to `model.UploadNoUserID`, which is exactly the `cotFileCreator` branch that
+exists for a companion plugin's uploads, so the example exercises it end to end.
+It carries an XML declaration to show that one is accepted. With
+`EnableCotFile` off the example is **skipped rather than posted as a fence**,
+since the attachment is the whole point of it.
+
+The rich one is held to that by `TestTheRichExampleFillsInMostOfTheDetailBlock`,
+which names the props it has to write and, more importantly, asserts it does
+**not** degrade: an event carrying that much detail is exactly the shape that
+runs past the props budget, and a degraded card would silently demonstrate less
+than the example claims.
+
+Everything else that used to be posted, and there was a lot of it, is in
+`cot.html`. See "The slash command" in [`decorators.md`](decorators.md) for why.
 
 **The examples are real fenced blocks, and two invariants make that safe.** A
 block labeled `cot` or `xml` is exactly what `cotSource` recognizes, so a post

@@ -251,17 +251,17 @@ const (
 	// post one.
 	CommandExamplesNothingEnabled = 16003
 
-	// CommandExamplesTooLong is returned when the examples post would not fit
-	// in one post, which needs a long enough install subpath to reach.
+	// CommandExamplesTooLong is returned when one of the examples messages would
+	// not fit in a post, which needs a long enough install subpath to reach.
 	CommandExamplesTooLong = 16004
 
-	// CommandDetailsNotReady is returned when /tactical-fusion example-details
-	// runs before OnActivate has built the registry.
-	CommandDetailsNotReady = 16005
+	// 16005 was CommandDetailsNotReady, for the example-details subcommand.
+	// That command was folded into examples, which reports the same condition
+	// through CommandExamplesNotReady. Retired rather than reused.
 
-	// CommandDetailsPostFailed is returned, and logged, when the example
-	// details thread could not be created or a reply in it was refused.
-	CommandDetailsPostFailed = 16006
+	// CommandExamplesPostFailed is returned, and logged, when one of the
+	// examples messages could not be posted to the channel.
+	CommandExamplesPostFailed = 16006
 
 	// server/decorators/ (17000-17999)
 
@@ -376,8 +376,7 @@ var AllCodes = []int{
 	CommandCheckNotReady,
 	CommandExamplesNothingEnabled,
 	CommandExamplesTooLong,
-	CommandDetailsNotReady,
-	CommandDetailsPostFailed,
+	CommandExamplesPostFailed,
 
 	DTGPageParamsInvalid,
 	LocationPageParamsInvalid,

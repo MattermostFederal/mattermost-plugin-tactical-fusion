@@ -26,7 +26,7 @@ are now the index and the shared-mechanics pages respectively.
 | `formats.html` | The index, and the rules every decorator shares: boundaries, consumed labels, protected spans | `server/decorators/tagger.go`, `boundary.go` |
 | `panel.html` | What a hover, a click and a standalone page are; preferences, restore defaults, zone ordering | `webapp/src/decorators/` |
 | `admin.html` | One section per switch, and what a switch does not do | `plugin.json` `settings_schema.settings` |
-| `commands.html` | `examples`, `example-details`, `check`, bare and unknown subcommands | `server/command*.go` |
+| `commands.html` | `examples`, `check`, bare and unknown subcommands | `server/command*.go` |
 | `troubleshooting.html` | Symptom, cause, fix, quoting the exact user-facing strings | Every message in the server |
 | `error-codes.html` | The `TF-NNNN` registry, grouped by source file | `server/errcode/codes.go` |
 
@@ -38,11 +38,14 @@ would disperse the two inventories `TestEverySettingIsDocumented` and
 
 ### The examples come from the slash commands
 
-The decorator pages teach from the **same corpus** `/tactical-fusion examples`
-and `example-details` post: `detailSets` in `server/command_example_details.go`
-and the CoT documents in `server/command_cot_example.go`. That corpus is curated,
-annotated with the reason each row exists, and verified against the real matcher
-by `TestEveryDetailDoesWhatItsGroupClaims`, so a page built from it inherits that
+The decorator pages carry **everything** `/tactical-fusion examples` posts, and
+more. `exampleSets` in `server/command_examples.go` and the two events in
+`server/command_cot_example.go` are the curated subset a channel meets the plugin
+through; the pages are where the boundaries, the declined shapes and the
+protected spans live. `TestEveryCommandExampleIsDocumented` and
+`TestEveryCotExampleIsDocumented` hold the pages to the commands in one
+direction only: a page may show more than a command does, and may not show
+less. So the corpus is verified against the real matcher, and a page inherits that
 guarantee instead of restating grammar by hand.
 
 Before this, roughly half of it appeared nowhere in the documentation, and the

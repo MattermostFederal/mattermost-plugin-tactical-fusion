@@ -11,12 +11,11 @@ import (
 
 const commandTrigger = "tactical-fusion"
 
-const subcommandList = "examples, example-details, check"
+const subcommandList = "examples, check"
 
 func getCommand() *model.Command {
 	autocomplete := model.NewAutocompleteData(commandTrigger, "[command]", "Tactical Fusion commands")
-	autocomplete.AddCommand(model.NewAutocompleteData("examples", "", "Post a short demonstration to this channel, for everybody to see"))
-	autocomplete.AddCommand(model.NewAutocompleteData("example-details", "", "Post every format, edge case and near miss to this channel, as a thread"))
+	autocomplete.AddCommand(model.NewAutocompleteData("examples", "", "Post a demonstration to this channel, one message per format, for everybody to see"))
 	autocomplete.AddCommand(model.NewAutocompleteData("check", "[text]", "Show what would be decorated in some text, and what would not"))
 
 	return &model.Command{
@@ -37,9 +36,7 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 
 	switch fields[1] {
 	case "examples":
-		return p.examplesResponse(), nil
-	case "example-details":
-		return p.exampleDetailsResponse(args), nil
+		return p.examplesResponse(args), nil
 	case "check":
 		return p.checkResponse(argumentText(args.Command, fields[1])), nil
 	default:

@@ -63,7 +63,7 @@
                 </tr>
                 <tr>
                     <td>The format is switched off</td>
-                    <td>Run <a href="commands.html#example-details"><code>/tactical-fusion example-details</code></a>. It ends with a note when decoration is off, and shows each format's real result.</td>
+                    <td>Run <a href="commands.html#examples"><code>/tactical-fusion examples</code></a>. It ends with a note when decoration is off, and shows each format's real result.</td>
                     <td>Turn the format on in <a href="admin.html">System Console, Plugins, Tactical Fusion</a>.</td>
                 </tr>
                 <tr>
@@ -945,14 +945,14 @@
             </thead>
             <tbody>
                 <tr>
-                    <td><code>Unknown subcommand. Available: examples, example-details, check</code></td>
+                    <td><code>Unknown subcommand. Available: examples, check</code></td>
                     <td><a href="error-codes.html#command"><code>TF-16000</code></a></td>
                     <td>A typo, or a subcommand from a newer version. The list in the message is what this build has; see <a href="commands.html">Commands</a>.</td>
                 </tr>
                 <tr>
                     <td><code>Decorators are not registered yet. Try again once the plugin has finished activating.</code></td>
-                    <td><a href="error-codes.html#command"><code>TF-16001</code></a>, <a href="error-codes.html#command"><code>TF-16002</code></a>, <a href="error-codes.html#command"><code>TF-16005</code></a></td>
-                    <td>The command ran between the plugin being enabled and <code>OnActivate</code> finishing. Wait a moment and run it again. Three codes because the same condition is reached through <a href="commands.html#examples"><code>examples</code></a>, <a href="commands.html#check"><code>check</code></a> and <a href="commands.html#example-details"><code>example-details</code></a> respectively, and knowing which one asked is worth a code. If it persists, the plugin did not activate: see <a href="#plugin-wont-start">below</a>.</td>
+                    <td><a href="error-codes.html#command"><code>TF-16001</code></a>, <a href="error-codes.html#command"><code>TF-16002</code></a></td>
+                    <td>The command ran between the plugin being enabled and <code>OnActivate</code> finishing. Wait a moment and run it again. Two codes because the same condition is reached through <a href="commands.html#examples"><code>examples</code></a> and <a href="commands.html#check"><code>check</code></a> respectively, and knowing which one asked is worth a code. If it persists, the plugin did not activate: see <a href="#plugin-wont-start">below</a>.</td>
                 </tr>
                 <tr>
                     <td><code>Nothing would be decorated, so there is nothing to show. Every format is switched off in the System Console, under Plugins &gt; Tactical Fusion.</code></td>
@@ -960,7 +960,7 @@
                     <td>Exactly what it says, and it is a refusal rather than an empty post on purpose: a message advertising the plugin while demonstrating nothing would be permanent. Turn a format on in <a href="admin.html">Admin settings</a>.</td>
                 </tr>
                 <tr>
-                    <td><code>The examples do not fit in one post on this server. Run /tactical-fusion example-details instead, which spreads itself over several posts.</code></td>
+                    <td><code>The examples do not fit in one post on this server. Run /tactical-fusion examples instead, which spreads itself over several posts.</code></td>
                     <td><a href="error-codes.html#command"><code>TF-16004</code></a></td>
                     <td><a href="commands.html#examples"><code>examples</code></a> is one post by definition, so it measures itself against the smallest limit any store reports and refuses rather than letting the server reject it. A long install subpath reaches this, because every link in the post carries it.</td>
                 </tr>
@@ -1088,7 +1088,7 @@
         <ul>
             <li>The <code>TF-NNNN</code> code, from the message or the server log</li>
             <li>The exact text you typed, and what was stored</li>
-            <li>The output of <a href="commands.html#example-details"><code>/tactical-fusion example-details</code></a>, which shows the live behavior of your server</li>
+            <li>The output of <a href="commands.html#examples"><code>/tactical-fusion examples</code></a>, which shows the live behavior of your server</li>
             <li>Which <a href="admin.html">settings</a> are on. There are eleven, and one of them, <code>EnableLocationUTM</code>, is off until an admin turns it on</li>
         </ul>
     </main>
