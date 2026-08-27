@@ -104,9 +104,12 @@ test.describe('the countdown', () => {
         await component.getByRole('button', {name: 'Open details'}).click();
 
         const rhs = component.getByTestId('rhs');
-        await expect(rhs).toContainText('Goes stale');
         await expect(rhs).toContainText('Stale');
         await expect(rhs).not.toContainText('ago');
+
+        // The heading is what a counting number needs to mean anything. Over the
+        // standing word it was a label with its own value repeated underneath.
+        await expect(rhs).not.toContainText('Goes stale');
     });
 
     test('is drawn above the readings rather than after them', async ({mount}) => {
@@ -339,9 +342,6 @@ test('the panel shows the source as posted, reachable without a pointer', async 
     await expect(pane).toHaveAttribute('tabindex', '0');
 });
 
-test('the source can be copied without collapsing the disclosure', async ({mount}) => {
-    const component = await mount(<CotPanelHarness src='<event uid="X"/>'/>);
-
 // A disclosure styled like the group headings around it reads as a heading with
 // a small triangle, which is how the first one shipped. The state word is the
 // part that cannot be mistaken for a label.
@@ -361,6 +361,9 @@ test('a collapsed disclosure says it can be opened, and says so again when it is
     await expect(summary).toContainText('Hide');
     await expect(summary).not.toContainText('Show');
 });
+
+test('the source can be copied without collapsing the disclosure', async ({mount}) => {
+    const component = await mount(<CotPanelHarness src='<event uid="X"/>'/>);
 
     await component.getByRole('button', {name: 'Open details'}).click();
 

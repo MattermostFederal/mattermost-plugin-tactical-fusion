@@ -38,8 +38,10 @@ const styles: Record<string, React.CSSProperties> = {
         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
         fontSize: '24px',
         fontWeight: 600,
-        color: 'var(--center-channel-color)',
-        margin: '0 0 6px',
+        color: 'var(--error-text, #d24b4e)',
+        borderLeft: '4px solid var(--error-text, #d24b4e)',
+        paddingLeft: '10px',
+        margin: '16px 0 6px',
     },
     later: {
         borderTop: '1px solid rgba(var(--center-channel-color-rgb), 0.16)',
@@ -105,10 +107,18 @@ function StaleCountdown({event}: {event: CotEvent}) {
         return null;
     }
 
+    // No heading once it has passed. "Goes stale" is what the countdown NEEDS,
+    // because a number on its own says nothing; the word "Stale" says the whole
+    // thing by itself, and a future-tense heading over it read as a label with
+    // its own value repeated underneath.
+    if (passed) {
+        return <p style={styles.stale}>{'Stale'}</p>;
+    }
+
     return (
         <div>
             <h3 style={styles.groupHeading}>{'Goes stale'}</h3>
-            {passed ? <p style={styles.stale}>{'Stale'}</p> : <Countdown target={new Date(staleAt)}/>}
+            <Countdown target={new Date(staleAt)}/>
         </div>
     );
 }

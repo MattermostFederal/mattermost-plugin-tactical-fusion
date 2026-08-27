@@ -371,9 +371,9 @@ link to another post.
 `parent_callsign` and `uid` off every link whatever its relation says, so a
 `p-c` link contributes exactly what a `p-p` one does. That is deliberate, since
 the vocabulary is only meaningful with the other event in hand, but it has to be
-SAID wherever two relations are shown side by side: `example-details` shows a
-`p-p` beside a `p-c` and carries a line stating that the card does not tell them
-apart, because two rows differing in one attribute imply that it does.
+SAID wherever two relations are shown side by side, which is why `cot.html`
+carries a line stating that the card does not tell them apart: two examples
+differing in one attribute imply that it does.
 
 **`maxCotLinks` drops the extras and keeps the event**, which is the opposite of
 `maxCotEvents` above. The asymmetry is the cost of being wrong in each case: an
@@ -581,6 +581,13 @@ a panel left open crosses the boundary on its own. Past it, the countdown is
 replaced by the standing word: a clock counting *up* from an expiry reads as a
 live track, which is the opposite of what it means. One timer, not a ticker, so
 the reason the card carries no clock is not quietly reintroduced.
+
+**The heading goes with the countdown.** "Goes stale" is what a counting number
+NEEDS, since a number alone says nothing about what it is counting to. Over the
+standing word it was a future-tense label with its own value repeated
+underneath, which is how it first shipped and read as a mistake. So the stale
+state is the word by itself, in the urgent styling the countdown already uses,
+and the instant it passed is still in the `Stale` row below.
 
 **Staleness is drawn above the readings.** It decides whether the rest of the
 panel is worth reading at all, so it is read first. It used to sit between the
