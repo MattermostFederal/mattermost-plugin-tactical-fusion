@@ -109,11 +109,11 @@ var cotExampleOrder = []cotExample{
 		source: cotExampleRich,
 	},
 	{
-		lead: "The same reader, from an attachment. A `.cot` or `.xml` file is read exactly " +
+		lead: "The same reader, from an attachment. An `.xml` or `.cot` file is read exactly " +
 			"as a fenced block is, which is how an event exported from ATAK arrives, and " +
 			"the card replaces the attachment rather than sitting beside it:",
 		source: cotExampleAttachment,
-		file:   "medevac.cot",
+		file:   "medevac.xml",
 	},
 }
 

@@ -133,7 +133,7 @@ type configuration struct {
 	LocationMapPackagesDir string
 
 	// EnableCot is the switch for rendering a Cursor on Target event, and
-	// EnableCotFile decides whether an attached .cot or .xml file is read at
+	// EnableCotFile decides whether an attached .xml or .cot file is read at
 	// post time. Both are false at zero, exactly as every switch above is.
 	//
 	// EnableCot governs stamping only. A post already stamped keeps rendering

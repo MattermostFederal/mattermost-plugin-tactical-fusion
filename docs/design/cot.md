@@ -737,7 +737,7 @@ of overlapping blobs, and unlike a drawn area a ring qualifies one specific
 position.
 
 **The third example is an attachment.** It posts a MEDEVAC request as a
-`medevac.cot` file rather than a fence, because the file path is a whole second
+`medevac.xml` file rather than a fence, because the file path is a whole second
 way in and nothing else demonstrates it: `plugin.API.UploadFile` credits the file
 to `model.UploadNoUserID`, which is exactly the `cotFileCreator` branch that
 exists for a companion plugin's uploads, so the example exercises it end to end.
@@ -807,6 +807,15 @@ one line each.
 that no unstamped post contained the substring `<event`, which was true and
 sufficient while the only event in the output was the live card's own post. It is
 now false by construction: the details posts are full of events, in fences where
+**The example is `.xml`, and `cotFileSuffixes` lists `.xml` first**, because that
+is the extension a reader is likelier to have on hand: ATAK exports and every
+other tool that emits this XML write `.xml` far more often than `.cot`, and an
+example named for the rarer one reads as though the rarer one were required.
+Both are accepted and neither is preferred by the code, which tries the suffixes
+in order and stops at the first match, so the order is documentation rather than
+behavior. The prose in `plugin.json`, the help pages and the example's own lead
+all lead with `.xml` for the same reason and carry no more weight than that.
+
 nothing reads them. `TestTheEventExampleIsAPostOfItsOwn` therefore runs every
 created post through the recognition function itself, and the budget sweep in
 `TestDetailsPostWhateverTheServerAccepts` asks the same question again at every

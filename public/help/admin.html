@@ -1022,14 +1022,14 @@
             <tbody>
                 <tr><td>Type</td><td>Boolean</td></tr>
                 <tr><td>Default</td><td>On</td></tr>
-                <tr><td>Effect when off</td><td>An attached <code>.cot</code> or <code>.xml</code> file is left as an ordinary attachment. A pasted fenced block still renders.</td></tr>
+                <tr><td>Effect when off</td><td>An attached <code>.xml</code> or <code>.cot</code> file is left as an ordinary attachment. A pasted fenced block still renders.</td></tr>
                 <tr><td>Requires</td><td><a href="#enable-cot"><code>EnableCot</code></a></td></tr>
             </tbody>
         </table>
 
         <p>
-            When a post carries exactly one attachment whose name ends <code>.cot</code> or
-            <code>.xml</code>, the file is read as the post is created and the event inside
+            When a post carries exactly one attachment whose name ends <code>.xml</code> or
+            <code>.cot</code>, the file is read as the post is created and the event inside
             it is rendered. This is the only setting in the plugin that reads a file while a
             message is being posted. An install whose file storage is slow or remote may
             prefer to turn it off and keep the fenced block, which costs nothing extra.

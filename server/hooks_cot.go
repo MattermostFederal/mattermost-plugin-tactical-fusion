@@ -15,7 +15,7 @@ import (
 
 const cotPropsBudgetRunes = model.PostPropsMaxUserRunes
 
-var cotFileSuffixes = []string{".cot", ".xml"}
+var cotFileSuffixes = []string{".xml", ".cot"}
 
 func (p *Plugin) cotStamp(post *model.Post) (result *model.Post, stamped bool) {
 	api := p.API

@@ -222,7 +222,7 @@
                         "display_name": "Read a Cursor on Target file attached to a post",
                         "type": "bool",
                         "default": true,
-                        "help_text": "When a post carries exactly one attachment named .cot or .xml, read it and render the event it contains. This is the only setting in this plugin that reads a file while a message is being posted, so an install whose file storage is slow or remote may prefer to turn it off and keep the fenced code block, which costs nothing extra. Files over 64 KB are ignored either way. Only applies while \"Render Cursor on Target events\" is on."
+                        "help_text": "When a post carries exactly one attachment named .xml or .cot, read it and render the event it contains. This is the only setting in this plugin that reads a file while a message is being posted, so an install whose file storage is slow or remote may prefer to turn it off and keep the fenced code block, which costs nothing extra. Files over 64 KB are ignored either way. Only applies while \"Render Cursor on Target events\" is on."
                     }
                 ]
             }
