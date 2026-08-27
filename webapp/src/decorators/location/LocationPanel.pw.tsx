@@ -447,7 +447,11 @@ test.describe('customizing the view', () => {
         await component.getByRole('button', {name: 'Customize your view'}).click();
 
         await expect(component.getByText('Rows to show')).toBeVisible();
-        await expect(component.getByText('Lat / lon', {exact: true})).toHaveCount(0);
+
+        // The reading's copy button, not its label: the editor offers one
+        // tickbox per row and names it with that same label, so a bare text
+        // match finds the editor and reports the panel it replaced.
+        await expect(component.getByRole('button', {name: 'Copy Lat / lon'})).toHaveCount(0);
 
         await component.getByRole('button', {name: '← Back'}).click();
         await expect(component.getByText('Lat / lon', {exact: true})).toBeVisible();
