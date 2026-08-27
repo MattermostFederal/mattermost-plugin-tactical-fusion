@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.3.0](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/compare/v0.2.0...v0.3.0) (2026-08-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* **cot:** /tactical-fusion example-details no longer exists. Everything it posted is in the built-in help, on the page for each format.
+
+### Features
+
+* **cot:** render Cursor on Target events as a card, panel and map ([#27](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/27)) ([056c899](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/056c899178220e9be6e6b6adce1eec5a8e9af570))
+
+
+### Bug Fixes
+
+* **maps:** stamp the bundled Hawaii archive and correct the size inventory ([#22](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/22)) ([81a7b3f](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/81a7b3f86b4b562c8201417c26e650df63af747c))
+
+
+### Dependencies
+
+* **actions:** bump github/codeql-action/upload-sarif ([#25](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/25)) ([e451d2f](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/e451d2f206434323ef10c3ecb56b88c395dd1b30))
+* **go:** bump github.com/mattermost/mattermost/server/public ([#24](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/24)) ([5deed93](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/5deed9379861a82a144fe1cbc3d0f81b0046cba6))
+* **webapp:** bump the npm-minor-patch group across 1 directory with 6 updates ([#29](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/29)) ([4a2b74d](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/4a2b74d8c2b94214cc1ce7151289b20916339eb7))
+
 ## [0.2.0](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/compare/v0.1.0...v0.2.0) (2026-08-23)
 
 
