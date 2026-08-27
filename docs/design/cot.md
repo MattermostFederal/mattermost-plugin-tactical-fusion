@@ -1260,6 +1260,36 @@ from the second. `TestARejectedRepeatDoesNotContributeItsChild` holds it.
 as the element. Attributes were free, and `_flow-tags_` is the first element
 whose attribute count is author-chosen without bound.
 
+### A reading is refused rather than shown at any length
+
+Two props are stored **verbatim** rather than through `sanitize`: `lat` and
+`lon`. The digits are the reading, so capping them would move the position
+rather than shorten it. That makes the grammar the only bound, and
+`decimalShape` had none: it constrained the character set and not the length,
+so a latitude of sixty thousand leading zeros parsed to 34.0561, passed the
+range check and was rendered as a coordinate in the Position row of every
+reader in the channel. The link was withheld, because `location.Parse` refuses
+it, so the card showed a 60 KB reading with no way to check it.
+
+The grammar now bounds both parts. Ten integer digits and fifteen decimals is
+past every real emitter and past what float64 can distinguish, so nothing a
+reader could verify is refused, and what falls outside it takes the
+`position_note` path that already exists for a position that cannot be linked.
+
+### A date-time group is not spelled for a century it cannot name
+
+The canonical form carries two year digits, which is why `ParamsForZulu`
+refuses an instant outside 2000-2099: 1926 spells `26` and reads back as 2026.
+`addTimes` called `FormatZulu` directly, so the refusal withheld the **link**
+while the **text** still read `091630ZAUG26`, indistinguishable from this year,
+with the true epoch in `time_at` beside it. The card disagreeing with its own
+machine-readable field is the thing this surface is least allowed to do.
+
+`SpellableZulu` is the guarded form and `zuluText` is what `addTimes` uses. An
+instant the grammar cannot spell falls back to the event's own RFC 3339 string,
+which is honest, is what the reader can check against the source pane, and is
+not a token at all so nothing tries to link it.
+
 ### The atom walk is bounded by the table it reads
 
 `type` is an attribute, and no attribute value is length-capped: the parser

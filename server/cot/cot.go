@@ -358,13 +358,13 @@ func addLinks(props map[string]any, links []Link) {
 func addTimes(props map[string]any, event Event) {
 	start, startOK := instantOf(event.Time)
 	if startOK {
-		props["time"] = dtg.FormatZulu(start)
+		props["time"] = zuluText(start, event.Time)
 		props["time_at"] = strconv.FormatInt(start.UnixMilli(), 10)
 		putIfSet(props, "time_q", dtgQuery(start))
 	}
 
 	if begin, ok := instantOf(event.Start); ok {
-		props["start"] = dtg.FormatZulu(begin)
+		props["start"] = zuluText(begin, event.Start)
 		putIfSet(props, "start_q", dtgQuery(begin))
 	}
 
@@ -373,9 +373,26 @@ func addTimes(props map[string]any, event Event) {
 		return
 	}
 
-	props["stale"] = dtg.FormatZulu(stale)
+	props["stale"] = zuluText(stale, event.Stale)
 	props["stale_at"] = strconv.FormatInt(stale.UnixMilli(), 10)
 	putIfSet(props, "stale_q", dtgQuery(stale))
+}
+
+// zuluText is the date-time group, or what the event said when the grammar
+// cannot spell that instant.
+//
+// The canonical form carries two year digits, so an instant outside 2000-2099
+// spells a token naming a different century: an event timed 1926 read
+// 091630ZAUG26 on the card, indistinguishable from this year, while time_at
+// beside it carried the real epoch. Withholding the link was never enough,
+// because the text is the reading. The event's own RFC 3339 is the honest
+// answer and is what a reader can check against the source pane.
+func zuluText(instant time.Time, raw string) string {
+	if spelled, ok := dtg.SpellableZulu(instant); ok {
+		return spelled
+	}
+
+	return sanitize(raw, maxFieldRunes)
 }
 
 // dtgQuery is the date-time group decorator's own link params, or "" for an
@@ -401,7 +418,14 @@ func dtgQuery(t time.Time) string {
 // validated here, stored verbatim, shown as a position and then read as NaN by
 // the map, leaving the card and the picture disagreeing about whether there is
 // a position at all.
-var decimalShape = regexp.MustCompile(`^[+-]?[0-9]+(\.[0-9]+)?$`)
+//
+// Bounded, because these two are the only props stored verbatim rather than
+// through sanitize: the digits are the reading, so truncating one would move
+// the position. An attribute carries author text of any length, and a lat of
+// sixty thousand leading zeros parsed, ranged and rendered as a coordinate.
+// Ten integer digits and fifteen decimals is past every real emitter and past
+// float64's precision, so nothing a reader could check is refused by it.
+var decimalShape = regexp.MustCompile(`^[+-]?[0-9]{1,10}(\.[0-9]{1,15})?$`)
 
 func addPosition(props map[string]any, point Point) {
 	lat, latOK := decimalNumber(point.Lat)

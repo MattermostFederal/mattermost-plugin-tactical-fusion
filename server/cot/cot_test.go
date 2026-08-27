@@ -829,3 +829,58 @@ func TestTheAtomWalkStopsAtTheDeepestPathTheTableHolds(t *testing.T) {
 		}
 	}
 }
+
+// A lat or lon is stored verbatim, because the digits are the reading. The
+// grammar therefore has to bound the length itself: nothing else does, and an
+// attribute may hold the whole source.
+func TestAPositionIsRefusedRatherThanStoredAtAnyLength(t *testing.T) {
+	padded := strings.Repeat("0", 60_000) + "34.0561"
+	props := propsFor(t, pointEvent(`lat="`+padded+`" lon="-118.2500" hae="4.0" ce="9.5" le="15.0"`))
+
+	if _, held := props["lat"]; held {
+		t.Errorf("lat = %v, want a padded reading refused rather than rendered", props["lat"])
+	}
+	if note, _ := props["position_note"].(string); note == "" {
+		t.Error("the refusal is silent; a reader is told nothing about the position")
+	}
+}
+
+func TestAPositionKeepsTheDigitsAnEmitterActuallyWrites(t *testing.T) {
+	props := propsFor(t, pointEvent(`lat="21.335300" lon="-157.948300" hae="4.0" ce="9.5" le="15.0"`))
+
+	if got := props["lat"]; got != "21.335300" {
+		t.Errorf("lat = %v, want the resolution the event carried", got)
+	}
+	if got := props["lon"]; got != "-157.948300" {
+		t.Errorf("lon = %v, want the resolution the event carried", got)
+	}
+}
+
+// The card spells a date-time group, and the canonical form carries two year
+// digits. An event timed 1926 read 091630ZAUG26, which is this year.
+func TestAnInstantTheGrammarCannotSpellIsShownAsTheEventWroteIt(t *testing.T) {
+	props := propsFor(t, `<event version="2.0" uid="OLD-1" type="a-f-G-U-C" how="m-g" `+
+		`time="1926-08-09T16:30:00Z" start="1926-08-09T16:30:00Z" stale="1926-08-09T16:32:00Z">`+
+		`<point lat="21.335300" lon="-157.948300" hae="4.0" ce="9.5" le="15.0"/></event>`)
+
+	for _, key := range []string{"time", "start", "stale"} {
+		got, _ := props[key].(string)
+		if !strings.HasPrefix(got, "1926-") {
+			t.Errorf("%s = %q, want the event's own text rather than a token naming another century", key, got)
+		}
+	}
+
+	for _, key := range []string{"time_q", "start_q", "stale_q"} {
+		if _, held := props[key]; held {
+			t.Errorf("%s is set, so the card links an instant its grammar cannot spell", key)
+		}
+	}
+}
+
+func TestAnInstantInsideTheCenturyIsStillSpelled(t *testing.T) {
+	props := propsFor(t, pointEvent(`lat="21.335300" lon="-157.948300" hae="4.0" ce="9.5" le="15.0"`))
+
+	if got, _ := props["time"].(string); !strings.HasSuffix(got, "AUG26") {
+		t.Errorf("time = %q, want the canonical date-time group", got)
+	}
+}

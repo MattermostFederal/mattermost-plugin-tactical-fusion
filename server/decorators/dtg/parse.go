@@ -206,6 +206,20 @@ func ParamsForZulu(t time.Time) (url.Values, bool) {
 // The result always parses back through this package, so callers generating
 // example or test text cannot accidentally produce something the decorator
 // declines. Seconds are dropped, because a DTG has no place to put them.
+// SpellableZulu is FormatZulu for an instant the grammar can actually spell.
+//
+// The canonical form carries two year digits, so an instant outside 2000-2099
+// formats to a token naming a different century: 1926 spells 26 and reads back
+// as 2026. ParamsForZulu already refuses those, which withholds the LINK; a
+// caller showing the token as text needs the same answer about the text.
+func SpellableZulu(t time.Time) (string, bool) {
+	if year := t.UTC().Year(); year < minYear || year > maxYear {
+		return "", false
+	}
+
+	return FormatZulu(t), true
+}
+
 func FormatZulu(t time.Time) string {
 	utc := t.UTC()
 
