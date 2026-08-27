@@ -286,3 +286,41 @@ test.describe('when the admin has turned a map surface off', () => {
         expect(savedHiddenRows(calls)).toEqual(['inline']);
     });
 });
+
+/*
+ * The hints used to sit inside the label, so eight selectors matching on
+ * /Drawn in the channel/ pinned them as a side effect of naming the row.
+ * Extracting HideableEditor moved them to aria-describedby and every one of
+ * those selectors became an exact label match, which left nothing asserting
+ * that a location row explains itself at all. The CoT editor kept its own
+ * version of this test; this is its twin.
+ */
+test('a hint describes its checkbox rather than naming it', async ({mount, page}) => {
+    await stubFeaturesRoute(page);
+    await stubPreferencesRoute(page);
+    const component = await mount(<CustomizeHarness/>);
+
+    const box = component.getByRole('checkbox', {name: 'Map under the post', exact: true});
+    await expect(box).toBeVisible();
+
+    const describedBy = await box.getAttribute('aria-describedby');
+    expect(describedBy).not.toBeNull();
+    await expect(component.locator(`#${describedBy}`)).toHaveText(/Drawn in the channel/);
+});
+
+test('every row the editor offers carries a hint', async ({mount, page}) => {
+    await stubFeaturesRoute(page);
+    await stubPreferencesRoute(page);
+    const component = await mount(<CustomizeHarness/>);
+
+    const boxes = component.getByRole('checkbox');
+    await expect(boxes.first()).toBeVisible();
+
+    const described = await boxes.evaluateAll(
+        (nodes) => nodes.map((node) => node.getAttribute('aria-describedby')),
+    );
+    expect(described.length).toBeGreaterThan(0);
+    expect(described.filter((id) => id === null || id === '')).toEqual([]);
+
+    await Promise.all(described.map((id) => expect(component.locator(`#${id}`)).not.toBeEmpty()));
+});

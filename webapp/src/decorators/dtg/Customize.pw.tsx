@@ -527,6 +527,38 @@ test('says so when the settings could not be loaded', async ({mount, page}) => {
     await expect(page.getByRole('button', {name: /^Remove /})).toHaveCount(DEFAULT_ZONE_IDS.length);
 });
 
+/*
+ * Leaving is not editing.
+ *
+ * A failed first read leaves the store unloaded on purpose, so that nothing is
+ * saved on top of the defaults it degraded to. Back was gated on the same flag,
+ * which made it dead for the life of the panel: the reader was shut in the
+ * editor, on the one path where they most want out, with closing the whole
+ * sidebar the only way back to the timestamp they opened it from.
+ */
+test('a first read that fails still lets the reader leave', async ({mount, page}) => {
+    let closed = 0;
+    await stubPreferencesRoute(page, {loadStatus: 500});
+    await mount(<Customize
+        instant={instant}
+        onClose={() => {
+            closed += 1;
+        }}
+                />);
+
+    await expect(page.getByRole('status')).toHaveText('Could not read your settings.');
+
+    const back = page.getByRole('button', {name: '← Back'});
+    await expect(back).toBeEnabled();
+
+    // Nothing may be saved from a form built on defaults the reader never chose.
+    await expect(page.getByRole('button', {name: 'Save'})).toBeDisabled();
+    await expect(page.getByRole('button', {name: 'Restore defaults'})).toBeDisabled();
+
+    await back.click();
+    await expect.poll(() => closed).toBe(1);
+});
+
 // Two installations sharing a zone are two rows, each under its own name. The
 // clocks agree, which is the accepted cost of naming both.
 test('two bases in one zone can both be chosen', async ({mount, page}) => {

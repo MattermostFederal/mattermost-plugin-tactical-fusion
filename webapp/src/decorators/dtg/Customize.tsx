@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 
 import {editableZoneIds, normalizeZoneSelection} from './preferences';
 import {DEFAULT_URGENT_WITHIN_MS} from './relative';
@@ -152,10 +152,13 @@ const Customize: React.FC<Props> = ({instant, onClose}) => {
         () => (preferences.dtg.urgentWithinMinutes === 0 ? '' : String(preferences.dtg.urgentWithinMinutes)),
     );
     const [busy, setBusy] = useState(false);
+    const saveRef = useRef<HTMLButtonElement>(null);
 
-    // Nothing is editable until a read has succeeded. See the cot editor for
-    // the defect: a failed FIRST read degrades to the defaults, and saving an
-    // edit made on top of those replaces the reader's real section.
+    // Nothing is EDITABLE until a read has succeeded: a failed first read
+    // degrades to the defaults, and saving an edit made on top of those
+    // replaces the reader's real section. Back is deliberately not sealed by
+    // this, since leaving is not editing. See preferences/HideableEditor.tsx,
+    // which carries the same pair.
     const sealed = busy || loading || !loaded;
     const [status, setStatus] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -239,6 +242,11 @@ const Customize: React.FC<Props> = ({instant, onClose}) => {
             onClose();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Could not save your settings.');
+
+            // Disabling the button while it held focus blurred it to the body,
+            // so the reader has nowhere to retry from. The message is announced
+            // either way; this is what lets them act on it.
+            window.setTimeout(() => saveRef.current?.focus(), 0);
         } finally {
             setBusy(false);
         }
@@ -254,6 +262,7 @@ const Customize: React.FC<Props> = ({instant, onClose}) => {
             onClose();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Could not restore the defaults.');
+            window.setTimeout(() => saveRef.current?.focus(), 0);
         } finally {
             setBusy(false);
         }
@@ -263,7 +272,13 @@ const Customize: React.FC<Props> = ({instant, onClose}) => {
         <div style={styles.root}>
             <LinkButton
                 style={styles.back}
-                disabled={sealed}
+
+                // Gated on this editor's own work, never on the read. A first
+                // read that fails leaves `loaded` false for good, and Back on
+                // `sealed` was then dead for the life of the panel: the reader
+                // was left in the editor with no way back to the timestamp they
+                // opened it from. HideableEditor already gets this right.
+                disabled={busy}
                 onClick={onClose}
             >{'← Back'}</LinkButton>
 
@@ -333,6 +348,7 @@ const Customize: React.FC<Props> = ({instant, onClose}) => {
             <div style={styles.actions}>
                 <button
                     type='button'
+                    ref={saveRef}
                     style={styles.save}
                     disabled={sealed}
                     onClick={onSave}

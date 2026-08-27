@@ -4,6 +4,27 @@
 
 ## Reader preferences
 
+### Leaving is not editing
+
+Every editor seals its controls until a read has succeeded, because a failed
+FIRST read degrades to the defaults and saving an edit made on top of those
+replaces the reader's real section with settings they never chose. `loaded`
+stays false for good after that failure, which is deliberate.
+
+Back must not be sealed by it. The DTG editor gated Back on the same flag, so
+the one path where a reader most wants out was the one path where the control
+was dead for the life of the panel: they were shut in the editor, with closing
+the whole sidebar the only way back to the timestamp they opened it from.
+`HideableEditor` had already got this right (`disabled={busy}`), which is the
+kind of divergence extracting a shared component is supposed to end, and did
+not here because the DTG editor was left out of the extraction.
+
+The same pair of fixes travels together: a failed save refocuses the Save
+button, because disabling a button that holds focus blurs it to the body and
+leaves the reader nowhere to retry from. `HideableEditor` carried that and the
+DTG editor did not.
+
+
 "Customize your view" is a link below three panels. On the DTG it chooses the
 timezone rows and how close a DTG has to be before the countdown flashes; on the
 location panel it chooses **which rows to show**; on the Cursor on Target panel
