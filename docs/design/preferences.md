@@ -4,6 +4,40 @@
 
 ## Reader preferences
 
+### A forgiving read must not become a destructive write
+
+The read is deliberately more forgiving than the write. `validHiddenSections`
+refuses an unknown id on the way in, so a hand-written request cannot store
+junk; `kvPreferenceStore.Get` does not validate on the way out, so retiring a
+section can never lock a reader out of their own settings. `fromWire` matches
+that on the client and drops an id this build does not know.
+
+A save then undid it. A PUT replaces the whole blob, so the client had to send
+back the sections it did not touch, and it rebuilt them from the **parsed**
+shape. Everything `fromWire` had forgivingly dropped was dropped again, this
+time into storage. A reader on a cached older bundle, or one whose admin had
+just downgraded the plugin, lost a hidden id by saving an unrelated section:
+silently, permanently, and with no concurrency involved at all.
+
+`withSection` is the fix. The untouched sections travel back exactly as the
+server sent them, byte for byte, and only the edited one is rebuilt. A section
+the server never sent stays absent rather than being invented as explicit
+zeros, which is the same thing to the server, since a zero value means "use the
+default" everywhere here.
+
+`wireHasNoChoices` follows from the same argument. "Restore defaults" deletes
+the blob when nothing is left, and deciding that on the parsed view would have
+read an unknown id as no choice at all and deleted the settings the forgiving
+read exists to protect. It reads the wire.
+
+**What this does not fix is the lost update.** Two tabs still race: both GET,
+both PUT, and the second overwrites the first's section from a snapshot taken
+before it. The re-read narrows the window from the lifetime of the tab to the
+length of one request, which is worth having and is not a fix. Closing it needs
+a revision the server checks, which is a wire change and a decision about the
+`A PUT replaces the whole blob` invariant, so it is recorded here rather than
+taken.
+
 ### Leaving is not editing
 
 Every editor seals its controls until a read has succeeded, because a failed

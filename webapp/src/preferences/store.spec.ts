@@ -247,13 +247,75 @@ test('restoring another section keeps a cot choice rather than deleting the blob
 
     expect(calls.some((call) => call.method === 'DELETE')).toBe(false);
 
+    // The cot section travels back exactly as it arrived, and a section the
+    // server never sent stays absent rather than being invented as explicit
+    // zeros: absent and zero mean the same thing to the server, and carrying
+    // the blob through unchanged is what keeps an unknown id alive.
     const write = calls.filter((call) => call.method === 'PUT').at(-1);
     expect(write?.method).toBe('PUT');
     expect(write?.body).toEqual({
-        dtg: {zones: [], urgent_within_minutes: 0},
         location: {hidden_rows: []},
         cot: {hidden_sections: ['payload']},
     });
+});
+
+/*
+ * fromWire drops an id this build does not know, deliberately, so retiring one
+ * cannot lock a reader out of their own settings. A save rebuilt the whole blob
+ * from that parsed shape, which turned the forgiving read into a destructive
+ * write: a reader on a cached older bundle lost a hidden id by saving an
+ * unrelated section, silently and permanently.
+ */
+test('saving one section keeps an id another section holds that this build does not know', async () => {
+    const calls = stubFetch(() => ({
+        status: 200,
+        body: {
+            location: {hidden_rows: ['ddm', 'sextant']},
+            cot: {hidden_sections: ['payload', 'telepathy']},
+        },
+    }));
+
+    await savePreferencesSection('dtg', {zones: [], urgentWithinMinutes: 20});
+
+    const write = calls.filter((call) => call.method === 'PUT').at(-1);
+    expect(write?.body).toEqual({
+        location: {hidden_rows: ['ddm', 'sextant']},
+        cot: {hidden_sections: ['payload', 'telepathy']},
+        dtg: {zones: [], urgent_within_minutes: 20},
+    });
+});
+
+test('restoring one section keeps an unknown id in another', async () => {
+    const calls = stubFetch((call) => ({
+        status: 200,
+        body: call.method === 'DELETE' ? {} : {
+            location: {hidden_rows: ['ddm']},
+            cot: {hidden_sections: ['telepathy']},
+        },
+    }));
+
+    await resetPreferencesSection('location');
+
+    expect(calls.some((call) => call.method === 'DELETE')).toBe(false);
+    const write = calls.filter((call) => call.method === 'PUT').at(-1);
+    expect(write?.body).toEqual({
+        location: {hidden_rows: []},
+        cot: {hidden_sections: ['telepathy']},
+    });
+});
+
+// The delete decision is read off the wire for the same reason. An id this
+// build cannot parse still means the reader has chosen something, and deleting
+// on the parsed view would throw away exactly what the forgiving read protects.
+test('an unknown id is a choice, so restoring the rest does not delete the blob', async () => {
+    const calls = stubFetch((call) => ({
+        status: 200,
+        body: call.method === 'DELETE' ? {} : {cot: {hidden_sections: ['telepathy']}},
+    }));
+
+    await resetPreferencesSection('location');
+
+    expect(calls.some((call) => call.method === 'DELETE')).toBe(false);
 });
 
 test('restoring the cot section deletes when nothing is left', async () => {

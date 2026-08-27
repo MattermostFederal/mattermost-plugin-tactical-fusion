@@ -194,15 +194,71 @@ function asSectionIDs(value: unknown): SectionID[] {
 /** Builds the JSON the server expects. The wire names are snake_case. */
 export function toWire(preferences: Preferences): unknown {
     return {
-        dtg: {
-            zones: preferences.dtg.zones,
-            urgent_within_minutes: preferences.dtg.urgentWithinMinutes,
-        },
-        location: {
-            hidden_rows: preferences.location.hiddenRows,
-        },
-        cot: {
-            hidden_sections: preferences.cot.hiddenSections,
-        },
+        dtg: sectionToWire('dtg', preferences.dtg),
+        location: sectionToWire('location', preferences.location),
+        cot: sectionToWire('cot', preferences.cot),
     };
+}
+
+function sectionToWire<K extends keyof Preferences>(section: K, value: Preferences[K]): unknown {
+    if (section === 'dtg') {
+        const dtg = value as DtgPreferences;
+        return {zones: dtg.zones, urgent_within_minutes: dtg.urgentWithinMinutes};
+    }
+    if (section === 'location') {
+        return {hidden_rows: (value as LocationPreferences).hiddenRows};
+    }
+
+    return {hidden_sections: (value as CotPreferences).hiddenSections};
+}
+
+/**
+ * The blob the server sent, with ONE section replaced.
+ *
+ * A PUT replaces the whole blob, so a save has to send back the sections it did
+ * not touch. Rebuilding them from the PARSED shape silently rewrote them:
+ * fromWire drops an id this build does not know, deliberately, so that retiring
+ * one cannot lock a reader out. Sending the parsed shape back turned that
+ * forgiving read into a destructive write, and a reader on a cached older
+ * bundle lost a hidden id by saving an unrelated section. The untouched
+ * sections now travel back exactly as they arrived.
+ */
+export function withSection<K extends keyof Preferences>(
+    base: unknown, section: K, value: Preferences[K],
+): unknown {
+    const blob = typeof base === 'object' && base !== null ? {...base as Record<string, unknown>} : {};
+    blob[section] = sectionToWire(section, value);
+
+    return blob;
+}
+
+/**
+ * Whether a blob the server sent records no choice at all.
+ *
+ * Read off the WIRE rather than the parsed shape, for the reason withSection
+ * exists: a hidden id this build does not know parses away to nothing, and
+ * deciding to DELETE on that would throw away the very settings the forgiving
+ * read exists to preserve.
+ */
+export function wireHasNoChoices(base: unknown): boolean {
+    if (typeof base !== 'object' || base === null) {
+        return true;
+    }
+
+    const blob = base as {dtg?: unknown; location?: unknown; cot?: unknown};
+    const dtg = record(blob.dtg);
+    const minutes = dtg.urgent_within_minutes;
+
+    return listLength(dtg.zones) === 0 &&
+        (typeof minutes !== 'number' || minutes === 0) &&
+        listLength(record(blob.location).hidden_rows) === 0 &&
+        listLength(record(blob.cot).hidden_sections) === 0;
+}
+
+function record(value: unknown): Record<string, unknown> {
+    return typeof value === 'object' && value !== null ? value as Record<string, unknown> : {};
+}
+
+function listLength(value: unknown): number {
+    return Array.isArray(value) ? value.length : 0;
 }
