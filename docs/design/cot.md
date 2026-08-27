@@ -581,6 +581,22 @@ replaced by the standing word: a clock counting *up* from an expiry reads as a
 live track, which is the opposite of what it means. One timer, not a ticker, so
 the reason the card carries no clock is not quietly reintroduced.
 
+**One timer, but not one wait.** `setTimeout` keeps its delay in a signed
+32-bit integer, so a delay past 2,147,483,647 ms, about 24.8 days, wraps and the
+timer fires at once. The stale instant is the author's and is not bounded, so a
+geofence or a standing marker good for a year opened the panel already saying
+`Stale`, with the true instant showing in the `Stale` row underneath it. That is
+the card claiming the opposite of what the event says, which is the one thing
+this surface is not allowed to do.
+
+`staleWait` is the whole fix and lives apart from the component so it can be
+tested without one: past the cap it answers the cap and `settles: false`, and
+the timer re-arms instead of concluding. One timer per 24.8 days, and the
+conclusion is only ever drawn by a wait that actually ran to the instant it was
+asked about. The component test could not catch this, since the wrong state
+takes a macrotask to appear and the assertion passes before it does; `stale.spec.ts`
+tests the arithmetic instead.
+
 **The heading goes with the countdown.** "Goes stale" is what a counting number
 NEEDS, since a number alone says nothing about what it is counting to. Over the
 standing word it was a future-tense label with its own value repeated
@@ -1244,22 +1260,6 @@ from the second. `TestARejectedRepeatDoesNotContributeItsChild` holds it.
 as the element. Attributes were free, and `_flow-tags_` is the first element
 whose attribute count is author-chosen without bound.
 
-### Classification decides layout, in two passes, and the type code is final
-
-The card gains one summary line chosen by a class. Four of them, `chat`,
-`medevac`, `sensor` and `video`, written into props only when they change
-something, per the `putIfSet` precedent. Absent is the default and is today's
-card.
-
-**Pass 1 matches the type code and is final. Pass 2 may only promote an event
-pass 1 left unclassified.**
-
-A single ordered table of "type matches X **or** block present" was the obvious
-design and is wrong. Under it, a hostile contact carrying an empty `<__chat/>`
-classifies as chat, and its remarks are promoted into a message-shaped block:
-ten bytes, chosen by the author, to re-shape somebody else's contact report. An
-`a-*` atom is never re-classed by a `<detail>` child.
-
 ### The atom walk is bounded by the table it reads
 
 `type` is an attribute, and no attribute value is length-capped: the parser
@@ -1283,6 +1283,22 @@ truncating there can only drop prefixes that could never have matched, and a
 deeper row added to `data/types.csv` raises the cap on its own.
 `TestTheAtomWalkStopsAtTheDeepestPathTheTableHolds` is what keeps the derivation
 honest, and `TestALongTypeCostsNoMoreThanAShortOne` pins the cost.
+
+### Classification decides layout, in two passes, and the type code is final
+
+The card gains one summary line chosen by a class. Four of them, `chat`,
+`medevac`, `sensor` and `video`, written into props only when they change
+something, per the `putIfSet` precedent. Absent is the default and is today's
+card.
+
+**Pass 1 matches the type code and is final. Pass 2 may only promote an event
+pass 1 left unclassified.**
+
+A single ordered table of "type matches X **or** block present" was the obvious
+design and is wrong. Under it, a hostile contact carrying an empty `<__chat/>`
+classifies as chat, and its remarks are promoted into a message-shaped block:
+ten bytes, chosen by the author, to re-shape somebody else's contact report. An
+`a-*` atom is never re-classed by a `<detail>` child.
 
 **Matching is case-sensitive**, because case is part of a CoT code everywhere
 else in this package and a `classify` that folded it would disagree with the

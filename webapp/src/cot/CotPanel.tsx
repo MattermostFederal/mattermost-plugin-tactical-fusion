@@ -6,6 +6,7 @@ import DetailGroups from './DetailGroups';
 import Disclosure from './Disclosure';
 import {setEditing, useEditing} from './editing';
 import {isSectionVisible} from './sections';
+import {staleWait} from './stale';
 import type {CotEvent, CotPayload} from './types';
 import {SOURCE_FILE, isLinkable, validFor} from './types';
 
@@ -105,6 +106,7 @@ function StaleCountdown({event}: {event: CotEvent}) {
     const staleAt = Number(event.staleAt);
     const usable = Number.isFinite(staleAt) && staleAt > 0;
     const [passed, setPassed] = useState(() => usable && staleAt <= Date.now());
+    const [rearm, setRearm] = useState(0);
 
     useEffect(() => {
         if (!usable) {
@@ -118,9 +120,16 @@ function StaleCountdown({event}: {event: CotEvent}) {
         }
 
         setPassed(false);
-        const timer = setTimeout(() => setPassed(true), remaining);
+        const wait = staleWait(remaining);
+        const timer = setTimeout(() => {
+            if (wait.settles) {
+                setPassed(true);
+                return;
+            }
+            setRearm((armed) => armed + 1);
+        }, wait.ms);
         return () => clearTimeout(timer);
-    }, [staleAt, usable]);
+    }, [staleAt, usable, rearm]);
 
     if (!usable) {
         return null;
