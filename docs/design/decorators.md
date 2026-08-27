@@ -378,14 +378,25 @@ decorated, and a decorator link is a protected span, so `Decorate` is
 idempotent. `TestExamplesSurviveTheMessageHook` pins that, since the alternative
 failure is a nested link written inside a real one.
 
-`/tactical-fusion check <text>` decorates supplied text and explains the rules
-that most often decline a coordinate, without posting anything.
+### A hover card is sized by its content, not by its link
 
-`/tactical-fusion` with no subcommand lists the subcommands; an unknown one is
-an error carrying a `TF-NNNN` code. Both replies are ephemeral, and
-`TestEverySubcommandIsAdvertised` parses the dispatch switch out of `command.go`
-so a subcommand cannot be added without reaching the autocomplete data and
-`subcommandList` too.
+`HoverLink` hangs the card off the anchor with `position: absolute` and
+`left: 0`. An absolutely positioned box with a `left` and no width of its own
+shrinks to fit its **containing block**, and the containing block here is the
+anchor, so the card came out as wide as the token it hung off. A short one, which
+in the Cursor on Target panel is every time, broke `in 1h 29m 59s` across two
+lines.
+
+`width: max-content` is the fix, and the card's own `maxWidth` still caps it.
+
+It changes nothing for the location hover, whose map preview is a fixed-width
+box: a fixed child pins shrink-to-fit's preferred *minimum* to its own width, so
+that card was already at full width and already overflowing a narrow column if
+it was going to. Only wrappable text was ever squeezed.
+
+`HoverLink.pw.tsx` measures the readout against its own font size rather than
+against a pixel count, so it fails on two lines whatever the line height
+resolves to, and checks the card still fits inside a sidebar-width column.
 
 ### Adding a decorator
 

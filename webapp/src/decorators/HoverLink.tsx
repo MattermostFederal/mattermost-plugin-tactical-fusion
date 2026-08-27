@@ -24,6 +24,14 @@ const styles: Record<string, React.CSSProperties> = {
         position: 'absolute',
         top: '100%',
 
+        // Sized by its own content, not by the link it hangs off.
+        //
+        // An absolutely positioned box with `left` and no width shrinks to fit
+        // its CONTAINING BLOCK, which here is the anchor, so the card was as
+        // wide as the token and wrapped "in 1h 29m 59s" onto two lines. The
+        // card's own maxWidth still caps it.
+        width: 'max-content',
+
         // Above the post it is drawn over. Mattermost's own post chrome sits
         // well below this, and the card is dismissed the moment the pointer
         // leaves, so it cannot strand anything underneath it.
