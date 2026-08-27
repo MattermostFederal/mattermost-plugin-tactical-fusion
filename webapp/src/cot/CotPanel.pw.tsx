@@ -1,8 +1,11 @@
 import React from 'react';
 
 import CotPanelHarness from './CotPanelHarness';
+import {SECTIONS} from './sections';
 
 import {expect, test} from '../../playwright/ct-coverage';
+import {stubFeaturesRoute} from '../features/stub_route';
+import {stubPreferencesRoute} from '../preferences/stub_route';
 
 test('the sidebar is empty until the card asks for it', async ({mount}) => {
     const component = await mount(<CotPanelHarness/>);
@@ -721,5 +724,357 @@ test.describe('the long tail', () => {
 
         await expect(rhs.getByText('Routing')).toHaveCount(0);
         await expect(rhs.getByRole('heading', {name: 'Geofence'})).toHaveCount(0);
+    });
+});
+
+/*
+ * The reader's own view of the panel.
+ *
+ * Stored as the sections a reader HID, so an empty list is every section and a
+ * section added later appears for everybody, including the readers who
+ * customized. The editor asks the opposite question, because "hide this" is the
+ * honest mirror of the storage and the wrong thing to put to a person.
+ */
+test.describe('customizing the panel', () => {
+    const richEvent = {
+        callsign: 'DELTA1',
+        uid: 'ANDROID-1',
+        remarks: 'Holding at the bridge.',
+    };
+
+    const richDetail = {
+        takvPlatform: 'ATAK-CIV',
+        precisionPdop: '1.2',
+        attitudeYaw: '271.5',
+        sensorRange: '900 m',
+    };
+
+    test('offers the editor below the readings', async ({mount, page}) => {
+        await stubPreferencesRoute(page);
+        const component = await mount(<CotPanelHarness event={richEvent}/>);
+        await component.getByRole('button', {name: 'Open details'}).click();
+        const rhs = component.getByTestId('rhs');
+
+        await expect(rhs.getByRole('button', {name: 'Customize your view'})).toBeVisible();
+        await expect(rhs.getByRole('link', {name: 'Documentation'})).toBeVisible();
+    });
+
+    /*
+     * The editor takes the panel over rather than sitting below it, and the
+     * sidebar header follows. Mattermost renders the header and the body as two
+     * separate components, so the module store is the whole of the mechanism.
+     */
+    test('the editor takes the panel over and the header follows', async ({mount, page}) => {
+        await stubPreferencesRoute(page);
+        const component = await mount(<CotPanelHarness event={richEvent}/>);
+        await component.getByRole('button', {name: 'Open details'}).click();
+        const rhs = component.getByTestId('rhs');
+
+        await expect(component.getByTestId('rhs-title')).toHaveText('Cursor on Target: DELTA1');
+
+        await rhs.getByRole('button', {name: 'Customize your view'}).click();
+
+        await expect(component.getByTestId('rhs-title')).toHaveText('Customize your view');
+        await expect(rhs.getByRole('group', {name: 'Sections to show'})).toBeVisible();
+        await expect(rhs.getByRole('group', {name: /^Readings for the/})).toHaveCount(0);
+    });
+
+    // Without a way out that does not write something, a reader who opened the
+    // editor by accident is stuck in it.
+    test('Back returns to the readings without writing', async ({mount, page}) => {
+        const calls = await stubPreferencesRoute(page);
+        const component = await mount(<CotPanelHarness event={richEvent}/>);
+        await component.getByRole('button', {name: 'Open details'}).click();
+        const rhs = component.getByTestId('rhs');
+
+        await rhs.getByRole('button', {name: 'Customize your view'}).click();
+        await rhs.getByRole('button', {name: '← Back'}).click();
+
+        await expect(rhs.getByRole('group', {name: /^Readings for the/})).toBeVisible();
+        await expect(component.getByTestId('rhs-title')).toHaveText('Cursor on Target: DELTA1');
+        expect(calls.some((call) => call.method !== 'GET')).toBe(false);
+    });
+
+    /*
+     * Focus has to survive both halves of the swap. Opening the editor unmounts
+     * the link that opened it, and closing unmounts the Back link, so without
+     * somewhere to put focus a keyboard reader is dropped at the body twice.
+     */
+    test('focus follows the reader into the editor and back out', async ({mount, page}) => {
+        await stubFeaturesRoute(page);
+        await stubPreferencesRoute(page);
+        const component = await mount(<CotPanelHarness event={richEvent}/>);
+        await component.getByRole('button', {name: 'Open details'}).first().click();
+        const rhs = component.getByTestId('rhs');
+
+        await rhs.getByRole('button', {name: 'Customize your view'}).click();
+        await expect(rhs.getByRole('button', {name: '← Back'})).toBeFocused();
+
+        await rhs.getByRole('button', {name: '← Back'}).click();
+        await expect(rhs.getByRole('button', {name: 'Customize your view'})).toBeFocused();
+    });
+
+    test('draws every section when the reader has hidden nothing', async ({mount, page}) => {
+        await stubPreferencesRoute(page);
+        const component = await mount(
+            <CotPanelHarness
+                event={richEvent}
+                detail={richDetail}
+            />,
+        );
+        await component.getByRole('button', {name: 'Open details'}).click();
+        const rhs = component.getByTestId('rhs');
+
+        await Promise.all(
+            ['Event', 'Remarks', 'Device', 'Position quality', 'Orientation', 'Payload'].map(
+                (heading) => expect(rhs.getByRole('heading', {name: heading})).toBeVisible(),
+            ),
+        );
+        await expect(rhs.getByText('As posted')).toBeVisible();
+    });
+
+    /*
+     * Every section, one at a time, driven from the catalog.
+     *
+     * The fixture has to be rich enough that each section draws something,
+     * which is what the earlier tests missed: the harness defaults leave
+     * geometry null, flow empty, staleAt blank and the position unlinkable, so
+     * the `shape`, `flow`, `stale` and `map` gates could all be deleted with
+     * every test still green.
+     */
+    const everySectionEvent = {
+        callsign: 'DELTA1',
+        uid: 'ANDROID-1',
+        remarks: 'Holding at the bridge.',
+        format: 'dd',
+        value: '21.3353,-157.9483',
+        lat: '21.3353',
+        lon: '-157.9483',
+        staleAt: String(Date.now() + (60 * 60 * 1000)),
+        flow: [{system: 'systemA', time: '231910Z AUG 26'}],
+        geometry: {kind: 'polyline', closed: true, count: '3', points: [{lat: 1, lon: 2}, {lat: 3, lon: 4}], major: '', minor: '', angle: '', note: ''},
+    };
+
+    const everySectionDetail = {
+        takvPlatform: 'ATAK-CIV',
+        precisionPdop: '1.2',
+        attitudeYaw: '271.5',
+        sensorRange: '900 m',
+    };
+
+    // What proves each section is on screen. Every one must be absent when its
+    // own id is hidden and present when it is not.
+    const MARKER: Record<string, {role: 'heading' | 'text'; name: string}> = {
+        map: {role: 'text', name: 'cot-map'},
+        stale: {role: 'heading', name: 'Goes stale'},
+        event: {role: 'heading', name: 'Event'},
+        remarks: {role: 'heading', name: 'Remarks'},
+        device: {role: 'heading', name: 'Device'},
+        precision: {role: 'heading', name: 'Position quality'},
+        orientation: {role: 'heading', name: 'Orientation'},
+        payload: {role: 'heading', name: 'Payload'},
+        shape: {role: 'heading', name: 'Shape'},
+        flow: {role: 'text', name: 'Processing path (1)'},
+        source: {role: 'text', name: 'As posted'},
+    };
+
+    for (const section of SECTIONS) {
+        const marker = MARKER[section.id];
+
+        test(`the ${section.id} section is drawn, and is gone when it is hidden`, async ({mount, page}) => {
+            await stubFeaturesRoute(page);
+            await stubPreferencesRoute(page, {storedHiddenSections: [section.id]});
+            const component = await mount(
+                <CotPanelHarness
+                    event={everySectionEvent}
+                    detail={everySectionDetail}
+                />,
+            );
+            await component.getByRole('button', {name: 'Open details'}).first().click();
+            const rhs = component.getByTestId('rhs');
+
+            const locate = (scope: ReturnType<typeof component.getByTestId>) =>
+                (marker.role === 'heading' ? scope.getByRole('heading', {name: marker.name}) : scope.getByTestId(marker.name));
+
+            if (marker.role === 'text' && marker.name !== 'cot-map') {
+                await expect(rhs.getByText(marker.name)).toHaveCount(0);
+            } else {
+                await expect(locate(rhs)).toHaveCount(0);
+            }
+        });
+    }
+
+    test('every section is drawn when nothing is hidden', async ({mount, page}) => {
+        await stubFeaturesRoute(page);
+        await stubPreferencesRoute(page);
+        const component = await mount(
+            <CotPanelHarness
+                event={everySectionEvent}
+                detail={everySectionDetail}
+            />,
+        );
+        await component.getByRole('button', {name: 'Open details'}).first().click();
+        const rhs = component.getByTestId('rhs');
+
+        await Promise.all(SECTIONS.map((section) => {
+            const marker = MARKER[section.id];
+            if (marker.role === 'heading') {
+                return expect(rhs.getByRole('heading', {name: marker.name})).toBeVisible();
+            }
+            if (marker.name === 'cot-map') {
+                return expect(rhs.getByTestId('cot-map')).toBeVisible();
+            }
+            return expect(rhs.getByText(marker.name)).toBeVisible();
+        }));
+    });
+
+    /*
+     * The card map and the panel map follow DIFFERENT reader preferences, and
+     * that split is the whole point of the `surface` prop. Before it, hiding
+     * the coordinate map under posts silently blanked the sidebar map too.
+     */
+    test.describe('the two maps follow different preferences', () => {
+        test('hiding the cot map leaves the card map alone', async ({mount, page}) => {
+            await stubFeaturesRoute(page);
+            await stubPreferencesRoute(page, {storedHiddenSections: ['map']});
+            const component = await mount(<CotPanelHarness event={everySectionEvent}/>);
+            await component.getByRole('button', {name: 'Open details'}).first().click();
+
+            await expect(component.getByTestId('rhs').getByTestId('cot-map')).toHaveCount(0);
+            await expect(component.getByTestId('cot-card').getByTestId('cot-map')).toBeVisible();
+        });
+
+        test('hiding the map under a post leaves the panel map alone', async ({mount, page}) => {
+            await stubFeaturesRoute(page);
+            await stubPreferencesRoute(page, {storedHiddenRows: ['inline']});
+            const component = await mount(<CotPanelHarness event={everySectionEvent}/>);
+            await component.getByRole('button', {name: 'Open details'}).first().click();
+
+            await expect(component.getByTestId('cot-card').getByTestId('cot-map')).toHaveCount(0);
+            await expect(component.getByTestId('rhs').getByTestId('cot-map')).toBeVisible();
+        });
+
+        // The admin switch is shared, so it still takes both.
+        test('the admin switch takes both maps', async ({mount, page}) => {
+            await stubFeaturesRoute(page, {mapInline: false});
+            await stubPreferencesRoute(page);
+            const component = await mount(<CotPanelHarness event={everySectionEvent}/>);
+            await component.getByRole('button', {name: 'Open details'}).first().click();
+
+            await expect(component.getByTestId('cot-map')).toHaveCount(0);
+        });
+    });
+
+    test('leaves out the sections the reader hid', async ({mount, page}) => {
+        await stubPreferencesRoute(page, {
+            storedHiddenSections: ['payload', 'device', 'remarks', 'source'],
+        });
+        const component = await mount(
+            <CotPanelHarness
+                event={richEvent}
+                detail={richDetail}
+            />,
+        );
+        await component.getByRole('button', {name: 'Open details'}).click();
+        const rhs = component.getByTestId('rhs');
+
+        await Promise.all(
+            ['Payload', 'Device', 'Remarks'].map(
+                (heading) => expect(rhs.getByRole('heading', {name: heading})).toHaveCount(0),
+            ),
+        );
+        await expect(rhs.getByText('As posted')).toHaveCount(0);
+
+        // And nothing else went with them.
+        await expect(rhs.getByRole('heading', {name: 'Event'})).toBeVisible();
+        await expect(rhs.getByRole('heading', {name: 'Position quality'})).toBeVisible();
+        await expect(rhs.getByRole('heading', {name: 'Orientation'})).toBeVisible();
+    });
+
+    /*
+     * Hiding everything is allowed and has to stay recoverable: what is left is
+     * the callsign and the link that opens the editor, which is the way back.
+     */
+    test('hiding every section leaves the callsign and the way back', async ({mount, page}) => {
+        await stubPreferencesRoute(page, {
+            storedHiddenSections: SECTIONS.map((section) => section.id),
+        });
+        const component = await mount(
+            <CotPanelHarness
+                event={richEvent}
+                detail={richDetail}
+            />,
+        );
+        await component.getByRole('button', {name: 'Open details'}).click();
+        const rhs = component.getByTestId('rhs');
+
+        await expect(rhs.getByRole('heading', {name: 'DELTA1'})).toBeVisible();
+        await expect(rhs.getByRole('button', {name: 'Customize your view'})).toBeVisible();
+        await expect(rhs.getByRole('group', {name: /^Readings for the/})).toHaveCount(0);
+    });
+
+    /*
+     * The honesty notices are not a section and cannot be switched off. A build
+     * that could not read part of an event says so whatever the reader chose.
+     */
+    test('says what it could not read even with every section hidden', async ({mount, page}) => {
+        await stubPreferencesRoute(page, {
+            storedHiddenSections: SECTIONS.map((section) => section.id),
+        });
+        const component = await mount(
+            <CotPanelHarness event={{...richEvent, detailUnknown: '2'}}/>,
+        );
+        await component.getByRole('button', {name: 'Open details'}).click();
+
+        await expect(component.getByTestId('rhs').getByText(/2 other <detail> elements/)).toBeVisible();
+    });
+
+    /*
+     * Two position reports from one device are two posts with one event each
+     * and the SAME uid, which is the case a derived `count:uid` key could not
+     * see: the reader clicked the second report and stayed in the editor. The
+     * test below this one uses distinct uids and passed throughout.
+     */
+    test('a second report from the same device closes the editor', async ({mount, page}) => {
+        await stubPreferencesRoute(page);
+        const component = await mount(
+            <CotPanelHarness
+                event={{callsign: 'DELTA1', uid: 'ANDROID-1'}}
+                second={{callsign: 'DELTA1', uid: 'ANDROID-1', time: '2026-08-09T16:35:00Z'}}
+            />,
+        );
+
+        await component.getByRole('button', {name: 'Open details'}).first().click();
+        await component.getByTestId('rhs').getByRole('button', {name: 'Customize your view'}).click();
+        await expect(component.getByTestId('rhs-title')).toHaveText('Customize your view');
+
+        await component.getByTestId('second-card').getByRole('button', {name: 'Open details'}).click();
+
+        await expect(component.getByTestId('rhs-title')).toHaveText('Cursor on Target: DELTA1');
+        await expect(component.getByTestId('rhs').getByRole('group', {name: /^Readings for the/})).toBeVisible();
+    });
+
+    /*
+     * React keeps the panel mounted across a change of selection, so nothing
+     * else resets the editor: clicking a second event while it is open would
+     * otherwise land on the editor rather than on the event that was clicked.
+     */
+    test('a different event closes the editor', async ({mount, page}) => {
+        await stubPreferencesRoute(page);
+        const component = await mount(
+            <CotPanelHarness
+                event={richEvent}
+                second={{callsign: 'ECHO2', uid: 'ANDROID-2'}}
+            />,
+        );
+
+        await component.getByRole('button', {name: 'Open details'}).first().click();
+        await component.getByTestId('rhs').getByRole('button', {name: 'Customize your view'}).click();
+        await expect(component.getByTestId('rhs-title')).toHaveText('Customize your view');
+
+        await component.getByTestId('second-card').getByRole('button', {name: 'Open details'}).click();
+
+        await expect(component.getByTestId('rhs-title')).toHaveText('Cursor on Target: ECHO2');
+        await expect(component.getByTestId('rhs').getByRole('group', {name: /^Readings for the/})).toBeVisible();
     });
 });

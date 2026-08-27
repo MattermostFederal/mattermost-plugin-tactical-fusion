@@ -13,6 +13,7 @@ export interface Recorded {
     body: {
         dtg?: {zones?: WireZone[]; urgent_within_minutes?: number};
         location?: {hidden_rows?: string[]};
+        cot?: {hidden_sections?: string[]};
     } | null;
 }
 
@@ -23,6 +24,9 @@ export interface StubOptions {
 
     /** What the server already has stored, for the location editor. */
     storedHiddenRows?: string[];
+
+    /** What the server already has stored, for the Cursor on Target editor. */
+    storedHiddenSections?: string[];
 
     /**
      * Holds every GET open, handing back the function that releases them.
@@ -54,7 +58,11 @@ export interface StubOptions {
     resetMessage?: string;
 }
 
-const NOTHING_SAVED = {dtg: {zones: [], urgent_within_minutes: 0}, location: {hidden_rows: []}};
+const NOTHING_SAVED = {
+    dtg: {zones: [], urgent_within_minutes: 0},
+    location: {hidden_rows: []},
+    cot: {hidden_sections: []},
+};
 
 /**
  * Stands in for the plugin's preferences route in a component test.
@@ -74,6 +82,7 @@ export async function stubPreferencesRoute(page: Page, options: StubOptions = {}
             urgent_within_minutes: options.stored?.urgentWithinMinutes ?? 0,
         },
         location: {hidden_rows: options.storedHiddenRows ?? []},
+        cot: {hidden_sections: options.storedHiddenSections ?? []},
     };
 
     // Resolves when the test releases the held GETs. Held requests park on it
@@ -156,4 +165,9 @@ export function savedMinutes(calls: Recorded[]): number | undefined {
 /** The hidden rows the component asked to save, in order. */
 export function savedHiddenRows(calls: Recorded[]): string[] | undefined {
     return calls.filter((call) => call.method === 'PUT').at(-1)?.body?.location?.hidden_rows;
+}
+
+/** The hidden sections the component asked to save, in order. */
+export function savedHiddenSections(calls: Recorded[]): string[] | undefined {
+    return calls.filter((call) => call.method === 'PUT').at(-1)?.body?.cot?.hidden_sections;
 }

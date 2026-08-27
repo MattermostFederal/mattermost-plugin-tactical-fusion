@@ -180,6 +180,7 @@ side moves alone. Change both halves together.
 | The CoT props shape: every key Go writes and the webapp reads | `TestWebappCotShapeMatches`, on a fixture built from `cot.FixtureDetail()` |
 | The `<detail>` extension registry: every key it can write | Same test, plus `TestEveryRegisteredKeyIsWrittenFromTheFixture` |
 | The CoT semantic classes | `TestWebappCotClassesMatch` |
+| The CoT panel's hideable sections: ids, labels, order | `TestWebappCotSectionCatalogMatches` |
 | The processing path, which is an array rather than a rendered string | `TestWebappReadsTheProcessingPath` |
 | A checklist, counted by element name rather than decoded | `TestWebappReadsTheChecklist` |
 | The package list's 60 second lifetime | `TestWebappPackageCacheLifetimeMatches` |

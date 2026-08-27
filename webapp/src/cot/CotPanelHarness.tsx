@@ -1,12 +1,15 @@
 import React, {useState} from 'react';
 
 import CotCard from './CotCard';
+import {_resetForTesting as resetEditing} from './editing';
 import type {CotChecklist, CotPayload} from './types';
 import {emptyDetail} from './types';
 
 import {RhsTitle, RhsView} from '../components/rhs/RhsView';
 import {_resetForTesting as resetDecorators} from '../decorators/registry';
 import {clearSelection} from '../decorators/selection';
+import {_resetForTesting as resetFeaturesStore} from '../features/store';
+import {_resetForTesting as resetPreferencesStore} from '../preferences/store';
 
 import {registerCotPanel} from './index';
 
@@ -35,6 +38,15 @@ interface Props {
     fileName?: string;
     checklist?: CotChecklist | null;
     src?: string;
+
+    /**
+     * A second card, over its own payload.
+     *
+     * The sidebar keeps one panel mounted across a change of selection, so a
+     * second card is the only way to exercise what the panel does when the
+     * reader clicks a different event while it is open.
+     */
+    second?: Record<string, unknown>;
 }
 
 /**
@@ -42,8 +54,12 @@ interface Props {
  * assert what the sidebar then shows.
  *
  * The map is never reachable: every fixture leaves the position unlinkable, so
- * neither surface mounts `CotMap` and the component tests stay free of the
- * feature store and WebGL.
+ * neither surface mounts `CotMap` and the component tests stay free of WebGL.
+ *
+ * The preferences store is reset on mount, because it caches the blob for the
+ * life of the page and a panel that reads a reader's hidden sections needs its
+ * own. A test that cares what is hidden stubs the route as well; one that does
+ * not gets the defaults, which is every section shown.
  */
 const CotPanelHarness: React.FC<Props> = ({
     event = {},
@@ -53,10 +69,14 @@ const CotPanelHarness: React.FC<Props> = ({
     source = 'fence',
     fileName = '',
     src = '<event uid="ANDROID-1"/>',
+    second,
 }) => {
     useState(() => {
         resetDecorators();
         clearSelection();
+        resetEditing();
+        resetPreferencesStore();
+        resetFeaturesStore();
         registerCotPanel();
         return true;
     });
@@ -116,6 +136,11 @@ const CotPanelHarness: React.FC<Props> = ({
             <div data-testid='rhs-title'><RhsTitle/></div>
             <div data-testid='rhs'><RhsView/></div>
             <CotCard payload={payload}/>
+            {second && (
+                <div data-testid='second-card'>
+                    <CotCard payload={{...payload, events: [{...payload.events[0], ...second}]}}/>
+                </div>
+            )}
         </div>
     );
 };

@@ -634,10 +634,72 @@ governs the only filestore read this plugin puts on the post path.
 under a post", and its parent ANDs with `EnableLocation` and `EnableLocationMap`
 already live in Go beside `locationFormats`. A second switch would be a second
 implementation of "is this on", which `features/types.ts` argues against by name.
-The card reads the same `features.mapInline` and the same `INLINE_ID` reader
-preference, so a reader who hid the map under coordinate posts has hid it here
-too. `TestCotHasNoMapSettingOfItsOwn` is where that decision gets revisited
-rather than silently reversed.
+Both surfaces read the same `features.mapInline`.
+`TestCotHasNoMapSettingOfItsOwn` is where that decision gets revisited rather
+than silently reversed.
+
+The **reader's** switch is where the two surfaces part, and `CotMap`'s `surface`
+prop is the whole of it. In the channel this is the map under a post and follows
+the same `INLINE_ID` a coordinate-only post does, so a reader who hid one has hid
+both. In the sidebar it is not a map under a post at all, and it follows the
+Cursor on Target panel's own `map` section. It followed `INLINE_ID` there too for
+a while, and the result read as a bug rather than as a setting: hiding the map
+under coordinate posts silently blanked the sidebar map for an unrelated feature,
+under a tickbox whose label said "Drawn in the channel". Both gates are still
+read in the OUTER component, so the inner one never mounts either way.
+
+### Customize your view
+
+The panel carries the third preferences section, `cot`, holding the groups a
+reader has **hidden**. Stored that way rather than as the ones they kept, for the
+reasons `docs/design/preferences.md` argues once and this section inherits
+whole: an empty list means "all of them", so a reader who never chose is stored
+as nothing at all and "Restore defaults" stays a delete, and a section added in a
+later version appears for everybody rather than being invisible to exactly the
+readers who cared enough to choose.
+
+**Groups rather than rows**, which is the one place this editor differs from the
+location one. This is the longest panel in the plugin and its volume comes from
+whole headings: one event can draw a map, a countdown, a fourteen-row grid,
+remarks and six more headings before the source disclosure. A tickbox per reading
+would have traded one long panel for a longer editor. Eleven ids, in the order
+`EventSection` draws them: `map`, `stale`, `event`, `remarks`, `device`,
+`precision`, `orientation`, `payload`, `shape`, `flow`, `source`.
+
+`cot.Sections` in `server/cot/sections.go` is the catalog and
+`webapp/src/cot/sections.ts` is the other half, held to the same ids in the same
+order by `TestWebappCotSectionCatalogMatches`. The order is the panel's render
+order and the editor's list order at once, so reordering for one and not the
+other is not something the code can express. Ids reach the KV store: add and
+retire freely, rename never. The server refuses an id it does not know
+(`TF-14009`); both sides ignore one on the way in, so retiring a section cannot
+lock a reader out of the settings around it.
+
+**Four things are not sections and cannot be switched off**: the callsign
+heading and type subhead, which name what the panel is about; the position note;
+the `Source file` line; and the `Unrecognized` and `Dropped` notices. Those last
+are admissions about what this build could not read, and a card that will not
+name a country it did not receive does not offer a tickbox that hides its own
+refusals either. The cost is that the notices' pointer to "As posted" dangles for
+a reader who hid `source`, which is the right way round: the sentence still says
+the event is unchanged, and the way to see it is one tickbox away.
+
+**The editor resets on the payload object, never on a key derived from it.**
+It was `count:firstUid`, and two position reports from one device are two posts
+with one event each and the same uid, so clicking the second left the reader in
+the editor: exactly what the reset exists to prevent. `setSelection` stores one
+object per click, so the payload's identity changes once per selection and never
+on a re-render, which is the property a derived key was trying and failing to
+approximate. The test that covered this used distinct uids and passed throughout.
+
+Hiding everything is allowed and leaves the callsign and the two footer links,
+which is what makes it recoverable: the way back is the Customize link itself.
+The footer is new with the editor; the panel had no Documentation link before.
+
+**The card is untouched.** A reader's sections apply to the sidebar only. The
+card is already a summary, `ClassSummary` is capped at 90 runes, and the two
+surfaces do not share a section list, so several ids would have applied to one
+and not the other.
 
 ### The props are frozen, and that is a decision
 
@@ -745,6 +807,15 @@ It carries an XML declaration to show that one is accepted. With
 `EnableCotFile` off the example is **skipped rather than posted as a fence**,
 since the attachment is the whole point of it.
 
+**The example is `.xml`, and `cotFileSuffixes` lists `.xml` first**, because that
+is the extension a reader is likelier to have on hand: ATAK exports and every
+other tool that emits this XML write `.xml` far more often than `.cot`, and an
+example named for the rarer one reads as though the rarer one were required.
+Both are accepted and neither is preferred by the code, which tries the suffixes
+in order and stops at the first match, so the order is documentation rather than
+behavior. The prose in `plugin.json`, the help pages and the example's own lead
+all lead with `.xml` for the same reason and carry no more weight than that.
+
 The rich one is held to that by `TestTheRichExampleFillsInMostOfTheDetailBlock`,
 which names the props it has to write and, more importantly, asserts it does
 **not** degrade: an event carrying that much detail is exactly the shape that
@@ -807,15 +878,6 @@ one line each.
 that no unstamped post contained the substring `<event`, which was true and
 sufficient while the only event in the output was the live card's own post. It is
 now false by construction: the details posts are full of events, in fences where
-**The example is `.xml`, and `cotFileSuffixes` lists `.xml` first**, because that
-is the extension a reader is likelier to have on hand: ATAK exports and every
-other tool that emits this XML write `.xml` far more often than `.cot`, and an
-example named for the rarer one reads as though the rarer one were required.
-Both are accepted and neither is preferred by the code, which tries the suffixes
-in order and stops at the first match, so the order is documentation rather than
-behavior. The prose in `plugin.json`, the help pages and the example's own lead
-all lead with `.xml` for the same reason and carry no more weight than that.
-
 nothing reads them. `TestTheEventExampleIsAPostOfItsOwn` therefore runs every
 created post through the recognition function itself, and the budget sweep in
 `TestDetailsPostWhateverTheServerAccepts` asks the same question again at every

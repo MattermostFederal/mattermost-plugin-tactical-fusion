@@ -222,6 +222,10 @@ const (
 	// settings must never be able to take the panel down with them.
 	PreferencesBlobUnreadable = 14007
 
+	// PreferencesSectionUnknown rejects a hidden-section id the Cursor on
+	// Target panel does not have a section for.
+	PreferencesSectionUnknown = 14009
+
 	// server/preferences_cache.go (15000-15999)
 
 	// PreferencesCachePublishFailed is a warn recording that a cache
@@ -368,6 +372,7 @@ var AllCodes = []int{
 	PreferencesThresholdOutOfRange,
 	PreferencesRowUnknown,
 	PreferencesBlobUnreadable,
+	PreferencesSectionUnknown,
 
 	PreferencesCachePublishFailed,
 

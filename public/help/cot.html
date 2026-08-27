@@ -1334,6 +1334,40 @@
             </tbody>
         </table>
 
+        <p>
+            Every group in that table can be switched off for yourself, along with the map, the
+            countdown and the readings. See <a href="#cot-customize">Customize your view</a>.
+        </p>
+
+        <h2 id="cot-customize">Customize your view</h2>
+
+        <p>
+            Below the readings is a <strong>Customize your view</strong> link. It replaces the
+            panel rather than expanding underneath it, and a <strong>Back</strong> link returns
+            without saving. Every group in the table above is a tickbox, plus the map, the
+            countdown and the readings themselves.
+        </p>
+
+        <p>
+            The choice is yours alone: it changes nothing for anybody else reading the same
+            message, and nothing about what is stored in it. It applies to the
+            <strong>sidebar only</strong>, so the card in the channel is unchanged. See
+            <a href="panel.html#customize">Customize your view</a> for how
+            <strong>Restore defaults</strong> works and why it deletes rather than writes.
+        </p>
+
+        <p>
+            Four things have no tickbox. The callsign and the type say what the panel is about;
+            the note about a position that could not be linked, the count of elements this build
+            did not recognize, and the notice that some detail was too large to store are
+            admissions about what the plugin could not do. Those are not yours to switch off.
+        </p>
+
+        <p>
+            Hiding every section is allowed and leaves the callsign and these links, which is how
+            you get back.
+        </p>
+
         <h2 id="cot-map">The map</h2>
 
         <p>
@@ -1354,9 +1388,16 @@
         </p>
 
         <p>
-            The map obeys <a href="admin.html#enable-location-map-inline"><code>EnableLocationMapInline</code></a>
-            and your own inline-map preference. There is deliberately no Cursor on Target map
-            switch of its own.
+            Both maps obey <a href="admin.html#enable-location-map-inline"><code>EnableLocationMapInline</code></a>.
+            There is deliberately no Cursor on Target map setting for an administrator.
+        </p>
+
+        <p>
+            Your own preference differs by where the map is. The one under the card in the channel
+            follows <em>Map under the post</em> in the
+            <a href="location.html#location-customize">coordinate settings</a>, because that is
+            what it is. The one in the sidebar is not a map under a post, so it follows
+            <em>Map</em> in the <a href="#cot-customize">Cursor on Target settings</a> instead.
         </p>
 
         <h2 id="cot-honesty">What the card will not claim</h2>
@@ -1394,6 +1435,7 @@
             <tbody>
                 <tr><td><a href="admin.html#enable-cot"><code>EnableCot</code></a></td><td>Whether an event becomes a card at all.</td></tr>
                 <tr><td><a href="admin.html#enable-cot-file"><code>EnableCotFile</code></a></td><td>Whether an <a href="#cot-file">attached file</a> is read.</td></tr>
+                <tr><td><a href="#cot-customize">Customize your view</a></td><td>Which groups the sidebar draws. Yours alone, and not an administrator setting.</td></tr>
             </tbody>
         </table>
 

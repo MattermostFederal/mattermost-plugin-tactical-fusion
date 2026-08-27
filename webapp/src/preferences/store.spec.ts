@@ -56,6 +56,7 @@ function stubFetch(reply: (call: Call) => Reply): Call[] {
 const savedBlob = {
     dtg: {zones: [{iana: 'UTC'}, {iana: 'Asia/Tokyo', name: 'Yokota'}], urgent_within_minutes: 15},
     location: {hidden_rows: []},
+    cot: {hidden_sections: []},
 };
 
 test.beforeEach(() => {
@@ -142,8 +143,11 @@ test('saving re-reads first, then sends the wire shape and adopts what came back
 test('saving one section keeps what the server holds for the other', async () => {
     const calls = stubFetch((call) => ({
         status: 200,
-        body: call.method === 'GET' ? {dtg: {zones: [{iana: 'Asia/Tokyo'}], urgent_within_minutes: 42},
-                location: {hidden_rows: ['ddm']}} : savedBlob,
+        body: call.method === 'GET' ? {
+            dtg: {zones: [{iana: 'Asia/Tokyo'}], urgent_within_minutes: 42},
+            location: {hidden_rows: ['ddm']},
+            cot: {hidden_sections: ['payload']},
+        } : savedBlob,
     }));
 
     // A stale cache: loaded before anything else changed it.
@@ -157,6 +161,7 @@ test('saving one section keeps what the server holds for the other', async () =>
     expect(put.body).toEqual({
         dtg: {zones: [{iana: 'UTC'}], urgent_within_minutes: 5},
         location: {hidden_rows: ['ddm']},
+        cot: {hidden_sections: ['payload']},
     });
 });
 
@@ -210,6 +215,7 @@ test('restoring one section leaves the other alone', async () => {
     const stored = {
         dtg: {zones: [{iana: 'Asia/Tokyo'}], urgent_within_minutes: 42},
         location: {hidden_rows: ['ddm']},
+        cot: {hidden_sections: ['payload']},
     };
     const calls = stubFetch(() => ({status: 200, body: stored}));
 
@@ -220,7 +226,46 @@ test('restoring one section leaves the other alone', async () => {
     expect(write.body).toEqual({
         dtg: {zones: [{iana: 'Asia/Tokyo'}], urgent_within_minutes: 42},
         location: {hidden_rows: []},
+        cot: {hidden_sections: ['payload']},
     });
+});
+
+// The clause this pins is the third conjunct of hasNoChoices, and the obvious
+// test does NOT reach it: resetting 'cot' when only cot is stored takes the
+// DELETE branch whether or not the clause is there. The case that needs it is
+// the mirror, resetting a DIFFERENT section while cot still holds a choice.
+test('restoring another section keeps a cot choice rather than deleting the blob', async () => {
+    const calls = stubFetch((call) => ({
+        status: 200,
+        body: call.method === 'DELETE' ? {} : {
+            location: {hidden_rows: ['ddm']},
+            cot: {hidden_sections: ['payload']},
+        },
+    }));
+
+    await resetPreferencesSection('location');
+
+    expect(calls.some((call) => call.method === 'DELETE')).toBe(false);
+
+    const write = calls.filter((call) => call.method === 'PUT').at(-1);
+    expect(write?.method).toBe('PUT');
+    expect(write?.body).toEqual({
+        dtg: {zones: [], urgent_within_minutes: 0},
+        location: {hidden_rows: []},
+        cot: {hidden_sections: ['payload']},
+    });
+});
+
+test('restoring the cot section deletes when nothing is left', async () => {
+    const calls = stubFetch((call) => ({
+        status: 200,
+        body: call.method === 'DELETE' ? {} : {cot: {hidden_sections: ['payload']}},
+    }));
+
+    await resetPreferencesSection('cot');
+
+    expect(calls.map((call) => call.method)).toEqual(['GET', 'DELETE']);
+    expect(getState().preferences.cot.hiddenSections).toEqual([]);
 });
 
 test('restoring the last section left deletes rather than writing an empty blob', async () => {

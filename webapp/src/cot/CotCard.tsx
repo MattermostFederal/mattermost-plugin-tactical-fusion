@@ -300,7 +300,10 @@ export const CotCard: React.FC<Props> = ({payload, compactDisplay}) => {
 
                 {!compactDisplay && events.some(isLinkable) && (
                     <ErrorBoundary>
-                        <CotMap events={events}/>
+                        <CotMap
+                            events={events}
+                            surface='card'
+                        />
                     </ErrorBoundary>
                 )}
 

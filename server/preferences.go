@@ -10,6 +10,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/plugin"
 	"github.com/pkg/errors"
 
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/cot"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
@@ -94,6 +95,22 @@ type LocationPreferences struct {
 	HiddenRows []string `json:"hidden_rows"`
 }
 
+// CotPreferences is one reader's view of a Cursor on Target event.
+//
+// Every field is optional and a zero value means "use the default", the same
+// way LocationPreferences works.
+type CotPreferences struct {
+	// HiddenSections are the groups to leave out of the sidebar panel, by id.
+	// Empty means every section, which is the default.
+	//
+	// The HIDDEN sections rather than the shown ones, for the reason
+	// LocationPreferences.HiddenRows records: empty means "all of them", so a
+	// reader who has never chosen is stored as nothing at all, and a section
+	// added in a later version appears for everybody rather than being
+	// invisible to exactly the readers who cared enough to choose.
+	HiddenSections []string `json:"hidden_sections"`
+}
+
 // UserPreferences is the whole per-user blob.
 //
 // Decorators get a key of their own rather than a flat namespace, so a second
@@ -102,6 +119,7 @@ type UserPreferences struct {
 	Version  int                 `json:"version"`
 	DTG      DTGPreferences      `json:"dtg"`
 	Location LocationPreferences `json:"location"`
+	Cot      CotPreferences      `json:"cot"`
 }
 
 // clone returns a copy that shares no slice with the original.
@@ -114,6 +132,9 @@ func (p UserPreferences) clone() UserPreferences {
 	}
 	if p.Location.HiddenRows != nil {
 		p.Location.HiddenRows = append([]string(nil), p.Location.HiddenRows...)
+	}
+	if p.Cot.HiddenSections != nil {
+		p.Cot.HiddenSections = append([]string(nil), p.Cot.HiddenSections...)
 	}
 	return p
 }
@@ -210,6 +231,12 @@ func (p *UserPreferences) validate() error {
 	}
 	p.Location.HiddenRows = rows
 
+	sections, err := validHiddenSections(p.Cot.HiddenSections)
+	if err != nil {
+		return err
+	}
+	p.Cot.HiddenSections = sections
+
 	return nil
 }
 
@@ -248,6 +275,33 @@ func validHiddenRows(ids []string) ([]string, error) {
 	// drop-silently policy would believe the cap still held. The real bound is
 	// maxPreferencesBody, applied to the request body before any of this runs.
 	return rows, nil
+}
+
+// validHiddenSections normalizes a hidden-section selection.
+//
+// The same shape as validHiddenRows, and refusing for the same reason: an
+// unknown id can only come from a hand-written request or a bug, and quietly
+// storing something that will never do anything reports success for a setting
+// that silently does not exist. Reading stays more forgiving on both sides, so
+// retiring a section cannot lock a reader out of their own settings.
+func validHiddenSections(ids []string) ([]string, error) {
+	sections := make([]string, 0, len(ids))
+	seen := make(map[string]bool, len(ids))
+
+	for _, id := range ids {
+		id = strings.TrimSpace(id)
+		if id == "" || seen[id] {
+			continue
+		}
+		if !cot.KnownSection(id) {
+			return nil, errcode.Errorf(errcode.PreferencesSectionUnknown,
+				"%q is not a section of the Cursor on Target panel", id)
+		}
+		seen[id] = true
+		sections = append(sections, id)
+	}
+
+	return sections, nil
 }
 
 // validZoneName bounds a row label.

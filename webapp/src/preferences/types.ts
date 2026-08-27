@@ -1,3 +1,5 @@
+import {isSectionID} from '../cot/sections';
+import type {SectionID} from '../cot/sections';
 import type {ZoneSelection} from '../decorators/dtg/zones';
 import {isHideableID} from '../decorators/location/rows';
 import type {HideableID} from '../decorators/location/rows';
@@ -42,6 +44,24 @@ export interface LocationPreferences {
 }
 
 /**
+ * One reader's view of a Cursor on Target event. Mirrors CotPreferences in
+ * server/preferences.go.
+ */
+export interface CotPreferences {
+
+    /**
+     * The groups to leave out of the sidebar panel, by id. Empty means every
+     * section.
+     *
+     * The HIDDEN sections rather than the shown ones, for the reason
+     * LocationPreferences.hiddenRows records: empty means "all of them", so a
+     * reader who never chose is stored as nothing at all, and a section added
+     * in a later version appears for everybody.
+     */
+    hiddenSections: SectionID[];
+}
+
+/**
  * The whole per-reader blob.
  *
  * Decorators get a key of their own rather than a flat namespace, so a second
@@ -50,6 +70,7 @@ export interface LocationPreferences {
 export interface Preferences {
     dtg: DtgPreferences;
     location: LocationPreferences;
+    cot: CotPreferences;
 }
 
 /**
@@ -62,6 +83,7 @@ export interface Preferences {
 export const EMPTY_PREFERENCES: Preferences = {
     dtg: {zones: [], urgentWithinMinutes: 0},
     location: {hiddenRows: []},
+    cot: {hiddenSections: []},
 };
 
 /** A finite, non-negative integer, or 0 for anything else. */
@@ -107,9 +129,10 @@ function asZones(value: unknown): ZoneSelection[] {
  * default instead of reaching `Intl` or a style calculation.
  */
 export function fromWire(raw: unknown): Preferences {
-    const blob = (typeof raw === 'object' && raw !== null ? raw : {}) as {dtg?: unknown; location?: unknown};
+    const blob = (typeof raw === 'object' && raw !== null ? raw : {}) as {dtg?: unknown; location?: unknown; cot?: unknown};
     const dtg = (typeof blob.dtg === 'object' && blob.dtg !== null ? blob.dtg : {}) as Record<string, unknown>;
     const location = (typeof blob.location === 'object' && blob.location !== null ? blob.location : {}) as Record<string, unknown>;
+    const cot = (typeof blob.cot === 'object' && blob.cot !== null ? blob.cot : {}) as Record<string, unknown>;
 
     return {
         dtg: {
@@ -118,6 +141,9 @@ export function fromWire(raw: unknown): Preferences {
         },
         location: {
             hiddenRows: asRowIDs(location.hidden_rows),
+        },
+        cot: {
+            hiddenSections: asSectionIDs(cot.hidden_sections),
         },
     };
 }
@@ -145,6 +171,26 @@ function asRowIDs(value: unknown): HideableID[] {
     return ids;
 }
 
+/**
+ * The section ids in an array, dropping anything this build does not render.
+ *
+ * Forgiving on the way in and strict on the way out, for the reason asRowIDs is.
+ */
+function asSectionIDs(value: unknown): SectionID[] {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    const ids: SectionID[] = [];
+    for (const raw of value) {
+        if (typeof raw === 'string' && isSectionID(raw) && !ids.includes(raw)) {
+            ids.push(raw);
+        }
+    }
+
+    return ids;
+}
+
 /** Builds the JSON the server expects. The wire names are snake_case. */
 export function toWire(preferences: Preferences): unknown {
     return {
@@ -154,6 +200,9 @@ export function toWire(preferences: Preferences): unknown {
         },
         location: {
             hidden_rows: preferences.location.hiddenRows,
+        },
+        cot: {
+            hidden_sections: preferences.cot.hiddenSections,
         },
     };
 }

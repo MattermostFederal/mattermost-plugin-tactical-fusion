@@ -4,11 +4,42 @@
 
 ## Reader preferences
 
-"Customize your view" is a link below both panels. On the DTG it chooses the
+"Customize your view" is a link below three panels. On the DTG it chooses the
 timezone rows and how close a DTG has to be before the countdown flashes; on the
-location panel it chooses **which rows to show**.
+location panel it chooses **which rows to show**; on the Cursor on Target panel
+it chooses **which groups to show**, argued in
+[`cot.md`](cot.md#customize-your-view).
 
-Both editors write through `savePreferencesSection` / `resetPreferencesSection`,
+The two that hide things, location and Cursor on Target, are **one component**:
+`preferences/HideableEditor.tsx`. What differs between them is a catalog and
+four strings; what is the same is every property that took a defect to get
+right, and those had been copied twice and fixed at different times in each
+copy. The DTG editor stays its own, because a zone picker and a number field
+are not a checkbox list.
+
+**Nothing is editable until a read has succeeded.** A failed FIRST read degrades
+to the defaults, which renders as every box ticked, and the form used to be
+enabled over it: a reader who edited that and saved wrote a selection derived
+from settings they never had, and a save replaces the whole section. `error`
+alone cannot tell that from a later failure, which keeps the last good blob and
+is safe to edit, so the store carries a `loaded` flag and the editors seal on
+it. All three had the defect; all three now seal.
+
+**Focus is placed on both halves of the swap.** The editor replaces the whole
+panel, so the link that opened it unmounts and focus fell to the body: a
+keyboard reader was dropped at the top of the document with nothing announced,
+and again on the way back. The editor focuses its Back link on mount, and each
+panel focuses its Customize link when it returns. `LinkButton` forwards a ref
+for exactly this. A failed save does the same smaller thing: disabling the
+button while it held focus blurred it, so the reader had nowhere to retry from.
+
+**A hint describes its checkbox; it does not name it.** The hint span used to
+sit inside the `<label>`, which made it part of the accessible name, so every
+box announced a dozen words of prose before its own state. It is a sibling now,
+referenced by `aria-describedby`. Tests match on labels rather than hints, which
+is the more honest assertion anyway.
+
+All three editors write through `savePreferencesSection` / `resetPreferencesSection`,
 never a whole blob of their own, and that is load-bearing twice over. A `PUT`
 replaces the entire blob, so an editor building one from its own state deletes
 whatever the reader chose in the other one; and `loadPreferences` fetches **once
@@ -273,10 +304,19 @@ it.
 Hiding every row is allowed and leaves the note and the links, which is what
 makes it recoverable: the way back is the Customize link itself.
 
-Both editors **spread the existing preferences** before saving, because a PUT
-replaces the whole blob and building one fresh would wipe whatever the reader
-chose in the other decorator's editor. The type checker catches this today,
-since `Preferences` requires both keys.
+All three editors **spread the existing preferences** before saving, because a
+PUT replaces the whole blob and building one fresh would wipe whatever the reader
+chose in another editor. The type checker catches this today, since
+`Preferences` requires all three keys.
+
+**Three sections mean three places that have to know there are three.**
+`hasNoChoices` in `preferences/store.ts` is spelled out per section rather than
+deep-compared, so a fourth is a visible omission there rather than a blob that
+outlives every choice in it; `clone` in Go copies each section's slice, or the
+cache hands one caller a value the next caller edited; and `EMPTY_PREFERENCES`,
+`fromWire` and `toWire` each carry all three. None of those fails loudly when a
+section is missed: the blob simply never gets deleted, or a setting silently
+never reaches the wire.
 
 Stored blobs are stamped with `preferencesVersion`. Nothing reads it yet; it is
 there so a later change of shape can tell an old blob from a new one, which is

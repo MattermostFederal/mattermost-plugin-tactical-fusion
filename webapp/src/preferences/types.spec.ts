@@ -29,6 +29,7 @@ test('reads a well-formed blob', () => {
     expect(fromWire(raw)).toEqual({
         dtg: {zones: [{iana: 'UTC'}, {iana: 'Asia/Tokyo', name: 'Yokota'}], urgentWithinMinutes: 15},
         location: {hiddenRows: []},
+        cot: {hiddenSections: []},
     });
 });
 
@@ -68,9 +69,11 @@ test('writes the names the server reads', () => {
     expect(toWire({
         dtg: {zones: [{iana: 'UTC'}], urgentWithinMinutes: 15},
         location: {hiddenRows: ['ddm']},
+        cot: {hiddenSections: ['payload']},
     })).toEqual({
         dtg: {zones: [{iana: 'UTC'}], urgent_within_minutes: 15},
         location: {hidden_rows: ['ddm']},
+        cot: {hidden_sections: ['payload']},
     });
 });
 
@@ -81,6 +84,7 @@ test('round-trips', () => {
             urgentWithinMinutes: 45,
         },
         location: {hiddenRows: ['ddm' as const, 'datum' as const]},
+        cot: {hiddenSections: ['payload' as const, 'flow' as const]},
     };
 
     expect(fromWire(toWire(original))).toEqual(original);
@@ -96,4 +100,15 @@ test('drops a hidden row this build does not have', () => {
 
 test('an absent location key reads as nothing hidden', () => {
     expect(fromWire({dtg: {}}).location.hiddenRows).toEqual([]);
+});
+
+// The same forgiveness on the Cursor on Target section, for the same reason:
+// retiring a section must not lock a reader out of the settings around it.
+test('drops a hidden section this build does not have', () => {
+    const read = fromWire({cot: {hidden_sections: ['payload', 'telepathy', 'payload']}});
+    expect(read.cot.hiddenSections).toEqual(['payload']);
+});
+
+test('an absent cot key reads as nothing hidden', () => {
+    expect(fromWire({dtg: {}}).cot.hiddenSections).toEqual([]);
 });

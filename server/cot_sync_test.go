@@ -22,6 +22,53 @@ func readCotTypes(t *testing.T) string {
 	return string(raw)
 }
 
+func readCotSections(t *testing.T) string {
+	t.Helper()
+
+	path := filepath.Join("..", "webapp", "src", "cot", "sections.ts")
+	raw, err := os.ReadFile(path) // #nosec G304 -- fixed, repo-relative source path
+	if err != nil {
+		t.Fatalf("could not read %s: %v", path, err)
+	}
+	return string(raw)
+}
+
+// The hideable sections are the same catalog in the same order on both sides.
+//
+// Two things have to agree about what they are: the server refuses a
+// hidden-section id it does not know, and the panel renders the sections and
+// the editor lists them. A section the webapp has and this package does not
+// cannot be hidden at all, because the save is refused; a section this package
+// has and the webapp does not is a tickbox that changes nothing. Neither is an
+// error at runtime, which is why it is one here.
+//
+// The ORDER matters too, since it is the order the panel draws and the editor
+// lists, and the LABEL is what a reader matches a checkbox against a heading.
+func TestWebappCotSectionCatalogMatches(t *testing.T) {
+	source := readCotSections(t)
+
+	found := regexp.MustCompile(
+		`\{id: '([a-z]+)', label: '([^']*)'`).FindAllStringSubmatch(source, -1)
+	if len(found) == 0 {
+		t.Fatal("no sections parsed out of the webapp's sections.ts; if the shape changed, " +
+			"point this test at the new one rather than deleting it")
+	}
+
+	if len(found) != len(cot.Sections) {
+		t.Fatalf("the webapp has %d sections and this package has %d", len(found), len(cot.Sections))
+	}
+
+	for i, m := range found {
+		if m[1] != cot.Sections[i].ID {
+			t.Errorf("section %d is %q in the webapp and %q here; the two must be the same list "+
+				"in the same order", i+1, m[1], cot.Sections[i].ID)
+		}
+		if m[2] != cot.Sections[i].Label {
+			t.Errorf("section %q is labeled %q in the webapp and %q here", m[1], m[2], cot.Sections[i].Label)
+		}
+	}
+}
+
 // The post type, the props key and the props version are the three strings that
 // decide whether a stamped post is rendered at all. A drift in any of them is a
 // post whose body falls through to Mattermost's own markdown, silently, on

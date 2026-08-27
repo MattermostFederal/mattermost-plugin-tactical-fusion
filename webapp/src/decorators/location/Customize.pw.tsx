@@ -124,7 +124,7 @@ test('announces when every row has been hidden', async ({mount, page}) => {
     // The two map boxes are offered only once the features route has answered,
     // so a snapshot taken on mount misses them and "uncheck everything" would
     // quietly leave two ticked and never fire the warning.
-    await expect(component.getByRole('checkbox', {name: /Drawn in the channel/})).toBeVisible();
+    await expect(component.getByRole('checkbox', {name: 'Map under the post'})).toBeVisible();
 
     const boxes = await component.getByRole('checkbox').all();
     await boxes.reduce(
@@ -177,8 +177,8 @@ test.describe('the map under a post', () => {
         await stubPreferencesRoute(page);
         const component = await mount(<CustomizeHarness/>);
 
-        await expect(component.getByRole('checkbox', {name: /A small world map/})).toBeChecked();
-        await expect(component.getByRole('checkbox', {name: /Drawn in the channel/})).toBeChecked();
+        await expect(component.getByRole('checkbox', {name: 'Map', exact: true})).toBeChecked();
+        await expect(component.getByRole('checkbox', {name: 'Map under the post'})).toBeChecked();
     });
 
     test('unticks on its own without taking the panel map with it', async ({mount, page}) => {
@@ -186,8 +186,8 @@ test.describe('the map under a post', () => {
         await stubPreferencesRoute(page, {storedHiddenRows: ['inline']});
         const component = await mount(<CustomizeHarness/>);
 
-        await expect(component.getByRole('checkbox', {name: /Drawn in the channel/})).not.toBeChecked();
-        await expect(component.getByRole('checkbox', {name: /A small world map/})).toBeChecked();
+        await expect(component.getByRole('checkbox', {name: 'Map under the post'})).not.toBeChecked();
+        await expect(component.getByRole('checkbox', {name: 'Map', exact: true})).toBeChecked();
     });
 
     /*
@@ -205,7 +205,7 @@ test.describe('the map under a post', () => {
         // The two map boxes are offered only once the features route has answered,
         // so a snapshot taken on mount misses them and "uncheck everything" would
         // quietly leave two ticked and never fire the warning.
-        await expect(component.getByRole('checkbox', {name: /Drawn in the channel/})).toBeVisible();
+        await expect(component.getByRole('checkbox', {name: 'Map under the post'})).toBeVisible();
 
         const boxes = await component.getByRole('checkbox').all();
         await boxes.reduce(
@@ -214,7 +214,7 @@ test.describe('the map under a post', () => {
         );
         await expect(component.getByText(/Every row is hidden/)).toBeVisible();
 
-        await component.getByRole('checkbox', {name: /Drawn in the channel/}).check();
+        await component.getByRole('checkbox', {name: 'Map under the post'}).check();
 
         await expect(component.getByText(/Every row is hidden/)).toHaveCount(0);
     });
@@ -224,7 +224,7 @@ test.describe('the map under a post', () => {
         const calls = await stubPreferencesRoute(page);
         const component = await mount(<CustomizeHarness/>);
 
-        await component.getByRole('checkbox', {name: /Drawn in the channel/}).uncheck();
+        await component.getByRole('checkbox', {name: 'Map under the post'}).uncheck();
         await component.getByRole('button', {name: 'Save'}).click();
 
         await expect(component.getByTestId('closed')).toBeVisible();
@@ -247,8 +247,8 @@ test.describe('when the admin has turned a map surface off', () => {
         await stubPreferencesRoute(page);
         const component = await mount(<CustomizeHarness/>);
 
-        await expect(component.getByRole('checkbox', {name: /Drawn in the channel/})).toBeVisible();
-        await expect(component.getByRole('checkbox', {name: /A small world map/})).toHaveCount(0);
+        await expect(component.getByRole('checkbox', {name: 'Map under the post'})).toBeVisible();
+        await expect(component.getByRole('checkbox', {name: 'Map', exact: true})).toHaveCount(0);
     });
 
     test('offers no tick box for the map under a post', async ({mount, page}) => {
@@ -256,8 +256,8 @@ test.describe('when the admin has turned a map surface off', () => {
         await stubPreferencesRoute(page);
         const component = await mount(<CustomizeHarness/>);
 
-        await expect(component.getByRole('checkbox', {name: /A small world map/})).toBeVisible();
-        await expect(component.getByRole('checkbox', {name: /Drawn in the channel/})).toHaveCount(0);
+        await expect(component.getByRole('checkbox', {name: 'Map', exact: true})).toBeVisible();
+        await expect(component.getByRole('checkbox', {name: 'Map under the post'})).toHaveCount(0);
     });
 
     test('offers neither when maps are off entirely', async ({mount, page}) => {
@@ -266,8 +266,8 @@ test.describe('when the admin has turned a map surface off', () => {
         const component = await mount(<CustomizeHarness/>);
 
         await expect(component.getByRole('checkbox', {name: /MGRS/})).toBeVisible();
-        await expect(component.getByRole('checkbox', {name: /A small world map/})).toHaveCount(0);
-        await expect(component.getByRole('checkbox', {name: /Drawn in the channel/})).toHaveCount(0);
+        await expect(component.getByRole('checkbox', {name: 'Map', exact: true})).toHaveCount(0);
+        await expect(component.getByRole('checkbox', {name: 'Map under the post'})).toHaveCount(0);
     });
 
     // The reader's own choice survives, so the switch coming back does not

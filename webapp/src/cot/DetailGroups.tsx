@@ -1,6 +1,7 @@
 import React from 'react';
 
 import Disclosure from './Disclosure';
+import {isSectionVisible} from './sections';
 import type {CotChecklist, CotEvent} from './types';
 import {statedColor} from './types';
 
@@ -215,7 +216,7 @@ function Unrecognized({event}: {event: CotEvent}) {
  * seven headings whatever an emitter writes, and drawn AFTER the readings, the
  * countdown and the remarks so none of those moves down the page.
  */
-export const DetailGroups: React.FC<{event: CotEvent}> = ({event}) => {
+export const DetailGroups: React.FC<{event: CotEvent; hidden: readonly string[]}> = ({event, hidden}) => {
     const d = event.detail;
 
     const device = present([
@@ -326,7 +327,7 @@ export const DetailGroups: React.FC<{event: CotEvent}> = ({event}) => {
 
     return (
         <>
-            {(device.length > 0 || hasColor) && (
+            {isSectionVisible(hidden, 'device') && (device.length > 0 || hasColor) && (
                 <>
                     <h3 style={styles.group}>{'Device'}</h3>
                     {device.length > 0 && <Rows readings={device}/>}
@@ -334,21 +335,21 @@ export const DetailGroups: React.FC<{event: CotEvent}> = ({event}) => {
                 </>
             )}
 
-            {precision.length > 0 && (
+            {isSectionVisible(hidden, 'precision') && precision.length > 0 && (
                 <>
                     <h3 style={styles.group}>{'Position quality'}</h3>
                     <Rows readings={precision}/>
                 </>
             )}
 
-            {telemetry.length > 0 && (
+            {isSectionVisible(hidden, 'orientation') && telemetry.length > 0 && (
                 <>
                     <h3 style={styles.group}>{'Orientation'}</h3>
                     <Rows readings={telemetry}/>
                 </>
             )}
 
-            {payload && (
+            {isSectionVisible(hidden, 'payload') && payload && (
                 <>
                     <h3 style={styles.group}>{'Payload'}</h3>
                     <Block
@@ -382,8 +383,8 @@ export const DetailGroups: React.FC<{event: CotEvent}> = ({event}) => {
                 </>
             )}
 
-            <Shape event={event}/>
-            <ProcessingPath event={event}/>
+            {isSectionVisible(hidden, 'shape') && <Shape event={event}/>}
+            {isSectionVisible(hidden, 'flow') && <ProcessingPath event={event}/>}
             <Unrecognized event={event}/>
             <Dropped event={event}/>
         </>

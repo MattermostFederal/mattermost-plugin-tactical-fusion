@@ -160,6 +160,43 @@ func TestSavePreferencesRoundTrips(t *testing.T) {
 	}
 }
 
+// A save of one section must leave the other two exactly as they were.
+//
+// The webapp is what does this, by re-reading and spreading before it PUTs, but
+// a PUT replaces the whole blob and nothing on this side enforces the shape.
+// This is the round trip that says the sections are independent at all.
+func TestSaveOneSectionLeavesTheOthersAlone(t *testing.T) {
+	p, _ := newAPIPlugin(t)
+
+	first := `{"dtg":{"zones":[{"iana":"UTC"}]},"location":{"hidden_rows":["ddm"]},` +
+		`"cot":{"hidden_sections":["payload","flow"]}}`
+	if rec := call(p, http.MethodPut, preferencesPath, testUserID, first); rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (%s)", rec.Code, rec.Body.String())
+	}
+
+	saved := decodePreferences(t, call(p, http.MethodGet, preferencesPath, testUserID, ""))
+	if !reflect.DeepEqual(saved.Cot.HiddenSections, []string{"payload", "flow"}) {
+		t.Fatalf("saved sections = %v", saved.Cot.HiddenSections)
+	}
+
+	second := `{"dtg":{"zones":[{"iana":"UTC"}]},"location":{"hidden_rows":["ddm"]},` +
+		`"cot":{"hidden_sections":[]}}`
+	if rec := call(p, http.MethodPut, preferencesPath, testUserID, second); rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (%s)", rec.Code, rec.Body.String())
+	}
+
+	after := decodePreferences(t, call(p, http.MethodGet, preferencesPath, testUserID, ""))
+	if len(after.Cot.HiddenSections) != 0 {
+		t.Fatalf("sections = %v, want none", after.Cot.HiddenSections)
+	}
+	if !reflect.DeepEqual(after.Location.HiddenRows, []string{"ddm"}) {
+		t.Fatalf("clearing the cot section took the location rows with it: %v", after.Location.HiddenRows)
+	}
+	if !reflect.DeepEqual(after.DTG.Zones, []ZoneSelection{{IANA: "UTC"}}) {
+		t.Fatalf("clearing the cot section took the zones with it: %v", after.DTG.Zones)
+	}
+}
+
 func TestSavePreferencesRejectsBadInput(t *testing.T) {
 	// Every one of these is a 400, so the status says nothing about which rule
 	// the payload broke. The code does, and the reader sees it: the validator's
@@ -177,6 +214,8 @@ func TestSavePreferencesRejectsBadInput(t *testing.T) {
 		{"threshold high", `{"dtg":{"urgent_within_minutes":100000}}`, errcode.PreferencesThresholdOutOfRange},
 		{"threshold low", `{"dtg":{"urgent_within_minutes":-5}}`, errcode.PreferencesThresholdOutOfRange},
 		{"control label", `{"dtg":{"zones":[{"iana":"UTC","name":"a\u0007b"}]}}`, errcode.PreferencesZoneNameControlCharacters},
+		{"unknown row", `{"location":{"hidden_rows":["sextant"]}}`, errcode.PreferencesRowUnknown},
+		{"unknown section", `{"cot":{"hidden_sections":["telepathy"]}}`, errcode.PreferencesSectionUnknown},
 	}
 
 	for _, tc := range cases {

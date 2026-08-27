@@ -15,12 +15,25 @@ export interface PreferencesState {
 
     /** Why the last read failed, or null. */
     error: string | null;
+
+    /**
+     * Whether a read has ever succeeded.
+     *
+     * An editor may not offer a form until this is true. A failed FIRST read
+     * degrades `preferences` to the defaults, which renders as every box
+     * ticked: a reader who edits that and saves writes a selection derived
+     * from settings they never had, and the save replaces their real section
+     * wholesale. `error` alone cannot distinguish that from a later failure,
+     * which keeps the last good blob and is safe to edit.
+     */
+    loaded: boolean;
 }
 
 const INITIAL_STATE: PreferencesState = {
     preferences: EMPTY_PREFERENCES,
     loading: false,
     error: null,
+    loaded: false,
 };
 
 /*
@@ -171,7 +184,7 @@ export function loadPreferences(): Promise<void> {
                 return;
             }
             loadedAt = now();
-            setState({preferences, loading: false, error: null});
+            setState({preferences, loading: false, error: null, loaded: true});
         }).
         catch((error: unknown) => {
             if (writes !== startedAt) {
@@ -195,6 +208,7 @@ export function loadPreferences(): Promise<void> {
                 preferences: loadedAt === null ? EMPTY_PREFERENCES : state.preferences,
                 loading: false,
                 error: messageOf(error),
+                loaded: loadedAt !== null,
             });
         }).
         finally(() => {
@@ -236,7 +250,7 @@ export async function savePreferencesSection<K extends keyof Preferences>(
 
     writes++;
     loadedAt = now();
-    setState({preferences, loading: false, error: null});
+    setState({preferences, loading: false, error: null, loaded: true});
 }
 
 /**
@@ -261,7 +275,7 @@ export async function resetPreferencesSection<K extends keyof Preferences>(secti
 
     writes++;
     loadedAt = now();
-    setState({preferences, loading: false, error: null});
+    setState({preferences, loading: false, error: null, loaded: true});
 }
 
 /**
@@ -274,7 +288,8 @@ export async function resetPreferencesSection<K extends keyof Preferences>(secti
 function hasNoChoices(preferences: Preferences): boolean {
     return preferences.dtg.zones.length === 0 &&
         preferences.dtg.urgentWithinMinutes === 0 &&
-        preferences.location.hiddenRows.length === 0;
+        preferences.location.hiddenRows.length === 0 &&
+        preferences.cot.hiddenSections.length === 0;
 }
 
 /**

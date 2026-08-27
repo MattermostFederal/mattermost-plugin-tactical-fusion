@@ -1,5 +1,6 @@
 import React, {useState} from 'react';
 
+import {isSectionVisible} from './sections';
 import type {CotEvent} from './types';
 import {accuracyMeters, affiliationColor, affiliationWord, isLinkable, statedColor} from './types';
 
@@ -229,24 +230,35 @@ const CotMapCanvas: React.FC<{events: readonly CotEvent[]; pageEnabled: boolean}
 };
 
 /**
- * The map under a Cursor on Target card.
+ * The map of a Cursor on Target event, in the channel or in the sidebar.
  *
- * The admin's switch and the reader's own are the location decorator's, not a
- * second pair: this is the same map under the same kind of post, and drawing it
- * would pull the same basemap on exactly the installs that switch exists for.
+ * The ADMIN switch is the location decorator's on both surfaces, not a second
+ * pair: this is the same map over the same basemap, and drawing it would pull
+ * the same archive on exactly the installs that switch exists for.
+ *
+ * The READER switch differs by surface, which is what `surface` decides. In the
+ * channel this is the map under a post and follows the same INLINE_ID a
+ * coordinate-only post does. In the sidebar it is not a map under a post at
+ * all, so it follows the Cursor on Target panel's own `map` section instead;
+ * hiding the coordinate map under posts used to blank this one too, which read
+ * as a bug rather than as a setting.
  *
  * Both are read in the OUTER component so the inner one never mounts, and the
  * viewport gate is here for the reason it is on the coordinate map: browsers cap
  * live WebGL contexts at roughly sixteen and a channel of position reports is
  * exactly the shape that reaches it.
  */
-const CotMap: React.FC<{events: readonly CotEvent[]}> = ({events}) => {
+const CotMap: React.FC<{events: readonly CotEvent[]; surface: 'card' | 'panel'}> = ({events, surface}) => {
     const {preferences} = usePreferences();
     const {features} = useFeatures();
     const [box, setBox] = useState<HTMLDivElement | null>(null);
     const near = useNearViewport(box);
 
-    if (!features.mapInline || !isRowVisible(preferences.location.hiddenRows, INLINE_ID)) {
+    const wanted = surface === 'card' ?
+        isRowVisible(preferences.location.hiddenRows, INLINE_ID) :
+        isSectionVisible(preferences.cot.hiddenSections, 'map');
+
+    if (!features.mapInline || !wanted) {
         return null;
     }
 

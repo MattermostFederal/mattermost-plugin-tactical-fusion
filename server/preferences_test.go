@@ -8,6 +8,7 @@ import (
 
 	"github.com/mattermost/mattermost/server/public/model"
 
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/cot"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
@@ -343,6 +344,7 @@ func TestStoredBlobKeepsItsWireNames(t *testing.T) {
 			UrgentWithinMinutes: 5,
 		},
 		Location: LocationPreferences{HiddenRows: []string{"ddm"}},
+		Cot:      CotPreferences{HiddenSections: []string{"payload"}},
 	})
 	if err != nil {
 		t.Fatalf("Set() = %v", err)
@@ -361,6 +363,7 @@ func TestStoredBlobKeepsItsWireNames(t *testing.T) {
 		{"dtg", "zones"},
 		{"dtg", "urgent_within_minutes"},
 		{"location", "hidden_rows"},
+		{"cot", "hidden_sections"},
 	} {
 		t.Run(tc.section+"."+tc.field, func(t *testing.T) {
 			section, ok := raw[tc.section].(map[string]any)
@@ -449,6 +452,99 @@ func TestValidateHiddenRows(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// The same table for the Cursor on Target panel's sections.
+//
+// Section ids reach the KV store exactly as row ids do, so the two halves of
+// the contract are the same: refuse an id this build cannot honor, and collapse
+// what is only a difference in spelling.
+func TestValidateNormalizesTheHiddenSections(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		sections []string
+		want     []string
+		fails    bool
+	}{
+		{name: "nothing hidden is the default", sections: nil, want: []string{}},
+		{name: "a section this build renders", sections: []string{"payload"}, want: []string{"payload"}},
+
+		// The panel's map travels by a section id of its own rather than by the
+		// location decorator's "inline", because a sidebar map is not a map
+		// under a post. Revert that and a reader can never hide this one while
+		// every other test here stays green.
+		{name: "the panel map, which is the cot section rather than the location one", sections: []string{"map"}, want: []string{"map"}},
+		{
+			name:     "duplicates collapse, because they were never two sections",
+			sections: []string{"payload", "payload", "flow"}, want: []string{"payload", "flow"},
+		},
+		{name: "blanks are dropped rather than stored", sections: []string{"", "  ", "shape"}, want: []string{"shape"}},
+		{name: "surrounding space is trimmed", sections: []string{" shape "}, want: []string{"shape"}},
+
+		{name: "a section this build does not have", sections: []string{"telepathy"}, fails: true},
+		{name: "a section named by its label rather than its id", sections: []string{"Processing path"}, fails: true},
+
+		// A location row id is not a section id. The two catalogs are separate
+		// namespaces and accepting one for the other would store a setting that
+		// silently does nothing.
+		{name: "a location row id", sections: []string{"ddm"}, fails: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			prefs := UserPreferences{Cot: CotPreferences{HiddenSections: tc.sections}}
+
+			err := prefs.validate()
+			if tc.fails {
+				if err == nil {
+					t.Fatalf("validate() accepted %v", tc.sections)
+				}
+				assertCode(t, err.Error(), errcode.PreferencesSectionUnknown)
+				return
+			}
+			if err != nil {
+				t.Fatalf("validate() rejected %v: %v", tc.sections, err)
+			}
+
+			if len(prefs.Cot.HiddenSections) != len(tc.want) {
+				t.Fatalf("HiddenSections = %v, want %v", prefs.Cot.HiddenSections, tc.want)
+			}
+			for i, id := range tc.want {
+				if prefs.Cot.HiddenSections[i] != id {
+					t.Fatalf("HiddenSections = %v, want %v", prefs.Cot.HiddenSections, tc.want)
+				}
+			}
+		})
+	}
+}
+
+// Every section the panel renders can be hidden, read from the catalog so a
+// section added later is covered without anybody remembering to come back here.
+func TestEverySectionCanBeHidden(t *testing.T) {
+	ids := make([]string, 0, len(cot.Sections))
+	for _, section := range cot.Sections {
+		ids = append(ids, section.ID)
+	}
+
+	prefs := UserPreferences{Cot: CotPreferences{HiddenSections: ids}}
+
+	if err := prefs.validate(); err != nil {
+		t.Fatalf("validate() refused to hide every section: %v", err)
+	}
+	if len(prefs.Cot.HiddenSections) != len(ids) {
+		t.Fatalf("kept %d of %d sections", len(prefs.Cot.HiddenSections), len(ids))
+	}
+}
+
+// The cache hands the same value to every caller, so a caller that appended to
+// the hidden sections would be editing what the next reader gets.
+func TestCloneCopiesTheHiddenSections(t *testing.T) {
+	original := UserPreferences{Cot: CotPreferences{HiddenSections: []string{"payload"}}}
+
+	clone := original.clone()
+	clone.Cot.HiddenSections[0] = "flow"
+
+	if original.Cot.HiddenSections[0] != "payload" {
+		t.Fatalf("the original was modified through its clone: %v", original.Cot.HiddenSections)
 	}
 }
 

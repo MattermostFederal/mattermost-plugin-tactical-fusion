@@ -1065,6 +1065,11 @@
                     <td><a href="error-codes.html#preferences"><code>TF-14008</code></a></td>
                     <td>The saved view named a row this version does not have. Not reachable from the editor, which offers one checkbox per row that exists. Note the asymmetry: writing an unknown row is refused, but reading one is not, so retiring a row can never lock you out of your own settings.</td>
                 </tr>
+                <tr>
+                    <td><code>"..." is not a section of the Cursor on Target panel</code></td>
+                    <td><a href="error-codes.html#preferences"><code>TF-14009</code></a></td>
+                    <td>The same thing for the <a href="cot.html#cot-customize">Cursor on Target panel</a>, which stores the groups you hid rather than rows. The two are separate namespaces, so a coordinate row id sent as a section is refused as well. The same read/write asymmetry applies.</td>
+                </tr>
             </tbody>
         </table>
 

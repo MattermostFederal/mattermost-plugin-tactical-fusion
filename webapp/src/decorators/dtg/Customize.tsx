@@ -145,13 +145,18 @@ interface Props {
  * only ever read.
  */
 const Customize: React.FC<Props> = ({instant, onClose}) => {
-    const {preferences, loading, error: loadError} = usePreferences();
+    const {preferences, loading, error: loadError, loaded} = usePreferences();
 
     const [zones, setZones] = useState<ZoneSelection[]>(() => editableZoneIds(preferences.dtg));
     const [minutes, setMinutes] = useState<string>(
         () => (preferences.dtg.urgentWithinMinutes === 0 ? '' : String(preferences.dtg.urgentWithinMinutes)),
     );
     const [busy, setBusy] = useState(false);
+
+    // Nothing is editable until a read has succeeded. See the cot editor for
+    // the defect: a failed FIRST read degrades to the defaults, and saving an
+    // edit made on top of those replaces the reader's real section.
+    const sealed = busy || loading || !loaded;
     const [status, setStatus] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -258,7 +263,7 @@ const Customize: React.FC<Props> = ({instant, onClose}) => {
         <div style={styles.root}>
             <LinkButton
                 style={styles.back}
-                disabled={busy || loading}
+                disabled={sealed}
                 onClick={onClose}
             >{'← Back'}</LinkButton>
 
@@ -279,7 +284,7 @@ const Customize: React.FC<Props> = ({instant, onClose}) => {
                             type='button'
                             style={styles.remove}
                             aria-label={`Remove ${zone.name}`}
-                            disabled={busy || loading}
+                            disabled={sealed}
 
                             // By identity, not by position: the rows are
                             // ordered by offset, which is not the order the
@@ -310,7 +315,7 @@ const Customize: React.FC<Props> = ({instant, onClose}) => {
                         max={MAX_MINUTES}
                         step={1}
                         value={minutes}
-                        disabled={busy || loading}
+                        disabled={sealed}
                         placeholder={String(DEFAULT_MINUTES)}
                         style={{...styles.control, ...styles.minutes}}
                         onChange={(event) => {
@@ -329,13 +334,13 @@ const Customize: React.FC<Props> = ({instant, onClose}) => {
                 <button
                     type='button'
                     style={styles.save}
-                    disabled={busy || loading}
+                    disabled={sealed}
                     onClick={onSave}
                 >{'Save'}</button>
                 <button
                     type='button'
                     style={styles.reset}
-                    disabled={busy || loading}
+                    disabled={sealed}
                     onClick={onReset}
                 >{'Restore defaults'}</button>
             </div>
