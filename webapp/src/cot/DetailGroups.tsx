@@ -1,5 +1,6 @@
 import React from 'react';
 
+import Disclosure from './Disclosure';
 import type {CotChecklist, CotEvent} from './types';
 import {statedColor} from './types';
 
@@ -21,7 +22,6 @@ const styles: Record<string, React.CSSProperties> = {
     unknown: {margin: '12px 0 0', opacity: 0.85, fontSize: '13px'},
     flowTable: {borderCollapse: 'collapse', margin: 0, width: '100%'},
     flowCell: {padding: '2px 12px 2px 0', textAlign: 'left', verticalAlign: 'top'},
-    summary: {cursor: 'pointer', margin: '16px 0 4px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.04em', opacity: 0.85, fontWeight: 600},
 };
 
 type Reading = [label: string, value: string];
@@ -118,8 +118,7 @@ function ProcessingPath({event}: {event: CotEvent}) {
     const heading = event.flow.length === 0 ? 'Routing' : `Processing path (${event.flow.length})`;
 
     return (
-        <details>
-            <summary style={styles.summary}>{heading}</summary>
+        <Disclosure label={heading}>
             {routing.length > 0 && <Rows readings={routing}/>}
             <table style={styles.flowTable}>
                 <tbody>
@@ -141,7 +140,7 @@ function ProcessingPath({event}: {event: CotEvent}) {
                     ))}
                 </tbody>
             </table>
-        </details>
+        </Disclosure>
     );
 }
 

@@ -342,6 +342,26 @@ test('the panel shows the source as posted, reachable without a pointer', async 
 test('the source can be copied without collapsing the disclosure', async ({mount}) => {
     const component = await mount(<CotPanelHarness src='<event uid="X"/>'/>);
 
+// A disclosure styled like the group headings around it reads as a heading with
+// a small triangle, which is how the first one shipped. The state word is the
+// part that cannot be mistaken for a label.
+test('a collapsed disclosure says it can be opened, and says so again when it is', async ({mount}) => {
+    const component = await mount(<CotPanelHarness src='<event uid="X"/>'/>);
+
+    await component.getByRole('button', {name: 'Open details'}).click();
+
+    const rhs = component.getByTestId('rhs');
+    const summary = rhs.locator('summary').filter({hasText: 'As posted'});
+
+    await expect(summary).toContainText('Show');
+    await expect(summary).not.toContainText('Hide');
+
+    await rhs.getByText('As posted').click();
+
+    await expect(summary).toContainText('Hide');
+    await expect(summary).not.toContainText('Show');
+});
+
     await component.getByRole('button', {name: 'Open details'}).click();
 
     const rhs = component.getByTestId('rhs');

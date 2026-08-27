@@ -247,7 +247,19 @@ still drawn.
 
 It is a `<details>`, collapsed, for the reason the processing path is: it is what
 you go and look at, not what you read on the way past, and open it pushed the
-extension groups a screen down the panel. It carries a `CopyButton`, the
+extension groups a screen down the panel.
+
+**A disclosure has to look like a control, not a heading.** The first version
+reused `styles.summary`, which is the group heading style, so "As posted" sat in
+the panel as uppercase micro-text with a small native triangle beside it, in a
+column of sections headed exactly that way. It read as a heading over an empty
+section rather than as something to open, and the processing path had the same
+problem for longer. `Disclosure` is the shared answer: a bordered, tinted row, a
+normal-case bold label, and the word **Show** or **Hide** in the link color
+beside it. The word is the part that cannot be mistaken for a label, which is
+why the state is held in React rather than left to the browser: `<details>` knows
+whether it is open and CSS could rotate a caret, but nothing inline can make it
+say so in words. It carries a `CopyButton`, the
 location decorator's, inside its `<summary>`, in a span that calls
 `preventDefault` so copying does not also toggle the disclosure. The button
 hides itself on a plain-HTTP origin, which for an air-gapped install is the

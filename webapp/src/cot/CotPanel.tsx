@@ -2,6 +2,7 @@ import React, {useEffect, useState} from 'react';
 
 import CotMap from './CotMap';
 import DetailGroups from './DetailGroups';
+import Disclosure from './Disclosure';
 import type {CotEvent, CotPayload} from './types';
 import {SOURCE_FILE, isLinkable, validFor} from './types';
 
@@ -40,8 +41,6 @@ const styles: Record<string, React.CSSProperties> = {
         color: 'var(--center-channel-color)',
         margin: '0 0 6px',
     },
-    summary: {cursor: 'pointer', margin: '16px 0 4px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.04em', opacity: 0.85, fontWeight: 600},
-    summaryRow: {alignItems: 'center', display: 'inline-flex', gap: '8px', verticalAlign: 'middle'},
     later: {
         borderTop: '1px solid rgba(var(--center-channel-color-rgb), 0.16)',
         marginTop: '20px',
@@ -200,25 +199,22 @@ const EventSection: React.FC<{event: CotEvent; payload: CotPayload}> = ({event, 
             )}
 
             {payload.src !== '' && (
-                <details>
-                    <summary style={styles.summary}>
-                        <span style={styles.summaryRow}>
-                            {'As posted'}
-                            <span onClick={(clicked) => clicked.preventDefault()}>
-                                <CopyButton
-                                    label='Copy the event as posted'
-                                    value={payload.src}
-                                />
-                            </span>
-                        </span>
-                    </summary>
+                <Disclosure
+                    label='As posted'
+                    trailing={
+                        <CopyButton
+                            label='Copy the event as posted'
+                            value={payload.src}
+                        />
+                    }
+                >
                     <pre
                         style={styles.source}
                         tabIndex={0}
                         role='region'
                         aria-label='The event as it was posted'
                     >{payload.src}</pre>
-                </details>
+                </Disclosure>
             )}
         </div>
     );
