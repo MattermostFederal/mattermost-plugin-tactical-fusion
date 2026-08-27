@@ -33,3 +33,17 @@ export async function stubFeaturesRoute(page: Page, features: Partial<Features> 
         });
     });
 }
+
+/**
+ * Waits for the features route to have answered.
+ *
+ * A barrier the map assertions need and could not get from the DOM. The store
+ * starts at NO_FEATURES, so "no map is drawn" is already true before the
+ * request lands: every `toHaveCount(0)` on a map passed on its first poll and
+ * would have passed against a build that never called this route at all.
+ *
+ * Call it BEFORE the mount that triggers the read, then await it after.
+ */
+export function featuresAnswered(page: Page): Promise<unknown> {
+    return page.waitForResponse('**/api/v1/features');
+}

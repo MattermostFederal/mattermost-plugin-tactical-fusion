@@ -787,10 +787,17 @@ test.describe('preview mode', () => {
         await readMap(component);
         const before = await component.getByTestId('zoom').textContent();
 
+        // The handler's own state, not a duration. A fixed sleep proved this by
+        // hoping 300ms outlasted any zoom a re-enabled wheel would start, which
+        // an easing longer than that, or a loaded machine, defeats silently.
+        expect(await component.getByTestId('wheel-zoom').textContent()).toBe('off');
+
         await component.locator('canvas').first().hover();
         await page.mouse.wheel(0, -600);
-        await page.waitForTimeout(300);
 
+        // A round trip through the map, which is a real barrier: the click that
+        // reads it is queued behind the wheel event the browser has to deliver.
+        await readMap(component);
         await readMap(component);
         expect(await component.getByTestId('zoom').textContent()).toBe(before);
     });

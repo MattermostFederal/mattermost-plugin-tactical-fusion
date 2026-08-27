@@ -4,7 +4,7 @@ import CustomizeHarness from './CustomizeHarness';
 import {SECTIONS} from './sections';
 
 import {expect, test} from '../../playwright/ct-coverage';
-import {stubFeaturesRoute} from '../features/stub_route';
+import {featuresAnswered, stubFeaturesRoute} from '../features/stub_route';
 import {savedHiddenSections, stubPreferencesRoute} from '../preferences/stub_route';
 
 test('shows every section ticked when the reader has hidden nothing', async ({mount, page}) => {
@@ -222,8 +222,14 @@ test('announces when every section has been hidden', async ({mount, page}) => {
 test('does not offer the map when the admin has switched maps off', async ({mount, page}) => {
     await stubFeaturesRoute(page, {mapInline: false});
     await stubPreferencesRoute(page);
+    const answered = featuresAnswered(page);
     const component = await mount(<CustomizeHarness/>);
+    await answered;
 
+    // The count is the barrier: every OTHER box is present, which is only true
+    // once the route has answered. The Processing path box below is present at
+    // t=0, so on its own it barriers nothing.
+    await expect(component.getByRole('checkbox')).toHaveCount(SECTIONS.length - 1);
     await expect(component.getByRole('checkbox', {name: /Processing path/})).toBeVisible();
     await expect(component.getByRole('checkbox', {name: 'Map', exact: true})).toHaveCount(0);
     await expect(component.getByRole('checkbox')).toHaveCount(SECTIONS.length - 1);
@@ -240,8 +246,11 @@ test('does not offer the map when the admin has switched maps off', async ({moun
 test('keeps a hidden id the editor is not showing', async ({mount, page}) => {
     await stubFeaturesRoute(page, {mapInline: false});
     const calls = await stubPreferencesRoute(page, {storedHiddenSections: ['map', 'payload']});
+    const answered = featuresAnswered(page);
     const component = await mount(<CustomizeHarness/>);
+    await answered;
 
+    await expect(component.getByRole('checkbox')).toHaveCount(SECTIONS.length - 1);
     await expect(component.getByRole('checkbox', {name: /Payload/})).not.toBeChecked();
     await expect(component.getByRole('checkbox', {name: 'Map', exact: true})).toHaveCount(0);
 

@@ -3,7 +3,7 @@ import React from 'react';
 import CustomizeHarness from './CustomizeHarness';
 
 import {expect, test} from '../../../playwright/ct-coverage';
-import {stubFeaturesRoute} from '../../features/stub_route';
+import {featuresAnswered, stubFeaturesRoute} from '../../features/stub_route';
 import {savedHiddenRows, stubPreferencesRoute} from '../../preferences/stub_route';
 
 /*
@@ -263,8 +263,13 @@ test.describe('when the admin has turned a map surface off', () => {
     test('offers neither when maps are off entirely', async ({mount, page}) => {
         await stubFeaturesRoute(page, {mapPanel: false, mapInline: false, mapPage: false});
         await stubPreferencesRoute(page);
+        const answered = featuresAnswered(page);
         const component = await mount(<CustomizeHarness/>);
+        await answered;
 
+        // Barriered on the route. Both map boxes are absent before it answers,
+        // so without this the two assertions below held at t=0 and would have
+        // held against a build that never read the route.
         await expect(component.getByRole('checkbox', {name: /MGRS/})).toBeVisible();
         await expect(component.getByRole('checkbox', {name: 'Map', exact: true})).toHaveCount(0);
         await expect(component.getByRole('checkbox', {name: 'Map under the post'})).toHaveCount(0);

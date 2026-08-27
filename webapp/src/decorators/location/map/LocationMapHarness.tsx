@@ -261,6 +261,7 @@ removed: false,
         pins: '',
         shapeLine: '',
         shapeFill: '',
+        wheelZoom: 'unknown',
     });
 
     // The last instance, kept past the observer's null so the unmount test can
@@ -295,6 +296,11 @@ removed: false,
             pins: projectedPins(map, markers),
             shapeLine: paintOf(map, 'geometry-outline', 'line-color'),
             shapeFill: paintOf(map, 'geometry-fill', 'fill-color'),
+
+            // The handler itself, so a test proving the wheel does not zoom can
+            // assert a state rather than wait out a duration it hopes is long
+            // enough. A re-enabled handler with a slow easing beat the sleep.
+            wheelZoom: map && !wasRemoved(map) && map.scrollZoom.isEnabled() ? 'on' : 'off',
         });
     };
 
@@ -362,6 +368,7 @@ removed: false,
             <output data-testid='pins'>{reading.pins}</output>
             <output data-testid='shape-line'>{reading.shapeLine}</output>
             <output data-testid='shape-fill'>{reading.shapeFill}</output>
+            <output data-testid='wheel-zoom'>{reading.wheelZoom}</output>
         </div>
     );
 };

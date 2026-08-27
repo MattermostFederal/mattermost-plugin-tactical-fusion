@@ -4,7 +4,7 @@ import CotPanelHarness from './CotPanelHarness';
 import {SECTIONS} from './sections';
 
 import {expect, test} from '../../playwright/ct-coverage';
-import {stubFeaturesRoute} from '../features/stub_route';
+import {featuresAnswered, stubFeaturesRoute} from '../features/stub_route';
 import {stubPreferencesRoute} from '../preferences/stub_route';
 
 test('the sidebar is empty until the card asks for it', async ({mount}) => {
@@ -884,6 +884,7 @@ test.describe('customizing the panel', () => {
         test(`the ${section.id} section is drawn, and is gone when it is hidden`, async ({mount, page}) => {
             await stubFeaturesRoute(page);
             await stubPreferencesRoute(page, {storedHiddenSections: [section.id]});
+            const answered = featuresAnswered(page);
             const component = await mount(
                 <CotPanelHarness
                     event={everySectionEvent}
@@ -895,6 +896,16 @@ test.describe('customizing the panel', () => {
 
             const locate = (scope: ReturnType<typeof component.getByTestId>) =>
                 (marker.role === 'heading' ? scope.getByRole('heading', {name: marker.name}) : scope.getByTestId(marker.name));
+
+            // A neighbor first. Asserting only the absence let an inverted or
+            // over-broad gate, one that hid every section whenever anything was
+            // hidden, pass all eleven iterations.
+            const neighbor = MARKER[section.id === 'event' ? 'remarks' : 'event'];
+            await expect(rhs.getByRole('heading', {name: neighbor.name})).toBeVisible();
+
+            if (marker.name === 'cot-map') {
+                await answered;
+            }
 
             if (marker.role === 'text' && marker.name !== 'cot-map') {
                 await expect(rhs.getByText(marker.name)).toHaveCount(0);
@@ -955,12 +966,21 @@ test.describe('customizing the panel', () => {
         });
 
         // The admin switch is shared, so it still takes both.
+        //
+        // Barriered on the route, not on the DOM. The features store starts at
+        // NO_FEATURES, so "no map is drawn" is true before the request lands:
+        // without the wait this passed on its first poll, and would have passed
+        // against a build that never read the route at all.
         test('the admin switch takes both maps', async ({mount, page}) => {
             await stubFeaturesRoute(page, {mapInline: false});
             await stubPreferencesRoute(page);
+            const answered = featuresAnswered(page);
             const component = await mount(<CotPanelHarness event={everySectionEvent}/>);
             await component.getByRole('button', {name: 'Open details'}).first().click();
+            await answered;
 
+            // The panel is up, which is what makes the absence below a result.
+            await expect(component.getByTestId('rhs').getByRole('heading', {name: 'Event readings'})).toBeVisible();
             await expect(component.getByTestId('cot-map')).toHaveCount(0);
         });
     });
