@@ -959,6 +959,41 @@ empty strip under the frame. Its `justifyContent` moved from `space-between` to
 `flex-end` at the same time: with one child, space-between falls back to the
 left edge, which is not where that link has ever been.
 
+### One map instance, reused across selections
+
+The panel keeps its map and moves it, because tearing down a WebGL context per
+coordinate walks the browser's cap of about sixteen and evicts the map the
+reader is looking at. Everything below follows from that one decision, and each
+of these was a bug before it was a rule.
+
+**A source decided at construction is a source the next selection cannot have.**
+`buildStyle` used to add the `accuracy` source and its layers only when the
+opening position stated a CE. An event stating accuracy after one that stated
+none therefore drew no ring at all, for the life of the panel, while the
+readings beside it said "9.5 m circular". `geometry` had already been made
+unconditional for exactly this reason; `accuracy` now is too. An empty
+collection costs nothing, which is cheaper than being wrong on the second
+selection. `withMarker` is the remaining conditional and is safe only because it
+is fixed per surface: a Cursor on Target map always states markers and a
+location map never does.
+
+**A marker image is registered per color, so registration belongs with the
+draw.** `addMarkerImages` ran once in the `load` handler. A second event whose
+affiliation differed from the first named an image that was never added, and the
+symbol layer drew nothing for it: not a fallback dot, nothing. It runs from
+`applyView` now, where the features are written, and is idempotent through
+`hasImage`/`updateImage`.
+
+**The redraw is keyed on what the overlays are, not on the objects carrying
+them.** `overlayDigest` is that key. Two bugs met here. `markers` was read
+through a ref and named in no dependency, so a marker set that changed over an
+unchanged primary position never redrew, and the panel listed one event while
+the map drew three. `geometry` was named as a raw dependency and the Cursor on
+Target card builds its geometry inline, so a fresh object arrived every render
+and `applyView` re-framed the camera, throwing away any pan or zoom the reader
+had made. Identity was wrong in both directions at once; a structural key is
+right in both.
+
 ### The panel map
 
 The sidebar draws the same coordinate with the same library, which is the one

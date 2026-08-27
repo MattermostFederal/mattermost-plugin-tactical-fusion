@@ -321,6 +321,12 @@ const LocationMap: React.FC<Props> = ({
             return;
         }
 
+        // Here rather than once at load. The image a marker names is keyed by
+        // its color, and a panel reuses one map across selections, so a color
+        // the first event did not carry had no image and the symbol layer drew
+        // nothing at all for it.
+        addMarkerImages(instance, drawn.current);
+
         const pin = instance.getSource<GeoJSONSource>('pin');
         const cell = instance.getSource<GeoJSONSource>('cell');
         const accuracy = instance.getSource<GeoJSONSource>('accuracy');
@@ -465,7 +471,7 @@ const LocationMap: React.FC<Props> = ({
             ];
             const style = buildStyle(
                 basemap, details, mapColors(), !coveredBy(details, opening),
-                radius.current !== undefined, hasMarkers(drawn.current),
+                hasMarkers(drawn.current),
             );
 
             let instance: MapLibreMap | undefined;
@@ -574,10 +580,6 @@ const LocationMap: React.FC<Props> = ({
                     return;
                 }
 
-                // Before the first applyView, so the symbol layer has its image
-                // the moment it has a feature to draw.
-                addMarkerImages(instance, drawn.current);
-
                 ready.current = true;
                 setLoaded(true);
 
@@ -609,9 +611,17 @@ const LocationMap: React.FC<Props> = ({
 
     // Movement. The map itself survives; only its camera and its two overlay
     // sources change.
+    //
+    // Keyed on what the overlays ARE rather than on the objects carrying them.
+    // A caller that builds its geometry inline hands over a new object every
+    // render, which re-framed the camera under a reader who had panned; and
+    // markers were read through a ref and named nowhere, so a changed marker
+    // set over an unchanged position never redrew at all.
+    const overlayKey = overlayDigest(markers, geometry, geometryColor);
+
     useEffect(() => {
         applyView();
-    }, [applyView, lat, lon, cellDegLat, cellDegLon, accuracyMeters, geometry, geometryColor]);
+    }, [applyView, lat, lon, cellDegLat, cellDegLon, accuracyMeters, overlayKey]);
 
     // Torn down on unmount only. Browsers cap live WebGL contexts at about
     // sixteen, and the panel outlives any one coordinate.
@@ -762,6 +772,27 @@ function drawableMarkers(
     })));
 }
 
+/**
+ * Everything the overlays draw, as one string.
+ *
+ * The effect that redraws them compares this instead of object identity, so a
+ * caller may build its geometry inline without re-framing the camera, and a
+ * marker set that changed over an unchanged position still redraws.
+ */
+export function overlayDigest(
+    markers: Props['markers'], geometry: Props['geometry'], geometryColor: Props['geometryColor'],
+): string {
+    const pins = (markers ?? []).map((marker) => `${marker.lat},${marker.lon},${marker.color}`).join('|');
+
+    if (geometry === undefined) {
+        return `${pins}#`;
+    }
+
+    const shape = geometry.kind === 'ellipse' ? `e:${geometry.major},${geometry.minor},${geometry.angle}` : `o:${geometry.closed}:${geometry.points.map((point) => `${point.lat},${point.lon}`).join(' ')}`;
+
+    return `${pins}#${shape}#${geometryColor ?? ''}`;
+}
+
 /** What a surface may ask this map to draw beyond its pin. */
 export type MapGeometry =
     | {kind: 'outline'; points: ReadonlyArray<{lat: number; lon: number}>; closed: boolean}
@@ -902,8 +933,11 @@ function spreadOf(markers: Props['markers']): [[number, number], [number, number
         return null;
     }
 
+    // Unwrapped for the reason shapeBounds is: a block of events straddling the
+    // antimeridian reads as one spanning the planet the other way round, and
+    // 358 degrees is not close enough to 360 for spansTheWorld to catch it.
     const lats = markers.map((marker) => marker.lat);
-    const lons = markers.map((marker) => marker.lon);
+    const lons = unwrapLongitudes(markers.map((marker) => marker.lon));
 
     return [
         [Math.min(...lons), Math.min(...lats)],

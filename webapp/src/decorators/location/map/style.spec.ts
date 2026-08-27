@@ -608,20 +608,27 @@ test('a label layer keeps its own minzoom when the cap moves', () => {
  * ordering the fill above the pin left the entire frontend suite green.
  */
 test.describe('the accuracy circle', () => {
-    test('is absent from every surface that states no accuracy', () => {
+    /*
+     * Built on every surface, even one whose first position states no accuracy.
+     * A panel reuses one map across selections, so a source decided at
+     * construction is a source the next selection cannot have: an event stating
+     * accuracy drew no ring at all after one that stated none, for the life of
+     * the panel. An empty collection costs nothing.
+     */
+    test('is built on every surface, since the next selection may state one', () => {
         const style = buildStyle(ARCHIVE, [], palette(false));
-
-        expect(style.sources).not.toHaveProperty('accuracy');
-        expect(style.layers.map((layer) => layer.id)).not.toContain('accuracy-fill');
-        expect(style.layers.map((layer) => layer.id)).not.toContain('accuracy-outline');
-    });
-
-    test('is built only when something will draw one', () => {
-        const style = buildStyle(ARCHIVE, [], palette(false), false, true);
 
         expect(style.sources).toHaveProperty('accuracy');
         expect(style.layers.map((layer) => layer.id)).toContain('accuracy-fill');
         expect(style.layers.map((layer) => layer.id)).toContain('accuracy-outline');
+    });
+
+    test('draws nothing until a position states an accuracy', () => {
+        const style = buildStyle(ARCHIVE, [], palette(false));
+        const source = style.sources.accuracy;
+
+        expect(source).toMatchObject({type: 'geojson'});
+        expect(JSON.stringify(source)).toContain('"features":[]');
     });
 
     // Order is the contract. A fill drawn over the marker would hide the
@@ -662,7 +669,7 @@ test.describe('the geometry layers', () => {
     // A shape qualifies a position the same way an accuracy ring does, so it
     // goes under the marker for the same reason.
     test('are drawn under the pin, never over it', () => {
-        const ids = buildStyle(ARCHIVE, [], palette(false), false, false, true).layers.map((layer) => layer.id);
+        const ids = buildStyle(ARCHIVE, [], palette(false), false, true).layers.map((layer) => layer.id);
 
         const pin = ids.indexOf('pin');
         expect(pin).toBeGreaterThan(ids.indexOf('geometry-fill'));
@@ -689,7 +696,7 @@ test.describe('the geometry layers', () => {
  */
 test.describe('the marker', () => {
     function pinLayer(withMarker: boolean) {
-        const style = buildStyle(ARCHIVE, [], palette(false), false, false, withMarker);
+        const style = buildStyle(ARCHIVE, [], palette(false), false, withMarker);
         return style.layers.find((layer) => layer.id === 'pin');
     }
 
@@ -723,7 +730,7 @@ test.describe('the marker', () => {
 
     test('stays the last thing drawn, whichever shape it is', () => {
         for (const withMarker of [false, true]) {
-            const style = buildStyle(ARCHIVE, [], palette(false), false, true, withMarker);
+            const style = buildStyle(ARCHIVE, [], palette(false), false, withMarker);
             const ids = style.layers.map((layer) => layer.id);
 
             expect(ids[ids.length - 1], `marker=${withMarker}`).toBe('pin');

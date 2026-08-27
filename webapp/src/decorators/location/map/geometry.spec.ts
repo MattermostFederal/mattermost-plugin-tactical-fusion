@@ -1,6 +1,6 @@
 import {expect, test} from '@playwright/test';
 
-import {_frameBoundsForTesting as frameBounds} from './LocationMap';
+import {_frameBoundsForTesting as frameBounds, overlayDigest} from './LocationMap';
 import {accuracyFeature, ellipseFeature, outlineFeature} from './maplibre';
 import {DEGREE_METERS} from './span';
 
@@ -210,5 +210,77 @@ test.describe('crossing the antimeridian', () => {
         );
 
         expect(bounds![1][1]).toBeLessThanOrEqual(85.06);
+    });
+
+    /*
+     * Markers got this late. A shape learned to unwrap and the marker box did
+     * not, so a block of events either side of the line framed 358 degrees of
+     * the planet rather than the two they occupy, and spansTheWorld does not
+     * catch 358. Markers are the CoT card and panel's only framing input.
+     */
+    test('a block of events either side of the line frames the block', () => {
+        const bounds = frameBounds(
+            [{lat: 0, lon: 179, color: '#fff'}, {lat: 1, lon: -179, color: '#fff'}], undefined, 0, 179,
+        );
+
+        expect(bounds![1][0] - bounds![0][0]).toBeCloseTo(2, 6);
+    });
+
+    test('a marker box and a shape box agree about which way round the world is', () => {
+        const bounds = frameBounds(
+            [{lat: 0, lon: 179, color: '#fff'}, {lat: 0, lon: -179, color: '#fff'}],
+            {kind: 'outline', points: [{lat: 0, lon: 179.5}, {lat: 0, lon: -179.5}], closed: false},
+            0, 179,
+        );
+
+        expect(bounds![1][0] - bounds![0][0]).toBeLessThan(10);
+    });
+});
+
+/*
+ * The movement effect compares this instead of object identity. A caller that
+ * builds its geometry inline hands over a new object every render, which
+ * re-framed the camera under a reader who had panned; markers were read
+ * through a ref and named in no dependency, so a changed marker set over an
+ * unchanged position never redrew at all.
+ */
+test.describe('the overlay digest', () => {
+    const PINS = [{lat: 1, lon: 2, color: '#fff'}];
+    const SHAPE = {kind: 'outline' as const, points: OUTLINE, closed: true};
+
+    test('is equal for two geometries built separately from the same numbers', () => {
+        const first = overlayDigest(PINS, {kind: 'outline', points: [...OUTLINE], closed: true}, '#abcdef');
+        const second = overlayDigest(PINS, {kind: 'outline', points: [...OUTLINE], closed: true}, '#abcdef');
+
+        expect(first).toBe(second);
+    });
+
+    test('changes when a marker moves', () => {
+        const moved = [{lat: 9, lon: 2, color: '#fff'}];
+
+        expect(overlayDigest(moved, SHAPE, '')).not.toBe(overlayDigest(PINS, SHAPE, ''));
+    });
+
+    test('changes when a marker is added, at an unchanged first position', () => {
+        const more = [...PINS, {lat: 3, lon: 4, color: '#fff'}];
+
+        expect(overlayDigest(more, undefined, '')).not.toBe(overlayDigest(PINS, undefined, ''));
+    });
+
+    test('changes when only the marker color changes', () => {
+        const recolored = [{lat: 1, lon: 2, color: '#c0392b'}];
+
+        expect(overlayDigest(recolored, undefined, '')).not.toBe(overlayDigest(PINS, undefined, ''));
+    });
+
+    test('changes when the shape does, and when only its color does', () => {
+        expect(overlayDigest(PINS, SHAPE, '')).not.toBe(overlayDigest(PINS, undefined, ''));
+        expect(overlayDigest(PINS, SHAPE, '#abcdef')).not.toBe(overlayDigest(PINS, SHAPE, '#123456'));
+    });
+
+    test('tells an ellipse from an outline', () => {
+        const ellipse = {kind: 'ellipse' as const, major: 10, minor: 5, angle: 0};
+
+        expect(overlayDigest(PINS, ellipse, '')).not.toBe(overlayDigest(PINS, SHAPE, ''));
     });
 });

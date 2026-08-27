@@ -315,7 +315,7 @@ export function markerImageID(color: string): string {
 
 export function buildStyle(
     archive: Archive, details: readonly DetailArchive[], colors: MapColors,
-    overzoomGlobal = false, withAccuracy = false, withMarker = false,
+    overzoomGlobal = false, withMarker = false,
 ): StyleSpecification {
     const globalCap = overzoomGlobal ? MAX_ZOOM : SEAM_ZOOM;
     const sources: StyleSpecification['sources'] = {
@@ -324,17 +324,12 @@ export function buildStyle(
         pin: {type: 'geojson', data: emptyCollection()},
     };
 
-    // Only where something will draw one. Every location surface states no
-    // accuracy, so building the source and its two layers on all of them was
-    // work for a shape that could never appear.
-    if (withAccuracy) {
-        sources.accuracy = {type: 'geojson', data: emptyCollection()};
-    }
-
-    // Unconditional, unlike the accuracy source above. A panel reuses one map
-    // across selections, so a source decided at construction is a source the
-    // next selection cannot have: an event with a shape drew nothing after one
-    // without. An empty collection costs nothing.
+    // A panel reuses one map across selections, so a source decided at
+    // construction is a source the next selection cannot have: an event with a
+    // shape drew nothing after one without, and an event stating accuracy drew
+    // no ring after one that stated none. An empty collection costs nothing,
+    // which is cheaper than being wrong on the second selection.
+    sources.accuracy = {type: 'geojson', data: emptyCollection()};
     sources.geometry = {type: 'geojson', data: emptyCollection()};
 
     for (const detail of details) {
@@ -599,7 +594,7 @@ export function buildStyle(
                 source: 'cell',
                 paint: {'line-color': colors.cell, 'line-width': 1.5},
             },
-            ...(withAccuracy ? accuracyLayers(colors) : []),
+            ...accuracyLayers(colors),
             ...geometryLayers(colors),
             ...(withMarker ? [{
                 id: 'pin',
