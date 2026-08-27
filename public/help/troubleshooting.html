@@ -347,6 +347,11 @@
                     <td>Check the rules in <a href="cot.html#cot-file">as an attached file</a>: exactly one file, under 64 KB, one you attached to this post. A file your integration uploaded through the plugin API also counts, since those are credited to the server rather than to a person. Pasting the same event into a <code>cot</code> fence gives you the reason directly, which is faster than asking an administrator to read the log.</td>
                 </tr>
                 <tr>
+                    <td>A time on a card is a full timestamp rather than a date-time group, and is not a link</td>
+                    <td>The instant falls outside <a href="dtg.html#military">2000 to 2099</a>, which is every year two year digits can name. A device whose clock has never been set reports 1970, so this is usually a clock rather than a bad event. Spelling it anyway would have read as this century.</td>
+                    <td>Nothing to fix here: the card is showing what the event said. If the times are wrong across a whole feed, check the clock on the device that sent them.</td>
+                </tr>
+                <tr>
                     <td>The event renders for me but not for a colleague</td>
                     <td>The card is drawn by the webapp. A client that has not loaded the plugin's bundle, or has an older one, falls back to the post's text. Mobile shows the text for the same reason.</td>
                     <td>Reload. The text is always there underneath, so nobody sees nothing.</td>

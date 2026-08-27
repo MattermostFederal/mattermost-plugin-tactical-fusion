@@ -219,6 +219,7 @@
             </thead>
             <tbody>
                 <tr><td>No <code>lat</code>/<code>lon</code>, or not a plain decimal</td><td>"The event states no position."</td></tr>
+                <tr><td>More than 10 digits before the point, or 15 after it</td><td>The same. Past that a reading is no longer one a reader could check, and the digits are stored exactly as written rather than shortened, so the grammar is what bounds them.</td></tr>
                 <tr><td>Outside the range of the earth</td><td>"The event reports a position outside the range of the earth."</td></tr>
                 <tr><td><code>0,0</code></td><td>The numbers, and a note that this is the value for a position that was never set. No pin.</td></tr>
                 <tr><td>Fewer than four decimal places</td><td>The numbers, and a note that it is too coarse to link. No pin.</td></tr>
@@ -1287,7 +1288,7 @@
                 <tr><td>Altitude (HAE)</td><td></td></tr>
                 <tr><td>Accuracy</td><td><strong>Always shown</strong>, and says "Not stated" when it is not. An unstated accuracy is information.</td></tr>
                 <tr><td>Track</td><td>Speed, and course where stated.</td></tr>
-                <tr><td>Time</td><td>Linked to the date-time tools.</td></tr>
+                <tr><td>Time</td><td>Linked to the date-time tools. An instant outside <a href="dtg.html#military">2000 to 2099</a> is shown as the event wrote it, unlinked.</td></tr>
                 <tr><td>Valid from</td><td>Only when it differs from Time.</td></tr>
                 <tr><td>Stale</td><td>With how long the event was valid for.</td></tr>
                 <tr><td>Team, Sent by, Relates to, Source</td><td></td></tr>
@@ -1413,6 +1414,7 @@
                 <tr><td>Color the marker from <code>color</code></td><td>The marker carries affiliation. A stated display color is shown as its own swatch.</td></tr>
                 <tr><td>Link a video address</td><td>Author text is never turned into a link by this card.</td></tr>
                 <tr><td>Reshape an atom from its detail</td><td>A <code>__chat</code> or <code>_medevac_</code> element inside an <code>a-</code> contact report does not turn it into a chat or a MEDEVAC.</td></tr>
+                <tr><td>Spell a date-time group for a year it cannot name</td><td>The canonical form carries two year digits, so an event timed 1926 would read <code>091630ZAUG26</code>, which is this century. Outside <a href="dtg.html#military">2000 to 2099</a> the card shows the event's own timestamp instead.</td></tr>
             </tbody>
         </table>
 
