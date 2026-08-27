@@ -61,3 +61,16 @@ export function isSectionID(value: string): value is SectionID {
 export function isSectionVisible(hidden: readonly string[], id: SectionID): boolean {
     return !hidden.includes(id);
 }
+
+/**
+ * The heading a section is drawn under.
+ *
+ * The catalog is what the editor's tickbox says, so a heading spelled
+ * separately is a heading that can disagree with the box governing it. One
+ * already had: the box read "Event readings" and the heading over it read
+ * "Event", and the Go guard could not see it because it compares Go to
+ * TypeScript rather than TypeScript to itself.
+ */
+export function sectionLabel(id: SectionID): string {
+    return SECTIONS.find((section) => section.id === id)?.label ?? '';
+}

@@ -3,8 +3,12 @@ package cot
 const (
 	checklistElement = "checklist"
 
-	maxChecklistKinds = 8
+	maxChecklistKinds = MaxChecklistKinds
 )
+
+// MaxChecklistKinds is exported for the same reason MaxVertices is: the webapp
+// truncates to the same number and a Go test holds the two together.
+const MaxChecklistKinds = 8
 
 type ChecklistKind struct {
 	Name  string

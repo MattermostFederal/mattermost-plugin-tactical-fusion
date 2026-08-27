@@ -1,7 +1,7 @@
 import React from 'react';
 
 import Disclosure from './Disclosure';
-import {isSectionVisible} from './sections';
+import {isSectionVisible, sectionLabel} from './sections';
 import type {CotChecklist, CotEvent} from './types';
 import {statedColor} from './types';
 
@@ -116,7 +116,7 @@ function ProcessingPath({event}: {event: CotEvent}) {
         return null;
     }
 
-    const heading = event.flow.length === 0 ? 'Routing' : `Processing path (${event.flow.length})`;
+    const heading = event.flow.length === 0 ? 'Routing' : `${sectionLabel('flow')} (${event.flow.length})`;
 
     return (
         <Disclosure label={heading}>
@@ -168,7 +168,7 @@ function Shape({event}: {event: CotEvent}) {
 
     return (
         <>
-            <h3 style={styles.group}>{'Shape'}</h3>
+            <h3 style={styles.group}>{sectionLabel('shape')}</h3>
             {readings.length > 0 && <Rows readings={readings}/>}
             {geometry.note !== '' && <p style={styles.unknown}>{geometry.note}</p>}
         </>
@@ -329,7 +329,7 @@ export const DetailGroups: React.FC<{event: CotEvent; hidden: readonly string[]}
         <>
             {isSectionVisible(hidden, 'device') && (device.length > 0 || hasColor) && (
                 <>
-                    <h3 style={styles.group}>{'Device'}</h3>
+                    <h3 style={styles.group}>{sectionLabel('device')}</h3>
                     {device.length > 0 && <Rows readings={device}/>}
                     <ColorRow event={event}/>
                 </>
@@ -337,21 +337,21 @@ export const DetailGroups: React.FC<{event: CotEvent; hidden: readonly string[]}
 
             {isSectionVisible(hidden, 'precision') && precision.length > 0 && (
                 <>
-                    <h3 style={styles.group}>{'Position quality'}</h3>
+                    <h3 style={styles.group}>{sectionLabel('precision')}</h3>
                     <Rows readings={precision}/>
                 </>
             )}
 
             {isSectionVisible(hidden, 'orientation') && telemetry.length > 0 && (
                 <>
-                    <h3 style={styles.group}>{'Orientation'}</h3>
+                    <h3 style={styles.group}>{sectionLabel('orientation')}</h3>
                     <Rows readings={telemetry}/>
                 </>
             )}
 
             {isSectionVisible(hidden, 'payload') && payload && (
                 <>
-                    <h3 style={styles.group}>{'Payload'}</h3>
+                    <h3 style={styles.group}>{sectionLabel('payload')}</h3>
                     <Block
                         label='Sensor'
                         readings={sensor}

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -80,6 +81,12 @@ func TestWebappCotPostTypeMatches(t *testing.T) {
 		"COT_POST_TYPE":     cot.PostType,
 		"COT_PROPS_KEY":     cot.PropsKey,
 		"COT_PROPS_VERSION": "2",
+
+		// Not decoration. fromProps refuses a source naming neither, so a
+		// drift on either side falls every card back to the post's own text,
+		// which is the same silent failure the three above are guarded for.
+		"SOURCE_FENCE": cot.SourceFence,
+		"SOURCE_FILE":  cot.SourceFile,
 	}
 
 	for name, want := range constants {
@@ -321,5 +328,39 @@ func TestWebappAffiliationWordsMatch(t *testing.T) {
 
 	for extra := range keys {
 		t.Errorf("the webapp names affiliation %q, which the server never produces", extra)
+	}
+}
+
+// The three caps the webapp applies to a props blob it does not trust.
+//
+// Each carried a comment naming its Go counterpart and nothing held it to one.
+// They do not fail alike, which is why all three are here: past MaxVertices the
+// server REFUSES the shape and says so in a note while the webapp TRUNCATES and
+// still draws, so a raise on the Go side alone draws a polygon missing corners
+// as though it were the whole shape. The other two shorten a list.
+func TestWebappBlobCapsMatch(t *testing.T) {
+	source := readCotTypes(t)
+
+	caps := map[string]int{
+		"MAX_VERTICES":        cot.MaxVertices,
+		"MAX_CHECKLIST_KINDS": cot.MaxChecklistKinds,
+		"MAX_EVENTS":          cot.MaxEvents,
+	}
+
+	for name, want := range caps {
+		pattern := regexp.MustCompile(`export const ` + name + ` = (\d+);`)
+		m := pattern.FindStringSubmatch(source)
+		if m == nil {
+			t.Fatalf("no `export const %s` in the webapp's cot/types.ts; if it was renamed, "+
+				"point this test at the new name rather than deleting it", name)
+		}
+
+		got, err := strconv.Atoi(m[1])
+		if err != nil {
+			t.Fatalf("%s is %q in the webapp, which is not a number", name, m[1])
+		}
+		if got != want {
+			t.Errorf("%s = %d in the webapp, %d in Go", name, got, want)
+		}
 	}
 }

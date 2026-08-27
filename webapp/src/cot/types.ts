@@ -267,7 +267,7 @@ export function fromProps(props: unknown): CotPayload | null {
  * the post's own text.
  */
 function readEvents(blob: Record<string, unknown>): CotEvent[] | null {
-    const raw = Array.isArray(blob.events) ? blob.events : [blob.event];
+    const raw = (Array.isArray(blob.events) ? blob.events : [blob.event]).slice(0, MAX_EVENTS);
 
     const events: CotEvent[] = [];
     for (const entry of raw) {
@@ -629,11 +629,20 @@ function readChecklist(event: Record<string, unknown>): CotChecklist | null {
     return {count: text(raw, 'count'), kinds};
 }
 
-/** Matches cot.maxChecklistKinds. A forged blob is not a trusted input either. */
-const MAX_CHECKLIST_KINDS = 8;
+/** Matches cot.MaxChecklistKinds. A forged blob is not a trusted input either. */
+export const MAX_CHECKLIST_KINDS = 8;
 
 /** Matches cot.MaxVertices. A forged blob is not a trusted input either. */
-const MAX_VERTICES = 512;
+export const MAX_VERTICES = 512;
+
+/**
+ * Matches cot.MaxEvents. A forged blob is not a trusted input either.
+ *
+ * The other two caps carried this reasoning and this one did not, though the
+ * list it bounds is the one every other list hangs off: each event renders a
+ * section, and each section may mount a map.
+ */
+export const MAX_EVENTS = 32;
 
 /**
  * The color the EVENT stated, and never this plugin's own.

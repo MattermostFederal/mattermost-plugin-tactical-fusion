@@ -5,7 +5,7 @@ import Customize from './Customize';
 import DetailGroups from './DetailGroups';
 import Disclosure from './Disclosure';
 import {setEditing, useEditing} from './editing';
-import {isSectionVisible} from './sections';
+import {isSectionVisible, sectionLabel} from './sections';
 import {staleWait} from './stale';
 import type {CotEvent, CotPayload} from './types';
 import {SOURCE_FILE, isLinkable, validFor} from './types';
@@ -145,7 +145,7 @@ function StaleCountdown({event}: {event: CotEvent}) {
 
     return (
         <div>
-            <h3 style={styles.groupHeading}>{'Goes stale'}</h3>
+            <h3 style={styles.groupHeading}>{sectionLabel('stale')}</h3>
             <Countdown target={new Date(staleAt)}/>
         </div>
     );
@@ -178,7 +178,7 @@ const EventSection: React.FC<{event: CotEvent; payload: CotPayload; hidden: read
 
             {isSectionVisible(hidden, 'event') && (
                 <>
-                    <h3 style={styles.groupHeading}>{'Event'}</h3>
+                    <h3 style={styles.groupHeading}>{sectionLabel('event')}</h3>
                     <dl
                         style={styles.rows}
                         role='group'
@@ -229,7 +229,7 @@ const EventSection: React.FC<{event: CotEvent; payload: CotPayload; hidden: read
 
             {isSectionVisible(hidden, 'remarks') && event.remarks !== '' && (
                 <div>
-                    <h3 style={styles.groupHeading}>{'Remarks'}</h3>
+                    <h3 style={styles.groupHeading}>{sectionLabel('remarks')}</h3>
                     <p style={styles.remarks}>{event.remarks}</p>
                 </div>
             )}
@@ -248,7 +248,7 @@ const EventSection: React.FC<{event: CotEvent; payload: CotPayload; hidden: read
 
             {isSectionVisible(hidden, 'source') && payload.src !== '' && (
                 <Disclosure
-                    label='As posted'
+                    label={sectionLabel('source')}
                     trailing={
                         <CopyButton
                             label='Copy the event as posted'

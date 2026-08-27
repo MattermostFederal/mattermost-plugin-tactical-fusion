@@ -826,7 +826,7 @@ test.describe('customizing the panel', () => {
         const rhs = component.getByTestId('rhs');
 
         await Promise.all(
-            ['Event', 'Remarks', 'Device', 'Position quality', 'Orientation', 'Payload'].map(
+            ['Event readings', 'Remarks', 'Device', 'Position quality', 'Orientation', 'Payload'].map(
                 (heading) => expect(rhs.getByRole('heading', {name: heading})).toBeVisible(),
             ),
         );
@@ -867,7 +867,7 @@ test.describe('customizing the panel', () => {
     const MARKER: Record<string, {role: 'heading' | 'text'; name: string}> = {
         map: {role: 'text', name: 'cot-map'},
         stale: {role: 'heading', name: 'Goes stale'},
-        event: {role: 'heading', name: 'Event'},
+        event: {role: 'heading', name: 'Event readings'},
         remarks: {role: 'heading', name: 'Remarks'},
         device: {role: 'heading', name: 'Device'},
         precision: {role: 'heading', name: 'Position quality'},
@@ -986,7 +986,7 @@ test.describe('customizing the panel', () => {
         await expect(rhs.getByText('As posted')).toHaveCount(0);
 
         // And nothing else went with them.
-        await expect(rhs.getByRole('heading', {name: 'Event'})).toBeVisible();
+        await expect(rhs.getByRole('heading', {name: 'Event readings'})).toBeVisible();
         await expect(rhs.getByRole('heading', {name: 'Position quality'})).toBeVisible();
         await expect(rhs.getByRole('heading', {name: 'Orientation'})).toBeVisible();
     });

@@ -1260,6 +1260,34 @@ from the second. `TestARejectedRepeatDoesNotContributeItsChild` holds it.
 as the element. Attributes were free, and `_flow-tags_` is the first element
 whose attribute count is author-chosen without bound.
 
+### The panel's headings come from the section catalog
+
+The catalog is what the editor's tickbox says, so a heading spelled separately
+is a heading that can disagree with the box governing it. One already had: the
+box read **Event readings** and the heading over it read **Event**. The Go guard
+could not see it, because `TestWebappCotSectionCatalogMatches` compares Go to
+TypeScript and this was TypeScript disagreeing with itself.
+
+`sectionLabel` is the single read, and every heading a hideable section draws
+goes through it. The one that does not is `Routing`, which is a different
+heading for different content rather than the same section named twice; the
+`Processing path (N)` form is built from the catalog label and its count.
+
+### What a forged blob is held to, and where the numbers live
+
+The post type is forgeable and the props under this plugin's key are not
+protected, so the webapp treats a blob as untrusted input rather than as
+something the server just wrote. Three caps enforce that, and each had a comment
+naming its Go counterpart with nothing holding it to one.
+
+They do not fail alike, which is why all three are now guarded together by
+`TestWebappBlobCapsMatch`. Past `MaxVertices` the server **refuses** the shape
+and says so in a note, while the webapp **truncates** and still draws: a raise
+on the Go side alone would draw a polygon missing corners as though it were the
+whole shape, which is the one thing the vertex cap exists to prevent. The other
+two shorten a list. `MAX_EVENTS` is new and was the gap: every other list hangs
+off the event list, and each event renders a section that may mount a map.
+
 ### A reading is refused rather than shown at any length
 
 Two props are stored **verbatim** rather than through `sanitize`: `lat` and
