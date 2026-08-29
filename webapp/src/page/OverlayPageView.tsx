@@ -2,9 +2,9 @@ import React from 'react';
 
 import type {OverlayPageData} from './payload';
 
-import {CotMapCanvas} from '../cot/CotMap';
+import {CotMapCanvas, drawsNothing as cotDrawsNothing} from '../cot/CotMap';
 import {COT_POST_TYPE, fromProps as cotFromProps} from '../cot/types';
-import {GeoJsonMapCanvas, mapLabel, markersFor, shapesFor} from '../geojson/GeoJsonMap';
+import {GeoJsonMapCanvas, drawsNothing as geoJsonDrawsNothing, mapLabel, markersFor, shapesFor} from '../geojson/GeoJsonMap';
 import {GEOJSON_POST_TYPE, fromProps as geoJsonFromProps} from '../geojson/types';
 
 const styles: Record<string, React.CSSProperties> = {
@@ -68,6 +68,10 @@ function drawingFor(data: OverlayPageData): {canvas: React.ReactNode; label: str
             return null;
         }
 
+        if (cotDrawsNothing(payload.events)) {
+            return null;
+        }
+
         return {
             canvas: (
                 <CotMapCanvas
@@ -86,6 +90,13 @@ function drawingFor(data: OverlayPageData): {canvas: React.ReactNode; label: str
             return null;
         }
 
+        if (geoJsonDrawsNothing(payload)) {
+            return null;
+        }
+
+        const markers = markersFor(payload.features).length;
+        const shapes = shapesFor(payload.features).length;
+
         return {
             canvas: (
                 <GeoJsonMapCanvas
@@ -93,7 +104,7 @@ function drawingFor(data: OverlayPageData): {canvas: React.ReactNode; label: str
                     fill={true}
                 />
             ),
-            label: mapLabel(markersFor(payload.features).length, shapesFor(payload.features).length),
+            label: mapLabel(markers, shapes),
         };
     }
 

@@ -445,6 +445,8 @@ test.describe('the overlay page', () => {
                     type_label: 'Friendly Ground',
                     lat: '34.0561',
                     lon: '-118.2500',
+                    format: 'dd',
+                    value: '34.0561,-118.2500',
                 },
                 {
                     uid: 'ANDROID-2',
@@ -452,6 +454,8 @@ test.describe('the overlay page', () => {
                     type_label: 'Friendly Ground',
                     lat: '35.0000',
                     lon: '-119.0000',
+                    format: 'dd',
+                    value: '35.0000,-119.0000',
                 },
             ],
         },
@@ -502,6 +506,39 @@ test.describe('the overlay page', () => {
         ['a blob this build cannot read', overlay({kind: 'custom_tf_geojson', props: {}})],
         ['a kind this build does not know', overlay({kind: 'custom_tf_later', props: GEOJSON_PROPS})],
         ['the other format\'s reader', overlay({kind: 'custom_tf_cot', props: GEOJSON_PROPS})],
+
+        /*
+         * These three parse. They draw nothing, which the canvas answers with
+         * null, and the page used to render that null inside a framed window
+         * with a populated label bar: an empty map captioned "1 event".
+         */
+        ['a document the server would not place', overlay({
+            kind: 'custom_tf_geojson',
+            props: {
+                tactical_fusion_geojson: {
+                    ...GEOJSON_PROPS.tactical_fusion_geojson,
+                    unplaceable: '1',
+                },
+            },
+        })],
+        ['a document whose features carry no position', overlay({
+            kind: 'custom_tf_geojson',
+            props: {
+                tactical_fusion_geojson: {
+                    ...GEOJSON_PROPS.tactical_fusion_geojson,
+                    features: [{name: 'Depot', kind: 'Point', parts: []}],
+                },
+            },
+        })],
+        ['events with no position to draw', overlay({
+            kind: 'custom_tf_cot',
+            props: {
+                tactical_fusion_cot: {
+                    ...COT_PROPS.tactical_fusion_cot,
+                    events: [{uid: 'ANDROID-1', cot_type: 'a-f-G-U-C', type_label: 'Friendly Ground'}],
+                },
+            },
+        })],
     ] as Array<[string, OverlayPageData]>) {
         test(`says so for ${name}`, async ({mount}) => {
             const component = await mount(<OverlayPageView data={data}/>);

@@ -272,6 +272,16 @@ export function _shapeForTesting( // eslint-disable-line no-underscore-dangle, @
 }
 
 /**
+ * Whether these events put anything on a map at all.
+ *
+ * Every caller that decides whether to render the canvas MUST ask this rather
+ * than restating it, for the reason GeoJSON's own `drawsNothing` gives.
+ */
+export function drawsNothing(events: readonly CotEvent[]): boolean {
+    return markersFor(drawableEvents(events)).length === 0;
+}
+
+/**
  * The drawing, with nothing consulted.
  *
  * Exported because the map page draws exactly this and must not consult the
@@ -288,7 +298,7 @@ export const CotMapCanvas: React.FC<{
 }) => {
     const drawn = drawableEvents(events);
     const markers = markersFor(drawn);
-    if (markers.length === 0) {
+    if (drawsNothing(events)) {
         return null;
     }
 

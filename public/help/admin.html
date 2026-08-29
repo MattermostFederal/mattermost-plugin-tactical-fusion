@@ -1088,7 +1088,9 @@
             document inside it is rendered. Like the Cursor on Target file switch, this
             puts a filestore read on the post path, so an install whose file storage is
             slow or remote may prefer to turn it off. Files over 64 KB are ignored either
-            way, and a <code>.json</code> attachment is never read.
+            way, and a <code>.json</code> attachment is read only when
+            <a href="#enable-geojson-unlabeled"><code>EnableGeoJSONUnlabeled</code></a> is
+            also on, which it is not by default.
         </p>
 
         <h3 id="enable-geojson-unlabeled" data-setting="EnableGeoJSONUnlabeled">Also read GeoJSON that does not say it is GeoJSON (off by default) <code>EnableGeoJSONUnlabeled</code></h3>

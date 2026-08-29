@@ -381,12 +381,22 @@
         </p>
 
         <p>
-            <strong>Only a <code>geojson</code> block gets that message</strong>, and only a
-            <code>geojson</code> block is read at all. A block labeled <code>json</code> is
-            passed over in silence and always will be: rendering a post costs it its search
+            <strong>Only a <code>geojson</code> block gets that message.</strong> By default
+            only a <code>geojson</code> block is read at all, and a block labeled
+            <code>json</code> is passed over in silence: rendering a post costs it its search
             matches permanently, ordinary JSON is pasted into chat constantly, and an author
             who got one rendered by mistake has no way back. Labeling the block
             <code>geojson</code> is how you say you meant it.
+        </p>
+
+        <p>
+            An admin can turn on
+            <a href="admin.html#enable-geojson-unlabeled"><code>EnableGeoJSONUnlabeled</code></a>,
+            which also reads a <code>json</code> fence, a <code>.json</code> attachment and a
+            document pasted with no fence at all. It ships off. Even with it on, a document
+            that will not parse still fails silently rather than reporting: the message above
+            is only ever produced for the <code>geojson</code> spelling, because that is the
+            only one whose author certainly meant a document.
         </p>
 
         <table>

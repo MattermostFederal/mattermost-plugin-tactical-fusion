@@ -247,6 +247,28 @@ export function mapLabel(markers: number, shapes: number): string {
 }
 
 /**
+ * Whether this document puts anything on a map at all.
+ *
+ * `unplaceable` is the server's refusal to draw: Go could not confirm the
+ * document's axis order, and placing it anyway would pin a position nobody
+ * stated. It is checked here rather than in the wrapper, because the wrapper's
+ * other gates are the reader's sections and the admin's switches, which the map
+ * page rightly skips.
+ *
+ * Every caller that decides whether to render the canvas MUST ask this rather
+ * than restating it. The map page rendered the canvas directly and inherited
+ * none of the wrapper's gates, so it drew what every other surface declined to,
+ * and a second copy of the test in the caller is how that comes back.
+ */
+export function drawsNothing(payload: GeoJsonPayload): boolean {
+    if (payload.unplaceable) {
+        return true;
+    }
+
+    return markersFor(payload.features).length === 0 && shapesFor(payload.features).length === 0;
+}
+
+/**
  * The drawing, with nothing consulted. Exported for the reason CotMapCanvas is.
  */
 export const GeoJsonMapCanvas: React.FC<{
@@ -254,20 +276,10 @@ export const GeoJsonMapCanvas: React.FC<{
     pageEnabled?: boolean;
     fill?: boolean;
 }> = ({payload, pageEnabled, fill}) => {
-    // Checked HERE, not in the wrapper. The wrapper's other gates are the
-    // reader's sections and the admin's switches, which the map page rightly
-    // skips; this one is a refusal to draw at all, because Go could not confirm
-    // the document's axis order and placing it anyway would pin a position
-    // nobody stated. The page rendered the canvas directly and inherited none
-    // of it, so it drew what every other surface declined to.
-    if (payload.unplaceable) {
-        return null;
-    }
-
     const markers = markersFor(payload.features);
     const shapes = shapesFor(payload.features);
 
-    if (markers.length === 0 && shapes.length === 0) {
+    if (drawsNothing(payload)) {
         return null;
     }
 

@@ -73,9 +73,10 @@ const geoJSONExample = `{
 
 const geoJSONExampleLead = "A GeoJSON document, the format every GIS export, mapping API and " +
 	"OpenStreetMap extract speaks. The card says what the document holds and names each " +
-	"feature, with the properties it carries. Only a fence labeled `geojson` is read: a " +
-	"`json` one is left alone, because rendering an ordinary JSON payload this way would " +
-	"cost that post its search matches permanently."
+	"feature, with the properties it carries. By default only a fence labeled `geojson` is " +
+	"read, and a `json` one is left alone, because rendering an ordinary JSON payload this " +
+	"way would cost that post its search matches permanently. An admin can widen this with " +
+	"the \"Also read GeoJSON that does not say it is GeoJSON\" setting."
 
 // geoJSONExampleMessages is what this command will post, for the size gate that
 // runs before anything is written.

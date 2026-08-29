@@ -137,6 +137,9 @@ func coordinateParts(kind Kind, raw any, b *budget) ([]Part, string, error) {
 		if err != nil || note != "" {
 			return nil, note, err
 		}
+		if len(ring) < minLinePositions {
+			return nil, LineShortNote, nil
+		}
 		return []Part{{Kind: kind, Rings: []Ring{ring}}}, "", nil
 
 	case KindMultiLine:
@@ -149,6 +152,9 @@ func coordinateParts(kind Kind, raw any, b *budget) ([]Part, string, error) {
 			ring, note, err := readRing(item, b)
 			if err != nil || note != "" {
 				return nil, note, err
+			}
+			if len(ring) < minLinePositions {
+				return nil, LineShortNote, nil
 			}
 			parts = append(parts, Part{Kind: kind, Rings: []Ring{ring}})
 		}

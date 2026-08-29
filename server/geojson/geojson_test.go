@@ -40,6 +40,7 @@ func TestEveryNoteIsReachable(t *testing.T) {
 		Fixture(),
 		`{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,1]]]}`,
 		`{"type":"Polygon","coordinates":[[[0,0],[1,0],[0,0]]]}`,
+		`{"type":"LineString","coordinates":[[1,2]]}`,
 		`{"type":"FeatureCollection","crs":{"type":"name","properties":{"name":"EPSG:4326"}},"features":[]}`,
 		`{"type":"FeatureCollection","bbox":[1,2,3],"features":[{"type":"Feature","geometry":null,"properties":{}}]}`,
 		`{"type":"FeatureCollection","features":[]}`,

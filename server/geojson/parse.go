@@ -45,6 +45,11 @@ const (
 	maxCoordRunes = 32
 
 	minRingPositions = 4
+
+	// RFC 7946 section 3.1.4. Two positions is what makes a line a line; one is
+	// a point the document called a line, and it drew and measured nothing
+	// while still being counted as one.
+	minLinePositions = 2
 )
 
 const crs84 = "urn:ogc:def:crs:ogc:1.3:crs84"
@@ -53,6 +58,7 @@ const (
 	PositionUnusableNote = "A coordinate in this feature is not one this build will stand behind, so it is not drawn."
 	RingOpenNote         = "A ring in this feature does not close, so it is not drawn."
 	RingShortNote        = "A ring in this feature has too few points to enclose an area, so it is not drawn."
+	LineShortNote        = "A line in this feature has fewer than two points, so it is not drawn."
 	UnlocatedNote        = "The document states no position for this feature."
 	ForeignCRSNote       = "The document states a coordinate reference system whose axis order this build cannot confirm, so nothing is drawn."
 	BadBoxNote           = "The document states a bounding box this build could not read. The features are drawn from their own coordinates."
@@ -69,6 +75,7 @@ var Notes = []string{
 	PositionUnusableNote,
 	RingOpenNote,
 	RingShortNote,
+	LineShortNote,
 	UnlocatedNote,
 	ForeignCRSNote,
 	BadBoxNote,

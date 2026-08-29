@@ -173,8 +173,11 @@ func TestTheVisibleFenceBeatsAnAttachmentAcrossFormats(t *testing.T) {
 		}
 
 		updated := p.decoratePost(post, hookRef)
-		if updated == nil || updated.Type != geojson.PostType {
-			t.Fatalf("the attachment beat the visible fence: Type = %v", updated.GetProp("type"))
+		if updated == nil {
+			t.Fatal("the post was not stamped at all")
+		}
+		if updated.Type != geojson.PostType {
+			t.Fatalf("the attachment beat the visible fence: Type = %q", updated.Type)
 		}
 	})
 
