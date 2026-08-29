@@ -2,10 +2,11 @@ import type {Locator} from '@playwright/test';
 import React from 'react';
 
 import {serveMapAssets} from './asset_fixtures';
-import type {MapGeometry, MapShape} from './LocationMap';
 import LocationMapHarness from './LocationMapHarness';
 import type {ViewName} from './LocationMapHarness';
 import {MARKER_SIZE} from './maplibre';
+import type {MapGeometry} from './overlay';
+import type {MapShape} from './paint';
 import {DATA_MAX_ZOOM, MAX_ZOOM} from './span';
 
 import {expect, test} from '../../../../playwright/ct-coverage';

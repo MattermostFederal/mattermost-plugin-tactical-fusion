@@ -1,9 +1,7 @@
 import {expect, test} from '@playwright/test';
 
-import {
-    _drawableCellForTesting as drawableCell,
-    _positionNoteForTesting as positionNote,
-} from './LocationMap';
+import {positionNote} from './label';
+import {drawableCell} from './overlay';
 
 /*
  * The cell is always drawn, and its SIZE carries the resolution.

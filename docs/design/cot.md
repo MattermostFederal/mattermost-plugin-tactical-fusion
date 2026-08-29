@@ -1189,7 +1189,7 @@ hostile-colored reticle on a friendly track. A shape has no affiliation to
 contradict, so there is nothing for a stated color to overwrite.
 
 The validation is unchanged and is now load-bearing twice: `statedColor` gates
-the value before it reaches a style property, and `fillOf` in `LocationMap` gates
+the value before it reaches a style property, and `fillOf` in `map/paint.ts` gates
 it again before it reaches MapLibre, falling back to the theme rather than
 passing an unparsed string through. The fill is written as `rgba()` at the
 theme's own alpha rather than as an eight-digit hex, which MapLibre's color

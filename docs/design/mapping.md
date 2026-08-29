@@ -1821,6 +1821,38 @@ reaching it is the decision and neither of those applies.
 copy by `TestWebappCotPostTypeMatches` and `TestWebappGeoJSONPostTypeMatches`, so
 this mode introduced no new vocabulary that could drift.
 
+### The map's modules, and why the file was split
+
+`LocationMap.tsx` reached 1511 lines by accretion: the pin, the accuracy ring,
+the cell, the outline, the ringed shapes, the simplestyle gate, the framing math
+and the accessible label all landed in one file. It is now the component and its
+lifecycle, and four modules beside it:
+
+| Module | Holds |
+|---|---|
+| `paint.ts` | `fillOf`, `numberWithin`, `styleOf`, `paintGeometry`, `MapShape`. The gate an author-supplied color, width or opacity passes before it is paint |
+| `overlay.ts` | every `drawable*` builder, `markerFeatures`, `overlayDigest`, `MapMarker`, `MapGeometry`. What gets drawn |
+| `bounds.ts` | `overlayBounds`, `frameBounds`, `unionOf`, `openingAnchor`. Where the camera goes |
+| `label.ts` | `label`, `positionNote`, and the strings a map says when it cannot draw |
+
+**Not `style.ts`.** `style.spec.ts` already means the MapLibre *style
+specification* built by `buildStyle` in `maplibre.ts`. The simplestyle gate is
+`paint.ts`, after what it guards.
+
+The split needed one type change rather than being a pure move: 21 helper
+signatures were typed as `Props['markers']` and its siblings, so a helper in its
+own module could not describe its own arguments without importing `Props` back
+from the component. `MapMarker` is now a named export beside `MapShape` and
+`MapGeometry`, and the dependency runs one way: `paint` → `overlay` → `bounds`,
+with `LocationMap` above all four.
+
+Three `_ForTesting` wrappers went with it. `_frameBoundsForTesting`,
+`_drawableCellForTesting` and `_positionNoteForTesting` existed only because the
+functions were private to a component module; two forwarded unchanged and one
+reordered arguments, which is why `geometry.spec.ts` had been calling
+`frameBounds` with `geometries` last when the real signature takes it third.
+The specs now call the real functions.
+
 ### Two channel permissions, not one
 
 `overlayForPost` requires `read_channel` AND `read_channel_content`. It shipped

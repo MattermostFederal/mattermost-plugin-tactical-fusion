@@ -3,9 +3,10 @@ import React, {useState} from 'react';
 import {isSectionVisible} from './sections';
 import type {GeoJsonFeature, GeoJsonPart, GeoJsonPayload, GeoJsonPosition} from './types';
 
-import type {MapShape} from '../decorators/location/map/LocationMap';
-import LocationMap, {MAP_HEIGHT, styleOf} from '../decorators/location/map/LocationMap';
+import LocationMap, {MAP_HEIGHT} from '../decorators/location/map/LocationMap';
 import {useNearViewport} from '../decorators/location/map/near_viewport';
+import type {MapShape} from '../decorators/location/map/paint';
+import {styleOf} from '../decorators/location/map/paint';
 import {isRenderable} from '../decorators/location/map/span';
 import {overlayPageHref} from '../decorators/location/map/view';
 import {INLINE_ID, isRowVisible} from '../decorators/location/rows';

@@ -4,9 +4,9 @@ import {isSectionVisible} from './sections';
 import type {CotEvent} from './types';
 import {accuracyMeters, affiliationColor, affiliationWord, isLinkable, statedColor} from './types';
 
-import type {MapGeometry} from '../decorators/location/map/LocationMap';
 import LocationMap, {MAP_HEIGHT} from '../decorators/location/map/LocationMap';
 import {useNearViewport} from '../decorators/location/map/near_viewport';
+import type {MapGeometry} from '../decorators/location/map/overlay';
 import {isRenderable} from '../decorators/location/map/span';
 import {overlayPageHref} from '../decorators/location/map/view';
 import {INLINE_ID, isRowVisible} from '../decorators/location/rows';

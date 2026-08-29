@@ -1,7 +1,8 @@
 import {expect, test} from '@playwright/test';
 
-import {_frameBoundsForTesting as frameBounds, overlayDigest} from './LocationMap';
+import {frameBounds} from './bounds';
 import {accuracyFeature, ellipseFeature, outlineFeature} from './maplibre';
+import {overlayDigest} from './overlay';
 import {DEGREE_METERS} from './span';
 
 const OUTLINE = [{lat: 1, lon: 10}, {lat: 2, lon: 20}, {lat: 3, lon: 30}];
@@ -115,7 +116,7 @@ test.describe('the frame', () => {
     const MARKERS = [{lat: 0, lon: 0, color: '#fff'}, {lat: 1, lon: 1, color: '#fff'}];
 
     test('is the union of the markers and the shape', () => {
-        const bounds = frameBounds(MARKERS, {kind: 'outline', points: OUTLINE, closed: false}, 0, 0);
+        const bounds = frameBounds(MARKERS, {kind: 'outline', points: OUTLINE, closed: false}, undefined, 0, 0);
 
         expect(bounds).not.toBeNull();
 
@@ -128,19 +129,19 @@ test.describe('the frame', () => {
     test('frames a shape even when there is only one marker', () => {
         const one = [{lat: 0, lon: 0, color: '#fff'}];
 
-        expect(frameBounds(one, undefined, 0, 0)).toBeNull();
-        expect(frameBounds(one, {kind: 'outline', points: OUTLINE, closed: false}, 0, 0)).not.toBeNull();
+        expect(frameBounds(one, undefined, undefined, 0, 0)).toBeNull();
+        expect(frameBounds(one, {kind: 'outline', points: OUTLINE, closed: false}, undefined, 0, 0)).not.toBeNull();
     });
 
     test('an ellipse contributes its reach', () => {
-        const bounds = frameBounds(undefined, {kind: 'ellipse', major: 1000, minor: 500, angle: 0}, 0, 0);
+        const bounds = frameBounds(undefined, {kind: 'ellipse', major: 1000, minor: 500, angle: 0}, undefined, 0, 0);
 
         expect(bounds).not.toBeNull();
         expect(bounds![1][1] * DEGREE_METERS).toBeCloseTo(1000, 3);
     });
 
     test('is nothing to frame when there is neither', () => {
-        expect(frameBounds(undefined, undefined, 0, 0)).toBeNull();
+        expect(frameBounds(undefined, undefined, undefined, 0, 0)).toBeNull();
     });
 });
 
@@ -168,7 +169,7 @@ test.describe('crossing the antimeridian', () => {
     });
 
     test('the frame is the few degrees the shape occupies', () => {
-        const bounds = frameBounds(undefined, {kind: 'outline', points: CROSSING, closed: false}, 0, 179);
+        const bounds = frameBounds(undefined, {kind: 'outline', points: CROSSING, closed: false}, undefined, 0, 179);
 
         expect(bounds).not.toBeNull();
         const [[west], [east]] = bounds!;
@@ -197,7 +198,7 @@ test.describe('crossing the antimeridian', () => {
     // globe, and the unwrapped span says so rather than pretending otherwise.
     test('a shape that wraps the world frames the world', () => {
         const circling = Array.from({length: 8}, (_, i) => ({lat: 0, lon: ((i * 170) % 360) - 180}));
-        const bounds = frameBounds(undefined, {kind: 'outline', points: circling, closed: false}, 0, 0);
+        const bounds = frameBounds(undefined, {kind: 'outline', points: circling, closed: false}, undefined, 0, 0);
 
         expect(bounds).not.toBeNull();
         expect(bounds![0][0]).toBe(-180);
@@ -205,9 +206,7 @@ test.describe('crossing the antimeridian', () => {
     });
 
     test('latitude is still brought inside the projection', () => {
-        const bounds = frameBounds(
-            [{lat: 0, lon: 0, color: '#fff'}, {lat: 88, lon: 1, color: '#fff'}], undefined, 0, 0,
-        );
+        const bounds = frameBounds([{lat: 0, lon: 0, color: '#fff'}, {lat: 88, lon: 1, color: '#fff'}], undefined, undefined, 0, 0);
 
         expect(bounds![1][1]).toBeLessThanOrEqual(85.06);
     });
@@ -219,19 +218,13 @@ test.describe('crossing the antimeridian', () => {
      * catch 358. Markers are the CoT card and panel's only framing input.
      */
     test('a block of events either side of the line frames the block', () => {
-        const bounds = frameBounds(
-            [{lat: 0, lon: 179, color: '#fff'}, {lat: 1, lon: -179, color: '#fff'}], undefined, 0, 179,
-        );
+        const bounds = frameBounds([{lat: 0, lon: 179, color: '#fff'}, {lat: 1, lon: -179, color: '#fff'}], undefined, undefined, 0, 179);
 
         expect(bounds![1][0] - bounds![0][0]).toBeCloseTo(2, 6);
     });
 
     test('a marker box and a shape box agree about which way round the world is', () => {
-        const bounds = frameBounds(
-            [{lat: 0, lon: 179, color: '#fff'}, {lat: 0, lon: -179, color: '#fff'}],
-            {kind: 'outline', points: [{lat: 0, lon: 179.5}, {lat: 0, lon: -179.5}], closed: false},
-            0, 179,
-        );
+        const bounds = frameBounds([{lat: 0, lon: 179, color: '#fff'}, {lat: 0, lon: -179, color: '#fff'}], {kind: 'outline', points: [{lat: 0, lon: 179.5}, {lat: 0, lon: -179.5}], closed: false}, undefined, 0, 179);
 
         expect(bounds![1][0] - bounds![0][0]).toBeLessThan(10);
     });
