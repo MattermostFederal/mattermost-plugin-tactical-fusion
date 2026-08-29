@@ -61,15 +61,23 @@ const cotExampleRich = `<event version="2.0" uid="ANDROID-88" type="a-f-G-U-C" h
     <color argb="-65536"/>
     <shape>
       <polyline closed="true">
-        <vertex lat="21.344100" lon="-157.955200"/>
-        <vertex lat="21.346800" lon="-157.941300"/>
-        <vertex lat="21.339500" lon="-157.933900"/>
-        <vertex lat="21.331200" lon="-157.936700"/>
-        <vertex lat="21.327400" lon="-157.947800"/>
-        <vertex lat="21.334600" lon="-157.957100"/>
+        <vertex lat="21.337800" lon="-157.932000"/>
+        <vertex lat="21.341634" lon="-157.936452"/>
+        <vertex lat="21.342828" lon="-157.940695"/>
+        <vertex lat="21.348787" lon="-157.942307"/>
+        <vertex lat="21.349455" lon="-157.947856"/>
+        <vertex lat="21.345316" lon="-157.951436"/>
+        <vertex lat="21.341716" lon="-157.953732"/>
+        <vertex lat="21.337800" lon="-157.953044"/>
+        <vertex lat="21.333130" lon="-157.955412"/>
+        <vertex lat="21.327504" lon="-157.953816"/>
+        <vertex lat="21.329679" lon="-157.946990"/>
+        <vertex lat="21.330346" lon="-157.943173"/>
+        <vertex lat="21.329992" lon="-157.938315"/>
+        <vertex lat="21.333212" lon="-157.934771"/>
       </polyline>
     </shape>
-    <remarks>suspected hostile area, six point outline</remarks>
+    <remarks>suspected hostile area, fourteen point outline</remarks>
   </detail>
 </event>`
 
@@ -119,6 +127,30 @@ var cotExampleOrder = []cotExample{
 
 // cotExampleCount is how many events this install will actually post, which is
 // what the caller counts a failure against.
+// cotExampleMessages is the message body of every example this command will
+// post, for the size gate that runs before anything is written.
+//
+// The attachment examples carry a lead and no fence, so they are measured as
+// what they will actually be.
+func (p *Plugin) cotExampleMessages() []string {
+	if !p.cotEnabled() {
+		return nil
+	}
+
+	messages := make([]string, 0, len(cotExampleOrder))
+	for _, example := range cotExampleOrder {
+		if example.file == "" {
+			messages = append(messages, example.lead+"\n"+cotFenced(example.source, cotFenceInfo))
+			continue
+		}
+		if p.cotFilesEnabled() {
+			messages = append(messages, example.lead)
+		}
+	}
+
+	return messages
+}
+
 func (p *Plugin) cotExampleCount() int {
 	if !p.cotEnabled() {
 		return 0

@@ -142,6 +142,20 @@ func (p *Plugin) cotFilesEnabled() bool {
 	return config.EnableCot && config.EnableCotFile
 }
 
+func (p *Plugin) geoJSONEnabled() bool {
+	return p.configurationLoaded() && p.getConfiguration().EnableGeoJSON
+}
+
+func (p *Plugin) geoJSONFilesEnabled() bool {
+	config := p.getConfiguration()
+	return config.EnableGeoJSON && config.EnableGeoJSONFile
+}
+
+func (p *Plugin) geoJSONUnlabeledEnabled() bool {
+	config := p.getConfiguration()
+	return config.EnableGeoJSON && config.EnableGeoJSONUnlabeled
+}
+
 // decorationEnabled reports whether any decorator would contribute a pattern.
 //
 // Asked of the registry rather than of one decorator's switches, so the

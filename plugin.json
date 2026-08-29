@@ -215,14 +215,42 @@
                         "display_name": "Render Cursor on Target events",
                         "type": "bool",
                         "default": true,
-                        "help_text": "Recognize a Cursor on Target event written in a fenced code block labeled cot or xml, and render it as a card with the event's identity, position, timing and accuracy. A post rendered this way is marked with a custom type, and Elasticsearch and OpenSearch index such a post but never match it, so it is missing from search and from Recent Mentions. Link previews, image embeds, file attachment lists and automatic translation are dropped for it as well, and any text written around the event renders without Markdown formatting. Turning this off leaves new posts as ordinary messages and restores all of that; posts already rendered keep their card. Installs searching through Postgres are unaffected either way."
+                        "help_text": "Recognize a Cursor on Target event written in a fenced code block labeled cot or xml, and render it as a card with the event's identity, position, timing and accuracy. A post rendered this way is marked with a custom type, and Elasticsearch and OpenSearch index such a post but never match it, so it is missing from search and from Recent Mentions. Link previews, image embeds and automatic translation are dropped for it as well, and any text written around the event renders without Markdown formatting. Turning this off leaves new posts as ordinary messages and restores all of that; posts already rendered keep their card. Installs searching through Postgres are unaffected either way."
                     },
                     {
                         "key": "EnableCotFile",
                         "display_name": "Read a Cursor on Target file attached to a post",
                         "type": "bool",
                         "default": true,
-                        "help_text": "When a post carries exactly one attachment named .xml or .cot, read it and render the event it contains. This is the only setting in this plugin that reads a file while a message is being posted, so an install whose file storage is slow or remote may prefer to turn it off and keep the fenced code block, which costs nothing extra. Files over 64 KB are ignored either way. Only applies while \"Render Cursor on Target events\" is on."
+                        "help_text": "When a post carries exactly one attachment named .xml or .cot, read it and render the event it contains. This and \"Read a GeoJSON file attached to a post\" are the two settings that read a file while a message is being posted, so an install whose file storage is slow or remote may prefer to turn it off and keep the fenced code block, which costs nothing extra. Files over 64 KB are ignored either way. Only applies while \"Render Cursor on Target events\" is on."
+                    }
+                ]
+            },
+            {
+                "key": "geojson",
+                "title": "GeoJSON",
+                "subtitle": "Render a GeoJSON document pasted into a message or attached to a post, with its features drawn on a map.",
+                "settings": [
+                    {
+                        "key": "EnableGeoJSON",
+                        "display_name": "Render GeoJSON documents",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Recognize a GeoJSON document written in a fenced code block labeled geojson, and render it as a card listing what the document holds, with its features drawn on a map. A post rendered this way is marked with a custom type, and Elasticsearch and OpenSearch index such a post but never match it, so it is missing from search and from Recent Mentions. Link previews, image embeds and automatic translation are dropped for it as well, and any text written around the document renders without Markdown formatting. A block labeled json is not recognized unless the unlabeled switch below is on, because an ordinary JSON payload rendered this way would lose all of that permanently and silently. Turning this off leaves new posts as ordinary messages and restores all of it; posts already rendered keep their card. Installs searching through Postgres are unaffected either way."
+                    },
+                    {
+                        "key": "EnableGeoJSONFile",
+                        "display_name": "Read a GeoJSON file attached to a post",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "When a post carries exactly one attachment named .geojson, read it and render the document it contains. This puts a filestore read on the post path, so an install whose file storage is slow or remote may prefer to turn it off and keep the fenced code block, which costs nothing extra. Files over 64 KB are ignored either way, and a .json attachment is read only when the unlabeled switch below is on. Only applies while \"Render GeoJSON documents\" is on."
+                    },
+                    {
+                        "key": "EnableGeoJSONUnlabeled",
+                        "display_name": "Also read GeoJSON that does not say it is GeoJSON (off by default: ordinary JSON is not an overlay)",
+                        "type": "bool",
+                        "default": false,
+                        "help_text": "Recognize a GeoJSON document in three further places: a fenced code block labeled json, an attachment named .json, and a document pasted with no fence at all. Off by default, and deliberately: rendering a post this way marks it with a custom type, which costs it its Elasticsearch and OpenSearch matches and its embeds permanently, and the author cannot undo it. Ordinary JSON is pasted into chat constantly, so an install that turns this on should be one whose channels carry overlays rather than API payloads. A document that does not parse as GeoJSON is always left alone, and only a block labeled geojson gets a message explaining why it was refused. Only applies while \"Render GeoJSON documents\" is on."
                     }
                 ]
             }

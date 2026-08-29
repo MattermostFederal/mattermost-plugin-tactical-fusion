@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoJSON - Tactical Fusion</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="copy.js" defer></script>
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <h2>Tactical Fusion</h2>
+            <span class="version">Plugin Documentation</span>
+        </div>
+        <nav>
+            <span class="nav-section">Documentation</span>
+            <a href="help.html">Overview</a>
+            <span class="nav-section">Decorators</span>
+            <a href="dtg.html">Date-Time Groups</a>
+            <a href="location.html">Coordinates</a>
+            <a href="airfields.html">Airfields</a>
+            <a href="cot.html">Cursor on Target</a>
+            <a href="geojson.html" class="active">GeoJSON</a>
+            <span class="nav-section">Guides</span>
+            <a href="formats.html">Recognized Formats</a>
+            <a href="panel.html">The Sidebar Panel</a>
+            <a href="admin.html">Admin Settings</a>
+            <a href="commands.html">Slash Commands</a>
+            <span class="nav-section">Reference</span>
+            <a href="troubleshooting.html">Troubleshooting</a>
+            <a href="error-codes.html">Error Codes</a>
+        </nav>
+    </aside>
+
+    <main class="content">
+        <div class="breadcrumb">
+            <a href="help.html">Docs</a>
+            <span class="separator">/</span>
+            GeoJSON
+        </div>
+
+        <h1>GeoJSON</h1>
+        <p class="tagline">The overlay format every GIS tool speaks, rendered as a card with its features drawn on a map.</p>
+
+        <div class="alert alert-info">
+            <p>
+                Settings: <a href="admin.html#enable-geojson"><code>EnableGeoJSON</code></a> and
+                <a href="admin.html#enable-geojson-file"><code>EnableGeoJSONFile</code></a>. The
+                example on this page is the one this build's own
+                <a href="commands.html#examples"><code>/tactical-fusion examples</code></a>
+                posts, so what you read here is what your server will do.
+            </p>
+        </div>
+
+        <p>
+            A GeoJSON document is rendered as a <strong>card</strong> rather than linked: how many
+            features the document holds and of what geometry, each one named, the properties it
+            carries, and every feature drawn together on one map fitted to all of them. A polygon's
+            holes are drawn as holes, and two lines that do not touch are drawn as two lines.
+        </p>
+
+        <h2 id="geojson-posting">Posting a document</h2>
+
+        <h3 id="geojson-fence">In a fenced code block</h3>
+
+        <p>Paste the document into a fence labeled <code>geojson</code>:</p>
+
+        <pre class="copyable" tabindex="0"><code>```geojson
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [-157.9483, 21.3353]},
+      "properties": {"name": "Forward supply point", "status": "active"}
+    },
+    {
+      "type": "Feature",
+      "geometry": {"type": "LineString", "coordinates": [
+        [-157.9483, 21.3353], [-157.9300, 21.3400]
+      ]},
+      "properties": {"name": "Primary route"}
+    }
+  ]
+}
+```</code></pre>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">A fence labeled <code>json</code> is not read unless an admin asks for it.</p>
+            <p>
+                Rendering a post this way sets its type, and a typed post loses its Elasticsearch
+                and OpenSearch matches permanently. Ordinary JSON is pasted into chat constantly,
+                and an author who got one rendered by mistake has no way to undo it. So
+                <code>geojson</code> is the only spelling read out of the box. An install that
+                wants the others can turn on
+                <a href="admin.html#enable-geojson-unlabeled"><code>EnableGeoJSONUnlabeled</code></a>;
+                see <a href="#geojson-unlabeled">below</a>.
+            </p>
+        </div>
+
+        <h3 id="geojson-file">As an attachment</h3>
+
+        <p>
+            A post carrying exactly one attachment whose name ends <code>.geojson</code> is read as
+            the post is created, and the card replaces the attachment rather than sitting beside
+            it. Files over 64 KB are ignored, and a <code>.json</code> attachment is never read for
+            the reason above.
+        </p>
+
+        <p>
+            This is the only other setting in the plugin that reads a file while a message is being
+            posted. An install whose file storage is slow or remote may prefer
+            <a href="admin.html#enable-geojson-file"><code>EnableGeoJSONFile</code></a> off and the
+            fenced block instead, which costs nothing extra.
+        </p>
+
+        <h2 id="geojson-read">What this build reads</h2>
+
+        <p>
+            Every geometry RFC 7946 defines, wherever it appears: on its own, inside a
+            <code>Feature</code>, or inside a <code>FeatureCollection</code>.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Type</th><th>Drawn as</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>Point</code>, <code>MultiPoint</code></td><td>A marker per position.</td></tr>
+                <tr><td><code>LineString</code>, <code>MultiLineString</code></td><td>A line per part. Two disjoint lines stay two lines.</td></tr>
+                <tr><td><code>Polygon</code>, <code>MultiPolygon</code></td><td>An area. The first ring is the outside and the rest are holes.</td></tr>
+                <tr><td><code>GeometryCollection</code>, one level deep</td><td>Each member in whichever way its own type is drawn, so one feature can be both markers and shapes.</td></tr>
+                <tr><td><code>"geometry": null</code></td><td>Listed with a note. RFC 7946 allows a feature with no position, and it is not an error.</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Coordinates are read <strong>longitude first</strong>, which is what RFC 7946 specifies
+            and what every conforming tool writes. Each one is shown with the digits the document
+            wrote: a coordinate written <code>1e-05</code> or to sixteen decimal places is read and
+            drawn, because that is ordinary output from <code>ogr2ogr</code> and from Python's
+            <code>json</code> module.
+        </p>
+
+        <h2 id="geojson-limits">What this build refuses</h2>
+
+        <p>
+            A document past any of these is left as an ordinary code block, and an author who wrote
+            an explicit <code>geojson</code> fence is told why. Nothing is truncated: a card showing
+            the first 256 features of nine hundred would be quietly wrong about what was posted.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Limit</th><th>Value</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Document size</td><td>64 KB</td></tr>
+                <tr><td>Features</td><td>256</td></tr>
+                <tr><td>Coordinates, across the whole document</td><td>4096</td></tr>
+                <tr><td>Properties per feature</td><td>32, with values shortened past 256 characters</td></tr>
+                <tr><td>Nesting</td><td>32 levels, and a <code>GeometryCollection</code> may not contain another</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            At the precision a real export writes, the 64 KB limit is reached at roughly 2,500
+            coordinates, so it is usually the one you meet first. For a document larger than that,
+            attach the file to a post rather than pasting it, or split the overlay.
+        </p>
+
+        <h2 id="geojson-notdrawn">What is listed but not drawn</h2>
+
+        <p>
+            These do not refuse the document. The feature is listed and the card says why it is not
+            on the map, because a feature missing from the map with no explanation is worse than
+            one that is accounted for.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Case</th><th>What happens</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>A coordinate outside the range of the earth</td><td>That feature is not drawn. Every other one still is.</td></tr>
+                <tr><td>A ring that does not close, or has fewer than four points</td><td>That feature is not drawn. A polygon's rings must close, per RFC 7946.</td></tr>
+                <tr><td>A feature with <code>"geometry": null</code></td><td>Listed as having no geometry, and left out of the area the map frames.</td></tr>
+                <tr><td>A stated <code>crs</code> that is not CRS84</td><td><strong>Nothing</strong> is drawn, and the card says so. See below.</td></tr>
+                <tr><td>A malformed <code>bbox</code></td><td>Noted. The map is drawn from the coordinates, which is where it always comes from.</td></tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">A document that names <code>EPSG:4326</code> is not drawn.</p>
+            <p>
+                RFC 7946 removed <code>crs</code> and fixed the coordinate system, so a conforming
+                document does not carry one. A document that still does is only drawn when it names
+                CRS84. <code>EPSG:4326</code> is refused even though it describes the same datum,
+                because many tools write that name with <strong>latitude first</strong> and nothing
+                in the document says which order was meant. Drawing it would put every feature in
+                the wrong place with no sign that anything was wrong.
+            </p>
+        </div>
+
+        <h2 id="geojson-card">What the card shows</h2>
+
+        <p>
+            A heading counting the features, then the geometry mix and anything not drawn. Then one
+            row per feature:
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Shown</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Name</td><td>From <code>properties.name</code>, then <code>title</code>, then <code>label</code>, then the feature's <code>id</code>, and otherwise "Feature 1", "Feature 2" and so on.</td></tr>
+                <tr><td>Geometry</td><td>The type, verbatim.</td></tr>
+                <tr><td>Position</td><td>For a lone point only. A polygon's corners are not positions anybody reported.</td></tr>
+                <tr><td>Size</td><td>Rings and points, for anything that is not a lone point.</td></tr>
+                <tr><td>Properties</td><td>Every key and value the feature carries, as text.</td></tr>
+                <tr><td>Note</td><td>Only when the feature is not drawn, saying why.</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            A long list scrolls inside the card rather than pushing the rest of the channel out of
+            reach. The card does not carry the document itself: the raw text is the longest thing
+            a document holds, and a card sits in the channel under everything else somebody wrote.
+            <strong>Open details</strong> puts it in the sidebar under
+            <a href="#geojson-panel"><strong>As posted</strong></a>, which is what you check the
+            card against.
+        </p>
+
+        <h3 id="geojson-unlabeled">Documents that do not say they are GeoJSON</h3>
+
+        <p>
+            With <a href="admin.html#enable-geojson-unlabeled"><code>EnableGeoJSONUnlabeled</code></a>
+            on, three further spellings are read: a fence labeled <code>json</code>, an
+            attachment named <code>.json</code>, and a document pasted with no fence at all.
+            The switch ships <strong>off</strong>.
+        </p>
+
+        <p>
+            It widens what is <em>read</em>, never what is <em>accepted</em>. Anything that does
+            not parse as GeoJSON is still left alone, so a package manifest, a JSON Schema
+            fragment and an API response are all untouched. A document you fenced as code is
+            never read either, whatever the switch says. And only a block labeled
+            <code>geojson</code> is told why it was refused: the ambiguous spellings fail
+            silently, because a notice on each of them would fire constantly on ordinary posts.
+        </p>
+
+        <h2 id="geojson-measure">How big it is</h2>
+
+        <p>
+            A line is given its length, an area its area, and a point neither. A collection gets
+            both when its members provide both, since it is one feature. A feature that is not
+            drawn is not measured: a figure printed beside "not drawn" would be claiming
+            something this build has just declined to claim.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">Three significant figures, deliberately.</p>
+            <p>
+                The measurement models the earth as a sphere, which is within about half a
+                percent everywhere; your coordinates are written to whatever resolution the
+                source chose; and a route measured off a map is not a surveyed distance.
+                Printing <code>12.4174 km</code> would claim a precision none of those support,
+                so the figure is cut to what it can carry. A polygon's holes are subtracted from
+                the ring that encloses them.
+            </p>
+        </div>
+
+        <h2 id="geojson-color">The style a document states</h2>
+
+        <p>
+            GeoJSON itself says nothing about appearance, so styling travels in ordinary feature
+            properties under the names <strong>simplestyle</strong> settled on. These are read:
+        </p>
+
+        <table class="field-table">
+            <thead>
+                <tr><th>Property</th><th>Applies to</th><th>Example</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>stroke</code></td><td>Line, polygon outline</td><td><code>"#ff0000"</code></td></tr>
+                <tr><td><code>stroke-width</code></td><td>Line, polygon outline</td><td><code>3</code></td></tr>
+                <tr><td><code>stroke-opacity</code></td><td>Line, polygon outline</td><td><code>0.8</code></td></tr>
+                <tr><td><code>fill</code></td><td>Polygon</td><td><code>"#ff0000"</code></td></tr>
+                <tr><td><code>fill-opacity</code></td><td>Polygon</td><td><code>0.25</code></td></tr>
+                <tr><td><code>marker-color</code></td><td>Point</td><td><code>"#0000ff"</code></td></tr>
+                <tr><td><code>marker-size</code></td><td>Point</td><td><code>"small"</code>, <code>"medium"</code>, <code>"large"</code></td></tr>
+            </tbody>
+        </table>
+
+        <pre class="copyable" tabindex="0"><code>"properties": {
+  "stroke": "#ff0000",
+  "stroke-width": 3,
+  "stroke-opacity": 0.8,
+  "fill": "#ff0000",
+  "fill-opacity": 0.25
+}</code></pre>
+
+        <p>
+            Each name is read <strong>for the geometry it belongs to</strong>. A point carrying
+            both <code>marker-color</code> and <code>fill</code> is drawn in the one meant for a
+            marker, and a point's <code>fill-opacity</code> is ignored rather than deciding how
+            solid the marker is.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title"><code>marker-symbol</code> is listed, not drawn.</p>
+            <p>
+                A symbol name points into an icon set. This plugin ships an offline basemap with
+                no icon set in it, so there is nothing for a name to point at. The property is
+                shown among the feature's properties like any other, so nothing is lost, but no
+                icon is drawn for it.
+            </p>
+        </div>
+
+        <h3 id="geojson-color-rules">What is refused, and what happens then</h3>
+
+        <p>
+            A color must be a hex triple, <code>#f00</code> or <code>#ff0000</code>. A width must
+            be a number above zero and no more than <strong>10</strong>. An opacity must be a
+            number from 0 to 1; zero is a real value and means invisible. A size must be one of
+            the three words above.
+        </p>
+
+        <p>
+            Anything outside those is <strong>refused, not adjusted</strong>: the value is shown
+            as text among the feature's properties and that part of the shape is drawn in the
+            theme's own style. Clamping a width of 4000 down to 10 would draw something the
+            document did not ask for while claiming to honor it, and a value handed to the map
+            unchecked is a value the browser will interpret.
+        </p>
+
+        <p>
+            A polygon that states no <code>fill-opacity</code> is filled at the same low opacity
+            every shape on these maps uses, so a colored area never hides the ground underneath
+            it. A stated one <strong>replaces</strong> that rather than combining with it:
+            <code>0.25</code> means a quarter.
+        </p>
+
+        <h2 id="geojson-panel">What the sidebar shows</h2>
+
+        <p>
+            <strong>Open details</strong> on the card opens the sidebar on the document. It
+            carries the same summary and feature list the card does, and it is where a point's
+            position becomes a link into the
+            <a href="location.html">coordinate tools</a>.
+        </p>
+
+        <p>
+            Only a feature that is a <strong>single point</strong> is linked, and only when its
+            coordinate carries enough digits for the coordinate grammar to stand behind. A
+            polygon has no one position and a multi-point has several, so linking either would be
+            picking one and calling it the feature's. A coarsely written coordinate, and a
+            document posted by a build older than this one, both read as plain text rather than
+            as a link that would land nowhere.
+        </p>
+
+        <h3 id="geojson-sections">Choosing what the sidebar shows</h3>
+
+        <p>
+            <strong>Customize your view</strong> at the bottom of the panel hides sections you do
+            not want. The choice is yours alone, it applies to the sidebar only, and the card in
+            the channel and the stored message are both unchanged.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Section</th><th>What it holds</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Map</td><td>Every feature drawn together, fitted to all of them.</td></tr>
+                <tr><td>What the document holds</td><td>How many features, of what geometry, and anything not drawn.</td></tr>
+                <tr><td>Features</td><td>Each feature by name, with its geometry and size.</td></tr>
+                <tr><td>Feature properties</td><td>The keys and values each feature carries.</td></tr>
+                <tr><td>As posted</td><td>The document exactly as it was posted, scrollable. Collapsed until you open it, with a button that copies it.</td></tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-info">
+            <p class="alert-title">These are separate from the Cursor on Target sections.</p>
+            <p>
+                The two panels hold different things, so they keep separate lists. Hiding the map
+                here leaves the Cursor on Target map alone, and the other way round. Hiding every
+                section is allowed: the panel keeps its heading and the Customize link, which is
+                how you get back.
+            </p>
+        </div>
+
+        <h2 id="geojson-map">The map</h2>
+
+        <p>
+            Every feature is drawn together and the map opens fitted to all of them, not to the
+            first. A document that straddles the antimeridian is framed across the seam rather than
+            around the far side of the planet, and a document of a single point opens at a readable
+            span rather than at maximum zoom.
+        </p>
+
+        <p>
+            Points are drawn as markers, lines and areas as outlines with a light fill. There is no
+            pin: a document of nothing but polygons reports no single position, and this build does
+            not draw a position nobody stated.
+        </p>
+
+        <p>
+            The map is the same one the coordinate tools draw, over the same offline basemap, and
+            it follows the same settings. Under a post it is drawn when
+            <a href="admin.html#enable-location-map"><code>EnableLocationMap</code></a> and
+            <a href="admin.html#enable-location-map-inline"><code>EnableLocationMapInline</code></a>
+            are on, and a reader who has turned the map under posts off in
+            <a href="panel.html#customize">their own settings</a> does not get one there either.
+            In the sidebar it follows
+            <a href="admin.html#enable-location-map-panel"><code>EnableLocationMapPanel</code></a>
+            and this panel's own <a href="#geojson-sections">Map section</a> instead, so hiding
+            the map under posts does not blank the one in the sidebar. There is deliberately no
+            separate GeoJSON map switch.
+        </p>
+
+        <h3 id="geojson-larger">Open larger</h3>
+
+        <p>
+            Under the map is <strong>Open larger</strong>, which opens the whole document in a new
+            tab with the window given to one picture. It is the same map, drawn from the same post,
+            and nothing else: close the tab to go back to the post it came from.
+        </p>
+
+        <p>
+            The address is the post, not a coordinate: a document of several features has no single
+            position that names it. Opening it re-reads the post, so a reader who may not see the
+            channel gets <a href="error-codes.html">nothing found</a>, and a post whose card has
+            stood down has no page either. It follows
+            <a href="admin.html#enable-location-map-page"><code>EnableLocationMapPage</code></a>,
+            like every other map page.
+        </p>
+
+        <h2 id="geojson-honesty">What the card will not claim</h2>
+
+        <ul>
+            <li>It never invents a position. A feature with no usable coordinate is listed and not drawn.</li>
+            <li>It never re-rounds a coordinate. What you see is what the document wrote.</li>
+            <li>It never renders half a document. Anything over a limit is refused whole.</li>
+            <li>It never guesses a projection. A document whose axis order cannot be confirmed is not drawn at all.</li>
+        </ul>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">A card is frozen at the moment it was posted.</p>
+            <p>
+                The document is read once, as the post is created. Editing the post stands the card
+                down and shows the text again, which is the supported way to change or remove one.
+                A card posted by an older build keeps whatever that build understood.
+            </p>
+        </div>
+
+        <h2 id="geojson-switches">Settings and troubleshooting</h2>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">A card changes what the post is.</p>
+            <p>
+                Rendering a document sets the post's type, and a typed post loses its Elasticsearch
+                and OpenSearch matches, its auto-translation and its embeds. Its file attachments
+                are unaffected and Mattermost still lists them under the card.
+                <a href="admin.html#enable-geojson"><code>EnableGeoJSON</code></a> is how an
+                install opts out. A post carrying a document is also never decorated, so a
+                coordinate written beside one is not linked. Installs searching through Postgres
+                are unaffected either way.
+            </p>
+        </div>
+
+        <p>
+            Turning either setting off leaves new posts alone; posts already rendered keep their
+            card. If a document you posted did not render, see
+            <a href="troubleshooting.html#geojson-not-rendered">Troubleshooting</a>.
+        </p>
+
+    </main>
+</div>
+</body>
+</html>

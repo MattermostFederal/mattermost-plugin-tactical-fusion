@@ -3,6 +3,8 @@ import type {SectionID} from '../cot/sections';
 import type {ZoneSelection} from '../decorators/dtg/zones';
 import {isHideableID} from '../decorators/location/rows';
 import type {HideableID} from '../decorators/location/rows';
+import {isSectionID as isGeoJsonSectionID} from '../geojson/sections';
+import type {SectionID as GeoJsonSectionID} from '../geojson/sections';
 
 /**
  * One reader's view of a date-time group. Mirrors DTGPreferences in
@@ -61,6 +63,19 @@ export interface CotPreferences {
     hiddenSections: SectionID[];
 }
 
+export interface GeoJsonPreferences {
+
+    /**
+     * The groups to leave out of the GeoJSON sidebar panel, by id. Empty means
+     * every section.
+     *
+     * Its own key rather than a field on CotPreferences: the two panels have
+     * different sections, and sharing a key would mean hiding "Map" on one hid
+     * it on the other.
+     */
+    hiddenSections: GeoJsonSectionID[];
+}
+
 /**
  * The whole per-reader blob.
  *
@@ -71,6 +86,7 @@ export interface Preferences {
     dtg: DtgPreferences;
     location: LocationPreferences;
     cot: CotPreferences;
+    geojson: GeoJsonPreferences;
 }
 
 /**
@@ -84,6 +100,7 @@ export const EMPTY_PREFERENCES: Preferences = {
     dtg: {zones: [], urgentWithinMinutes: 0},
     location: {hiddenRows: []},
     cot: {hiddenSections: []},
+    geojson: {hiddenSections: []},
 };
 
 /** A finite, non-negative integer, or 0 for anything else. */
@@ -129,10 +146,11 @@ function asZones(value: unknown): ZoneSelection[] {
  * default instead of reaching `Intl` or a style calculation.
  */
 export function fromWire(raw: unknown): Preferences {
-    const blob = (typeof raw === 'object' && raw !== null ? raw : {}) as {dtg?: unknown; location?: unknown; cot?: unknown};
+    const blob = (typeof raw === 'object' && raw !== null ? raw : {}) as {dtg?: unknown; location?: unknown; cot?: unknown; geojson?: unknown};
     const dtg = (typeof blob.dtg === 'object' && blob.dtg !== null ? blob.dtg : {}) as Record<string, unknown>;
     const location = (typeof blob.location === 'object' && blob.location !== null ? blob.location : {}) as Record<string, unknown>;
     const cot = (typeof blob.cot === 'object' && blob.cot !== null ? blob.cot : {}) as Record<string, unknown>;
+    const geojson = (typeof blob.geojson === 'object' && blob.geojson !== null ? blob.geojson : {}) as Record<string, unknown>;
 
     return {
         dtg: {
@@ -144,6 +162,9 @@ export function fromWire(raw: unknown): Preferences {
         },
         cot: {
             hiddenSections: asSectionIDs(cot.hidden_sections),
+        },
+        geojson: {
+            hiddenSections: asGeoJsonSectionIDs(geojson.hidden_sections),
         },
     };
 }
@@ -191,12 +212,32 @@ function asSectionIDs(value: unknown): SectionID[] {
     return ids;
 }
 
+/**
+ * The GeoJSON section ids in an array, dropping anything this build does not
+ * render. Forgiving on the way in, for the reason asRowIDs is.
+ */
+function asGeoJsonSectionIDs(value: unknown): GeoJsonSectionID[] {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    const ids: GeoJsonSectionID[] = [];
+    for (const raw of value) {
+        if (typeof raw === 'string' && isGeoJsonSectionID(raw) && !ids.includes(raw)) {
+            ids.push(raw);
+        }
+    }
+
+    return ids;
+}
+
 /** Builds the JSON the server expects. The wire names are snake_case. */
 export function toWire(preferences: Preferences): unknown {
     return {
         dtg: sectionToWire('dtg', preferences.dtg),
         location: sectionToWire('location', preferences.location),
         cot: sectionToWire('cot', preferences.cot),
+        geojson: sectionToWire('geojson', preferences.geojson),
     };
 }
 
@@ -207,6 +248,9 @@ function sectionToWire<K extends keyof Preferences>(section: K, value: Preferenc
     }
     if (section === 'location') {
         return {hidden_rows: (value as LocationPreferences).hiddenRows};
+    }
+    if (section === 'geojson') {
+        return {hidden_sections: (value as GeoJsonPreferences).hiddenSections};
     }
 
     return {hidden_sections: (value as CotPreferences).hiddenSections};
@@ -245,14 +289,15 @@ export function wireHasNoChoices(base: unknown): boolean {
         return true;
     }
 
-    const blob = base as {dtg?: unknown; location?: unknown; cot?: unknown};
+    const blob = base as {dtg?: unknown; location?: unknown; cot?: unknown; geojson?: unknown};
     const dtg = record(blob.dtg);
     const minutes = dtg.urgent_within_minutes;
 
     return listLength(dtg.zones) === 0 &&
         (typeof minutes !== 'number' || minutes === 0) &&
         listLength(record(blob.location).hidden_rows) === 0 &&
-        listLength(record(blob.cot).hidden_sections) === 0;
+        listLength(record(blob.cot).hidden_sections) === 0 &&
+        listLength(record(blob.geojson).hidden_sections) === 0;
 }
 
 function record(value: unknown): Record<string, unknown> {

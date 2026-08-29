@@ -117,9 +117,7 @@ const LocationInlineHarness: React.FC<Props> = ({
         resetPreferences();
         _setMapObserverForTesting((instance) => {
             live.current = instance;
-            setMaps((seen) => (instance ?
-                {...seen, built: seen.built + 1} :
-                {...seen, released: seen.released + 1}));
+            setMaps((seen) => (instance ? {...seen, built: seen.built + 1} : {...seen, released: seen.released + 1}));
         });
 
         return () => _setMapObserverForTesting(null);

@@ -22,6 +22,7 @@
             <a href="location.html">Coordinates</a>
             <a href="airfields.html">Airfields</a>
             <a href="cot.html" class="active">Cursor on Target</a>
+            <a href="geojson.html">GeoJSON</a>
             <span class="nav-section">Guides</span>
             <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
@@ -989,7 +990,7 @@
 
         <p>
             The last event is a <code>u-d-f</code> drawing rather than a track: a closed
-            <a href="#cot-geometry">polyline</a> of six vertices outlining a suspected hostile area,
+            <a href="#cot-geometry">polyline</a> of fourteen vertices outlining a suspected hostile area,
             with the contacts inside it. <strong>One outline in a block is drawn; two are not</strong>,
             because a map of overlapping outlines says nothing about which belongs to which track.
         </p>
@@ -1038,15 +1039,23 @@
     &lt;color argb="-65536"/&gt;
     &lt;shape&gt;
       &lt;polyline closed="true"&gt;
-        &lt;vertex lat="21.344100" lon="-157.955200"/&gt;
-        &lt;vertex lat="21.346800" lon="-157.941300"/&gt;
-        &lt;vertex lat="21.339500" lon="-157.933900"/&gt;
-        &lt;vertex lat="21.331200" lon="-157.936700"/&gt;
-        &lt;vertex lat="21.327400" lon="-157.947800"/&gt;
-        &lt;vertex lat="21.334600" lon="-157.957100"/&gt;
+        &lt;vertex lat="21.337800" lon="-157.932000"/&gt;
+        &lt;vertex lat="21.341634" lon="-157.936452"/&gt;
+        &lt;vertex lat="21.342828" lon="-157.940695"/&gt;
+        &lt;vertex lat="21.348787" lon="-157.942307"/&gt;
+        &lt;vertex lat="21.349455" lon="-157.947856"/&gt;
+        &lt;vertex lat="21.345316" lon="-157.951436"/&gt;
+        &lt;vertex lat="21.341716" lon="-157.953732"/&gt;
+        &lt;vertex lat="21.337800" lon="-157.953044"/&gt;
+        &lt;vertex lat="21.333130" lon="-157.955412"/&gt;
+        &lt;vertex lat="21.327504" lon="-157.953816"/&gt;
+        &lt;vertex lat="21.329679" lon="-157.946990"/&gt;
+        &lt;vertex lat="21.330346" lon="-157.943173"/&gt;
+        &lt;vertex lat="21.329992" lon="-157.938315"/&gt;
+        &lt;vertex lat="21.333212" lon="-157.934771"/&gt;
       &lt;/polyline&gt;
     &lt;/shape&gt;
-    &lt;remarks&gt;suspected hostile area, six point outline&lt;/remarks&gt;
+    &lt;remarks&gt;suspected hostile area, fourteen point outline&lt;/remarks&gt;
   &lt;/detail&gt;
 &lt;/event&gt;</code></pre>
 
@@ -1312,6 +1321,21 @@
             </p>
         </div>
 
+        <h3 id="cot-larger">Open larger, on a block</h3>
+
+        <p>
+            A post carrying <strong>one</strong> event links <em>Open larger</em> to that
+            coordinate's own map page, which also carries every reading of the position.
+        </p>
+
+        <p>
+            A post carrying <strong>several</strong> has no single coordinate to link, so it opens
+            the whole block by post instead: the same map, in a new tab, with the window given to
+            it. Linking the first event's page would frame one position and say nothing about the
+            rest, which is the same reason the accuracy ring is not drawn on a block map. The page
+            is the map and nothing else; close the tab to go back to the post.
+        </p>
+
         <h2 id="cot-panel">What the sidebar shows</h2>
 
         <p>
@@ -1445,8 +1469,9 @@
             <p class="alert-title">A card changes what the post is.</p>
             <p>
                 Rendering an event sets the post's type, and a typed post loses its Elasticsearch
-                and OpenSearch matches, its auto-translation, its embeds and its file attachment
-                list. <a href="admin.html#enable-cot"><code>EnableCot</code></a> is how an install
+                and OpenSearch matches, its auto-translation and its embeds. Its file attachments
+                are unaffected and Mattermost still lists them under the card.
+                <a href="admin.html#enable-cot"><code>EnableCot</code></a> is how an install
                 opts out. A post carrying an event is also never decorated, so a coordinate
                 written beside one is not linked.
             </p>

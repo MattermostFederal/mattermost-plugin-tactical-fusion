@@ -162,3 +162,38 @@ test.describe('the map page', () => {
         await expect(page.locator('#page-root').getByText('All readings')).toHaveCount(0);
     });
 });
+
+/*
+ * The overlay shell, which is the seam the other tests do not cross.
+ *
+ * `payload.spec.ts` proves the shell is read and `PageView.pw.tsx` proves the
+ * view draws; only the entry point decides that one leads to the other, and it
+ * used to refuse any shell with no `data-f` before it got the chance.
+ */
+test('an overlay shell mounts the overlay view, not the readings', async ({mount, page}) => {
+    await load(mount, page, {
+        mode: 'overlay',
+        overlayKind: 'custom_tf_geojson',
+        overlay: JSON.stringify({
+            tactical_fusion_geojson: {
+                version: 1,
+                source: 'fence',
+                src: '{"type":"Point","coordinates":[-118.25,34.0561]}',
+                counts: {features: 1, points: 1},
+                features: [{
+                    name: 'Depot',
+                    kind: 'Point',
+                    parts: [{kind: 'Point', rings: [[{lat: '34.056100', lon: '-118.250000', alt: ''}]], ring_counts: []}],
+                }],
+            },
+        }),
+    });
+
+    const root = page.locator('#page-root');
+
+    await expect(root).toContainText('1 marked position');
+
+    // The readings table is the other view, and mounting it here would mean the
+    // entry point had fallen through to the coordinate path.
+    await expect(root).not.toContainText('MGRS');
+});

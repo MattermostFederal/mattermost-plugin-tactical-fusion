@@ -67,9 +67,7 @@ function stubFetch(reply: (n: number) => Reply): string[] {
             return Promise.reject(new Error('offline'));
         }
 
-        const length = answer.contentLength === undefined ?
-            String(HEADER_BYTES) :
-            answer.contentLength;
+        const length = answer.contentLength === undefined ? String(HEADER_BYTES) : answer.contentLength;
 
         return Promise.resolve({
             ok: answer.ok ?? true,

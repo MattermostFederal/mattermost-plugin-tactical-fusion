@@ -208,6 +208,17 @@ export interface CotPayload {
     trail: string;
     src: string;
     fileId: string;
+
+    /**
+     * The post this was read from, or empty when nothing knows.
+     *
+     * Not read from props: props do not carry it and could not be trusted for
+     * it if they did. The post body sets it, and it rides the payload into the
+     * sidebar, which is what lets both surfaces address the map page. Empty is
+     * the honest value for a harness or a card built from a payload directly,
+     * and it costs exactly the "Open larger" link.
+     */
+    postId?: string;
     fileName: string;
     events: CotEvent[];
 }

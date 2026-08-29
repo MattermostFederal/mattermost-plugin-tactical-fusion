@@ -548,9 +548,7 @@ function areaCellDegrees(format: LocationFormat, canonical: string): number | nu
         const significant =
             canonical.slice(0, plus).replace(/0+$/, '').length + (canonical.length - plus - 1);
 
-        return significant <= 10 ?
-            20 / Math.pow(20, (significant / 2) - 1) :
-            0.000125 / Math.pow(4, significant - 10);
+        return significant <= 10 ? 20 / Math.pow(20, (significant / 2) - 1) : 0.000125 / Math.pow(4, significant - 10);
     }
     default:
         return null;

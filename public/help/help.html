@@ -22,6 +22,7 @@
             <a href="location.html">Coordinates</a>
             <a href="airfields.html">Airfields</a>
             <a href="cot.html">Cursor on Target</a>
+            <a href="geojson.html">GeoJSON</a>
             <span class="nav-section">Guides</span>
             <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
@@ -44,19 +45,28 @@
         <p class="tagline">Enriches conversations with mission-relevant context, in place, as people write.</p>
 
         <p>
-            Today the plugin recognizes three kinds of thing: <strong>times</strong>,
-            <strong>coordinates</strong> and <strong>airfield codes</strong>. Write a
-            date-time group and it becomes a link that opens a panel showing that instant
-            in every timezone you care about, with a countdown to it. Write a coordinate
-            in any of the recognized notations and it becomes a link showing the same
-            position in the others, including its
-            <a href="location.html#location-grid">military grid reference</a>. Write an
-            <a href="airfields.html#airfield">ICAO airfield code</a> behind a USMTF field
-            label and it becomes a link naming the field and where it is.
+            Today the plugin recognizes five kinds of thing. Three of them become
+            <strong>links</strong> in the message you wrote. Write a date-time group and it
+            becomes a link that opens a panel showing that instant in every timezone you
+            care about, with a countdown to it. Write a coordinate in any of the recognized
+            notations and it becomes a link showing the same position in the others,
+            including its <a href="location.html#location-grid">military grid reference</a>.
+            Write an <a href="airfields.html#airfield">ICAO airfield code</a> behind a USMTF
+            field label and it becomes a link naming the field and where it is.
         </p>
 
         <p>
-            CoT, IP intelligence and CVEs are described in the plugin's roadmap but are
+            The other two are whole documents, and they become a <strong>card</strong>
+            rather than a link, because there is no token in the message to turn into one.
+            Post a <a href="cot.html">Cursor on Target</a> event and the card names what it
+            is, where it is and how long it is good for. Post a
+            <a href="geojson.html">GeoJSON</a> document and the card says what the document
+            holds and draws its features on a map. Both read an attachment as readily as a
+            fenced code block.
+        </p>
+
+        <p>
+            IP intelligence and CVEs are described in the plugin's roadmap but are
             <strong>not implemented</strong>.
         </p>
 
@@ -159,6 +169,10 @@ DZ is [2120N15757W](/plugins/com.mattermost.plugin-tactical-fusion/decorate/loca
                 <h3>Cursor on Target</h3>
                 <p>The schema this build reads, every element and attribute, what it refuses, and worked examples of each kind of event.</p>
             </a>
+            <a href="geojson.html" class="nav-card">
+                <h3>GeoJSON</h3>
+                <p>The overlay format every GIS tool writes, what this build draws and refuses, and why only a <code>geojson</code> fence is read.</p>
+            </a>
             <a href="formats.html" class="nav-card">
                 <h3>Recognized Formats</h3>
                 <p>The rules every decorator shares: clean edges, consumed labels, and the spans that are never rewritten.</p>
@@ -169,7 +183,7 @@ DZ is [2120N15757W](/plugins/com.mattermost.plugin-tactical-fusion/decorate/loca
             </a>
             <a href="admin.html" class="nav-card">
                 <h3>Admin Settings</h3>
-                <p>The twenty switches in the System Console, in four sections, what each governs, and what turning one off does and does not do. One of them, UTM, ships off.</p>
+                <p>The twenty-five switches in the System Console, in six sections, what each governs, and what turning one off does and does not do. Two of them, UTM and unlabeled GeoJSON, ship off.</p>
             </a>
             <a href="commands.html" class="nav-card">
                 <h3>Slash Commands</h3>

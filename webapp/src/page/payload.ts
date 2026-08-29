@@ -16,7 +16,7 @@ import type {Features} from '../features/types';
  * session. Handing it over in the document is what lets a public page render
  * rows that need the projection without a public conversion route.
  */
-export interface PageData {
+export interface LocationPageData {
     payload: LocationPayload;
     conversion: ConversionState;
     mode: 'location' | 'map';
@@ -37,6 +37,24 @@ export interface PageData {
 }
 
 /**
+ * A stamped post's overlay, which is not a coordinate.
+ *
+ * A block of Cursor on Target events and a GeoJSON document have no canonical
+ * token, so there is no `data-f` here and no conversion: everything drawn comes
+ * out of `props`, read by the card's own reader rather than by a second one
+ * written for this page. `kind` is the post type, which is already held to the
+ * server's by a sync test, so this mode introduced no new vocabulary to drift.
+ */
+export interface OverlayPageData {
+    mode: 'overlay';
+    kind: string;
+    props: unknown;
+    packages: string[];
+}
+
+export type PageData = LocationPageData | OverlayPageData;
+
+/**
  * The shell's parameters, or null when there is no shell to read.
  *
  * An unrecognized format id DEGRADES rather than refusing, for the same reason
@@ -55,6 +73,10 @@ export interface PageData {
  * written by this plugin's shell at all, so there is nothing to render from.
  */
 export function readPageData(root: HTMLElement): PageData | null {
+    if (root.dataset.mode === 'overlay') {
+        return overlayFrom(root);
+    }
+
     const format = root.dataset.f ?? '';
     if (format === '') {
         return null;
@@ -68,6 +90,36 @@ export function readPageData(root: HTMLElement): PageData | null {
         conversion: conversionFrom(root.dataset.conversion),
         mode: root.dataset.mode === 'map' ? 'map' : 'location',
         maps: mapsFrom(root.dataset.maps),
+        packages: packagesFrom(root.dataset.packages),
+    };
+}
+
+/**
+ * The overlay shell, or null when it carries nothing to draw.
+ *
+ * The blob is NOT validated here. It is handed straight to the card's reader,
+ * which is the one place that decides what a props blob means and which already
+ * refuses a version it cannot read. A check here would be a second opinion, and
+ * the failure it would cause is the blank document `payloadFor` records.
+ */
+function overlayFrom(root: HTMLElement): OverlayPageData | null {
+    const kind = root.dataset.overlayKind ?? '';
+    const encoded = root.dataset.overlay ?? '';
+    if (kind === '' || encoded === '') {
+        return null;
+    }
+
+    let props: unknown;
+    try {
+        props = JSON.parse(encoded);
+    } catch {
+        return null;
+    }
+
+    return {
+        mode: 'overlay',
+        kind,
+        props,
         packages: packagesFrom(root.dataset.packages),
     };
 }

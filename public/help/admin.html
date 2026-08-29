@@ -22,6 +22,7 @@
             <a href="location.html">Coordinates</a>
             <a href="airfields.html">Airfields</a>
             <a href="cot.html">Cursor on Target</a>
+            <a href="geojson.html">GeoJSON</a>
             <span class="nav-section">Guides</span>
             <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
@@ -41,7 +42,7 @@
         </div>
 
         <h1>Admin Settings</h1>
-        <p class="tagline">System Console, Plugins, Tactical Fusion. Four sections and twenty switches. Nineteen are on by default; <code>EnableLocationUTM</code> is the one that is not.</p>
+        <p class="tagline">System Console, Plugins, Tactical Fusion. Six sections and twenty-five switches. Twenty-three are on by default; <code>EnableLocationUTM</code> and <code>EnableGeoJSONUnlabeled</code> are the two that are not.</p>
 
         <h2>How the date-time group switches relate</h2>
 
@@ -743,7 +744,12 @@
         <p>
             This is the page that gives the whole window to one picture, which
             <em>Open larger</em> opens and which a client that does not run the webapp
-            follows a coordinate link to. It is the only route an admin switch removes
+            follows a coordinate link to. It is addressed two ways: by a coordinate, and
+            by a post, which is how a
+            <a href="cot.html">Cursor on Target</a> block and a
+            <a href="geojson.html#geojson-larger">GeoJSON document</a> open, since neither
+            has a coordinate that names it. Opening one by post re-reads the post and
+            checks the reader may see its channel. It is the only route an admin switch removes
             outright, and that is deliberate: the page <em>is</em> the map, so there is no
             reduced version of it worth serving, where the readings page still has
             everything but the picture.
@@ -1009,7 +1015,7 @@
                 as well. Installs that search through PostgreSQL are unaffected.
             </p>
             <p>
-                Marking also drops link previews, image embeds, the file attachment list and
+                Marking also drops link previews, image embeds and
                 automatic translation for that post, and any Markdown written around the
                 event renders as plain text. Turning this switch off restores all of it for
                 new posts.
@@ -1030,10 +1036,87 @@
         <p>
             When a post carries exactly one attachment whose name ends <code>.xml</code> or
             <code>.cot</code>, the file is read as the post is created and the event inside
-            it is rendered. This is the only setting in the plugin that reads a file while a
+            it is rendered. This and <code>EnableGeoJSONFile</code> are the two settings that read a file while a
             message is being posted. An install whose file storage is slow or remote may
             prefer to turn it off and keep the fenced block, which costs nothing extra.
             Files over 64 KB are ignored either way.
+        </p>
+
+        <h2 id="geojson">GeoJSON</h2>
+
+        <h3 id="enable-geojson" data-setting="EnableGeoJSON">Render GeoJSON documents <code>EnableGeoJSON</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>A pasted document is left as an ordinary code block. Posts already rendered keep their card.</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            A GeoJSON document written in a fenced code block labeled
+            <code>geojson</code> is rendered as a card listing how many features the
+            document holds and of what geometry, naming each one, showing the properties
+            it carries, and drawing them all on one map.
+        </p>
+
+        <p>
+            A block labeled <code>json</code> is deliberately not recognized. Rendering a
+            post this way marks it with a custom type, and Elasticsearch and OpenSearch
+            index such a post but never match it, so it is missing from search and from
+            Recent Mentions; link previews, image embeds and
+            automatic translation are dropped as well. That is permanent and the author
+            cannot undo it, and ordinary JSON is pasted into chat far too often to risk
+            it. Installs searching through Postgres are unaffected either way.
+        </p>
+
+        <h3 id="enable-geojson-file" data-setting="EnableGeoJSONFile">Read a GeoJSON file attached to a post <code>EnableGeoJSONFile</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>An attached <code>.geojson</code> file is left as an ordinary attachment. A pasted fenced block still renders.</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-geojson"><code>EnableGeoJSON</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            When a post carries exactly one attachment whose name ends
+            <code>.geojson</code>, the file is read as the post is created and the
+            document inside it is rendered. Like the Cursor on Target file switch, this
+            puts a filestore read on the post path, so an install whose file storage is
+            slow or remote may prefer to turn it off. Files over 64 KB are ignored either
+            way, and a <code>.json</code> attachment is never read.
+        </p>
+
+        <h3 id="enable-geojson-unlabeled" data-setting="EnableGeoJSONUnlabeled">Also read GeoJSON that does not say it is GeoJSON (off by default) <code>EnableGeoJSONUnlabeled</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td><strong>Off</strong></td></tr>
+                <tr><td>Effect when on</td><td>A <code>json</code> fence, a <code>.json</code> attachment, and a document pasted with no fence at all are all read as GeoJSON.</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-geojson"><code>EnableGeoJSON</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            One of two switches in the plugin that ships <strong>off</strong>, and the reason is
+            the cost of being wrong. Rendering a post marks it with a custom type, which takes
+            away its Elasticsearch and OpenSearch matches and its embeds permanently, and the
+            author cannot undo it. Ordinary JSON is pasted into chat
+            constantly, so a workspace that has not asked for this should not get it.
+        </p>
+
+        <p>
+            Turning it on suits an install whose channels carry overlays rather than API
+            payloads. It widens what is <em>read</em>, never what is <em>accepted</em>: a
+            document that does not parse as GeoJSON is still left alone, and a block the author
+            fenced as code is never read. Only a block labeled <code>geojson</code> gets a
+            message explaining a refusal; the ambiguous spellings fail silently, because a
+            notice on every one of them would fire constantly on ordinary posts.
         </p>
 
         <h2>Reader settings are not admin settings</h2>

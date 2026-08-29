@@ -49,3 +49,25 @@ func RenderMapPage(w http.ResponseWriter, params url.Values, packages []string) 
 		Capability: decorators.PageMapping,
 	})
 }
+
+// RenderOverlayPage serves a stamped post's overlay as the same map page.
+//
+// The map page in a second mode rather than a route of its own: it is the same
+// window given to the same picture over the same basemap, behind the same admin
+// switch, and a reader arrives at it from the same "Open larger". What differs
+// is only what is being drawn, which is why the mode is a shell attribute
+// rather than a path.
+//
+// `kind` and `blob` are opaque here. The caller has already decided the post is
+// one this plugin stamped, that the reader may see it, and that its card has not
+// stood down; this function's whole job is the shell around what it was handed.
+func RenderOverlayPage(w http.ResponseWriter, params url.Values, packages []string, kind, blob string) {
+	decorators.WritePage(w, decorators.Page{
+		Title:      mapPageTitle,
+		Theme:      decorators.ThemeFromParams(params),
+		StyleCSS:   pageStyles + mapPageStyles,
+		BodyHTML:   renderOverlayRoot(kind, blob, Maps{Page: true}, packages),
+		ScriptSrc:  pageAppFromRoot,
+		Capability: decorators.PageMapping,
+	})
+}

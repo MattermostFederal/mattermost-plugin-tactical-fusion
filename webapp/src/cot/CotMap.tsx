@@ -8,6 +8,7 @@ import type {MapGeometry} from '../decorators/location/map/LocationMap';
 import LocationMap, {MAP_HEIGHT} from '../decorators/location/map/LocationMap';
 import {useNearViewport} from '../decorators/location/map/near_viewport';
 import {isRenderable} from '../decorators/location/map/span';
+import {overlayPageHref} from '../decorators/location/map/view';
 import {INLINE_ID, isRowVisible} from '../decorators/location/rows';
 import {withTheme} from '../decorators/theme';
 import {useFeatures} from '../features/store';
@@ -24,6 +25,33 @@ const styles: Record<string, React.CSSProperties> = {
 function mapPageHref(event: CotEvent): string {
     const params = new URLSearchParams({f: event.format, v: event.value});
     return withTheme(`${pluginBaseUrl()}/map?${params.toString()}`);
+}
+
+/**
+ * Where "Open larger" goes, which depends on what is being drawn.
+ *
+ * ONE drawable event addresses the map page by its own coordinate, as it always
+ * has: that page carries the token and a way through to every reading of it,
+ * which a post id cannot offer.
+ *
+ * A BLOCK has no coordinate at all. Linking the first event's page would frame
+ * one position and say nothing about the rest, which is the same argument that
+ * keeps the accuracy ring off a block map, so a block addresses the page by the
+ * post instead and the page redraws the whole block. Before that existed a
+ * block simply had no link, which read as the control being broken.
+ *
+ * No post id means no link. A card built from a payload directly, as a harness
+ * does, has nothing to address.
+ */
+function largerHref(pageEnabled: boolean, only: CotEvent | undefined, postId: string | undefined): string | undefined {
+    if (!pageEnabled) {
+        return undefined;
+    }
+    if (only) {
+        return mapPageHref(only);
+    }
+
+    return postId ? overlayPageHref(postId) : undefined;
 }
 
 /** @internal exported for tests */
@@ -190,8 +218,20 @@ export function _geometryForTesting( // eslint-disable-line no-underscore-dangle
     return geometryFor(event);
 }
 
-const CotMapCanvas: React.FC<{events: readonly CotEvent[]; pageEnabled: boolean}> = ({
-    events, pageEnabled,
+/**
+ * The drawing, with nothing consulted.
+ *
+ * Exported because the map page draws exactly this and must not consult the
+ * reader's sections or the admin's inline switch to do it: the page IS the map,
+ * so reaching it is the decision. The wrapper below is where those two live.
+ */
+export const CotMapCanvas: React.FC<{
+    events: readonly CotEvent[];
+    pageEnabled: boolean;
+    postId?: string;
+    fill?: boolean;
+}> = ({
+    events, pageEnabled, postId, fill,
 }) => {
     const drawn = drawableEvents(events);
     const markers = markersFor(drawn);
@@ -224,7 +264,8 @@ const CotMapCanvas: React.FC<{events: readonly CotEvent[]; pageEnabled: boolean}
             geometry={geometryFor(shaped)}
             geometryColor={shaped && statedColor(shaped)}
             markerLabel={only ? only.typeLabel : blockLabel(drawn, events.length)}
-            pageHref={pageEnabled && only ? mapPageHref(only) : undefined}
+            pageHref={largerHref(pageEnabled, only, postId)}
+            fill={fill}
         />
     );
 };
@@ -248,7 +289,11 @@ const CotMapCanvas: React.FC<{events: readonly CotEvent[]; pageEnabled: boolean}
  * live WebGL contexts at roughly sixteen and a channel of position reports is
  * exactly the shape that reaches it.
  */
-const CotMap: React.FC<{events: readonly CotEvent[]; surface: 'card' | 'panel'}> = ({events, surface}) => {
+const CotMap: React.FC<{
+    events: readonly CotEvent[];
+    surface: 'card' | 'panel';
+    postId?: string;
+}> = ({events, surface, postId}) => {
     const {preferences} = usePreferences();
     const {features} = useFeatures();
     const [box, setBox] = useState<HTMLDivElement | null>(null);
@@ -258,6 +303,10 @@ const CotMap: React.FC<{events: readonly CotEvent[]; surface: 'card' | 'panel'}>
         isRowVisible(preferences.location.hiddenRows, INLINE_ID) :
         isSectionVisible(preferences.cot.hiddenSections, 'map');
 
+    // Both surfaces, one switch, deliberately: docs/design/cot.md "Switches"
+    // argues it and TestCotHasNoMapSettingOfItsOwn is where it gets revisited.
+    // GeoJSON reads mapPanel for its panel instead, which is a different
+    // decision rather than a drift; see that file and geojson.md.
     if (!features.mapInline || !wanted) {
         return null;
     }
@@ -272,6 +321,7 @@ const CotMap: React.FC<{events: readonly CotEvent[]; surface: 'card' | 'panel'}>
                 <CotMapCanvas
                     events={events}
                     pageEnabled={features.mapPage}
+                    postId={postId}
                 />
             ) : <div style={styles.reserved}/>}
         </div>

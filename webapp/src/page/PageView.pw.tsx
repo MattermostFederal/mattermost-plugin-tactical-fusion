@@ -1,7 +1,11 @@
 import React from 'react';
 
 import MapPageView from './MapPageView';
-import type {PageData} from './payload';
+// eslint-disable-next-line import/no-duplicates
+import {OverlayPageView} from './OverlayPageView';
+// eslint-disable-next-line import/no-duplicates
+import {OVERLAY_UNREADABLE} from './OverlayPageView';
+import type {LocationPageData, OverlayPageData, PageData} from './payload';
 
 import {expect, test} from '../../playwright/ct-coverage';
 import {parseCanonical} from '../decorators/location/format';
@@ -17,7 +21,7 @@ import {ALL_FEATURES} from '../features/types';
  * page gives the window to one picture.
  */
 
-const GRID: PageData = {
+const GRID: LocationPageData = {
     payload: {coord: null, format: 'mgrs', canonical: '18SUJ2347806483', raw: '18S UJ 23478 06483'},
     conversion: {
         status: 'ready',
@@ -368,4 +372,141 @@ test('a page keeps its map when only the map page is off', async ({mount}) => {
 
     await expect(component.getByText('Open larger')).toHaveCount(0);
     await expect(component.getByTestId('map-note')).toBeAttached();
+});
+
+/*
+ * The overlay page, which is what "Open larger" opens for a stamped post.
+ *
+ * The shell carries the post's props blob rather than a list of markers and
+ * shapes worked out in Go, so this page runs the card's own reader and the
+ * card's own canvas. What is worth testing here is that it picks the right
+ * reader for the kind, and that a blob it cannot read says so instead of
+ * drawing an empty world.
+ */
+test.describe('the overlay page', () => {
+    function overlay(over: Partial<OverlayPageData>): OverlayPageData {
+        return {mode: 'overlay', kind: '', props: {}, packages: [], ...over};
+    }
+
+    const GEOJSON_PROPS = {
+        tactical_fusion_geojson: {
+            version: 1,
+            source: 'fence',
+            src: '{"type":"Point","coordinates":[-118.25,34.0561]}',
+            counts: {features: 1, points: 1},
+            features: [{
+                name: 'Depot',
+                kind: 'Point',
+                parts: [{kind: 'Point', rings: [[{lat: '34.056100', lon: '-118.250000', alt: ''}]], ring_counts: []}],
+            }],
+        },
+    };
+
+    test('draws a GeoJSON document and says what is on it', async ({mount}) => {
+        const component = await mount(
+            <OverlayPageView data={overlay({kind: 'custom_tf_geojson', props: GEOJSON_PROPS})}/>,
+        );
+
+        await expect(component).not.toContainText(OVERLAY_UNREADABLE);
+
+        // The label the card's own map uses, through the same mapLabel, so the
+        // page cannot come to describe the overlay differently.
+        await expect(component).toContainText('1 marked position');
+    });
+
+    /*
+     * The page carries no link out of itself.
+     *
+     * It had a "Back to the post" permalink, which cost two API calls per page
+     * load, could not be built at all for a direct or group message, and was a
+     * second way to reach the post the reader had just come from.
+     */
+    /*
+     * The Cursor on Target arm of drawingFor, which nothing exercised.
+     *
+     * `custom_tf_cot` appeared exactly once in this file, in the refusal case
+     * below that hands the CoT kind a GeoJSON blob. That covers the `return
+     * null`; it never rendered a CoT overlay successfully, so the CotMapCanvas
+     * mount and the event count had never run.
+     *
+     * The same gap existed server-side until TestTheOverlayRouteServesACotPost:
+     * every mappost_test.go fixture was GeoJSON, so the CoT arm of
+     * stampedPropsKey went untested on both halves of the same feature.
+     */
+    const COT_PROPS = {
+        tactical_fusion_cot: {
+            version: 2,
+            source: 'fence',
+            src: '<event uid="ANDROID-1"/>',
+            events: [
+                {
+                    uid: 'ANDROID-1',
+                    cot_type: 'a-f-G-U-C',
+                    type_label: 'Friendly Ground',
+                    lat: '34.0561',
+                    lon: '-118.2500',
+                },
+                {
+                    uid: 'ANDROID-2',
+                    cot_type: 'a-f-G-U-C',
+                    type_label: 'Friendly Ground',
+                    lat: '35.0000',
+                    lon: '-119.0000',
+                },
+            ],
+        },
+    };
+
+    test('draws a Cursor on Target block and counts its events', async ({mount}) => {
+        const component = await mount(
+            <OverlayPageView data={overlay({kind: 'custom_tf_cot', props: COT_PROPS})}/>,
+        );
+
+        await expect(component).not.toContainText(OVERLAY_UNREADABLE);
+        await expect(component).toContainText('2 events');
+    });
+
+    // Singular, because "1 events" is the kind of thing a reader notices.
+    test('says one event without pluralizing it', async ({mount}) => {
+        const one = {
+            tactical_fusion_cot: {
+                ...COT_PROPS.tactical_fusion_cot,
+                events: [COT_PROPS.tactical_fusion_cot.events[0]],
+            },
+        };
+
+        const component = await mount(
+            <OverlayPageView data={overlay({kind: 'custom_tf_cot', props: one})}/>,
+        );
+
+        await expect(component).toContainText('1 event');
+        await expect(component).not.toContainText('1 events');
+    });
+
+    test('carries no link out of itself', async ({mount}) => {
+        const component = await mount(
+            <OverlayPageView data={overlay({kind: 'custom_tf_geojson', props: GEOJSON_PROPS})}/>,
+        );
+
+        await expect(component).toContainText('1 marked position');
+        await expect(component.getByRole('link')).toHaveCount(0);
+    });
+
+    /*
+     * A blob the reader refuses, a kind from a later server, and a blob read
+     * with the wrong format's reader all land in the same place. Saying so
+     * beats a window of empty basemap, which looks like a document that drew
+     * nothing rather than one that could not be read.
+     */
+    for (const [name, data] of [
+        ['a blob this build cannot read', overlay({kind: 'custom_tf_geojson', props: {}})],
+        ['a kind this build does not know', overlay({kind: 'custom_tf_later', props: GEOJSON_PROPS})],
+        ['the other format\'s reader', overlay({kind: 'custom_tf_cot', props: GEOJSON_PROPS})],
+    ] as Array<[string, OverlayPageData]>) {
+        test(`says so for ${name}`, async ({mount}) => {
+            const component = await mount(<OverlayPageView data={data}/>);
+
+            await expect(component).toContainText(OVERLAY_UNREADABLE);
+        });
+    }
 });

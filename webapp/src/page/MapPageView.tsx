@@ -1,6 +1,6 @@
 import React from 'react';
 
-import type {PageData} from './payload';
+import type {LocationPageData} from './payload';
 
 import {vouchedText} from '../decorators/location/convert';
 import LocationMap from '../decorators/location/map/LocationMap';
@@ -41,7 +41,7 @@ const styles: Record<string, React.CSSProperties> = {
  * for. The credit goes with them: LocationMap suppresses its own caption when
  * filling, so this page now carries none, and Natural Earth is public domain.
  */
-const MapPageView: React.FC<{data: PageData}> = ({data}) => {
+const MapPageView: React.FC<{data: LocationPageData}> = ({data}) => {
     const {payload, conversion} = data;
     const {format, canonical, raw} = payload;
 

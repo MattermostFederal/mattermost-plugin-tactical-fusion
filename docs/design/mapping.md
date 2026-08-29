@@ -2,6 +2,100 @@
 
 > Design rationale for Tactical Fusion. See [CLAUDE.md](../../CLAUDE.md) for the rules that govern day-to-day work; this file records the measurements, the defects that produced the current shape, and the contracts a later change would silently break.
 
+## Two ways a map used to fail silently
+
+Both were found by driving a real browser against a running server rather than
+by reading the code, and both are recorded here because neither is visible from
+the source alone.
+
+### A map that is built and never becomes ready
+
+MapLibre tiles in a **worker**. If that worker never arrives, no source ever
+finishes, `load` never fires, and because that is not an `error` the error
+handler never runs either. The note stays "Loading map…" forever and a reload is
+the only way out. `asset_fixtures.ts` records the same failure from the other
+side, where it is used deliberately to hold a map between construction and load.
+
+A worker URL that 404s is how this happens in the field. The URL comes from
+webpack's public path, so a wrong `window.basename`, a blocked `.mjs`, or a
+bundler whose asset shape `assetUrl` does not recognize all produce it.
+
+So readiness is **bounded**, exactly as `loadMapLibre` and `basemap.ts` bound
+their own fetches: `READY_DEADLINE_MS` after the map is constructed, a map that
+has not fired `load` reports `NO_BASEMAP` and is torn down, which hands back its
+WebGL context and lets a later attempt retry. The deadline is generous rather
+than tight, because `load` waits for the first tiles and these readers are on
+constrained links; the point is to end an infinite wait, not to police a slow
+one. `_setReadyDeadlineForTesting` is how the suite exercises it without sitting
+through twenty seconds.
+
+### The MapLibre worker and its shared chunk ship in a hashed directory
+
+MapLibre tiles in a worker, and that worker is a module which imports
+`./maplibre-gl-shared.mjs` by that literal relative name. So the shared chunk
+cannot be content-hashed the way every other emitted asset is: the name the
+worker asks for is fixed.
+
+Mattermost serves `/static/plugins/**` with `Cache-Control: max-age=31556926`,
+a year. A fixed name under that policy is a file a browser will not re-fetch
+until long after it has stopped matching the worker beside it. Upgrade MapLibre
+and a fresh, content-hashed worker is paired with a year-old shared chunk: the
+worker fails to start, no source finishes tiling, `load` never fires, and the
+map sits on "Loading map…" with no error. It is the same silent failure the
+worker's own comment describes, arriving by a different route.
+
+A hashed **directory** fixes what a hashed filename cannot. `maplibreAssetDir`
+in `webpack.config.js` keys a directory on the contents of both files and emits
+the pair into it. The worker's relative import resolves inside whatever
+directory the worker was loaded from, so the name it asks for is preserved while
+the URL moves whenever either file does.
+
+`make bundle` checks the layout, because webpack is not the only way the pair
+can end up wrong and the failure is invisible in exactly the builds nobody looks
+at. The guard it replaced was `ls <worker> && ! -f <shared>`, which passed
+silently on a bundle with **no worker at all**, and would have passed silently
+again the moment the worker moved out of the top level. The current one fails on
+a missing worker, a missing shared chunk, and a pair that is not in a
+content-keyed directory; all three were verified by sabotaging a tree rather
+than by reading the recipe.
+
+### The basemap's cache buster is a digest, not the version
+
+Mattermost re-extracts the bundle on every install, so `world.pmtiles` gets a
+fresh modification time even when its bytes do not change. It is served out of
+`public/`, where this plugin sets no headers at all: no `ETag`, no
+`Cache-Control`, only `Last-Modified`. A browser holding cached byte ranges
+therefore revalidates with `If-Range: <old time>`, the validator no longer
+matches, and the server answers a 16 KB range request with **HTTP 200 and the
+entire 43 MB archive**. `probeArchive` reads 127 bytes and refuses that, so a
+browser that takes this path reports that the map could not be loaded until its
+cache is cleared.
+
+The SERVER half is measured and reproducible. Whether a given browser hits it
+depends on the state of its own range cache: a warm profile driven through a
+redeploy in Chrome revalidated cleanly and kept working, so this is a latent
+trap rather than a guaranteed one. What is not in doubt is that the response
+below is what the server sends when a browser does ask this way.
+
+```
+Range: bytes=0-16383  +  If-Range: <stale>   ->  200, Content-Length: 43074410
+Range: bytes=0-16383  +  If-Range: <current> ->  206, Content-Length: 16384
+```
+
+Keying the URL on the archive's **content** fixes it. A redeploy that changes
+nothing keeps the URL and its cached ranges; a new archive lands on a URL no
+browser holds an entry for, so nothing ever revalidates a range against a
+validator that moved underneath it. The digest is computed at build time by
+`webpack.config.js` and falls back to the plugin version for a webapp-only build
+where the archive is not on disk to hash.
+
+**Serving the archive from the plugin's own route was considered and rejected.**
+It would let us set a stable `ETag` and a long `Cache-Control`, which is the
+tidier fix, but it would also put every tile range request through the plugin's
+RPC bridge instead of Mattermost's static file server. `servePackage` accepts
+that cost for an optional, small archive; the global basemap is the one every
+map reads, and the digest fixes the same failure without moving it.
+
 ## Mapping
 
 The location panel and both server-rendered location pages draw a world map,
@@ -1360,6 +1454,15 @@ assumed.** All three were checked and accepted deliberately:
 - **Link previews, image embeds and message attachments are dropped**, because
   `message_with_additional_content.tsx` computes `hasPlugin` from the raw
   `post.type` and skips `PostBodyAdditionalContent` when a plugin owns the body.
+  "Message attachments" here is Mattermost's own term for slack-style
+  `props.attachments`, which is what that component renders.
+
+  **The FILE attachment list is not among them**, and reading this bullet as
+  though it were is what put a "Download <name>" link on the Cursor on Target
+  card. Files are drawn by `post_body` itself, outside
+  `PostBodyAdditionalContent`, so a stamped post keeps them: observed on a
+  running server, where the card's link sat directly above Mattermost's own
+  attachment for the same file. Nothing else in this list changes.
 
 `Props["type"]` was the alternative: `post_message_view.tsx` reads
 `post.props?.type ?? post.type` while all three of the above key on `post.type`,
@@ -1684,3 +1787,97 @@ position somebody reported.
 
 Geometry draws on the card and in the panel both. A drawn shape whose shape is
 not drawn is a card that has said nothing.
+
+## The map page, addressed by a post
+
+`/map` was addressed only by a coordinate: `?f=<format>&v=<canonical>`, with
+every reading re-derived from the token, which is what "a link may never
+disagree with itself" means on that route.
+
+A block of Cursor on Target events and a GeoJSON document have no canonical
+token. There is no coordinate that names an overlay, so "Open larger" was not
+offered at all: `CotMap` passed a `pageHref` only for a post with exactly one
+drawable event, and `GeoJsonMap` never passed one. To a reader that read as the
+control being broken on precisely the posts where a bigger map is worth most.
+
+`?post=<id>` is the second address. The invariant survives it: nothing derived
+travels in the URL there either, and the whole overlay is re-read from stored
+props at render.
+
+### The shell carries the props blob, not markers and shapes
+
+The obvious alternative was to distil the post into markers and shapes in Go and
+put those in the shell. That would be a second answer to "what does this document
+draw", and the two would part company the first time either map changed.
+
+So the shell carries the format's own props blob verbatim, and the bundle hands
+it to the same `fromProps` the card in the channel calls and renders the same
+canvas. `CotMapCanvas` and `GeoJsonMapCanvas` are exported for that: the canvas
+is the part that consults nothing, and the wrapper around it is where the
+reader's sections and the admin's inline switch live. The page IS the map, so
+reaching it is the decision and neither of those applies.
+
+`data-overlay-kind` is the post type, which is already pinned to the webapp's
+copy by `TestWebappCotPostTypeMatches` and `TestWebappGeoJSONPostTypeMatches`, so
+this mode introduced no new vocabulary that could drift.
+
+### Two channel permissions, not one
+
+`overlayForPost` requires `read_channel` AND `read_channel_content`. It shipped
+with only the first, which is "may see that this channel exists"; the second is
+what Mattermost's own post reads gate on, and the two are separately grantable
+through a custom scheme or channel moderation. This route returns the whole
+stamped document, `src` included, so the weaker permission alone would have
+served a post body out of a channel a reader may see but not read.
+
+The permission check also runs before `DeleteAt` is read. It shipped the other
+way round, which leaked nothing (both answers are the same 404) but contradicted
+the ordering this file claims.
+
+### Every refusal is one 404 and one code
+
+Any reader with a session can put any id on this route. `TF-12008` is therefore
+the single answer for a post that does not exist, a post in a channel this
+reader may not read, a post this plugin never stamped, and a stamped post whose
+card has stood down. Finer codes would answer, one id at a time, whether a given
+post exists and what kind of thing it holds.
+
+The permission check runs before anything is read out of the post, so behavior
+cannot leak what is in a channel the reader cannot see. Only the plugin's own
+props key is encoded into the page, never the whole props map: everything else
+on a post belongs to Mattermost or to another plugin, and this page republishes
+what it is given.
+
+### The card's stand-downs are restated on the page
+
+`CotPostBody` and `GeoJsonPostBody` refuse an edited post, and a file source
+whose file is no longer attached, because `Post.Type` survives an edit and Props
+may not. The page applies both. A page that drew what the card had already
+refused to draw would be the one surface still claiming something no reader can
+check.
+
+### The overlay page carries no link out of itself
+
+It shipped with a "Back to the post" permalink, on the argument that "Open
+larger" opens a new tab so the browser's Back is not the way back. That was
+removed.
+
+It cost two API calls, `GetChannel` and `GetTeam`, on every page load, to build
+a second route to the post the reader had arrived from and still has open in the
+tab behind them. It could not be built at all for a direct or group message,
+whose permalink needs a team name that does not exist, so the one page that
+could not offer it was also the one where a reader is least likely to find the
+post again by other means. A link that is absent exactly where it would help
+most is not a way back.
+
+Removing it took the two API calls with it, which is why `fakeAPI` stubs neither
+any more: an unstubbed call panics there, so a future `GetChannel` on this path
+cannot be added without the test suite saying so.
+
+The coordinate map page keeps its own "All readings" link. That is not a way
+back, it is the way to the other half of what the plugin knows about that token,
+and there is no equivalent for an overlay.
+
+A single Cursor on Target event still addresses the page by its coordinate
+rather than by its post. That page carries the token and a way through to every
+reading of it, which a post id cannot offer.

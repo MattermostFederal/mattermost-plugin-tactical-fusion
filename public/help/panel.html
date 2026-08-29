@@ -22,6 +22,7 @@
             <a href="location.html">Coordinates</a>
             <a href="airfields.html">Airfields</a>
             <a href="cot.html">Cursor on Target</a>
+            <a href="geojson.html">GeoJSON</a>
             <span class="nav-section">Guides</span>
             <a href="formats.html">Recognized Formats</a>
             <a href="panel.html" class="active">The Sidebar Panel</a>
@@ -48,8 +49,9 @@
                 This page covers what every decorator's panel has in common. For what a particular
                 panel <em>shows</em>, see <a href="dtg.html#dtg-panel">Date-Time Groups</a>,
                 <a href="location.html#location-panel">Coordinates</a>,
-                <a href="airfields.html#airfield-panel">Airfields</a> or
-                <a href="cot.html#cot-panel">Cursor on Target</a>.
+                <a href="airfields.html#airfield-panel">Airfields</a>,
+                <a href="cot.html#cot-panel">Cursor on Target</a> or
+                <a href="geojson.html#geojson-panel">GeoJSON</a>.
             </p>
         </div>
 
@@ -109,6 +111,10 @@
                     <td><a href="cot.html#cot-panel">Cursor on Target</a></td>
                     <td>Everything the card shows, plus the device, the position quality, the payload, the shape, the processing path, and the event as posted.</td>
                 </tr>
+                <tr>
+                    <td><a href="geojson.html#geojson-panel">GeoJSON</a></td>
+                    <td>Everything the card shows, plus each feature's properties, its position as a link, and the document as posted.</td>
+                </tr>
             </tbody>
         </table>
 
@@ -162,12 +168,15 @@
         </p>
 
         <p>
-            Three panels carry the link, and each writes its own settings without touching
-            the other two: the date-time group panel below, the
+            Four panels carry the link, and each writes its own settings without touching
+            the others: the date-time group panel below, the
             <a href="location.html#location-customize">coordinate panel</a>, which chooses
-            which rows it shows, and the
+            which rows it shows, the
             <a href="cot.html#cot-customize">Cursor on Target panel</a>, which chooses which
-            groups it shows.
+            groups it shows, and the
+            <a href="geojson.html#geojson-sections">GeoJSON panel</a>, which chooses which
+            sections it shows. The last two keep separate lists, so hiding a section in one
+            leaves the other alone.
         </p>
 
         <p>On a date-time group, two things are yours to set:</p>

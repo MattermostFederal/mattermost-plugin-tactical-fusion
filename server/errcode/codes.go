@@ -103,6 +103,43 @@ const (
 	// useless advice.
 	HooksCotPropsUnmeasurable = 11008
 
+	// HooksGeoJSONPanic is a warn recording that recognizing a GeoJSON
+	// document panicked and the post was left unmodified.
+	HooksGeoJSONPanic = 11009
+
+	// HooksGeoJSONUnreadable is the code an author is given when a fence they
+	// labeled geojson could not be read.
+	HooksGeoJSONUnreadable = 11010
+
+	// HooksGeoJSONPropsTooLarge is a warn recording that the parsed document
+	// would exceed the maximum post props size, so the post was left as text.
+	HooksGeoJSONPropsTooLarge = 11011
+
+	// HooksGeoJSONPropsUnmeasurable is a warn recording that the post's props
+	// map could not be measured.
+	//
+	// Its own code rather than HooksGeoJSONPropsTooLarge, because the two say
+	// different things to whoever reads the log: one is this document being
+	// large, the other is something else on the post being unreadable.
+	HooksGeoJSONPropsUnmeasurable = 11012
+
+	// HooksGeoJSONPropertiesDropped is a warn recording that the parsed
+	// document carried more properties than the post props map has room for,
+	// so it was stamped without them.
+	HooksGeoJSONPropertiesDropped = 11013
+
+	// HooksGeoJSONFileUnreadable is a warn recording that an attached file
+	// could not be read while looking for a GeoJSON document.
+	//
+	// Its own code rather than the Cursor on Target one it used to borrow: an
+	// operator looking a number up must not be handed another format's
+	// explanation for their failure.
+	HooksGeoJSONFileUnreadable = 11014
+
+	// HooksGeoJSONFileNotOwned is a warn recording that an attachment offered
+	// to the GeoJSON reader was not the poster's own.
+	HooksGeoJSONFileNotOwned = 11015
+
 	// server/http.go (12000-12999)
 
 	// HTTPMethodNotAllowed is returned for anything other than GET on the
@@ -137,6 +174,14 @@ const (
 	// HTTPPackageUnreadable reports a package that was discovered and then
 	// could not be opened, which usually means it moved between the two.
 	HTTPPackageUnreadable = 12007
+
+	// HTTPMapPostUnavailable is the ONE answer /map?post= gives for every way
+	// it can decline: no such post, a post in a channel this reader may not
+	// read, a post this plugin never stamped, and a stamped post whose card has
+	// since stood down. They are one code and one 404 deliberately. Separating
+	// them would let anybody with a session ask this route whether a given post
+	// id exists and what kind of thing it is, one id at a time.
+	HTTPMapPostUnavailable = 12008
 
 	// server/api.go (13000-13999)
 
@@ -342,6 +387,13 @@ var AllCodes = []int{
 	HooksCotUnreadable,
 	HooksCotDetailDropped,
 	HooksCotPropsUnmeasurable,
+	HooksGeoJSONPanic,
+	HooksGeoJSONUnreadable,
+	HooksGeoJSONPropsTooLarge,
+	HooksGeoJSONPropsUnmeasurable,
+	HooksGeoJSONPropertiesDropped,
+	HooksGeoJSONFileUnreadable,
+	HooksGeoJSONFileNotOwned,
 
 	HTTPMethodNotAllowed,
 	HTTPDecoratePathInvalid,
@@ -351,6 +403,7 @@ var AllCodes = []int{
 	HTTPPackagePathInvalid,
 	HTTPPackageUnknown,
 	HTTPPackageUnreadable,
+	HTTPMapPostUnavailable,
 
 	APINotAuthorized,
 	APINotFound,

@@ -1,17 +1,91 @@
 const exec = require('child_process').exec;
+const crypto = require('crypto');
+const fs = require('fs');
 const path = require('path');
+
+const webpack = require('webpack');
 
 const PLUGIN_ID = require('../plugin.json').id;
 
-const NPM_TARGET = process.env.npm_lifecycle_event; //eslint-disable-line no-process-env
+const NPM_TARGET = process.env.npm_lifecycle_event;
 const isDev = NPM_TARGET === 'debug' || NPM_TARGET === 'debug:watch';
 
-const plugins = [];
+/*
+ * A short digest of the bundled basemap, for the archive's cache buster.
+ *
+ * The plugin version is NOT enough on its own, and the failure is specific.
+ * Mattermost re-extracts the bundle on every install, so world.pmtiles gets a
+ * fresh modification time each time even when its bytes are identical, and it
+ * is served out of public/ where the plugin sets no headers: no ETag, no
+ * Cache-Control, just Last-Modified. A browser holding cached byte ranges then
+ * revalidates with `If-Range: <old time>`, the validator no longer matches, and
+ * the server answers a 16 KB range request with HTTP 200 and the whole 43 MB
+ * archive. The basemap probe rejects that, and every map reports that it could
+ * not be loaded until the reader clears their cache.
+ *
+ * Keying the URL on the CONTENT rather than the version fixes it: a rebuild
+ * that changes nothing keeps the URL, and a rebuild that changes the archive
+ * moves it, so a browser never revalidates a range against a validator that has
+ * moved underneath it.
+ *
+ * Missing is not fatal here. `make bundle` is what enforces that the archive
+ * ships; a webpack build without it is a webapp-only build, and falling back to
+ * the version keeps that working.
+ */
+function basemapDigest() {
+    const archive = path.resolve(__dirname, '../public/map/world.pmtiles');
+
+    try {
+        return crypto.createHash('sha256').update(fs.readFileSync(archive)).digest('hex').slice(0, 16);
+    } catch {
+        return '';
+    }
+}
+
+/*
+ * The directory MapLibre's worker and its shared chunk are emitted into.
+ *
+ * Keyed on the CONTENT of both files, and that is the whole point. The worker
+ * is content-hashed, but it imports "./maplibre-gl-shared.mjs" by that literal
+ * relative name, so the shared chunk has to keep a fixed filename. Mattermost
+ * serves /static/plugins/** with `Cache-Control: max-age=31556926`, a year, so
+ * a fixed name under that policy is a chunk a browser will not re-fetch until
+ * long after it has stopped matching the worker beside it. An upgraded MapLibre
+ * then pairs a fresh worker with a year-old shared chunk, the worker fails to
+ * start, and the map sits on "Loading map…" with no error: the same silent
+ * failure the worker's own comment describes, arriving by a different route.
+ *
+ * A hashed DIRECTORY fixes what a hashed filename cannot. The worker's relative
+ * import resolves inside whatever directory the worker was loaded from, so
+ * moving the pair together keeps the name the worker asks for while making the
+ * URL change whenever either file does.
+ */
+function maplibreAssetDir() {
+    const digest = crypto.createHash('sha256');
+
+    for (const name of ['maplibre-gl-worker.mjs', 'maplibre-gl-shared.mjs']) {
+        digest.update(fs.readFileSync(require.resolve(`maplibre-gl/dist/${name}`)));
+    }
+
+    return `maplibre-${digest.digest('hex').slice(0, 12)}`;
+}
+
+const MAPLIBRE_DIR = maplibreAssetDir();
+
+const plugins = [
+
+    // A bare identifier rather than process.env.*, because there is no `process`
+    // in a browser: guarding the read with `typeof process === 'undefined'`
+    // made the digest unreachable at runtime and the URL silently fell back to
+    // the plugin version, which is the whole defect this exists to fix.
+    new webpack.DefinePlugin({
+        __TF_BASEMAP_DIGEST__: JSON.stringify(basemapDigest()),
+    }),
+];
 if (NPM_TARGET === 'build:watch' || NPM_TARGET === 'debug:watch') {
     plugins.push({
         apply: (compiler) => {
             compiler.hooks.watchRun.tap('WatchStartPlugin', () => {
-                // eslint-disable-next-line no-console
                 console.log('Change detected. Rebuilding webapp.');
             });
             compiler.hooks.afterEmit.tap('AfterEmitPlugin', () => {
@@ -48,9 +122,12 @@ const shared = {
                 // webapp under. Emitting the worker as a real file and handing
                 // MapLibre its URL takes a plain same-origin `new Worker(url)`
                 // path instead, so a hardened host policy cannot break the map.
+                // Into the hashed directory, keeping the plain name: the
+                // directory is what carries the version now, and it has to,
+                // because the shared chunk beside it cannot be renamed.
                 test: /maplibre-gl-worker\.mjs$/,
                 type: 'asset/resource',
-                generator: {filename: '[name].[contenthash][ext]'},
+                generator: {filename: `${MAPLIBRE_DIR}/[name][ext]`},
             },
             {
 
@@ -66,12 +143,13 @@ const shared = {
                 // string, so the shader source is then parsed as JavaScript and
                 // the bundle dies on "Unexpected identifier 'precision'".
                 //
-                // Emitted WITHOUT a contenthash, because the name the worker asks
-                // for is fixed.
+                // Still emitted under its own fixed name, because that is the
+                // name the worker asks for. The DIRECTORY is what makes the URL
+                // move when the file does; see maplibreAssetDir.
                 test: /maplibre-gl-shared\.mjs$/,
                 resourceQuery: /copy/,
                 type: 'asset/resource',
-                generator: {filename: '[name][ext]'},
+                generator: {filename: `${MAPLIBRE_DIR}/[name][ext]`},
             },
             {
                 test: /\.(js|jsx|ts|tsx)$/,
@@ -191,7 +269,7 @@ const pageConfig = {
         // content-hashed chunk from every previous build ships forever.
         clean: true,
     },
-    plugins: [],
+    plugins,
 };
 
 module.exports = [config, pageConfig];

@@ -14,6 +14,21 @@ const (
 const (
 	pageModeLocation = "location"
 	pageModeMap      = "map"
+	pageModeOverlay  = "overlay"
+)
+
+// OverlayKindAttr names which stamped format the overlay came from, and
+// OverlayAttr carries that format's own props blob, verbatim.
+//
+// This package does not know what is inside the blob and must not learn: it is
+// handed an already-encoded string by the caller, escapes it into an attribute,
+// and the bundle hands it to the same fromProps the card in the channel runs.
+// A Go-side distillation into markers and shapes would be a second answer to
+// "what does this document draw", and the two would drift the first time either
+// map changed.
+const (
+	OverlayKindAttr = "data-overlay-kind"
+	OverlayAttr     = "data-overlay"
 )
 
 // MapSurfacesAttr is the shell attribute naming the surfaces that may draw a
@@ -78,6 +93,27 @@ func renderRoot(page pageData, mode string, maps Maps, packages []string) string
 	}
 
 	return attrs + `></div>`
+}
+
+// renderOverlayRoot is the body of the map page opened for a stamped post.
+//
+// It carries no `data-f` and no conversion, because an overlay is not a
+// coordinate: a block of events or a document of polygons has no canonical
+// token, which is the whole reason this mode exists. What it carries instead is
+// the props blob, which the bundle reads with the card's own reader.
+//
+// The blob is escaped into a double-quoted attribute, and that escaping is the
+// only defense: this page declares PageMapping, which admits same-origin
+// script. The blob is server-authored JSON rather than author text, but it
+// contains author text throughout, so it is treated exactly as `r` is.
+func renderOverlayRoot(kind, blob string, maps Maps, packages []string) string {
+	return `<div id="root"` +
+		` data-mode="` + html.EscapeString(pageModeOverlay) + `"` +
+		` ` + MapSurfacesAttr + `="` + html.EscapeString(mapSurfaces(maps)) + `"` +
+		` ` + PackagesAttr + `="` + html.EscapeString(strings.Join(packages, packageSeparator)) + `"` +
+		` ` + OverlayKindAttr + `="` + html.EscapeString(kind) + `"` +
+		` ` + OverlayAttr + `="` + html.EscapeString(blob) + `"` +
+		`></div>`
 }
 
 // mapSurfaces is the comma-separated list of surfaces that may draw a map.

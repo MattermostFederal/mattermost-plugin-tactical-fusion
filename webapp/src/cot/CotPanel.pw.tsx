@@ -327,8 +327,8 @@ test('the panel shows the source as posted, reachable without a pointer', async 
 });
 
 // A disclosure styled like the group headings around it reads as a heading with
-// a small triangle, which is how the first one shipped. The state word is the
-// part that cannot be mistaken for a label.
+// a small triangle, which is how the first one shipped. The caret is what says
+// the row opens, so it has to turn over rather than sit there pointing one way.
 test('a collapsed disclosure says it can be opened, and says so again when it is', async ({mount}) => {
     const component = await mount(<CotPanelHarness src='<event uid="X"/>'/>);
 
@@ -336,14 +336,25 @@ test('a collapsed disclosure says it can be opened, and says so again when it is
 
     const rhs = component.getByTestId('rhs');
     const summary = rhs.locator('summary').filter({hasText: 'As posted'});
+    const chevron = summary.getByTestId('disclosure-chevron');
 
-    await expect(summary).toContainText('Show');
-    await expect(summary).not.toContainText('Hide');
+    await expect(chevron).toHaveAttribute('data-state', 'closed');
 
     await rhs.getByText('As posted').click();
 
-    await expect(summary).toContainText('Hide');
-    await expect(summary).not.toContainText('Show');
+    await expect(chevron).toHaveAttribute('data-state', 'open');
+});
+
+// The native marker would sit beside the caret saying the same thing twice, and
+// pointing the other way while it did it.
+test('the disclosure draws one caret, not the browser marker as well', async ({mount}) => {
+    const component = await mount(<CotPanelHarness src='<event uid="X"/>'/>);
+
+    await component.getByRole('button', {name: 'Open details'}).click();
+
+    const summary = component.getByTestId('rhs').locator('summary').filter({hasText: 'As posted'});
+
+    await expect(summary).toHaveCSS('list-style-type', 'none');
 });
 
 test('the source can be copied without collapsing the disclosure', async ({mount}) => {

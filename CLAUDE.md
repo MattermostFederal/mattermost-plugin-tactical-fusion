@@ -7,8 +7,8 @@ geospatial data, CoT, time zones, IP intelligence, CVEs, and other operational
 information. The server is Go, the webapp TypeScript/React.
 
 Shipped today: the decorator framework and three decorators, DTG, Location and
-Airfields, plus the bundled offline map and the Cursor on Target renderer. The
-rest is not implemented.
+Airfields, plus the bundled offline map, the Cursor on Target renderer and the
+GeoJSON renderer. The rest is not implemented.
 
 A decorator finds a token in a posted message, rewrites it in
 `MessageWillBePosted` into a markdown link whose query string carries the
@@ -25,6 +25,7 @@ right-hand sidebar, and a standalone server-rendered page.
 | `plugin.go` | The `Plugin` struct, `OnActivate`, `OnPluginClusterEvent` |
 | `configuration.go` | Config struct and `OnConfigurationChange`, plus `dtgFormats`/`locationFormats`/`locationMaps` |
 | `hooks.go` | `MessageWillBePosted`, `decoratePost`, `stampStandalonePost`, the post size constants |
+| `hooks_stamp.go` | The forged-type strip, the props ladder, the attachment ownership check |
 | `http.go` | `ServeHTTP`: `/decorate/<type>`, `/map`, `/api/v1/*`, and the session gate |
 | `api.go` | Authenticated JSON API: `/preferences`, `/convert`, `/features`, `/airport` |
 | `preferences.go`, `preferences_cache.go` | Per-reader KV store and its cluster-aware cache |
@@ -35,6 +36,7 @@ right-hand sidebar, and a standalone server-rendered page.
 | `decorators/location/` | Coordinate grammars, geodesy, MGRS, rendering, conversion; `mapdata/` holds the generated country polygons |
 | `decorators/airport/` | ICAO airfields; `data/` holds the embedded CSV and its provenance |
 | `cot/` | Cursor on Target: the bounded XML parse, the type tables, the post props |
+| `geojson/` | GeoJSON: the bounded JSON walk, the parts/rings shape, the post props |
 
 ### `webapp/`
 
@@ -44,6 +46,7 @@ right-hand sidebar, and a standalone server-rendered page.
 | `src/decorators/` | Framework: registry, click handler, styles, selection store, theme, `Tooltip` |
 | `src/decorators/{dtg,location,airport}/` | Panels, hovers, and per-decorator clients |
 | `src/cot/` | The Cursor on Target post body, its card and its map |
+| `src/geojson/` | The GeoJSON post body, its card, its map, its panel and its reader |
 | `src/decorators/location/map/` | `LocationMap`, MapLibre loading, the basemap reader, span arithmetic |
 | `src/page/` | Standalone pages' entry point, built by a second webpack config into `public/app/page.js` |
 | `src/components/rhs/` | `RhsView` and `RhsTitle` |
@@ -70,9 +73,10 @@ there rather than here or in a comment.
 | [`docs/design/location.md`](docs/design/location.md) | Every coordinate grammar, boundary guards, rendering and resolution, geodesy, `/api/v1/convert`, copy buttons, prior art |
 | [`docs/design/airfields.md`](docs/design/airfields.md) | The label-only ICAO grammar, the embedded database, `/api/v1/airport`, the page and panel |
 | [`docs/design/cot.md`](docs/design/cot.md) | Cursor on Target: why it is not a decorator, the exclusivity rule, the props budget, `edit_at` over a digest, the parser's refusals, the CE circle |
+| [`docs/design/geojson.md`](docs/design/geojson.md) | GeoJSON: why recognition is narrow, why format order stayed format-major, what the two stampers share and what they must not, the parts/rings shape, why `decimalShape` is not reused, the ringed map prop, extent-only, the cross-shape antimeridian unwrap |
 | [`docs/design/mapping.md`](docs/design/mapping.md) | The vector basemap, the OpenStreetMap detail tier and its seam, detail map packages, `PageStatic` vs `PageMapping`, the page bundle, zoom numbers, the country lookup, `Conversion`, the map page, the panel map, turning maps off, the map under a post |
 | [`docs/design/preferences.md`](docs/design/preferences.md) | The KV store, both caches, the location hover, the location rows, the zone picker and ordering |
-| [`docs/design/admin-settings.md`](docs/design/admin-settings.md) | The twenty-two switches, the two map-package settings, the five sections, why `EnableLocationUTM` ships off |
+| [`docs/design/admin-settings.md`](docs/design/admin-settings.md) | The twenty-five switches, the two map-package settings, the six sections, why `EnableLocationUTM` and `EnableGeoJSONUnlabeled` ship off |
 | [`docs/design/help-and-errors.md`](docs/design/help-and-errors.md) | `public/help/` and the `TF-NNNN` catalog |
 | [`docs/design/unverified.md`](docs/design/unverified.md) | Claims that need a running server or a phone and have never been checked |
 
@@ -124,18 +128,81 @@ want; `PageMapping` gives back `script-src 'self'`, `worker-src`, `img-src data:
 and `connect-src 'self'` and makes escaping the only defense on a route that
 echoes author text. `ScriptSrc` must be relative.
 
-**Setting `Post.Type` costs the post its Elasticsearch/OpenSearch matches**,
-its auto-translation, its embeds and its file attachment list. The inline map
-and the Cursor on Target card are the only two things that do it;
-`EnableLocationMapInline` and `EnableCot` are how an install opts out of each.
+**A map that cannot become ready must say so.** MapLibre tiles in a worker, so a
+worker that never arrives leaves `load` unfired and raises no error: the note sat
+on "Loading map…" forever. Readiness is bounded by `READY_DEADLINE_MS`, the same
+medicine `loadMapLibre` and `basemap.ts` already apply to their own fetches.
 
-**A stamped post is never decorated, and the stamp is atomic.** CoT is tried
-first and wins, because the card renders the text around an event as plain text
-and a decorator link written into that text could not render there. The type and
+**MapLibre's worker and its shared chunk ship together in a content-keyed
+directory.** The worker imports the shared chunk by a fixed relative name, and
+`/static/plugins/**` is served with a one year max-age, so a fixed name is a
+chunk that outlives the worker it belongs to. `make bundle` fails on a pair that
+is missing, split, or not in a `maplibre-<hash>/` directory.
+
+**The basemap's cache buster is the archive's digest, never the plugin version.**
+The bundle is re-extracted on every install, so `Last-Modified` moves while the
+bytes do not, and a browser revalidating a cached byte range then gets the whole
+43 MB archive instead of a 206. `docs/design/mapping.md` has the measurement.
+
+**Setting `Post.Type` costs the post its Elasticsearch/OpenSearch matches**,
+its auto-translation, its embeds and its slack-style message attachments. Its
+FILE attachments survive: they are drawn outside `PostBodyAdditionalContent`.
+This line said "file attachment list" and a card grew a download link on the
+strength of it. The inline map,
+the Cursor on Target card and the GeoJSON card are the only three things that do
+it; `EnableLocationMapInline`, `EnableCot` and `EnableGeoJSON` are how an install
+opts out of each.
+
+**A stamped post is never decorated, and the stamp is atomic.** Two formats
+stamp: Cursor on Target, then GeoJSON. Each declares its own recover as its
+first statement, spanning its own source-finding, filestore call and parse,
+because `decoratePost` calls them from outside `decorateMessage`'s recover and
+there is no other one on that path.
+
+CoT is tried first and wins, because the card renders the text around an event
+as plain text and a decorator link written into that text could not render
+there. The same is true of the GeoJSON card. The type and
 the props are committed together on a clone, after the whole props map has been
 measured against `PostPropsMaxUserRunes`: a half-stamp costs the post its search
 matches forever, and props sized off the event alone can have the server refuse
 the post outright.
+
+**A style an author wrote passes two gates before it is paint.** Go validates a
+color to a hex triple and a width, opacity or marker size to its own range;
+`styleOf` validates every one of them again in the webapp, and a shape that
+fails carries nothing so the theme decides. The second gate is load-bearing:
+`Number('')` is 0 and `Number('1e999')` is `Infinity`. Widths are refused, never
+clamped, because a clamp draws what the document did not ask for while claiming
+to honor it. The map's style tests read the FEATURE property, never the layer's
+paint: the paint is a data-driven expression and reads the same whatever the
+author supplied. `marker-symbol` is listed and not drawn, because there is no
+sprite to point it at.
+
+**The unlabeled GeoJSON spellings ship off.** A `json` fence, a `.json` file and
+a bare object are read only with `EnableGeoJSONUnlabeled`, because stamping is
+permanent and ordinary JSON is pasted into chat constantly.
+
+**A map shape carries its rings, and a point is a marker.** `geometry-fill` and
+`geometry-outline` render no point, and a single-ring polygon paints a hole as a
+solid island. `MapShape` carries its own color, so `paintGeometry` is a
+`coalesce` over the feature property rather than a scalar, and `styleOf` is the
+gate the scalar used to be.
+
+**Longitudes are unwrapped across the whole overlay, never per shape.** Two
+shapes either side of the antimeridian each unwrap to themselves and union to a
+359 degree box, which slips under `spansTheWorld`'s 360 test and frames the
+planet backwards.
+
+**Recognition is narrow where a false positive is permanent.** GeoJSON reads a
+fence labeled `geojson` and a `.geojson` file, never `json` or `.json`: a wrongly
+stamped post loses its search matches and its embeds forever, with no way for
+the author to undo it, and ordinary JSON is pasted into chat constantly. Two tests assert the ambiguous spellings are ignored, so widening
+this has to change a test rather than slip through.
+
+**The strip clears every stamped props key on every post, not just the one
+matching the post's type.** The commit copies existing props forward, so a
+forged sibling blob would otherwise reach stored props permanently.
+`custom_tf_location` is deliberately outside the table.
 
 **`plugin.json` may not contain a backtick.** Both generated manifests embed it
 inside a literal a backtick terminates, so one breaks the Go and the webapp build
@@ -177,6 +244,11 @@ side moves alone. Change both halves together.
 | The same grammar again, as the `case` in the Makefile's bundle guard | `TestBundleGuardAcceptsExactlyWhatDiscoveryDoes`, which compares behavior rather than text and holds the guard to `LC_ALL=C` |
 | The `data-packages` attribute and its separator | `TestWebappPackagesAttributeMatches` |
 | The CoT post type, props key and props version | `TestWebappCotPostTypeMatches` |
+| The GeoJSON post type, props key, props version and source kinds | `TestWebappGeoJSONPostTypeMatches` |
+| The GeoJSON `kind` vocabulary and its order | `TestWebappGeoJSONKindsMatch` |
+| The GeoJSON panel's hideable sections: ids, labels, order | `TestWebappGeoJSONSectionCatalogMatches` |
+| The GeoJSON props shape, walked rather than scraped | `TestWebappGeoJSONShapeMatches` |
+| The GeoJSON reader truncating nothing | `TestWebappGeoJSONTruncatesNothing` |
 | The CoT props shape: every key Go writes and the webapp reads | `TestWebappCotShapeMatches`, on a fixture built from `cot.FixtureDetail()` |
 | The `<detail>` extension registry: every key it can write | Same test, plus `TestEveryRegisteredKeyIsWrittenFromTheFixture` |
 | The CoT semantic classes | `TestWebappCotClassesMatch` |

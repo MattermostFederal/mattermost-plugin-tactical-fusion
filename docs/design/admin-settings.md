@@ -4,8 +4,9 @@
 
 ## Admin settings
 
-The count is **twenty-two switches across five sections**. Cursor on Target added
+The count is **twenty-five switches across six sections**. Cursor on Target added
 the fifth section and two of the switches, `EnableCot` and `EnableCotFile`, and
+GeoJSON added the sixth and three more. Cursor on Target
 deliberately added no third: the card's map reads `EnableLocationMapInline`,
 whose parent ANDs with `EnableLocation` and `EnableLocationMap` already live in
 Go. A second "is the map on" answer is the thing `features/types.ts` argues
@@ -16,8 +17,9 @@ against by name. See [`cot.md`](cot.md), "Switches".
 
 `EnableCot` carries the same Elasticsearch and OpenSearch warning
 `EnableLocationMapInline` carries, in the same words, plus the two costs only it
-pays: the file attachment list is dropped, and Markdown written around an event
-renders as plain text.
+pays: link previews and image embeds are dropped, and Markdown written around
+an event renders as plain text. The FILE attachment list is not among them; see
+[`mapping.md`](mapping.md), "What setting `Post.Type` costs".
 
 `plugin.json` declares twenty switches and two map-package settings in **four
 `settings_schema.sections`**:

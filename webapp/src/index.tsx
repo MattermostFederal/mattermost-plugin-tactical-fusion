@@ -16,6 +16,9 @@ import {all} from './decorators/registry';
 import {clearSelection, initRhs, toggleRhs} from './decorators/selection';
 import {installDecoratorStyles} from './decorators/styles';
 import {DecoratorTooltip} from './decorators/Tooltip';
+import GeoJsonPostBody from './geojson/GeoJsonPostBody';
+import {registerGeoJsonPanel} from './geojson/panel';
+import {GEOJSON_POST_TYPE} from './geojson/types';
 import {HeaderIcon} from './HeaderIcon';
 import {staticBaseUrl} from './plugin_url';
 
@@ -41,6 +44,7 @@ export default class Plugin {
     public async initialize(registry: PluginRegistry, store: Store) {
         registerBuiltinDecorators();
         registerCotPanel();
+        registerGeoJsonPanel();
 
         const {id: rhsId, showRHSPlugin, toggleRHSPlugin} = registry.registerRightHandSidebarComponent(
             RhsView,
@@ -77,6 +81,9 @@ export default class Plugin {
         // admin turns the feature off, or its body falls through to raw XML.
         const cotId = registry.registerPostTypeComponent(COT_POST_TYPE, CotPostBody);
         this.disposers.push(() => registry.unregisterPostTypeComponent(cotId));
+
+        const geoJsonId = registry.registerPostTypeComponent(GEOJSON_POST_TYPE, GeoJsonPostBody);
+        this.disposers.push(() => registry.unregisterPostTypeComponent(geoJsonId));
 
         const headerId = registry.registerChannelHeaderButtonAction(
             <HeaderIcon/>,

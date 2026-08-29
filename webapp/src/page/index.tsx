@@ -3,7 +3,9 @@ import {createRoot} from 'react-dom/client';
 
 import {applyBasename} from './basename';
 import MapPageView from './MapPageView';
+import {OverlayPageView} from './OverlayPageView';
 import {readPageData} from './payload';
+import type {PageData} from './payload';
 
 import LinkButton from '../components/LinkButton';
 import LocationReadings from '../decorators/location/LocationReadings';
@@ -43,18 +45,26 @@ function start(): void {
     seedPackages(data.packages);
 
     createRoot(root).render(
-        <React.StrictMode>
-            {data.mode === 'map' ? (
-                <MapPageView data={data}/>
-            ) : (
-                <LocationReadings
-                    payload={data.payload}
-                    conversion={data.conversion}
-                    hidden={[]}
-                    maps={data.maps}
-                    footer={<LinkButton href={docsUrl()}>{'Documentation'}</LinkButton>}
-                />
-            )}
-        </React.StrictMode>,
+        <React.StrictMode>{view(data)}</React.StrictMode>,
+    );
+}
+
+function view(data: PageData): React.ReactNode {
+    if (data.mode === 'overlay') {
+        return <OverlayPageView data={data}/>;
+    }
+
+    if (data.mode === 'map') {
+        return <MapPageView data={data}/>;
+    }
+
+    return (
+        <LocationReadings
+            payload={data.payload}
+            conversion={data.conversion}
+            hidden={[]}
+            maps={data.maps}
+            footer={<LinkButton href={docsUrl()}>{'Documentation'}</LinkButton>}
+        />
     );
 }

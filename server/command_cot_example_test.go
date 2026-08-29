@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -148,7 +149,12 @@ func TestEachEventIsAPostOfItsOwn(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 
 	messages := runExamplePosts(t, p)
-	cards := messages[len(messages)-len(cotExampleOrder):]
+
+	// The Cursor on Target posts sit between the decorator sets and whatever
+	// other format posts after them, so the window is taken from both ends
+	// rather than from the tail.
+	start := len(messages) - len(cotExampleOrder) - p.geoJSONExampleCount()
+	cards := messages[start : start+len(cotExampleOrder)]
 
 	if len(cards) != len(cotExampleOrder) {
 		t.Fatalf("got %d Cursor on Target posts, want %d", len(cards), len(cotExampleOrder))
@@ -315,5 +321,58 @@ func TestAnUploadThatAnswersNothingIsSurvived(t *testing.T) {
 
 	if len(api.created) == 0 {
 		t.Error("the whole run was lost, but only the attachment example should have been")
+	}
+}
+
+/*
+ * The drawn area is a BLOB, and it survives all the way into the props.
+ *
+ * A six point outline read as a hand-typed shape rather than as anything a
+ * drawing tool produces, and a rectangle is worse still: it is the one polygon
+ * that looks correct even if the renderer swapped its axis order or kept only
+ * the corners of its bounding box. So the example draws something irregular
+ * enough that a wrong rendering looks wrong.
+ *
+ * Asserted on the PROPS rather than on the parse, because the props are what
+ * the card reads and what the vertex cap and the size gate act on. A shape that
+ * parsed and was then dropped on the way out would pass the other test.
+ */
+func TestTheDrawnAreaIsAnIrregularOutline(t *testing.T) {
+	const wantVertices = 14
+
+	var geometry map[string]any
+	for _, event := range renderedEvents(t, cotExampleRich) {
+		if candidate, ok := event["geometry"].(map[string]any); ok {
+			if _, drawn := candidate["points"]; drawn {
+				geometry = candidate
+			}
+		}
+	}
+	if geometry == nil {
+		t.Fatal("no example event reaches the card with a drawn outline")
+	}
+
+	if _, closed := geometry["closed"]; !closed {
+		t.Error("the outline is not closed, so it draws as a line rather than an area")
+	}
+
+	points, _ := geometry["points"].([]any)
+	if len(points) != wantVertices {
+		t.Fatalf("the outline reaches the card with %d vertices, want %d", len(points), wantVertices)
+	}
+
+	// Every vertex distinct. A repeated one is the signature of a shape that
+	// was flattened back to a rectangle and padded out.
+	seen := map[string]bool{}
+	for _, point := range points {
+		vertex, ok := point.(map[string]any)
+		if !ok {
+			t.Fatalf("a vertex is %T, not a record", point)
+		}
+		key := fmt.Sprint(vertex["lat"], ",", vertex["lon"])
+		if seen[key] {
+			t.Errorf("vertex %s is repeated", key)
+		}
+		seen[key] = true
 	}
 }

@@ -1,6 +1,7 @@
 import {expect, test} from '@playwright/test';
 
 import {readPageData} from './payload';
+import type {LocationPageData, OverlayPageData, PageData} from './payload';
 
 /*
  * What the page trusts, and what it does with values it cannot make sense of.
@@ -30,14 +31,28 @@ function root(data: Record<string, string>): HTMLElement {
     return el;
 }
 
+/**
+ * Narrows to the coordinate shell, failing rather than casting.
+ *
+ * `readPageData` returns a union now, and every test below was written about
+ * the coordinate half. A cast alone would let an overlay shell answer a
+ * question about a payload it does not have and read as a pass.
+ */
+function located(data: PageData | null): LocationPageData {
+    expect(data).not.toBeNull();
+    expect(data!.mode).not.toBe('overlay');
+
+    return data as LocationPageData;
+}
+
 test('reads the shell the server wrote', () => {
-    const data = readPageData(root({
+    const data = located(readPageData(root({
         mode: 'location',
         f: 'mgrs',
         v: '18SUJ2347806483',
         r: '18S UJ 23478 06483',
         conversion: JSON.stringify(CONVERSION),
-    }));
+    })));
 
     expect(data).not.toBeNull();
     expect(data!.mode).toBe('location');
@@ -49,7 +64,7 @@ test('reads the shell the server wrote', () => {
 });
 
 test('an absent r is the canonical form, not a missing value', () => {
-    const data = readPageData(root({mode: 'location', f: 'latm', v: '3510N07901W'}));
+    const data = located(readPageData(root({mode: 'location', f: 'latm', v: '3510N07901W'})));
 
     expect(data!.payload.raw).toBe('3510N07901W');
 });
@@ -58,7 +73,7 @@ test('an absent r is the canonical form, not a missing value', () => {
 // renders at all, so an absent token reads as empty rather than refusing, and
 // the row it fills is the one the conversion answers.
 test('an absent v reads as an empty canonical form', () => {
-    const data = readPageData(root({mode: 'location', f: 'latm'}));
+    const data = located(readPageData(root({mode: 'location', f: 'latm'})));
 
     expect(data).not.toBeNull();
     expect(data!.payload.canonical).toBe('');
@@ -85,7 +100,7 @@ test('anything but map is the readings view', () => {
  * this plugin's shell at all and there is nothing to render from.
  */
 test('an unknown format degrades to the server conversion', () => {
-    const data = readPageData(root({f: 'nope', v: 'x'}));
+    const data = located(readPageData(root({f: 'nope', v: 'x'})));
 
     expect(data).not.toBeNull();
     expect(data!.payload.coord).toBeNull();
@@ -116,7 +131,7 @@ test.describe('a conversion that cannot be used degrades', () => {
 
     for (const [name, attrs] of cases) {
         test(name, () => {
-            const data = readPageData(root(attrs));
+            const data = located(readPageData(root(attrs)));
 
             expect(data).not.toBeNull();
             expect(data!.conversion.status).toBe('failed');
@@ -132,11 +147,11 @@ test.describe('a conversion that cannot be used degrades', () => {
  * behind it.
  */
 test('a token this build cannot parse still yields a payload', () => {
-    const data = readPageData(root({
+    const data = located(readPageData(root({
         f: 'utm',
         v: '18Q323478E4306483N',
         conversion: JSON.stringify(CONVERSION),
-    }));
+    })));
 
     expect(data).not.toBeNull();
     expect(data!.payload.coord).toBeNull();
@@ -155,36 +170,36 @@ test('a token this build cannot parse still yields a payload', () => {
  * always said out loud.
  */
 test('reads the map surfaces out of the shell', () => {
-    const data = readPageData(root({
+    const data = located(readPageData(root({
         mode: 'location',
         f: 'mgrs',
         v: '18SUJ2347806483',
         maps: 'panel,page',
-    }));
+    })));
 
     expect(data!.maps.mapPanel).toBe(true);
     expect(data!.maps.mapPage).toBe(true);
 });
 
 test('reads an empty list as every surface off', () => {
-    const data = readPageData(root({
+    const data = located(readPageData(root({
         mode: 'location',
         f: 'mgrs',
         v: '18SUJ2347806483',
         maps: '',
-    }));
+    })));
 
     expect(data!.maps.mapPanel).toBe(false);
     expect(data!.maps.mapPage).toBe(false);
 });
 
 test('reads one surface without the other', () => {
-    const data = readPageData(root({
+    const data = located(readPageData(root({
         mode: 'location',
         f: 'mgrs',
         v: '18SUJ2347806483',
         maps: 'panel',
-    }));
+    })));
 
     expect(data!.maps.mapPanel).toBe(true);
     expect(data!.maps.mapPage).toBe(false);
@@ -194,11 +209,11 @@ test('reads one surface without the other', () => {
 // Drawing a map nobody asked for costs a fetch on a page the reader is already
 // looking at; failing to draw one somebody is paying for is silent.
 test('reads an absent attribute as every surface on', () => {
-    const data = readPageData(root({
+    const data = located(readPageData(root({
         mode: 'location',
         f: 'mgrs',
         v: '18SUJ2347806483',
-    }));
+    })));
 
     expect(data!.maps.mapPanel).toBe(true);
     expect(data!.maps.mapPage).toBe(true);
@@ -207,14 +222,49 @@ test('reads an absent attribute as every surface on', () => {
 // A surface a later server knows about and this bundle does not is ignored
 // rather than drawn, and `inline` is never claimed: no page has posts in it.
 test('ignores a surface this bundle does not know', () => {
-    const data = readPageData(root({
+    const data = located(readPageData(root({
         mode: 'location',
         f: 'mgrs',
         v: '18SUJ2347806483',
         maps: 'panel,hologram,inline',
-    }));
+    })));
 
     expect(data!.maps.mapPanel).toBe(true);
     expect(data!.maps.mapPage).toBe(false);
     expect(data!.maps.mapInline).toBe(false);
+});
+
+/*
+ * The overlay shell, which is a different document entirely.
+ *
+ * No data-f and no conversion: a block of events and a document of polygons
+ * have no canonical token, which is why this mode exists at all. Reading it
+ * must not go through the coordinate path, whose first act is to refuse a shell
+ * with no format.
+ */
+test.describe('the overlay shell', () => {
+    const BLOB = JSON.stringify({tactical_fusion_geojson: {version: 1}});
+
+    test('is read without a coordinate', () => {
+        const data = readPageData(root({
+            mode: 'overlay',
+            overlayKind: 'custom_tf_geojson',
+            overlay: BLOB,
+        }));
+
+        expect(data).not.toBeNull();
+        expect(data!.mode).toBe('overlay');
+        expect((data as OverlayPageData).kind).toBe('custom_tf_geojson');
+        expect((data as OverlayPageData).props).toEqual({tactical_fusion_geojson: {version: 1}});
+    });
+
+    for (const [name, attrs] of [
+        ['no kind', {mode: 'overlay', overlay: BLOB}],
+        ['no blob', {mode: 'overlay', overlayKind: 'custom_tf_cot'}],
+        ['a blob that is not JSON', {mode: 'overlay', overlayKind: 'custom_tf_cot', overlay: '{'}],
+    ] as Array<[string, Record<string, string>]>) {
+        test(`is refused with ${name}`, () => {
+            expect(readPageData(root(attrs))).toBeNull();
+        });
+    }
 });
