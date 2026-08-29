@@ -4,7 +4,7 @@ import type {Map as MapLibreMap} from 'maplibre-gl';
 import {
     MARKER_PIXEL_RATIO,
     accuracyFeature, cellFeature, crosshairImage, ellipseFeature, emptyCollection,
-    mapColors, markedPoints, markerImageID, outlineFeature, pointFeature, shapesFeature,
+    mapColors, markedPoints, markerImageID, pointFeature, shapesFeature,
 } from './maplibre';
 import type {MapShape} from './paint';
 import {styleOf} from './paint';
@@ -25,10 +25,21 @@ export interface MapMarker {
     size?: string;
 }
 
-/** What a surface may ask this map to draw beyond its pin. */
-export type MapGeometry =
-    | {kind: 'outline'; points: ReadonlyArray<{lat: number; lon: number}>; closed: boolean}
-    | {kind: 'ellipse'; major: number; minor: number; angle: number};
+/**
+ * An ellipse drawn around the map's PRIMARY position.
+ *
+ * The one shape that cannot join `geometries`. An outline carries absolute
+ * vertices and lands where its author put it; an ellipse is placed by the map's
+ * own anchor, so a plural array of them would stack every one on a single
+ * point. Outlines used to share this type as a second variant, which meant two
+ * code paths for one idea; they are `MapShape` now.
+ */
+export interface MapEllipse {
+    major: number;
+    minor: number;
+    angle: number;
+    color?: string;
+}
 
 /**
  * The cell, or nothing, where nothing means only an unknown position or a token
@@ -119,7 +130,8 @@ export function markerFeatures(markers: readonly MapMarker[] | undefined): Featu
  * marker set that changed over an unchanged position still redraws.
  */
 export function overlayDigest(
-    markers: readonly MapMarker[] | undefined, geometry: MapGeometry | undefined, geometryColor: string | undefined,
+    markers: readonly MapMarker[] | undefined,
+    ellipse: MapEllipse | undefined,
     geometries?: readonly MapShape[] | undefined,
 ): string {
     const pins = (markers ?? []).
@@ -135,13 +147,11 @@ export function overlayDigest(
                 join(';')}`).
         join('|');
 
-    if (geometry === undefined) {
+    if (ellipse === undefined) {
         return `${pins}#${plural}#`;
     }
 
-    const shape = geometry.kind === 'ellipse' ? `e:${geometry.major},${geometry.minor},${geometry.angle}` : `o:${geometry.closed}:${geometry.points.map((point) => `${point.lat},${point.lon}`).join(' ')}`;
-
-    return `${pins}#${plural}#${shape}#${geometryColor ?? ''}`;
+    return `${pins}#${plural}#e:${ellipse.major},${ellipse.minor},${ellipse.angle}#${ellipse.color ?? ''}`;
 }
 
 /**
@@ -151,41 +161,29 @@ export function overlayDigest(
  * costs the same setData a single shape does.
  */
 export function drawableOverlay(
-    geometry: MapGeometry | undefined,
+    ellipse: MapEllipse | undefined,
     geometries: readonly MapShape[] | undefined,
     lat: number,
     lon: number,
-    color?: string,
 ): FeatureCollection {
-    if ((geometries ?? []).length === 0) {
-        return drawableGeometry(geometry, lat, lon, color);
-    }
-
     const plural = shapesFeature((geometries ?? []).map((shape) => ({
         rings: shape.rings,
         closed: shape.closed,
         style: styleOf(shape),
     })));
-    const singular = drawableGeometry(geometry, lat, lon, color);
+
+    if (ellipse === undefined) {
+        return plural;
+    }
+
+    const ring = ellipseFeature(
+        lat, lon, ellipse.major, ellipse.minor, ellipse.angle, styleOf({color: ellipse.color}),
+    );
 
     return {
         type: 'FeatureCollection',
-        features: [...plural.features, ...singular.features],
+        features: [...plural.features, ...ring.features],
     };
-}
-
-function drawableGeometry(
-    geometry: MapGeometry | undefined, lat: number, lon: number, color?: string,
-): FeatureCollection {
-    if (geometry === undefined) {
-        return emptyCollection();
-    }
-
-    if (geometry.kind === 'ellipse') {
-        return ellipseFeature(lat, lon, geometry.major, geometry.minor, geometry.angle, styleOf({color}));
-    }
-
-    return outlineFeature(geometry.points, geometry.closed, styleOf({color}));
 }
 
 export function hasMarkers(markers: readonly MapMarker[] | undefined): boolean {

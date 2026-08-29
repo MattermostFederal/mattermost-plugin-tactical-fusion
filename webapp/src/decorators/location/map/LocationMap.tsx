@@ -115,9 +115,8 @@ const styles: Record<string, React.CSSProperties> = {
  * at 0, 0 because a conversion failed is a position, and a wrong one.
  */
 const LocationMap: React.FC<MapProps> = (props) => {
-    const {region, pageHref, fill, preview, accuracyLabel, markers, markerLabel,
-        extentOnly, extentLabel} = props;
-    const {container, applyView, note, credited, zoomLevel} = useMapInstance(props);
+    const {region, pageHref, fill, preview, accuracyLabel, markers, markerLabel, extentLabel} = props;
+    const {container, applyView, note, credited, zoomLevel, extentOnly} = useMapInstance(props);
 
     let root = fill ? {...styles.root, ...styles.fillRoot} : styles.root;
     let frame = fill ? {...styles.frame, ...styles.fillFrame} : styles.frame;
@@ -149,7 +148,7 @@ const LocationMap: React.FC<MapProps> = (props) => {
                 {note === null && !preview && zoomLevel !== null && (
                     <p style={styles.zoomLevel}>{`z${zoomLevel.toFixed(1)}`}</p>
                 )}
-                <span style={styles.srOnly}>{label(region, note, accuracyLabel, markerLabel, markers?.length ?? 1, extentOnly === true ? extentLabel : undefined)}</span>
+                <span style={styles.srOnly}>{label(region, note, accuracyLabel, markerLabel, markers?.length ?? 1, extentOnly ? extentLabel : undefined)}</span>
             </div>
             {!preview && (credited || (!fill && pageHref !== undefined)) && (
                 <div style={styles.caption}>

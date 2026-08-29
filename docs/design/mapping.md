@@ -1871,6 +1871,30 @@ moving `applyView` in as well is what let the hook own `map` and `ready`
 outright, so the boundary is "give me what to draw" rather than "hold these for
 me".
 
+### One overlay path, and `extentOnly` derived
+
+There were two ways to hand this map a shape: the singular `geometry` with its
+`geometryColor`, and the plural `geometries`. Each had exactly one production
+caller. `MapShape` is strictly the more general of the two, so the `outline`
+variant folded into `geometries` and `outlineFeature` went with it: it was
+`shapesFeature` for one single-ring shape.
+
+`MapEllipse` is what remains of the singular slot, and it is not a simplification
+that it stayed. An ellipse is placed by the map's own anchor rather than by its
+own vertices, so a plural array of them would stack every one on a single point.
+
+`extentOnly` is now derived: `lat === null && (markers or geometries)`. It was an
+explicit prop to stop a null position meaning two things, and the case that
+argument was protecting is a null with **nothing** to draw, which must still read
+as unavailable. That clause is what keeps it true, and a mutation test proves it:
+drop it and "an unknown position still reads as unavailable" fails.
+
+One trap found on the way. `soleOutline` decides which event in a block draws,
+and folding the color into the shape it inspects made that decision read
+`event.detail.colorArgb`, which a caller counting outlines need not have.
+`outlineOf` is colorless for that reason and `shapeFor` adds the color at the
+render; the split is not stylistic.
+
 ### Two channel permissions, not one
 
 `overlayForPost` requires `read_channel` AND `read_channel_content`. It shipped

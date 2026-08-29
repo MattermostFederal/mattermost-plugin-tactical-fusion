@@ -6,7 +6,8 @@ import {accuracyMeters, affiliationColor, affiliationWord, isLinkable, statedCol
 
 import LocationMap, {MAP_HEIGHT} from '../decorators/location/map/LocationMap';
 import {useNearViewport} from '../decorators/location/map/near_viewport';
-import type {MapGeometry} from '../decorators/location/map/overlay';
+import type {MapEllipse} from '../decorators/location/map/overlay';
+import type {MapShape} from '../decorators/location/map/paint';
 import {isRenderable} from '../decorators/location/map/span';
 import {overlayPageHref} from '../decorators/location/map/view';
 import {INLINE_ID, isRowVisible} from '../decorators/location/rows';
@@ -150,7 +151,7 @@ const UNCOLORED = '#8a8f98';
  * with nothing saying which belongs to which track, which is the argument the
  * accuracy ring is already drawn under.
  */
-function geometryFor(event: CotEvent | undefined): MapGeometry | undefined {
+function drawableGeometry(event: CotEvent | undefined) {
     if (!event?.geometry) {
         return undefined;
     }
@@ -163,26 +164,69 @@ function geometryFor(event: CotEvent | undefined): MapGeometry | undefined {
         return undefined;
     }
 
-    if (geometry.kind === 'ellipse') {
-        const {majorMeters, minorMeters, angleDegrees} = geometry;
-        if (!Number.isFinite(majorMeters) || !Number.isFinite(minorMeters) ||
-            majorMeters <= 0 || minorMeters <= 0) {
-            return undefined;
-        }
+    return geometry;
+}
 
-        return {
-            kind: 'ellipse',
-            major: majorMeters,
-            minor: minorMeters,
-            angle: Number.isFinite(angleDegrees) ? angleDegrees : 0,
-        };
-    }
-
-    if (geometry.points.length < 2) {
+/** The ellipse an event states, or undefined. Placed by the map's anchor. */
+function ellipseFor(event: CotEvent | undefined): MapEllipse | undefined {
+    const geometry = drawableGeometry(event);
+    if (geometry?.kind !== 'ellipse') {
         return undefined;
     }
 
-    return {kind: 'outline', points: geometry.points, closed: geometry.closed};
+    const {majorMeters, minorMeters, angleDegrees} = geometry;
+    if (!Number.isFinite(majorMeters) || !Number.isFinite(minorMeters) ||
+        majorMeters <= 0 || minorMeters <= 0) {
+        return undefined;
+    }
+
+    return {
+        major: majorMeters,
+        minor: minorMeters,
+        angle: Number.isFinite(angleDegrees) ? angleDegrees : 0,
+        color: event && statedColor(event),
+    };
+}
+
+/**
+ * The vertices an event drew, or undefined. NO color.
+ *
+ * Colorless on purpose: `soleOutline` decides WHICH event draws by calling
+ * this, and `statedColor` reads `event.detail`, which a caller counting
+ * outlines need not have. Folding the color in here made choosing an outline
+ * depend on a field that has nothing to do with the choice.
+ */
+function outlineOf(event: CotEvent | undefined): {
+    points: ReadonlyArray<{lat: number; lon: number}>;
+    closed: boolean;
+} | undefined {
+    const geometry = drawableGeometry(event);
+    if (geometry === undefined || geometry.kind === 'ellipse' || geometry.points.length < 2) {
+        return undefined;
+    }
+
+    return {points: geometry.points, closed: geometry.closed};
+}
+
+/**
+ * The outline an event drew, as a shape, or undefined.
+ *
+ * One ring: a Cursor on Target polyline has no holes. It carries absolute
+ * vertices, so it lands where the event put it whatever else is on the map.
+ */
+function shapeFor(event: CotEvent | undefined): MapShape | undefined {
+    const outline = outlineOf(event);
+    if (outline === undefined || event === undefined) {
+        return undefined;
+    }
+
+    const color = statedColor(event);
+
+    return {
+        rings: [outline.points],
+        closed: outline.closed,
+        ...(color === undefined ? {} : {color}),
+    };
 }
 
 /**
@@ -200,7 +244,7 @@ function geometryFor(event: CotEvent | undefined): MapGeometry | undefined {
  * first one's marker.
  */
 function soleOutline(drawn: readonly CotEvent[]): CotEvent | undefined {
-    const outlined = drawn.filter((event) => geometryFor(event)?.kind === 'outline');
+    const outlined = drawn.filter((event) => outlineOf(event) !== undefined);
     return outlined.length === 1 ? outlined[0] : undefined;
 }
 
@@ -212,10 +256,17 @@ export function _soleOutlineForTesting( // eslint-disable-line no-underscore-dan
 }
 
 /** @internal exported for tests */
-export function _geometryForTesting( // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
+export function _ellipseForTesting( // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
     event: CotEvent | undefined,
-): MapGeometry | undefined {
-    return geometryFor(event);
+): MapEllipse | undefined {
+    return ellipseFor(event);
+}
+
+/** @internal exported for tests */
+export function _shapeForTesting( // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
+    event: CotEvent | undefined,
+): MapShape | undefined {
+    return shapeFor(event);
 }
 
 /**
@@ -250,6 +301,10 @@ export const CotMapCanvas: React.FC<{
     const only = events.length === 1 && drawn.length === 1 ? drawn[0] : undefined;
     const shaped = only ?? soleOutline(drawn);
 
+    // An outline is a shape like any other now; only the ellipse still needs
+    // the map's own anchor, and only a single event can state one.
+    const outline = shapeFor(shaped);
+
     return (
         <LocationMap
             lat={markers[0].lat}
@@ -261,8 +316,8 @@ export const CotMapCanvas: React.FC<{
             accuracyMeters={only && accuracyMeters(only)}
             accuracyLabel={only?.ce}
             markers={markers}
-            geometry={geometryFor(shaped)}
-            geometryColor={shaped && statedColor(shaped)}
+            ellipse={ellipseFor(only)}
+            geometries={outline === undefined ? undefined : [outline]}
             markerLabel={only ? only.typeLabel : blockLabel(drawn, events.length)}
             pageHref={largerHref(pageEnabled, only, postId)}
             fill={fill}

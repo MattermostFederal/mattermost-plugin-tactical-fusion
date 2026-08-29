@@ -285,7 +285,6 @@ export const GeoJsonMapCanvas: React.FC<{
             cellDegLon={0}
             region=''
             pending={false}
-            extentOnly={true}
             extentLabel={mapLabel(markers.length, shapes.length)}
             markers={markers}
             geometries={shapes}

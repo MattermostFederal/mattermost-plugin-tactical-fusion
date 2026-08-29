@@ -1283,32 +1283,6 @@ function closeRing(ring: Array<[number, number]>): Array<[number, number]> {
     return [...ring, first];
 }
 
-export function outlineFeature(
-    points: ReadonlyArray<{lat: number; lon: number}>, closed: boolean,
-    style: {color?: string; fill?: string} = {},
-): FeatureCollection {
-    const usable = points.filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lon));
-    if (usable.length < 2) {
-        return emptyCollection();
-    }
-
-    const lons = unwrapLongitudes(usable.map((point) => point.lon));
-    const ring: Array<[number, number]> = usable.map((point, i) => [lons[i], point.lat]);
-
-    if (!closed || ring.length < 3) {
-        return {
-            type: 'FeatureCollection',
-            features: [{type: 'Feature', properties: style, geometry: {type: 'LineString', coordinates: ring}}],
-        };
-    }
-
-    ring.push(ring[0]);
-    return {
-        type: 'FeatureCollection',
-        features: [{type: 'Feature', properties: style, geometry: {type: 'Polygon', coordinates: [ring]}}],
-    };
-}
-
 export function accuracyFeature(lat: number, lon: number, meters: number): FeatureCollection {
     return ellipseFeature(lat, lon, meters, meters, 0);
 }

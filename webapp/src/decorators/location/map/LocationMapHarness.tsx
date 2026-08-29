@@ -2,7 +2,7 @@ import type {GeoJSONSource, Map as MapLibreMap} from 'maplibre-gl';
 import React, {useEffect, useRef, useState} from 'react';
 
 import LocationMap from './LocationMap';
-import type {MapGeometry} from './overlay';
+import type {MapEllipse} from './overlay';
 import type {MapShape} from './paint';
 import {DATA_MAX_ZOOM} from './span';
 import {_setMapObserverForTesting, _setReadyDeadlineForTesting} from './use_map_instance';
@@ -344,14 +344,12 @@ interface Props {
     accuracyMeters?: number;
     accuracyLabel?: string;
 
-    geometry?: MapGeometry;
-    geometryColor?: string;
+    ellipse?: MapEllipse;
 
     /** Several ringed shapes, which is what a GeoJSON document draws. */
     geometries?: readonly MapShape[];
 
     /** Frame the overlay and draw no pin, for a surface with no position. */
-    extentOnly?: boolean;
     extentLabel?: string;
 
     /**
@@ -363,8 +361,8 @@ interface Props {
 
 const LocationMapHarness: React.FC<Props> = ({
     start = 'Los Angeles', region = '', pending = false, pageHref, fill, noWebGL, preview, markers,
-    markerLabel, accuracyMeters, accuracyLabel, geometry, geometryColor, geometries,
-    extentOnly, extentLabel, readyDeadlineMs,
+    markerLabel, accuracyMeters, accuracyLabel, ellipse, geometries,
+    extentLabel, readyDeadlineMs,
 }) => {
     // Set during render, before the child's effects construct a map, and
     // restored on unmount so one test cannot shorten another's.
@@ -474,10 +472,8 @@ removed: false,
                     markerLabel={markerLabel}
                     accuracyMeters={accuracyMeters}
                     accuracyLabel={accuracyLabel}
-                    geometry={geometry}
-                    geometryColor={geometryColor}
+                    ellipse={ellipse}
                     geometries={geometries}
-                    extentOnly={extentOnly}
                     extentLabel={extentLabel}
                 />
             )}

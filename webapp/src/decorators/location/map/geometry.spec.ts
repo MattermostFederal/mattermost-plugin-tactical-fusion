@@ -1,9 +1,22 @@
 import {expect, test} from '@playwright/test';
 
 import {frameBounds} from './bounds';
-import {accuracyFeature, ellipseFeature, outlineFeature} from './maplibre';
+import {accuracyFeature, ellipseFeature, shapesFeature} from './maplibre';
 import {overlayDigest} from './overlay';
 import {DEGREE_METERS} from './span';
+
+/*
+ * outlineFeature is gone: it was shapesFeature for one single-ring shape, and
+ * kept a second code path alive for the idea a MapShape already covers. These
+ * tests are about that behavior, not about which function provided it, so they
+ * call the survivor.
+ */
+function outlineFeature(
+    points: ReadonlyArray<{lat: number; lon: number}>, closed: boolean,
+    style: {color?: string; fill?: string} = {},
+) {
+    return shapesFeature([{rings: [points], closed, style}]);
+}
 
 const OUTLINE = [{lat: 1, lon: 10}, {lat: 2, lon: 20}, {lat: 3, lon: 30}];
 
@@ -116,7 +129,7 @@ test.describe('the frame', () => {
     const MARKERS = [{lat: 0, lon: 0, color: '#fff'}, {lat: 1, lon: 1, color: '#fff'}];
 
     test('is the union of the markers and the shape', () => {
-        const bounds = frameBounds(MARKERS, {kind: 'outline', points: OUTLINE, closed: false}, undefined, 0, 0);
+        const bounds = frameBounds(MARKERS, undefined, [{rings: [OUTLINE], closed: false}], 0, 0);
 
         expect(bounds).not.toBeNull();
 
@@ -130,11 +143,11 @@ test.describe('the frame', () => {
         const one = [{lat: 0, lon: 0, color: '#fff'}];
 
         expect(frameBounds(one, undefined, undefined, 0, 0)).toBeNull();
-        expect(frameBounds(one, {kind: 'outline', points: OUTLINE, closed: false}, undefined, 0, 0)).not.toBeNull();
+        expect(frameBounds(one, undefined, [{rings: [OUTLINE], closed: false}], 0, 0)).not.toBeNull();
     });
 
     test('an ellipse contributes its reach', () => {
-        const bounds = frameBounds(undefined, {kind: 'ellipse', major: 1000, minor: 500, angle: 0}, undefined, 0, 0);
+        const bounds = frameBounds(undefined, {major: 1000, minor: 500, angle: 0}, undefined, 0, 0);
 
         expect(bounds).not.toBeNull();
         expect(bounds![1][1] * DEGREE_METERS).toBeCloseTo(1000, 3);
@@ -169,7 +182,7 @@ test.describe('crossing the antimeridian', () => {
     });
 
     test('the frame is the few degrees the shape occupies', () => {
-        const bounds = frameBounds(undefined, {kind: 'outline', points: CROSSING, closed: false}, undefined, 0, 179);
+        const bounds = frameBounds(undefined, undefined, [{rings: [CROSSING], closed: false}], 0, 179);
 
         expect(bounds).not.toBeNull();
         const [[west], [east]] = bounds!;
@@ -198,7 +211,7 @@ test.describe('crossing the antimeridian', () => {
     // globe, and the unwrapped span says so rather than pretending otherwise.
     test('a shape that wraps the world frames the world', () => {
         const circling = Array.from({length: 8}, (_, i) => ({lat: 0, lon: ((i * 170) % 360) - 180}));
-        const bounds = frameBounds(undefined, {kind: 'outline', points: circling, closed: false}, undefined, 0, 0);
+        const bounds = frameBounds(undefined, undefined, [{rings: [circling], closed: false}], 0, 0);
 
         expect(bounds).not.toBeNull();
         expect(bounds![0][0]).toBe(-180);
@@ -224,7 +237,7 @@ test.describe('crossing the antimeridian', () => {
     });
 
     test('a marker box and a shape box agree about which way round the world is', () => {
-        const bounds = frameBounds([{lat: 0, lon: 179, color: '#fff'}, {lat: 0, lon: -179, color: '#fff'}], {kind: 'outline', points: [{lat: 0, lon: 179.5}, {lat: 0, lon: -179.5}], closed: false}, undefined, 0, 179);
+        const bounds = frameBounds([{lat: 0, lon: 179, color: '#fff'}, {lat: 0, lon: -179, color: '#fff'}], undefined, [{rings: [[{lat: 0, lon: 179.5}, {lat: 0, lon: -179.5}]], closed: false}], 0, 179);
 
         expect(bounds![1][0] - bounds![0][0]).toBeLessThan(10);
     });
@@ -239,11 +252,11 @@ test.describe('crossing the antimeridian', () => {
  */
 test.describe('the overlay digest', () => {
     const PINS = [{lat: 1, lon: 2, color: '#fff'}];
-    const SHAPE = {kind: 'outline' as const, points: OUTLINE, closed: true};
+    const SHAPE = [{rings: [OUTLINE], closed: true}];
 
     test('is equal for two geometries built separately from the same numbers', () => {
-        const first = overlayDigest(PINS, {kind: 'outline', points: [...OUTLINE], closed: true}, '#abcdef');
-        const second = overlayDigest(PINS, {kind: 'outline', points: [...OUTLINE], closed: true}, '#abcdef');
+        const first = overlayDigest(PINS, undefined, [{rings: [[...OUTLINE]], closed: true, color: '#abcdef'}]);
+        const second = overlayDigest(PINS, undefined, [{rings: [[...OUTLINE]], closed: true, color: '#abcdef'}]);
 
         expect(first).toBe(second);
     });
@@ -251,29 +264,39 @@ test.describe('the overlay digest', () => {
     test('changes when a marker moves', () => {
         const moved = [{lat: 9, lon: 2, color: '#fff'}];
 
-        expect(overlayDigest(moved, SHAPE, '')).not.toBe(overlayDigest(PINS, SHAPE, ''));
+        expect(overlayDigest(moved, undefined, SHAPE)).not.toBe(overlayDigest(PINS, undefined, SHAPE));
     });
 
     test('changes when a marker is added, at an unchanged first position', () => {
         const more = [...PINS, {lat: 3, lon: 4, color: '#fff'}];
 
-        expect(overlayDigest(more, undefined, '')).not.toBe(overlayDigest(PINS, undefined, ''));
+        expect(overlayDigest(more, undefined)).not.toBe(overlayDigest(PINS, undefined));
     });
 
     test('changes when only the marker color changes', () => {
         const recolored = [{lat: 1, lon: 2, color: '#c0392b'}];
 
-        expect(overlayDigest(recolored, undefined, '')).not.toBe(overlayDigest(PINS, undefined, ''));
+        expect(overlayDigest(recolored, undefined)).not.toBe(overlayDigest(PINS, undefined));
     });
 
     test('changes when the shape does, and when only its color does', () => {
-        expect(overlayDigest(PINS, SHAPE, '')).not.toBe(overlayDigest(PINS, undefined, ''));
-        expect(overlayDigest(PINS, SHAPE, '#abcdef')).not.toBe(overlayDigest(PINS, SHAPE, '#123456'));
+        const red = [{rings: [OUTLINE], closed: true, color: '#abcdef'}];
+        const blue = [{rings: [OUTLINE], closed: true, color: '#123456'}];
+
+        expect(overlayDigest(PINS, undefined, SHAPE)).not.toBe(overlayDigest(PINS, undefined));
+        expect(overlayDigest(PINS, undefined, red)).not.toBe(overlayDigest(PINS, undefined, blue));
     });
 
-    test('tells an ellipse from an outline', () => {
-        const ellipse = {kind: 'ellipse' as const, major: 10, minor: 5, angle: 0};
+    // An ellipse is placed by the map's anchor and a shape by its own vertices,
+    // so the two must never digest alike however similar their numbers.
+    test('tells an ellipse from a shape', () => {
+        const ellipse = {major: 10, minor: 5, angle: 0};
 
-        expect(overlayDigest(PINS, ellipse, '')).not.toBe(overlayDigest(PINS, SHAPE, ''));
+        expect(overlayDigest(PINS, ellipse)).not.toBe(overlayDigest(PINS, undefined, SHAPE));
+    });
+
+    test('changes when only the ellipse color changes', () => {
+        expect(overlayDigest(PINS, {major: 10, minor: 5, angle: 0, color: '#abcdef'})).
+            not.toBe(overlayDigest(PINS, {major: 10, minor: 5, angle: 0, color: '#123456'}));
     });
 });

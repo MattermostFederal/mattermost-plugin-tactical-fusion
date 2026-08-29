@@ -1,4 +1,4 @@
-import type {MapGeometry, MapMarker} from './overlay';
+import type {MapEllipse, MapMarker} from './overlay';
 import type {MapShape} from './paint';
 import {DEGREE_METERS, MERCATOR_LIMIT, spansTheWorld, unwrapLongitudes} from './span';
 import type {View} from './view';
@@ -18,7 +18,7 @@ import type {View} from './view';
  */
 export function overlayBounds(
     markers: readonly MapMarker[] | undefined,
-    geometry: MapGeometry | undefined,
+    ellipse: MapEllipse | undefined,
     geometries: readonly MapShape[] | undefined,
     lat: number | null,
     lon: number | null,
@@ -33,10 +33,6 @@ export function overlayBounds(
         for (const ring of shape.rings) {
             points.push(...ring);
         }
-    }
-
-    if (geometry !== undefined && geometry.kind === 'outline') {
-        points.push(...geometry.points);
     }
 
     const usable = points.filter(
@@ -55,19 +51,19 @@ export function overlayBounds(
         ];
     }
 
-    return unionOf(box, ellipseBounds(geometry, lat, lon));
+    return unionOf(box, ellipseBounds(ellipse, lat, lon));
 }
 
 /** The box an ellipse reaches, which is stated in meters around the pin. */
 function ellipseBounds(
-    geometry: MapGeometry | undefined, lat: number | null, lon: number | null,
+    ellipse: MapEllipse | undefined, lat: number | null, lon: number | null,
 ): [[number, number], [number, number]] | null {
-    if (geometry === undefined || geometry.kind !== 'ellipse' || lat === null || lon === null) {
+    if (ellipse === undefined || lat === null || lon === null) {
         return null;
     }
 
     const cosLat = Math.cos((lat * Math.PI) / 180);
-    const reach = Math.max(geometry.major, geometry.minor);
+    const reach = Math.max(ellipse.major, ellipse.minor);
     if (!Number.isFinite(reach) || reach <= 0 || Math.abs(cosLat) < 1e-9) {
         return null;
     }
@@ -105,7 +101,7 @@ export function centerOf(box: [[number, number], [number, number]]): {lat: numbe
  */
 export function frameBounds(
     markers: readonly MapMarker[] | undefined,
-    geometry: MapGeometry | undefined,
+    ellipse: MapEllipse | undefined,
     geometries: readonly MapShape[] | undefined,
     lat: number | null,
     lon: number | null,
@@ -113,13 +109,13 @@ export function frameBounds(
     const nothingToFrame =
         (markers ?? []).length < 2 &&
         (geometries ?? []).length === 0 &&
-        geometry === undefined;
+        ellipse === undefined;
 
     if (nothingToFrame) {
         return null;
     }
 
-    return withinMercator(overlayBounds(markers, geometry, geometries, lat, lon));
+    return withinMercator(overlayBounds(markers, ellipse, geometries, lat, lon));
 }
 
 function withinMercator(

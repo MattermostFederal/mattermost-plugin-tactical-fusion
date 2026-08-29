@@ -10,7 +10,7 @@ import {
     buildStyle, coveredBy, emptyCollection, hasWebGL2,
     loadMapLibre, mapColors, shapesFeature, syncGlobalReach,
 } from './maplibre';
-import type {MapGeometry, MapMarker} from './overlay';
+import type {MapEllipse, MapMarker} from './overlay';
 import {
     addMarkerImages, drawableAccuracy, drawableCell, drawableMarkers, drawableOverlay,
     markerFeatures, overlayDigest,
@@ -148,45 +148,30 @@ export interface MapProps extends View {
     markerLabel?: string;
 
     /**
-     * A shape to draw, in meters on the ground rather than in pixels.
+     * An ellipse around the primary position, in meters on the ground.
      *
-     * Vertices are deliberately not markers: routing them through `markers`
-     * would be less code and would put a reticle on every corner of a polygon,
-     * which says each corner is a position somebody reported.
+     * The one shape that cannot be a `MapShape`, because it is placed by this
+     * map's anchor rather than by its own vertices. Everything else, including
+     * what used to be the `outline` variant beside it, goes in `geometries`.
      */
-    geometry?: MapGeometry;
-
-    geometryColor?: string;
+    ellipse?: MapEllipse;
 
     /**
-     * Several shapes at once, each carrying its own rings.
+     * Every shape to draw, each carrying its own rings.
      *
      * Rings rather than a flat point list, because ring 0 is a polygon's
      * exterior and the rest are its holes: passing a holed polygon as two
      * separate outlines paints the hole as a solid island on the fill layer.
      *
-     * The `ellipse` variant of `MapGeometry` is deliberately not admitted here.
-     * An ellipse is drawn around the map's primary position, so a plural array
-     * of them would stack every one on a single anchor. The singular `geometry`
-     * keeps that case.
+     * Vertices are deliberately not markers: routing them through `markers`
+     * would be less code and would put a reticle on every corner of a polygon,
+     * which says each corner is a position somebody reported.
      *
      * Each shape may state its own color, validated by `styleOf` before it
      * reaches the collection. A shape that states none is drawn in the theme's,
      * which is what the `coalesce` in `paintGeometry` falls back to.
      */
     geometries?: readonly MapShape[];
-
-    /**
-     * Frame the overlay and draw no pin, for a surface that has no primary
-     * position of its own.
-     *
-     * An explicit prop rather than a `lat`/`lon` of null, which already means
-     * "no mappable position" to every existing caller and renders NO_POSITION
-     * over the frame. A GeoJSON document of nothing but polygons reports no
-     * position at all, and inventing a centroid to pass as one would be the
-     * guessed position this component says it never pins.
-     */
-    extentOnly?: boolean;
 
     /**
      * What the overlay IS, in words, for a map that draws no pin.
@@ -213,7 +198,7 @@ export interface MapProps extends View {
  */
 export function useMapInstance({
     lat, lon, cellDegLat, cellDegLon, pending, preview, accuracyMeters,
-    markers, geometry, geometryColor, geometries, extentOnly,
+    markers, ellipse, geometries,
 }: MapProps): {
     container: React.RefObject<HTMLDivElement | null>;
     map: React.MutableRefObject<MapLibreMap | null>;
@@ -221,6 +206,7 @@ export function useMapInstance({
     note: string | null;
     credited: boolean;
     zoomLevel: number | null;
+    extentOnly: boolean;
 } {
     const container = useRef<HTMLDivElement | null>(null);
     const map = useRef<MapLibreMap | null>(null);
@@ -248,8 +234,20 @@ export function useMapInstance({
     // Positioned is the old `known`: this map has a primary position to pin.
     // Known is now the wider question the creation guard and the note ask,
     // which an extent-only map answers yes to with no position at all.
+    /*
+     * Derived, not passed.
+     *
+     * "No primary position, but something to frame" is exactly what a caller
+     * with markers or shapes and a null lat/lon is saying. It was an explicit
+     * prop to keep null from meaning two things; the reason that mattered was
+     * that a null WITHOUT anything to draw must still read as unavailable, and
+     * the clause below is what keeps that true.
+     */
+    const extentOnly = lat === null &&
+        ((markers ?? []).length > 0 || (geometries ?? []).length > 0);
+
     const positioned = lat !== null && lon !== null && beyond === null;
-    const known = positioned || extentOnly === true;
+    const known = positioned || extentOnly;
 
     // Derived, with one expression deciding it, rather than assigned from three
     // effects and two event handlers. The load handler used to set it to null
@@ -275,11 +273,8 @@ export function useMapInstance({
     const drawn = useRef<readonly MapMarker[] | undefined>(markers);
     drawn.current = markers;
 
-    const shape = useRef<MapGeometry | undefined>(geometry);
-    shape.current = geometry;
-
-    const shapeColor = useRef<string | undefined>(geometryColor);
-    shapeColor.current = geometryColor;
+    const shape = useRef<MapEllipse | undefined>(ellipse);
+    shape.current = ellipse;
 
     const shapes = useRef<readonly MapShape[] | undefined>(geometries);
     shapes.current = geometries;
@@ -383,7 +378,7 @@ export function useMapInstance({
         pin?.setData(drawableMarkers(drawn.current, current.lat, current.lon));
         cell?.setData(drawableCell(current));
         accuracy?.setData(drawableAccuracy(current.lat, current.lon, radius.current));
-        outline?.setData(drawableOverlay(shape.current, shapes.current, current.lat, current.lon, shapeColor.current));
+        outline?.setData(drawableOverlay(shape.current, shapes.current, current.lat, current.lon));
         paintGeometry(instance);
     }, []);
 
@@ -396,7 +391,7 @@ export function useMapInstance({
     //
     // Declared ahead of both effects that read it, because the creation effect
     // depends on it as well as the movement one.
-    const overlayKey = overlayDigest(markers, geometry, geometryColor, geometries);
+    const overlayKey = overlayDigest(markers, ellipse, geometries);
 
     // A verdict belongs to the coordinate that produced it, so a change of
     // position retires it.
@@ -691,7 +686,7 @@ export function useMapInstance({
         return () => observer.disconnect();
     }, []);
 
-    return {container, map, applyView, note, credited, zoomLevel};
+    return {container, map, applyView, note, credited, zoomLevel, extentOnly};
 }
 
 /** Shortens the readiness deadline so a test can prove it fires. */

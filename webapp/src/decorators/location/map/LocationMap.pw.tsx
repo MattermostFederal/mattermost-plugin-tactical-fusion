@@ -5,7 +5,6 @@ import {serveMapAssets} from './asset_fixtures';
 import LocationMapHarness from './LocationMapHarness';
 import type {ViewName} from './LocationMapHarness';
 import {MARKER_SIZE} from './maplibre';
-import type {MapGeometry} from './overlay';
 import type {MapShape} from './paint';
 import {DATA_MAX_ZOOM, MAX_ZOOM} from './span';
 
@@ -1082,24 +1081,25 @@ test.describe('the accessible label for a block', () => {
 });
 
 test.describe('the color a shape is drawn in', () => {
-    const SQUARE: MapGeometry = {
-        kind: 'outline',
-        points: [
-            {lat: 34.05, lon: -118.25},
-            {lat: 34.06, lon: -118.25},
-            {lat: 34.06, lon: -118.24},
-            {lat: 34.05, lon: -118.24},
-        ],
+    const SQUARE_RING = [
+        {lat: 34.05, lon: -118.25},
+        {lat: 34.06, lon: -118.25},
+        {lat: 34.06, lon: -118.24},
+        {lat: 34.05, lon: -118.24},
+    ];
+
+    const square = (color?: string): MapShape => ({
+        rings: [SQUARE_RING],
         closed: true,
-    };
+        ...(color === undefined ? {} : {color}),
+    });
 
     test('is the stated one, at the fill alpha the theme uses', async ({mount, page}) => {
         await serveMapAssets(page);
 
         const component = await mount(
             <LocationMapHarness
-                geometry={SQUARE}
-                geometryColor='#ff0000'
+                geometries={[square('#ff0000')]}
             />,
         );
         await expectDrawn(component);
@@ -1114,7 +1114,7 @@ test.describe('the color a shape is drawn in', () => {
     test('falls back to the theme when the source states nothing', async ({mount, page}) => {
         await serveMapAssets(page);
 
-        const component = await mount(<LocationMapHarness geometry={SQUARE}/>);
+        const component = await mount(<LocationMapHarness geometries={[square()]}/>);
         await expectDrawn(component);
         await component.getByRole('button', {name: 'read the map'}).click();
 
@@ -1135,8 +1135,7 @@ test.describe('the color a shape is drawn in', () => {
 
         const component = await mount(
             <LocationMapHarness
-                geometry={{kind: 'ellipse', major: 4000, minor: 2000, angle: 0}}
-                geometryColor='#ff0000'
+                ellipse={{major: 4000, minor: 2000, angle: 0, color: '#ff0000'}}
             />,
         );
         await expectDrawn(component);
@@ -1151,8 +1150,7 @@ test.describe('the color a shape is drawn in', () => {
 
         const component = await mount(
             <LocationMapHarness
-                geometry={SQUARE}
-                geometryColor='url(https://attacker.example/px)'
+                geometries={[square('url(https://attacker.example/px)')]}
             />,
         );
         await expectDrawn(component);
@@ -1260,7 +1258,6 @@ test.describe('extent-only', () => {
         const component = await mount(
             <LocationMapHarness
                 start='unknown'
-                extentOnly={true}
                 extentLabel='3 drawn shapes'
                 geometries={AREA}
             />,
@@ -1280,7 +1277,6 @@ test.describe('extent-only', () => {
         const component = await mount(
             <LocationMapHarness
                 start='unknown'
-                extentOnly={true}
                 extentLabel='3 drawn shapes'
                 geometries={AREA}
             />,
@@ -1297,7 +1293,6 @@ test.describe('extent-only', () => {
         const component = await mount(
             <LocationMapHarness
                 start='unknown'
-                extentOnly={true}
                 extentLabel='3 drawn shapes'
                 geometries={AREA}
             />,
@@ -1352,7 +1347,6 @@ closed: true}],
             const component = await mount(
                 <LocationMapHarness
                     start='unknown'
-                    extentOnly={true}
                     extentLabel='an overlay'
                     markers={one.markers}
                     geometries={one.geometries}
@@ -1381,7 +1375,6 @@ test.describe('the antimeridian', () => {
         const component = await mount(
             <LocationMapHarness
                 start='unknown'
-                extentOnly={true}
                 extentLabel='two shapes'
                 geometries={[
                     {rings: [[{lat: 0, lon: 179.0}, {lat: 1, lon: 179.5}]], closed: false},
@@ -1408,7 +1401,6 @@ test.describe('the antimeridian', () => {
         const component = await mount(
             <LocationMapHarness
                 start='unknown'
-                extentOnly={true}
                 extentLabel='one shape'
                 geometries={[
                     {rings: [[{lat: 0, lon: 179.0}, {lat: 1, lon: -179.0}]], closed: false},
@@ -1766,7 +1758,6 @@ test('marker-size survives the extent-only write path', async ({mount, page}) =>
     const component = await mount(
         <LocationMapHarness
             start='unknown'
-            extentOnly={true}
             markers={[
                 {lat: 34.05, lon: -118.25, color: '#ff0000', size: 'large'},
                 {lat: 34.06, lon: -118.24, color: '#ff0000', size: 'small'},
@@ -1788,7 +1779,6 @@ test('a marker size from the prototype chain is not a size', async ({mount, page
     const component = await mount(
         <LocationMapHarness
             start='unknown'
-            extentOnly={true}
             markers={[
                 {lat: 34.05, lon: -118.25, color: '#ff0000', size: 'constructor'},
                 {lat: 34.06, lon: -118.24, color: '#ff0000', size: '__proto__'},
