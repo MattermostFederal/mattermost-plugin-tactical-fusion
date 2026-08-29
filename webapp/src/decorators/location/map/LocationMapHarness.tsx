@@ -6,6 +6,7 @@ import type {MapEllipse} from './overlay';
 import type {MapShape} from './paint';
 import {DATA_MAX_ZOOM} from './span';
 import {_setMapObserverForTesting, _setReadyDeadlineForTesting} from './use_map_instance';
+import type {MapProps} from './use_map_instance';
 import type {View} from './view';
 
 /**
@@ -468,7 +469,7 @@ removed: false,
                     pageHref={pageHref}
                     fill={fill}
                     preview={preview}
-                    markers={markers}
+                    markers={markers as MapProps['markers']}
                     markerLabel={markerLabel}
                     accuracyMeters={accuracyMeters}
                     accuracyLabel={accuracyLabel}

@@ -61,6 +61,17 @@ const maxStrokeWidth = 10
 // is not a size, and is left to the theme rather than guessed at.
 var markerSizes = map[string]bool{"small": true, "medium": true, "large": true}
 
+// MarkerSizes is the catalog, exported so the cross-language guard reads it
+// rather than keeping a second copy of the same three words.
+func MarkerSizes() map[string]bool {
+	out := make(map[string]bool, len(markerSizes))
+	for size := range markerSizes {
+		out[size] = true
+	}
+
+	return out
+}
+
 /*
  * Style is everything about a feature's appearance this build will draw.
  *

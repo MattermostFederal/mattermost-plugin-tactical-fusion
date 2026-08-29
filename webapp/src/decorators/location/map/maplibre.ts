@@ -1180,7 +1180,6 @@ export function ellipseFeature(
     };
 }
 
-/** A drawn outline, closed into a polygon or left as a line. */
 /**
  * Several shapes at once, each keeping its own rings.
  *
@@ -1189,8 +1188,6 @@ export function ellipseFeature(
  * `line-color` and `fill-color`, so a caller that skips the gate would be a
  * one-line regression on the only value the browser interprets.
  *
- * Beside outlineFeature rather than replacing it, because the two answer
- * different questions. outlineFeature takes a flat point list and emits a
  * SINGLE-ring polygon, which is all a Cursor on Target shape ever needs; a
  * GeoJSON polygon carries its holes in rings 1..n, and passing those as separate
  * outlines paints each hole as a solid island on the fill layer.
@@ -1214,8 +1211,15 @@ export function shapesFeature(
             rings: shape.rings.
                 map((ring) => ring.filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lon))).
                 filter((ring) => ring.length >= 2),
+            kept: shape.rings.length,
         })).
-        filter((shape) => shape.rings.length > 0);
+
+        // Ring 0 is the exterior. Dropping ONE ring is not enough to drop the
+        // shape, but if the ring that lost its positions was ring 0 then a hole
+        // is promoted to the outer boundary and painted as the shape. shapesFor
+        // in geojson/GeoJsonMap.tsx guards this and records why; this second
+        // filter is the same rule at the other end of the same data.
+        filter((shape) => shape.rings.length > 0 && shape.rings.length === shape.kept);
 
     if (usable.length === 0) {
         return emptyCollection();

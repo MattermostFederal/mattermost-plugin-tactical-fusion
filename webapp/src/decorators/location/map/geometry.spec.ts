@@ -300,3 +300,75 @@ test.describe('the overlay digest', () => {
             not.toBe(overlayDigest(PINS, {major: 10, minor: 5, angle: 0, color: '#123456'}));
     });
 });
+
+/*
+ * Every field that changes the drawing changes the digest.
+ *
+ * The digest is what decides whether the map repaints at all, so a field it
+ * fails to include is an overlay that changed and never redrew. The tests above
+ * cover marker position, count and color, shape presence and color, and ellipse
+ * versus shape. These are the six that were carried by inspection alone.
+ */
+test.describe('the digest covers every drawn field', () => {
+    const PIN = [{lat: 1, lon: 2, color: '#fff'}];
+    const RING = [{lat: 1, lon: 10}, {lat: 2, lon: 20}, {lat: 3, lon: 30}];
+
+    const shape = (over: Record<string, unknown>) =>
+        [{rings: [RING], closed: true, ...over}];
+
+    test('changes with the marker size', () => {
+        const small = [{...PIN[0], size: 'small' as const}];
+        const large = [{...PIN[0], size: 'large' as const}];
+
+        expect(overlayDigest(small, undefined)).not.toBe(overlayDigest(large, undefined));
+        expect(overlayDigest(small, undefined)).not.toBe(overlayDigest(PIN, undefined));
+    });
+
+    for (const [name, over] of [
+        ['closed', {closed: false}],
+        ['width', {width: '3'}],
+        ['line opacity', {lineOpacity: '0.5'}],
+        ['fill opacity', {fillOpacity: '0.25'}],
+    ] as Array<[string, Record<string, unknown>]>) {
+        test(`changes with a shape's ${name}`, () => {
+            expect(overlayDigest(PIN, undefined, shape(over))).
+                not.toBe(overlayDigest(PIN, undefined, shape({})));
+        });
+    }
+
+    for (const [name, over] of [
+        ['major axis', {major: 20}],
+        ['minor axis', {minor: 9}],
+        ['angle', {angle: 45}],
+    ] as Array<[string, Record<string, number>]>) {
+        test(`changes with an ellipse's ${name}`, () => {
+            const base = {major: 10, minor: 5, angle: 0};
+
+            expect(overlayDigest(PIN, {...base, ...over})).not.toBe(overlayDigest(PIN, base));
+        });
+    }
+});
+
+/*
+ * The union of a marker box and an ellipse box, which nothing exercised.
+ *
+ * Both ellipse tests above pass no markers, so the point box is null and
+ * `unionOf` short-circuits. A single Cursor on Target event passes markers AND
+ * an ellipse together, so the arithmetic runs in production on every ellipse
+ * card while `return a` would have passed the whole suite.
+ */
+test('frames the union of a marker and an ellipse, not either alone', () => {
+    const marker = [{lat: 0, lon: 0, color: '#fff'}, {lat: 0.5, lon: 0.5, color: '#fff'}];
+    const ellipse = {major: 200000, minor: 200000, angle: 0};
+
+    const both = frameBounds(marker, ellipse, undefined, 0, 0);
+    const pinsOnly = frameBounds(marker, undefined, undefined, 0, 0);
+
+    expect(both).not.toBeNull();
+    expect(pinsOnly).not.toBeNull();
+
+    // The ellipse reaches ~1.8 degrees west of the anchor; the markers only go
+    // east of it. So the union must be wider than the markers on their own.
+    expect(both![0][0]).toBeLessThan(pinsOnly![0][0]);
+    expect(both![1][1]).toBeGreaterThanOrEqual(pinsOnly![1][1]);
+});

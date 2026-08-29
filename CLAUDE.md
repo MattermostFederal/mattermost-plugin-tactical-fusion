@@ -47,7 +47,7 @@ right-hand sidebar, and a standalone server-rendered page.
 | `src/decorators/{dtg,location,airport}/` | Panels, hovers, and per-decorator clients |
 | `src/cot/` | The Cursor on Target post body, its card and its map |
 | `src/geojson/` | The GeoJSON post body, its card, its map, its panel and its reader |
-| `src/decorators/location/map/` | `LocationMap` and its lifecycle; `paint.ts` (the simplestyle gate), `overlay.ts` (what is drawn), `bounds.ts` (framing), `label.ts` (the accessible text); MapLibre loading, the basemap reader, span arithmetic |
+| `src/decorators/location/map/` | `LocationMap` (presentation) and `use_map_instance.ts` (the MapLibre lifecycle); `paint.ts` (the simplestyle gate), `overlay.ts` (what is drawn), `bounds.ts` (framing), `label.ts` (the accessible text); MapLibre loading, the basemap reader, span arithmetic |
 | `src/page/` | Standalone pages' entry point, built by a second webpack config into `public/app/page.js` |
 | `src/components/rhs/` | `RhsView` and `RhsTitle` |
 | `src/preferences/`, `src/features/` | Module-state caches in front of the two API routes |

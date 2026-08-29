@@ -1791,3 +1791,44 @@ test('a marker size from the prototype chain is not a size', async ({mount, page
 
     await expect(component.getByTestId('marker-scales')).toHaveText(',,');
 });
+
+/*
+ * A stated style survives the EXTENT-ONLY write path.
+ *
+ * Every other style test here mounts a positioned map, and GeoJSON is never
+ * positioned: it passes a null lat and lon always. So the branch that actually
+ * draws every GeoJSON document had no assertion on it at all, and deleting
+ * `styleOf` from the write left all 806 tests green while every stated color,
+ * width and opacity silently became the theme's.
+ *
+ * This is the same hole the marker-size test closed for markers, on the other
+ * half of the same fork.
+ */
+test('a stated style survives the extent-only write path', async ({mount, page}) => {
+    await serveMapAssets(page);
+
+    const component = await mount(
+        <LocationMapHarness
+            start='unknown'
+            extentLabel='an overlay'
+            geometries={[{
+                rings: [[
+                    {lat: 34.00, lon: -118.30},
+                    {lat: 34.00, lon: -118.10},
+                    {lat: 34.20, lon: -118.10},
+                    {lat: 34.00, lon: -118.30},
+                ]],
+                closed: true,
+                color: '#ff0000',
+                width: '3',
+                lineOpacity: '0.8',
+                fillOpacity: '0.25',
+            }]}
+        />,
+    );
+    await expectDrawn(component);
+    await component.getByRole('button', {name: 'read the map'}).click();
+
+    await expect(component.getByTestId('shape-style')).toHaveText('#ff0000|rgba(255, 0, 0, 0.25)');
+    await expect(component.getByTestId('shape-stroke')).toHaveText('3|0.8');
+});

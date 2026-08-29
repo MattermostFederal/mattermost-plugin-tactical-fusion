@@ -289,3 +289,37 @@ func TestGeoJSONHasNoMapSettingOfItsOwn(t *testing.T) {
 			"rather than leaving it to guard nothing")
 	}
 }
+
+/*
+ * The marker-size vocabulary, both halves.
+ *
+ * Go refuses anything outside it and the webapp scales the reticle by it, and
+ * until now nothing tied the two lists together. Every other Go/TypeScript
+ * duplicate in this repo carries a guard; this one did not, so a size added on
+ * one side would have been silently refused or silently undrawn on the other.
+ */
+func TestWebappMarkerSizesMatch(t *testing.T) {
+	source := readWebappFile(t, "decorators", "location", "map", "overlay.ts")
+
+	match := regexp.MustCompile(`MARKER_SIZES = \[([^\]]*)\]`).FindStringSubmatch(source)
+	if match == nil {
+		t.Fatal("no MARKER_SIZES in map/overlay.ts; if it was renamed, point this " +
+			"test at the new name rather than deleting it")
+	}
+
+	webapp := map[string]bool{}
+	for _, quoted := range regexp.MustCompile(`'([a-z]+)'`).FindAllStringSubmatch(match[1], -1) {
+		webapp[quoted[1]] = true
+	}
+
+	for size := range geojson.MarkerSizes() {
+		if !webapp[size] {
+			t.Errorf("Go accepts marker-size %q and the webapp does not scale it", size)
+		}
+		delete(webapp, size)
+	}
+
+	for size := range webapp {
+		t.Errorf("the webapp scales marker-size %q, which Go refuses", size)
+	}
+}

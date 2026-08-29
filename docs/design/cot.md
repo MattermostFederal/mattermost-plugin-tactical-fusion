@@ -1176,7 +1176,7 @@ left to each call site.
 
 The panel used to print a color the map then ignored, which is the panel and the
 map disagreeing in front of the reader about the same event. `LocationMap` takes
-an optional `geometryColor`, and `CotMap` passes the event's stated color when
+an optional colored `ellipse` and colored shapes, and `CotMap` passes the event's stated color when
 there is exactly one event, which is already the condition the shape and the
 accuracy ring are drawn under. Absent, the shape keeps the theme's own cell
 color, which is what every location surface gets.

@@ -170,7 +170,7 @@ function drawableGeometry(event: CotEvent | undefined) {
 /** The ellipse an event states, or undefined. Placed by the map's anchor. */
 function ellipseFor(event: CotEvent | undefined): MapEllipse | undefined {
     const geometry = drawableGeometry(event);
-    if (geometry?.kind !== 'ellipse') {
+    if (geometry?.kind !== 'ellipse' || event === undefined) {
         return undefined;
     }
 
@@ -180,11 +180,13 @@ function ellipseFor(event: CotEvent | undefined): MapEllipse | undefined {
         return undefined;
     }
 
+    const color = statedColor(event);
+
     return {
         major: majorMeters,
         minor: minorMeters,
         angle: Number.isFinite(angleDegrees) ? angleDegrees : 0,
-        color: event && statedColor(event),
+        ...(color === undefined ? {} : {color}),
     };
 }
 

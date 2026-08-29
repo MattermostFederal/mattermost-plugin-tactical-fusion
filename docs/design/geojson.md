@@ -677,14 +677,13 @@ chosen from `hasMarkers`, and `LocationMap` never calls `setStyle`.
 ### The plural prop carries rings
 
 `geometries?: readonly MapShape[]`, where a `MapShape` is rings plus a closed
-flag. Rings, not a flat point list, and that is the whole point: `MapGeometry`'s
-`outline` variant is flat, and `outlineFeature` emits `coordinates: [ring]`, a
+flag. Rings, not a flat point list, and that is the whole point: the `outline`
+variant this replaced was flat, and its `outlineFeature` emitted `coordinates: [ring]`, a
 single-ring polygon. Passing a holed polygon as two outlines paints the hole as
 a solid island on the fill layer, which would flatten away exactly what the
 parts-rings props shape exists to preserve.
 
-`shapesFeature` in `maplibre.ts` sits beside `outlineFeature` rather than
-replacing it, and emits one `Polygon` with every ring for a closed shape, or a
+`shapesFeature` in `maplibre.ts` replaced `outlineFeature` outright, and emits one `Polygon` with every ring for a closed shape, or a
 `LineString` per ring for an open one.
 
 The `ellipse` variant is not admitted into the plural prop: it is drawn around
@@ -697,7 +696,11 @@ the scalar used to be, is [above](#why-the-paint-is-data-driven-and-what-that-co
 
 ### Extent-only
 
-An explicit `extentOnly` prop, not a `lat`/`lon` of null. Null already means "no
+Derived inside `useMapInstance`, not passed: `lat === null` **and** something to
+frame. It was an explicit prop first, and the argument the prop was protecting
+survives as the second half of that condition, because a null with NOTHING to
+draw must still read as unavailable. See `mapping.md`, "One overlay path".
+The original argument, which still holds: null already means "no
 mappable position" to every existing caller and renders NO_POSITION over the
 frame; overloading it would regress the location panel's pending and unknown
 states. A test asserts null still means what it always meant.
@@ -717,7 +720,7 @@ never be retried. `overlayKey` is declared ahead of both effects for that
 reason.
 
 `applyView` branches rather than rewriting four signatures. The positioned path
-is untouched, including the narrowing that lets `shapeBounds`, `drawableMarkers`,
+is untouched, including the narrowing that lets `overlayBounds`, `drawableMarkers`,
 `drawableAccuracy` and `drawableGeometry` take plain numbers; the extent-only
 path is its own short branch that draws the overlay, frames it, and draws no
 pin, no cell and no accuracy ring, because all three are about a position this
@@ -725,7 +728,7 @@ surface does not have.
 
 ### The antimeridian, across all shapes
 
-`unwrapLongitudes` used to run per shape, inside `shapeBounds` and inside
+`unwrapLongitudes` used to run per shape, inside the bounds helper and inside
 `outlineFeature`, with `unionOf` taking a raw min and max afterwards. That is
 safe only while at most one shape is drawn, which is why Cursor on Target never
 hit it: two features at 179..180 and -179..-178 each unwrap to themselves, union

@@ -5,6 +5,8 @@ import type {GeoJsonFeature, GeoJsonPart, GeoJsonPayload, GeoJsonPosition} from 
 
 import LocationMap, {MAP_HEIGHT} from '../decorators/location/map/LocationMap';
 import {useNearViewport} from '../decorators/location/map/near_viewport';
+import type {MapMarker} from '../decorators/location/map/overlay';
+import {isMarkerSize} from '../decorators/location/map/overlay';
 import type {MapShape} from '../decorators/location/map/paint';
 import {styleOf} from '../decorators/location/map/paint';
 import {isRenderable} from '../decorators/location/map/span';
@@ -104,13 +106,8 @@ function isPointPart(part: GeoJsonPart): boolean {
  * A GeometryCollection contributes each of its parts to whichever channel that
  * part's own kind selects, so one feature can appear in both.
  */
-export function markersFor(features: readonly GeoJsonFeature[]): Array<{
-    lat: number;
-    lon: number;
-    color: string;
-    size?: string;
-}> {
-    const markers: Array<{lat: number; lon: number; color: string; size?: string}> = [];
+export function markersFor(features: readonly GeoJsonFeature[]): MapMarker[] {
+    const markers: MapMarker[] = [];
 
     for (const feature of features) {
         // The server's verdict wins. It notes a feature it will not stand
@@ -131,7 +128,7 @@ export function markersFor(features: readonly GeoJsonFeature[]): Array<{
                         markers.push({
                             ...point,
                             color: colorFor(feature, MARKER_COLOR),
-                            ...(feature.markerSize === '' ? {} : {size: feature.markerSize}),
+                            ...(isMarkerSize(feature.markerSize) ? {size: feature.markerSize} : {}),
                         });
                     }
                 }

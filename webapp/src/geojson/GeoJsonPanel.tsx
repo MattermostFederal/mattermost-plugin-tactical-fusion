@@ -170,11 +170,22 @@ export const GeoJsonPanel: React.FC<{payload: GeoJsonPayload}> = ({payload}) => 
                     </div>
                 )}
 
+                {/*
+                  * The map gets its OWN boundary, with no fallback, so a throw
+                  * inside it takes the map and nothing else. Sharing the
+                  * panel's boundary meant a map failure replaced the summary,
+                  * the feature list and the source dump with one sentence,
+                  * against the contract the map itself states: every failure
+                  * hides the map and leaves every reading on screen. CotPanel
+                  * and GeoJsonCard already do it this way.
+                  */}
                 {isSectionVisible(hidden, 'map') && (
-                    <GeoJsonMap
-                        payload={payload}
-                        surface='panel'
-                    />
+                    <ErrorBoundary>
+                        <GeoJsonMap
+                            payload={payload}
+                            surface='panel'
+                        />
+                    </ErrorBoundary>
                 )}
 
                 {isSectionVisible(hidden, 'features') && payload.features.length > 0 && (

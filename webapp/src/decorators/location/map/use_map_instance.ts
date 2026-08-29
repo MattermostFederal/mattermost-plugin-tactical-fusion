@@ -8,7 +8,7 @@ import {outsideMercator, positionNote} from './label';
 import {
     SEAM_CAPPED_LAYERS,
     buildStyle, coveredBy, emptyCollection, hasWebGL2,
-    loadMapLibre, mapColors, shapesFeature, syncGlobalReach,
+    loadMapLibre, mapColors, syncGlobalReach,
 } from './maplibre';
 import type {MapEllipse, MapMarker} from './overlay';
 import {
@@ -16,7 +16,7 @@ import {
     markerFeatures, overlayDigest,
 } from './overlay';
 import type {MapShape} from './paint';
-import {paintGeometry, styleOf} from './paint';
+import {paintGeometry} from './paint';
 import {MAX_ZOOM, fitPadding, zoomForSpan} from './span';
 import type {View} from './view';
 
@@ -201,7 +201,6 @@ export function useMapInstance({
     markers, ellipse, geometries,
 }: MapProps): {
     container: React.RefObject<HTMLDivElement | null>;
-    map: React.MutableRefObject<MapLibreMap | null>;
     applyView: () => void;
     note: string | null;
     credited: boolean;
@@ -363,11 +362,9 @@ export function useMapInstance({
             }
 
             pin?.setData(markerFeatures(drawn.current));
-            outline?.setData(shapesFeature((shapes.current ?? []).map((shape) => ({
-                rings: shape.rings,
-                closed: shape.closed,
-                style: styleOf(shape),
-            }))));
+            outline?.setData(drawableOverlay(
+                shape.current, shapes.current, current.lat, current.lon,
+            ));
             paintGeometry(instance);
             frame(null);
             return;
@@ -411,7 +408,13 @@ export function useMapInstance({
     // every coordinate flash "Loading map…" before restating it.
     useEffect(() => {
         setFailure((prev) => (prev === NO_WEBGL ? prev : null));
-    }, [lat, lon]);
+
+        // overlayKey, not just the position. An extent-only surface passes a
+        // literal null lat and lon forever, so keyed on those alone this ran
+        // once at mount and never again: a verdict latched by one transient
+        // basemap failure outlived every later document, while the creation
+        // effect below retried on exactly the key this was missing.
+    }, [lat, lon, overlayKey]);
 
     // Creation. Runs once the reader has something to look at, and then not
     // again while a usable map exists: the guard below, not the deps, is what
@@ -531,8 +534,12 @@ export function useMapInstance({
                 // Seeded as well as listened for, because constructing a map at
                 // a zoom fires no event and the readout would otherwise be blank
                 // until the reader's first gesture.
-                instance.on('zoom', (event) => setZoomLevel(event.target.getZoom()));
-                setZoomLevel(instance.getZoom());
+                // Rounded to the readout's own precision (z0.0). The zoom event fires
+                // per animation frame through a wheel gesture, and useState's Object.is
+                // bailout then drops most of those renders, taking the per-frame
+                // overlayDigest walk and ref churn with them.
+                instance.on('zoom', (event) => setZoomLevel(Math.round(event.target.getZoom() * 10) / 10));
+                setZoomLevel(Math.round(instance.getZoom() * 10) / 10);
 
                 instance.on('moveend', (event) => syncGlobalReach(event.target, details, SEAM_CAPPED_LAYERS));
             } catch (e) {
@@ -596,6 +603,13 @@ export function useMapInstance({
             // Armed once the map exists, because everything before this point
             // is already bounded by its own timeout.
             const deadline = setTimeout(() => {
+                // Retired here as well as on load. A deadline that FIRES, or one
+                // whose creation attempt was superseded, stayed in the Set until
+                // unmount; clearTimeout on a fired timer is a no-op, so this is
+                // about the Set not growing per attempt rather than about the
+                // timer.
+                deadlines.current.delete(deadline);
+
                 if (map.current !== instance || ready.current) {
                     return;
                 }
@@ -650,8 +664,8 @@ export function useMapInstance({
         };
     }, [known, lat, lon, applyView, overlayKey]);
 
-    // Movement. The map itself survives; only its camera and its two overlay
-    // sources change.
+    // Movement. The map itself survives; only its camera and its four sources
+    // change.
 
     useEffect(() => {
         applyView();
@@ -686,7 +700,7 @@ export function useMapInstance({
         return () => observer.disconnect();
     }, []);
 
-    return {container, map, applyView, note, credited, zoomLevel, extentOnly};
+    return {container, applyView, note, credited, zoomLevel, extentOnly};
 }
 
 /** Shortens the readiness deadline so a test can prove it fires. */

@@ -15,10 +15,10 @@ export interface MapShape {
     /**
      * What this one shape is drawn in, or absent for the theme's own color.
      *
-     * Validated by `fillOf` before it reaches the collection, exactly as the
-     * singular `geometryColor` is: a color that is not a hex triple carries no
-     * paint at all rather than being passed to MapLibre for the browser to
-     * interpret. That gate is the only one there is on this path.
+     * Validated by `styleOf` before it reaches the collection: a color that is
+     * not a hex triple carries no paint at all rather than being passed to
+     * MapLibre for the browser to interpret. That gate is the only one there is
+     * on this path.
      */
     color?: string;
 
@@ -96,7 +96,7 @@ export function paintGeometry(instance: MapLibreMap): void {
 
     // Width and line opacity are their own paint properties, where the fill's
     // opacity is composited into `fill` by `styleOf`. That asymmetry is
-    // deliberate and is the one `fillOf` already records: an expression reading
+    // deliberate and is recorded on paintGeometry above: an expression reading
     // the line color straight into `fill-color` paints every shape opaque, so
     // the fill's alpha has to travel inside the color it belongs to.
     instance.setPaintProperty('geometry-outline', 'line-width',

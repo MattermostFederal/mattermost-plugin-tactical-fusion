@@ -1729,7 +1729,10 @@ throws on a latitude past 90 rather than clamping, and the throw is swallowed by
 its own render loop from the load handler, so the reader gets a blank map with
 no note. The union is clamped to the Mercator limit before it is used.
 
-**A shape can carry a color, and only a shape.** `geometryColor` repaints
+**Superseded, kept for the argument.** What follows described `geometryColor`,
+a scalar prop deleted when the paint became data-driven; the current shape is
+"simplestyle, and the two gates it passes" in `geojson.md` and the module table
+below. `geometryColor` repainted
 `geometry-outline` and `geometry-fill` from `applyView`, always to an explicit
 value rather than only when one is given: the panel reuses one map across
 selections, so leaving the previous paint in place drew the next event's shape in
@@ -1744,7 +1747,8 @@ single map across selections: opening a shapeless event and then a shape drew
 nothing, forever, because `getSource('geometry')` stayed undefined and `setData`
 was an optional chain that no-opped. An empty collection costs nothing.
 
-**The frame is the union of the markers and the geometry.** `spreadOf` answers
+**The frame is the union of the markers and the geometry.** `frameBounds`'s
+`nothingToFrame` guard answers
 only about markers and returns nothing below two of them, which is right for a
 set of pins and wrong for one polygon: a shape whose extent is larger than its
 `<point>` would open half off screen, or at a zoom picked for a point that
@@ -1831,9 +1835,10 @@ lifecycle, and four modules beside it:
 | Module | Holds |
 |---|---|
 | `paint.ts` | `fillOf`, `numberWithin`, `styleOf`, `paintGeometry`, `MapShape`. The gate an author-supplied color, width or opacity passes before it is paint |
-| `overlay.ts` | every `drawable*` builder, `markerFeatures`, `overlayDigest`, `MapMarker`, `MapGeometry`. What gets drawn |
+| `overlay.ts` | every `drawable*` builder, `markerFeatures`, `overlayDigest`, `MapMarker`, `MapEllipse`, `addMarkerImages`. What gets drawn |
 | `bounds.ts` | `overlayBounds`, `frameBounds`, `unionOf`, `openingAnchor`. Where the camera goes |
 | `label.ts` | `label`, `positionNote`, and the strings a map says when it cannot draw |
+| `use_map_instance.ts` | `MapProps`, and the hook that owns the MapLibre instance, `applyView` and every effect |
 
 **Not `style.ts`.** `style.spec.ts` already means the MapLibre *style
 specification* built by `buildStyle` in `maplibre.ts`. The simplestyle gate is
@@ -1843,8 +1848,8 @@ The split needed one type change rather than being a pure move: 21 helper
 signatures were typed as `Props['markers']` and its siblings, so a helper in its
 own module could not describe its own arguments without importing `Props` back
 from the component. `MapMarker` is now a named export beside `MapShape` and
-`MapGeometry`, and the dependency runs one way: `paint` → `overlay` → `bounds`,
-with `LocationMap` above all four.
+`MapEllipse`, and the dependency runs one way: `paint` → `overlay` → `bounds`,
+with `use_map_instance` above those three and `LocationMap` above it.
 
 Three `_ForTesting` wrappers went with it. `_frameBoundsForTesting`,
 `_drawableCellForTesting` and `_positionNoteForTesting` existed only because the
@@ -1858,7 +1863,7 @@ The specs now call the real functions.
 The lifecycle came out too: creation, the readiness deadline, the camera and
 overlay writes, and teardown are `use_map_instance.ts`, which returns the
 container to attach, the instance, `applyView`, and what to tell the reader.
-`LocationMap.tsx` is 185 lines of presentation.
+`LocationMap.tsx` is 184 lines of presentation.
 
 `MapProps` moved with it, because it is the map's contract rather than the
 component's: the hook consumes almost all of it and the component forwards it
@@ -1894,6 +1899,32 @@ and folding the color into the shape it inspects made that decision read
 `event.detail.colorArgb`, which a caller counting outlines need not have.
 `outlineOf` is colorless for that reason and `shapeFor` adds the color at the
 render; the split is not stylistic.
+
+### The write path, collapsed for real this time
+
+Phase 3 unified the MARKER half of `applyView`'s fork and left the shape half,
+while the commit said the path was one. The extent-only branch kept its own
+`shapesFeature` call, which meant a second `styleOf` call site on the branch
+GeoJSON always takes, and it silently dropped the ellipse.
+
+`drawableOverlay` now takes a nullable `lat`/`lon` and returns the plural
+collection when either is null, so both branches call it. The check that the
+duplication is gone is that `shapesFeature` and `styleOf` are no longer imported
+by `use_map_instance.ts` at all.
+
+It was found by mutation rather than by reading: deleting `style: styleOf(shape)`
+from the inline copy left all 806 tests green, because every style test mounted a
+POSITIONED map and GeoJSON is never positioned. The test that closes it is
+"a stated style survives the extent-only write path", the sibling of the
+marker-size one.
+
+### A verdict outlives its coordinate only where the coordinate changes
+
+The failure-clearing effect keyed on `[lat, lon]`. An extent-only surface passes
+a literal null for both, so on GeoJSON it ran once at mount and never again: one
+transient basemap failure latched "The map could not be loaded" for every later
+document, while the creation effect beside it retried on `overlayKey`. It keys on
+`overlayKey` too now.
 
 ### Two channel permissions, not one
 

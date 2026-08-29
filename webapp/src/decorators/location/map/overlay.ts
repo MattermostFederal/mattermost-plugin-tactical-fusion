@@ -14,15 +14,30 @@ import type {View} from './view';
 /**
  * One marked point.
  *
- * Named rather than left as `readonly MapMarker[] | undefined`, because every helper below took
- * that shape and a helper in its own module cannot reach into the component's
- * props for a type without the two importing each other.
+ * Named rather than left as an inline object type, because every helper below
+ * took that shape and a helper in its own module cannot reach into `MapProps`
+ * for a type without the two importing each other.
  */
+/**
+ * simplestyle's whole marker-size vocabulary, in the order Go declares it.
+ *
+ * A closed union rather than a string, because the set IS closed on both sides
+ * and every other Go/TypeScript duplicate in this repo carries a guard tying
+ * the two together. TestWebappMarkerSizesMatch is this one's.
+ */
+export const MARKER_SIZES = ['small', 'medium', 'large'] as const;
+
+export type MarkerSize = typeof MARKER_SIZES[number];
+
+export function isMarkerSize(value: string): value is MarkerSize {
+    return (MARKER_SIZES as readonly string[]).includes(value);
+}
+
 export interface MapMarker {
     lat: number;
     lon: number;
     color: string;
-    size?: string;
+    size?: MarkerSize;
 }
 
 /**
@@ -89,9 +104,9 @@ export function drawableMarkers(
  * image per size: the reticles are generated per color already, and three sizes
  * would treble that for a difference a multiplier expresses exactly.
  */
-const MARKER_SCALES: Record<string, number> = {small: 0.7, medium: 1, large: 1.5};
+const MARKER_SCALES: Record<MarkerSize, number> = {small: 0.7, medium: 1, large: 1.5};
 
-function markerScale(size: string | undefined): number | undefined {
+function markerScale(size: MarkerSize | undefined): number | undefined {
     // Object.hasOwn, not a bare index. A bare index walks the prototype chain,
     // so a props blob naming "constructor" or "__proto__" yields a function or
     // Object.prototype where TypeScript promises a number, and the comment
@@ -163,8 +178,8 @@ export function overlayDigest(
 export function drawableOverlay(
     ellipse: MapEllipse | undefined,
     geometries: readonly MapShape[] | undefined,
-    lat: number,
-    lon: number,
+    lat: number | null,
+    lon: number | null,
 ): FeatureCollection {
     const plural = shapesFeature((geometries ?? []).map((shape) => ({
         rings: shape.rings,
@@ -172,7 +187,12 @@ export function drawableOverlay(
         style: styleOf(shape),
     })));
 
-    if (ellipse === undefined) {
+    // An ellipse needs the map's anchor, so an extent-only map has none to draw
+    // it around. Both branches of applyView call this rather than one of them
+    // inlining the plural half: that fork is what dropped a stated marker-size
+    // on the only surface that draws it, and the same fork had already grown a
+    // second `styleOf` call site here.
+    if (ellipse === undefined || lat === null || lon === null) {
         return plural;
     }
 
