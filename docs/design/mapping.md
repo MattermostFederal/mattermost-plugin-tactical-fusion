@@ -1853,6 +1853,24 @@ reordered arguments, which is why `geometry.spec.ts` had been calling
 `frameBounds` with `geometries` last when the real signature takes it third.
 The specs now call the real functions.
 
+### `useMapInstance` owns the map; the component presents it
+
+The lifecycle came out too: creation, the readiness deadline, the camera and
+overlay writes, and teardown are `use_map_instance.ts`, which returns the
+container to attach, the instance, `applyView`, and what to tell the reader.
+`LocationMap.tsx` is 185 lines of presentation.
+
+`MapProps` moved with it, because it is the map's contract rather than the
+component's: the hook consumes almost all of it and the component forwards it
+whole. `MAP_HEIGHT` is re-exported from `LocationMap` so the three surfaces that
+size themselves against it keep their import path.
+
+The seam was chosen, not taken. Passing the eleven refs the effects share with
+`applyView` into a hook would have moved lines without separating anything;
+moving `applyView` in as well is what let the hook own `map` and `ready`
+outright, so the boundary is "give me what to draw" rather than "hold these for
+me".
+
 ### Two channel permissions, not one
 
 `overlayForPost` requires `read_channel` AND `read_channel_content`. It shipped

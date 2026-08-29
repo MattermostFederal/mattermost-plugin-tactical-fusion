@@ -1,10 +1,11 @@
 import type {GeoJSONSource, Map as MapLibreMap} from 'maplibre-gl';
 import React, {useEffect, useRef, useState} from 'react';
 
-import LocationMap, {_setMapObserverForTesting, _setReadyDeadlineForTesting} from './LocationMap';
+import LocationMap from './LocationMap';
 import type {MapGeometry} from './overlay';
 import type {MapShape} from './paint';
 import {DATA_MAX_ZOOM} from './span';
+import {_setMapObserverForTesting, _setReadyDeadlineForTesting} from './use_map_instance';
 import type {View} from './view';
 
 /**
