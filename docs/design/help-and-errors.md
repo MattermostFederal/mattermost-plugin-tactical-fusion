@@ -256,6 +256,17 @@ trade for a pre-1.0 plugin, and the thing it costs is old support tickets: a
 version is in the sidebar's empty state, which is the fastest thing to ask a
 reporter for.
 
+### Two GeoJSON codes exist only to avoid borrowing another's
+
+`HooksGeoJSONPropsUnmeasurable` is its own code rather than
+`HooksGeoJSONPropsTooLarge`, because the two say different things to whoever
+reads the log: one is this document being large, the other is something else on
+the post being unreadable, which is not the author's to act on.
+
+`HooksGeoJSONFileUnreadable` is its own code rather than the Cursor on Target
+one it used to borrow. An operator looking a number up must not be handed
+another format's explanation for their failure.
+
 - `WithCode(code, msg)` suffixes a string. `Errorf(code, format, ...)` builds an
   error already suffixed, for `preferences.go`, whose `err.Error()` reaches the
   reader verbatim.

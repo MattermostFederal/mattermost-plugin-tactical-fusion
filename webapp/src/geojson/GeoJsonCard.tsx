@@ -12,12 +12,6 @@ interface Props {
     compactDisplay?: boolean;
 }
 
-/**
- * What the card is, said in full before what the document is.
- *
- * GeoJSON is the format's own name and has no expansion worth writing, so
- * unlike the Cursor on Target card there is no abbreviation to carry beside it.
- */
 export const CARD_KIND = 'GeoJSON';
 
 /**

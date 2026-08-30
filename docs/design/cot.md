@@ -156,6 +156,21 @@ never render nothing.
 The CARD is the case where the difference mattered, and its link is gone. See
 "The card does not carry the attachment" below.
 
+### `postId` rides the payload, and is never read from props
+
+The payload's `postId` is set by the post body, not decoded by `fromProps`.
+Props do not carry it, and could not be trusted for it if they did. It rides the
+payload into the sidebar, which is what lets the card and the panel address the
+same map page. Empty is the honest value for a harness or a card built from a
+payload directly, and it costs exactly the "Open larger" link.
+
+### The example messages are measured as they will be posted
+
+`cotExampleMessages` returns the body of every example the command will post, so
+the size gate runs against the real thing. The attachment examples carry a lead
+and no fence, and are measured that way: a gate that measured a fenced form the
+command never posts would pass a run that then failed.
+
 ### The post type is forgeable, and is stripped
 
 `Post.IsValid` accepts any `custom_`-prefixed type from an ordinary REST client,

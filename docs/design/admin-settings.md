@@ -21,6 +21,13 @@ pays: link previews and image embeds are dropped, and Markdown written around
 an event renders as plain text. The FILE attachment list is not among them; see
 [`mapping.md`](mapping.md), "What setting `Post.Type` costs".
 
+The counts written in prose are the one thing about the settings that no test
+would otherwise read, and they are stated in four places: this file, two help
+pages and `CLAUDE.md`. Adding the GeoJSON section left the design note and the
+help pages disagreeing, none of them true of the same manifest.
+`TestTheStatedSettingCountsMatchTheManifest` is what holds all four to
+`plugin.json`.
+
 `plugin.json` declares twenty switches and two map-package settings in **four
 `settings_schema.sections`**:
 

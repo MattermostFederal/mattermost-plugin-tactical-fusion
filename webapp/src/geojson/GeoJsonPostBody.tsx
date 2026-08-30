@@ -24,13 +24,6 @@ const styles: Record<string, React.CSSProperties> = {
     files: {opacity: 0.75},
 };
 
-/**
- * The fallback, which may never render nothing.
- *
- * A file-case post has an empty message by construction, and a post whose type
- * this plugin owns has already lost its embeds, though NOT its files, so a
- * props loss would otherwise leave a permanently blank post with no way out.
- */
 function Fallback({post}: {post?: PostLike}) {
     const message = post?.message ?? '';
     if (message !== '') {

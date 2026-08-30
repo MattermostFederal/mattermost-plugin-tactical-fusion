@@ -246,20 +246,6 @@ export function mapLabel(markers: number, shapes: number): string {
     return parts.join(' and ');
 }
 
-/**
- * Whether this document puts anything on a map at all.
- *
- * `unplaceable` is the server's refusal to draw: Go could not confirm the
- * document's axis order, and placing it anyway would pin a position nobody
- * stated. It is checked here rather than in the wrapper, because the wrapper's
- * other gates are the reader's sections and the admin's switches, which the map
- * page rightly skips.
- *
- * Every caller that decides whether to render the canvas MUST ask this rather
- * than restating it. The map page rendered the canvas directly and inherited
- * none of the wrapper's gates, so it drew what every other surface declined to,
- * and a second copy of the test in the caller is how that comes back.
- */
 export function drawsNothing(payload: GeoJsonPayload): boolean {
     if (payload.unplaceable) {
         return true;

@@ -1808,6 +1808,31 @@ control being broken on precisely the posts where a bigger map is worth most.
 travels in the URL there either, and the whole overlay is re-read from stored
 props at render.
 
+### `drawsNothing` is the single authority on an empty overlay
+
+Both canvases answer a payload that draws nothing with `null`: `unplaceable`,
+which is Go's refusal to place a document whose axis order it could not confirm,
+and an event or feature set that yields no marker and no shape. The overlay page
+rendered that `null` inside a framed window with a populated label bar, so a
+document that drew nothing appeared as an empty basemap captioned "1 event".
+
+The test lives in one exported `drawsNothing` per format, which the canvas and
+the page both call. It was tempting to restate the condition in the page, since
+it already had the counts for the label. That is how the defect arose in the
+first place: the page renders the canvas directly and inherits none of the
+wrapper's gates, so a second copy of the test in the caller is exactly how the
+two come apart again.
+
+### One event keeps its coordinate address
+
+"Open larger" chooses between the two addresses rather than always using the
+post. A single drawable event still links to `?f=&v=`, because that page carries
+the token and a way through to every reading of it, which the post form cannot
+offer. A block has no coordinate at all: linking the first event's page would
+frame one position and say nothing about the rest, the same argument that keeps
+the accuracy ring off a block map. A card with no post id, which is what a
+harness builds, has nothing to address and so offers no link.
+
 ### The shell carries the props blob, not markers and shapes
 
 The obvious alternative was to distil the post into markers and shapes in Go and

@@ -41,11 +41,6 @@ test('one feature is singular in the title', async ({mount, page}) => {
     await expect(component.getByTestId('rhs-title')).toContainText('GeoJSON: 1 feature');
 });
 
-/*
- * A lone point whose position the location grammar will stand behind is handed
- * to the coordinate tools. Everything else is text: a polygon has no one
- * position, and a coarse coordinate is one the grammar refuses.
- */
 test.describe('a point row', () => {
     test('links into the coordinate tools when the server gave it an identity', async ({mount, page}) => {
         await stubPreferencesRoute(page);

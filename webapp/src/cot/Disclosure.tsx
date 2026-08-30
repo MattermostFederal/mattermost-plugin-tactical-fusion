@@ -25,13 +25,6 @@ const styles: Record<string, React.CSSProperties> = {
     body: {marginTop: '8px'},
 };
 
-/**
- * Which way the caret points, and why it is a caret rather than a word.
- *
- * `data-state` is the assertion surface. The rotation is a transform, so a test
- * reading the rendered geometry would be asserting a matrix, and the two paths
- * differ only in their `d`, which is not a state anything should have to parse.
- */
 const ChevronGlyph: React.FC<{open: boolean}> = ({open}) => (
     <svg
         width='16'

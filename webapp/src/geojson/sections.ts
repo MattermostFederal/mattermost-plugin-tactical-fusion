@@ -1,13 +1,4 @@
 /**
- * The groups the GeoJSON sidebar panel is drawn as, in render order.
- *
- * Mirrors `Sections` in `server/geojson/sections.go`, and
- * `geojson_sync_test.go` holds the two to the same ids in the same order. Two
- * things have to agree about what the sections are: the server validates a
- * hidden-section id against them, and this panel renders them.
- */
-
-/**
  * A section id, which survives its label being reworded.
  *
  * These reach the KV store in a reader's hidden-section list, so they are a

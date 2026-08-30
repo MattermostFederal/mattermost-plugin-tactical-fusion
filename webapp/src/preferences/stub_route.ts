@@ -29,7 +29,6 @@ export interface StubOptions {
     /** What the server already has stored, for the Cursor on Target editor. */
     storedHiddenSections?: string[];
 
-    /** What the server already has stored, for the GeoJSON editor. */
     storedGeoJsonSections?: string[];
 
     /**

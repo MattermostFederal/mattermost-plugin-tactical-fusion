@@ -18,12 +18,6 @@ const ALL_HIDDEN = 'Every section is hidden, so the panel will show nothing but 
 const FOOTER = 'These apply to the sidebar. The card in the channel is unchanged, and so is what ' +
     'is stored in the message.';
 
-/**
- * The GeoJSON panel's editor: which groups a reader wants to see.
- *
- * Its own stored list rather than the Cursor on Target one, because the two
- * panels have different sections: hiding "Map" here must not hide it there.
- */
 const Customize: React.FC<Props> = ({onClose}) => {
     const {preferences} = usePreferences();
     const {features} = useFeatures();

@@ -18,12 +18,6 @@ import {usePreferences} from '../preferences/store';
 
 export const PANEL_TITLE = 'GeoJSON';
 
-/**
- * The sidebar header while the editor has the panel.
- *
- * Matches the link that opens it, so the reader is never told two different
- * names for where they are.
- */
 export const EDITOR_TITLE = 'Customize your view';
 
 export const SECTION_FAILED = 'This document could not be rendered.';

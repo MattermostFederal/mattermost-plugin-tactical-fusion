@@ -11,9 +11,6 @@ import {clearSelection} from '../decorators/selection';
 import {_resetForTesting as resetFeaturesStore} from '../features/store';
 import {_resetForTesting as resetPreferencesStore} from '../preferences/store';
 
-// Stubbed at module scope for the reason CopyButtonHarness records. Chromium
-// denies a real writeText here, so without this the copy button renders (the
-// clipboard object exists) and every write is refused.
 export let copied = '';
 
 Object.defineProperty(navigator, 'clipboard', {

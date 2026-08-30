@@ -132,9 +132,6 @@ test('every label is drawn beneath the cell and the pin', () => {
     const indexOf = (id: string) => style.layers.findIndex((layer) => layer.id === id);
     const overlay = Math.min(indexOf('cell-fill'), indexOf('cell-outline'), indexOf('pin'));
 
-    // The PIN is a symbol layer too, and always has been on a surface that
-    // colors it; it is now built unconditionally. It is not a label and is
-    // supposed to be on top, so it is excluded by id rather than by type.
     const symbols = style.layers.
         map((layer, i) => ({type: layer.type, id: layer.id, i})).
         filter((entry) => entry.type === 'symbol' && !entry.id.startsWith('pin'));

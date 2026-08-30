@@ -326,9 +326,6 @@ test('the panel shows the source as posted, reachable without a pointer', async 
     await expect(pane).toHaveAttribute('tabindex', '0');
 });
 
-// A disclosure styled like the group headings around it reads as a heading with
-// a small triangle, which is how the first one shipped. The caret is what says
-// the row opens, so it has to turn over rather than sit there pointing one way.
 test('a collapsed disclosure says it can be opened, and says so again when it is', async ({mount}) => {
     const component = await mount(<CotPanelHarness src='<event uid="X"/>'/>);
 

@@ -28,22 +28,6 @@ function mapPageHref(event: CotEvent): string {
     return withTheme(`${pluginBaseUrl()}/map?${params.toString()}`);
 }
 
-/**
- * Where "Open larger" goes, which depends on what is being drawn.
- *
- * ONE drawable event addresses the map page by its own coordinate, as it always
- * has: that page carries the token and a way through to every reading of it,
- * which a post id cannot offer.
- *
- * A BLOCK has no coordinate at all. Linking the first event's page would frame
- * one position and say nothing about the rest, which is the same argument that
- * keeps the accuracy ring off a block map, so a block addresses the page by the
- * post instead and the page redraws the whole block. Before that existed a
- * block simply had no link, which read as the control being broken.
- *
- * No post id means no link. A card built from a payload directly, as a harness
- * does, has nothing to address.
- */
 function largerHref(pageEnabled: boolean, only: CotEvent | undefined, postId: string | undefined): string | undefined {
     if (!pageEnabled) {
         return undefined;
@@ -271,12 +255,6 @@ export function _shapeForTesting( // eslint-disable-line no-underscore-dangle, @
     return shapeFor(event);
 }
 
-/**
- * Whether these events put anything on a map at all.
- *
- * Every caller that decides whether to render the canvas MUST ask this rather
- * than restating it, for the reason GeoJSON's own `drawsNothing` gives.
- */
 export function drawsNothing(events: readonly CotEvent[]): boolean {
     return markersFor(drawableEvents(events)).length === 0;
 }

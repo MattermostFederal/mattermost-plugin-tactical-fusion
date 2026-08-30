@@ -64,15 +64,6 @@ export interface CotPreferences {
 }
 
 export interface GeoJsonPreferences {
-
-    /**
-     * The groups to leave out of the GeoJSON sidebar panel, by id. Empty means
-     * every section.
-     *
-     * Its own key rather than a field on CotPreferences: the two panels have
-     * different sections, and sharing a key would mean hiding "Map" on one hid
-     * it on the other.
-     */
     hiddenSections: GeoJsonSectionID[];
 }
 

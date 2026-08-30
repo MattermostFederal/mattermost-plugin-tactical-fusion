@@ -127,11 +127,6 @@ var cotExampleOrder = []cotExample{
 
 // cotExampleCount is how many events this install will actually post, which is
 // what the caller counts a failure against.
-// cotExampleMessages is the message body of every example this command will
-// post, for the size gate that runs before anything is written.
-//
-// The attachment examples carry a lead and no fence, so they are measured as
-// what they will actually be.
 func (p *Plugin) cotExampleMessages() []string {
 	if !p.cotEnabled() {
 		return nil

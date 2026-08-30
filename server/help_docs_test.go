@@ -519,10 +519,6 @@ func escapeForHelp(s string) string {
 	return s
 }
 
-// The counts in prose are the one thing about the settings that no other test
-// reads, and they are stated in four places. Adding the GeoJSON section left
-// the design note at "twenty-two across five" and the two help pages at
-// "twenty-four", none of which had ever been true of the same manifest.
 func TestTheStatedSettingCountsMatchTheManifest(t *testing.T) {
 	switches, off := 0, []string{}
 	for _, setting := range loadSettings(t).allSettings() {

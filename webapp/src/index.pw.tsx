@@ -59,10 +59,6 @@ test('registers the tooltip exactly once', async ({mount, page}) => {
 // One registration per declared post type, and only for a decorator that has an
 // inline view to put in it. DTG declares neither, so a lone date-time group
 // stays an ordinary post.
-//
-// Cursor on Target and GeoJSON are registered beside them and unconditionally:
-// neither is a decorator, so neither is in the registry loop, and a post already
-// stamped must keep rendering after an admin turns the feature off.
 test('registers a post body for every decorator that declares one', async ({mount, page}) => {
     await mount(<IndexHarness/>);
 

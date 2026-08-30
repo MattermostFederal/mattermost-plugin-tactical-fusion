@@ -67,14 +67,6 @@ export function mapPageHref(payload: LocationPayload): string {
     return withTheme(`${pluginBaseUrl()}/map?${params.toString()}`);
 }
 
-/**
- * The map page for a STAMPED POST, which has no coordinate to be addressed by.
- *
- * A block of Cursor on Target events and a GeoJSON document are overlays, not
- * positions: there is no canonical token that names either, so the post id is
- * the address. The server re-reads the post's props at render, so nothing
- * derived travels here any more than it does in the coordinate form.
- */
 export function overlayPageHref(postId: string): string {
     const params = new URLSearchParams({post: postId});
 

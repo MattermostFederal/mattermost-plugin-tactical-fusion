@@ -117,13 +117,6 @@ test('an absent cot key reads as nothing hidden', () => {
     expect(fromWire({dtg: {}}).cot.hiddenSections).toEqual([]);
 });
 
-/*
- * "Restore defaults" is a DELETE, so the emptiness test decides whether a
- * reader's stored choices survive a reset in another section.
- *
- * geojson was declared in the cast and never tested, so a reader who had hidden
- * only GeoJSON sections lost them when they reset the CoT panel.
- */
 test('a reader who has hidden only GeoJSON sections has made a choice', () => {
     expect(wireHasNoChoices({geojson: {hidden_sections: ['map']}})).toBe(false);
 });

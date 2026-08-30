@@ -15,9 +15,6 @@ func TestSoleObjectSpanFindsTheWholeObject(t *testing.T) {
 	}
 }
 
-// A brace inside a string is not structure. Without this a document carrying
-// "}" in a property value ends the span early, and the caller is handed a
-// truncated object that fails to parse.
 func TestSoleObjectSpanIgnoresBracesInStrings(t *testing.T) {
 	block, ok := SoleObjectSpan(`{"name":"a } brace","b":2}`)
 	if !ok {
@@ -50,8 +47,6 @@ func TestSoleObjectSpanRefusesAMessageWithNoObject(t *testing.T) {
 	}
 }
 
-// An author who fenced something has said it is code. Reading it anyway is the
-// corruption protected ranges exist to stop.
 func TestSoleObjectSpanNeverReachesIntoCode(t *testing.T) {
 	cases := map[string]string{
 		"a fenced block":    "```\n{\"a\":1}\n```",

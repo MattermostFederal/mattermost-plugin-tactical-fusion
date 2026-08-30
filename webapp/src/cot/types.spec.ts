@@ -456,8 +456,6 @@ angle_deg: '30',
         expect(drawn).toEqual({major: 400, minor: 250, angle: 30, color: undefined});
     });
 
-    // The server refuses a shape it will not stand behind. Drawing one anyway
-    // made the card say "not drawn" over a shape the map had drawn.
     test('a shape the server refused is not drawn', () => {
         const drawn = ellipseOf({
             kind: 'ellipse',

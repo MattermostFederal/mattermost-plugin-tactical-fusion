@@ -36,15 +36,6 @@ export interface LocationPageData {
     packages: string[];
 }
 
-/**
- * A stamped post's overlay, which is not a coordinate.
- *
- * A block of Cursor on Target events and a GeoJSON document have no canonical
- * token, so there is no `data-f` here and no conversion: everything drawn comes
- * out of `props`, read by the card's own reader rather than by a second one
- * written for this page. `kind` is the post type, which is already held to the
- * server's by a sync test, so this mode introduced no new vocabulary to drift.
- */
 export interface OverlayPageData {
     mode: 'overlay';
     kind: string;

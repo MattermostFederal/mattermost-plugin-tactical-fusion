@@ -176,9 +176,7 @@ func TestWebappGeoJSONShapeMatches(t *testing.T) {
 	// cannot produce it and it is asserted separately below.
 	optional := map[string]bool{"properties_dropped": true, "ring_counts": true, "alt": true}
 
-	// Keys the reader names that are not blob members: unplaceable is a
-	// presence key the widest rung leaves empty, and `type` belongs to the
-	// GeoJSON document rather than to the props.
+	// unplaceable is a presence key the widest rung leaves empty.
 	wireOnlyKeys := map[string]bool{"unplaceable": true}
 
 	for key := range goKeys {

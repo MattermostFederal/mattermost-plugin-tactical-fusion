@@ -13,7 +13,6 @@ interface Props {
 
     version?: number;
 
-    /** The post the card was read from, which is what "Open larger" addresses. */
     postId?: string;
     source?: string;
     lead?: string;
