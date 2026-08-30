@@ -5,6 +5,10 @@ import GeoJsonPostBodyHarness from './GeoJsonPostBodyHarness';
 import {expect, test} from '../../playwright/ct-coverage';
 import {stubFeaturesRoute} from '../features/stub_route';
 
+test.beforeEach(async ({page}) => {
+    await stubFeaturesRoute(page);
+});
+
 test('renders the card for a well formed post', async ({mount}) => {
     const component = await mount(
         <GeoJsonPostBodyHarness features={[{name: 'Depot', kind: 'Point'}]}/>,
@@ -321,9 +325,7 @@ test.describe('measurements', () => {
  * post id is the address, and the page redraws the whole document.
  */
 test.describe('Open larger', () => {
-    test('addresses the map page by the post', async ({mount, page}) => {
-        await stubFeaturesRoute(page);
-
+    test('addresses the map page by the post', async ({mount}) => {
         const component = await mount(
             <GeoJsonPostBodyHarness postId='post0000000000000000000000'/>,
         );
@@ -333,9 +335,7 @@ test.describe('Open larger', () => {
         await expect(larger).not.toHaveAttribute('href', /[?&]f=/);
     });
 
-    test('is absent when nothing knows which post this is', async ({mount, page}) => {
-        await stubFeaturesRoute(page);
-
+    test('is absent when nothing knows which post this is', async ({mount}) => {
         const component = await mount(<GeoJsonPostBodyHarness postId=''/>);
 
         await expect(component.getByTestId('geojson-map')).toBeVisible();

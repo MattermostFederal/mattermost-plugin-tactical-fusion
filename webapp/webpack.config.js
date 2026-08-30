@@ -82,8 +82,9 @@ const plugins = [
         __TF_BASEMAP_DIGEST__: JSON.stringify(basemapDigest()),
     }),
 ];
+const watchPlugins = [];
 if (NPM_TARGET === 'build:watch' || NPM_TARGET === 'debug:watch') {
-    plugins.push({
+    watchPlugins.push({
         apply: (compiler) => {
             compiler.hooks.watchRun.tap('WatchStartPlugin', () => {
                 console.log('Change detected. Rebuilding webapp.');
@@ -224,7 +225,7 @@ const shared = {
 // afterwards, silently inherited `devtool: 'eval-source-map'`. That is eval, and
 // the pages are served under script-src 'self' with no 'unsafe-eval', so a debug
 // build produced a page bundle its own policy refused to run.
-const config = {...shared};
+const config = {...shared, name: 'webapp'};
 
 if (isDev) {
     Object.assign(config, {devtool: 'eval-source-map'});
@@ -269,7 +270,10 @@ const pageConfig = {
         // content-hashed chunk from every previous build ships forever.
         clean: true,
     },
-    plugins,
+    name: 'page',
+
+    dependencies: ['webapp'],
+    plugins: [...plugins, ...watchPlugins],
 };
 
 module.exports = [config, pageConfig];
