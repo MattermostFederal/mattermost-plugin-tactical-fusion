@@ -266,31 +266,21 @@ func (p *Plugin) geoJSONFileName(name string) bool {
 	return false
 }
 
-// messageShowsGeoJSON reports whether the visible message is a GeoJSON document
-// THIS CONFIGURATION would read, and is what keeps an attachment from beating
-// it.
-//
-// Format order is CoT then GeoJSON, and each format asks its own fence, bare
-// element and attachment questions in that order. That leaves one collision: a
-// post carrying a .cot attachment AND a visible GeoJSON document would stamp as
-// CoT from the file, and the reader would get a card describing a document
-// their author never showed them. cotFileSource refuses the attachment in that
-// case, which keeps "the visible message always wins over an attachment" true
-// across formats without restructuring the hook.
-//
-// It asks the plugin rather than testing one spelling, because a fixed test was
-// wrong in BOTH directions. It ignored the switch, so with EnableGeoJSON off a
-// geojson fence still suppressed a perfectly good .cot attachment and the
-// reader got no card at all; and it knew only the `geojson` spelling, so with
-// EnableGeoJSONUnlabeled on a visible `json` fence or a bare document lost to
-// the attachment it was supposed to beat. Deferring to geoJSONSource is what
-// keeps the two answers the same by construction.
 func (p *Plugin) messageShowsGeoJSON(post *model.Post) bool {
 	if !p.geoJSONEnabled() {
 		return false
 	}
 
 	source, ok := p.messageGeoJSONSource(post)
+	if !ok || source.Kind != geojson.SourceFence {
+		return false
+	}
 
-	return ok && source.Kind == geojson.SourceFence
+	if labeledGeoJSONFence(post.Message) {
+		return true
+	}
+
+	_, err := geojson.Parse([]byte(source.Text))
+
+	return err == nil
 }

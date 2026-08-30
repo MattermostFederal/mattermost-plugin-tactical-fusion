@@ -741,3 +741,62 @@ func TestALabeledRefusalIsStillLogged(t *testing.T) {
 		t.Fatal("a labeled refusal wrote no warning")
 	}
 }
+
+func TestABraceInTheMessageDoesNotCostThePostItsCotAttachment(t *testing.T) {
+	for _, message := range []string{"{5}", "set it to {5}", `{"a":1}`, "```json\nnot a document\n```"} {
+		p := unlabeled(t)
+		api := p.API.(*fakeAPI)
+		api.files = map[string]*model.FileInfo{
+			testFileID: {Id: testFileID, CreatorId: testUserID, Name: "event.cot", Size: int64(len(cotEventXML))},
+		}
+		api.fileContent = map[string][]byte{testFileID: []byte(cotEventXML)}
+
+		post := &model.Post{Message: message, FileIds: model.StringArray{testFileID}, UserId: testUserID}
+
+		updated := p.decoratePost(post, hookRef)
+		if updated == nil {
+			t.Fatalf("%q: the post was not stamped at all, so the attachment was suppressed by a source that will not parse", message)
+		}
+		if updated.Type != cot.PostType {
+			t.Errorf("%q: Type = %q, want %q", message, updated.Type, cot.PostType)
+		}
+	}
+}
+
+func TestADocumentThatParsesStillBeatsTheAttachment(t *testing.T) {
+	p := unlabeled(t)
+	api := p.API.(*fakeAPI)
+	api.files = map[string]*model.FileInfo{
+		testFileID: {Id: testFileID, CreatorId: testUserID, Name: "event.cot", Size: int64(len(cotEventXML))},
+	}
+	api.fileContent = map[string][]byte{testFileID: []byte(cotEventXML)}
+
+	post := &model.Post{Message: geoPoint, FileIds: model.StringArray{testFileID}, UserId: testUserID}
+
+	updated := p.decoratePost(post, hookRef)
+	if updated == nil || updated.Type != geojson.PostType {
+		t.Fatal("a readable document in the message lost to the attachment it is supposed to beat")
+	}
+}
+
+func TestALabeledFenceStillSuppressesTheAttachmentAndSaysWhy(t *testing.T) {
+	p := unlabeled(t)
+	api := p.API.(*fakeAPI)
+	api.files = map[string]*model.FileInfo{
+		testFileID: {Id: testFileID, CreatorId: testUserID, Name: "event.cot", Size: int64(len(cotEventXML))},
+	}
+	api.fileContent = map[string][]byte{testFileID: []byte(cotEventXML)}
+
+	post := &model.Post{
+		Message: geoFence("geojson", "not a document"),
+		FileIds: model.StringArray{testFileID},
+		UserId:  testUserID,
+	}
+
+	if updated := p.decoratePost(post, hookRef); updated != nil && updated.Type != "" {
+		t.Fatalf("a labeled fence stopped suppressing the attachment: Type = %q", updated.Type)
+	}
+	if len(api.ephemeral) == 0 || !strings.Contains(api.ephemeral[0].Message, "TF-11010") {
+		t.Fatal("the author was not told the fence they labeled could not be read")
+	}
+}

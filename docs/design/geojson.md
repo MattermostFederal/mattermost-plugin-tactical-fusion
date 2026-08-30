@@ -764,3 +764,39 @@ it has always used.
   complete one once it is stamped.
 - A stamped post is never re-read. There is no `MessageWillBeUpdated` hook, so
   editing a document's text does not redraw it, exactly as for a decorator.
+
+## The visible message beats an attachment, but only if it is really a document
+
+Format order is Cursor on Target then GeoJSON, and each format asks its own
+fence, bare element and attachment questions in that order. That leaves one
+collision: a post carrying a `.cot` attachment AND a visible GeoJSON document
+would stamp as Cursor on Target from the file, and the reader would get a card
+describing a document their author never showed them. `cotFileSource` refuses
+the attachment in that case, which keeps "the visible message always wins over
+an attachment" true across formats without restructuring the hook.
+
+`messageShowsGeoJSON` is that test, and it has been wrong three times, each in a
+different direction.
+
+It began as a fixed test for one spelling. That ignored the switch, so with
+`EnableGeoJSON` off a `geojson` fence still suppressed a perfectly good `.cot`
+attachment and the reader got no card at all; and it knew only the `geojson`
+spelling, so with `EnableGeoJSONUnlabeled` on a visible `json` fence or a bare
+document lost to the attachment it was supposed to beat. Deferring to
+`geoJSONSource` fixed both, and keeps the two answers the same by construction.
+
+It then answered "is there a GeoJSON-shaped source here", which is not the same
+question as "will GeoJSON draw a card". With the unlabeled switch on,
+`SoleObjectSpan` matches any brace pair, so `{5}`, `set it to {5}` and
+`{"a":1}` each classified as a source, suppressed the attachment, and then
+failed to parse. The post got nothing at all: no GeoJSON card, and not the
+Cursor on Target card its attachment had earned. An ambiguous source therefore
+suppresses nothing unless `geojson.Parse` succeeds, which is the same gate the
+stamp itself applies.
+
+A fence the author LABELED `geojson` still suppresses whether or not it parses,
+which is why the test is `labeledGeoJSONFence` and not the parse alone. That
+label is the author saying they meant a document, and it is already what earns
+them the `TF-11010` notice and the warn. Lifting suppression there would hand
+them a Cursor on Target card and say nothing about the fence they got wrong,
+which is the one case where silence is not the kind answer.
