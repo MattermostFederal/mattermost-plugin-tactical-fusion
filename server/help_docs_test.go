@@ -545,6 +545,30 @@ func TestTheStatedSettingCountsMatchTheManifest(t *testing.T) {
 		}
 	}
 
+	for _, claim := range []struct {
+		path   string
+		phrase string
+	}{
+		{
+			path:   filepath.Join("..", "docs", "design", "admin-settings.md"),
+			phrase: spellNumber(t, switches) + " switches across " + spellNumber(t, sections) + " sections",
+		},
+		{
+			path:   filepath.Join("..", "CLAUDE.md"),
+			phrase: "The " + spellNumber(t, switches) + " switches, the two map-package settings, the " + spellNumber(t, sections) + " sections",
+		},
+	} {
+		// #nosec G304 -- fixed, repo-relative path
+		data, err := os.ReadFile(claim.path)
+		if err != nil {
+			t.Fatalf("failed to read %s: %v", claim.path, err)
+		}
+		if !strings.Contains(strings.ToLower(string(data)), strings.ToLower(claim.phrase)) {
+			t.Errorf("%s does not state %q; the manifest has %d switches in %d sections",
+				claim.path, claim.phrase, switches, sections)
+		}
+	}
+
 	page := readHelpFile(t, "admin.html")
 	for _, key := range off {
 		if !strings.Contains(page, "<code>"+key+"</code> and") && !strings.Contains(page, "and <code>"+key+"</code>") {

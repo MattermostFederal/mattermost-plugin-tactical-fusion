@@ -26,10 +26,13 @@ would otherwise read, and they are stated in four places: this file, two help
 pages and `CLAUDE.md`. Adding the GeoJSON section left the design note and the
 help pages disagreeing, none of them true of the same manifest.
 `TestTheStatedSettingCountsMatchTheManifest` is what holds all four to
-`plugin.json`.
+`plugin.json`: the two help pages, this file, and `CLAUDE.md`. It derives the
+totals from the manifest rather than restating them, so adding a switch or a
+section fails the test until the prose is caught up.
 
-`plugin.json` declares twenty switches and two map-package settings in **four
-`settings_schema.sections`**:
+The **first four** of those sections hold twenty of the switches, plus the two
+map-package settings, which are a path and a control rather than switches. The
+Cursor on Target and GeoJSON sections below add the remaining five:
 
 - **Date and time**: `EnableDTG` with `EnableDTGMilitary`, `EnableDTGTimestamp`
   and `EnableDTGMoniker`.
@@ -39,8 +42,7 @@ help pages disagreeing, none of them true of the same manifest.
   `EnableLocationPlusCode` and `EnableLocationMoniker`.
 - **Maps**: `EnableLocationMap` with `EnableLocationMapPanel`,
   `EnableLocationMapInline` and `EnableLocationMapPage`, then
-  `LocationMapPackagesDir` and `LocationMapPackages`, which are a path and a
-  control rather than switches. See
+  `LocationMapPackagesDir` and `LocationMapPackages`. See
   [`mapping.md`](mapping.md#the-openstreetmap-detail-tier-above-the-seam) for
   why the storage is a real directory.
 - **Airfields**: `EnableAirport` with `EnableAirportTable`.
