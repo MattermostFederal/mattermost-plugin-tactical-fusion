@@ -140,7 +140,7 @@ jobs:
       # won't produce both SARIFs.
       - name: Upload Go CodeQL SARIF to code scanning
         if: always() && hashFiles('dist/codeql-go.sarif') != ''
-        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
           sarif_file: dist/codeql-go.sarif
           category: codeql-go-release
@@ -151,7 +151,7 @@ jobs:
 
       - name: Upload JS/TS CodeQL SARIF to code scanning
         if: always() && hashFiles('dist/codeql-js.sarif') != ''
-        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
           sarif_file: dist/codeql-js.sarif
           category: codeql-js-release
