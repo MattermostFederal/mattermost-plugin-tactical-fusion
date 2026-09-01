@@ -1828,10 +1828,12 @@ two come apart again.
 "Open larger" chooses between the two addresses rather than always using the
 post. A single drawable event still links to `?f=&v=`, because that page carries
 the token and a way through to every reading of it, which the post form cannot
-offer. A block has no coordinate at all: linking the first event's page would
-frame one position and say nothing about the rest, the same argument that keeps
-the accuracy ring off a block map. A card with no post id, which is what a
-harness builds, has nothing to address and so offers no link.
+offer. A block has no SINGLE coordinate to be addressed by. It has one per
+drawable event, which is what its markers are built from, and no one of them
+names the block: linking the first event's page would frame that position and
+say nothing about the rest, the same argument that keeps the accuracy ring off a
+block map. A card with no post id, which is what a harness builds, has nothing
+to address and so offers no link.
 
 ### The shell carries the props blob, not markers and shapes
 
