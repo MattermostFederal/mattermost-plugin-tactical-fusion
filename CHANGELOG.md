@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.0](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/compare/v0.3.0...v0.4.0) (2026-09-01)
+
+
+### Features
+
+* render GeoJSON documents, and open an overlay as a full-window map ([#30](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/30)) ([83a79cb](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/83a79cb2a20c670807b1f45c84171df33bd83762))
+
+
+### Dependencies
+
+* **actions:** bump the actions-minor-patch group across 1 directory with 3 updates ([#34](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/34)) ([7d469b4](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/7d469b4702e3577edcbb704ba1f5057d520f897e))
+* **webapp:** bump the npm-minor-patch group across 1 directory with 4 updates ([#31](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/31)) ([2af6db5](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/2af6db5f34065fb4c2401c589380aa18f0967119))
+
 ## [0.3.0](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/compare/v0.2.0...v0.3.0) (2026-08-27)
 
 
