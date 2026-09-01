@@ -90,7 +90,7 @@ jobs:
       # in the Security tab.
       - name: Scan Go SBOM (Grype -> SARIF)
         id: grype-server
-        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
         with:
           sbom: dist/sbom/server-sbom.json
           fail-build: true
@@ -115,14 +115,14 @@ jobs:
       - name: Upload Go Grype SARIF to code scanning
         if: always() && steps.grype-server.outputs.sarif != ''
         continue-on-error: ${{ github.event.repository.private }}
-        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
           sarif_file: ${{ steps.grype-server.outputs.sarif }}
           category: grype-server
 
       - name: Scan webapp SBOM (Grype -> SARIF)
         id: grype-webapp
-        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
         with:
           sbom: dist/sbom/webapp-sbom.json
           fail-build: true
@@ -142,7 +142,7 @@ jobs:
       - name: Upload webapp Grype SARIF to code scanning
         if: always() && steps.grype-webapp.outputs.sarif != ''
         continue-on-error: ${{ github.event.repository.private }}
-        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
           sarif_file: ${{ steps.grype-webapp.outputs.sarif }}
           category: grype-webapp
@@ -202,7 +202,7 @@ jobs:
       - name: Upload Go CodeQL SARIF to code scanning
         if: always() && hashFiles('dist/codeql-go.sarif') != ''
         continue-on-error: ${{ github.event.repository.private }}
-        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
           sarif_file: dist/codeql-go.sarif
           category: codeql-go
@@ -211,7 +211,7 @@ jobs:
       - name: Upload JS/TS CodeQL SARIF to code scanning
         if: always() && hashFiles('dist/codeql-js.sarif') != ''
         continue-on-error: ${{ github.event.repository.private }}
-        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
           sarif_file: dist/codeql-js.sarif
           category: codeql-js
