@@ -1,6 +1,6 @@
 import {expect, test} from '@playwright/test';
 
-import {EMPTY_PREFERENCES, fromWire, toWire} from './types';
+import {EMPTY_PREFERENCES, fromWire, toWire, wireHasNoChoices} from './types';
 
 // The payload comes off the network, so every shape that is not the expected
 // one has to degrade to the defaults rather than reach Intl or a style
@@ -30,6 +30,7 @@ test('reads a well-formed blob', () => {
         dtg: {zones: [{iana: 'UTC'}, {iana: 'Asia/Tokyo', name: 'Yokota'}], urgentWithinMinutes: 15},
         location: {hiddenRows: []},
         cot: {hiddenSections: []},
+        geojson: {hiddenSections: []},
     });
 });
 
@@ -70,10 +71,12 @@ test('writes the names the server reads', () => {
         dtg: {zones: [{iana: 'UTC'}], urgentWithinMinutes: 15},
         location: {hiddenRows: ['ddm']},
         cot: {hiddenSections: ['payload']},
+        geojson: {hiddenSections: ['properties']},
     })).toEqual({
         dtg: {zones: [{iana: 'UTC'}], urgent_within_minutes: 15},
         location: {hidden_rows: ['ddm']},
         cot: {hidden_sections: ['payload']},
+        geojson: {hidden_sections: ['properties']},
     });
 });
 
@@ -85,6 +88,7 @@ test('round-trips', () => {
         },
         location: {hiddenRows: ['ddm' as const, 'datum' as const]},
         cot: {hiddenSections: ['payload' as const, 'flow' as const]},
+        geojson: {hiddenSections: ['properties' as const, 'source' as const]},
     };
 
     expect(fromWire(toWire(original))).toEqual(original);
@@ -111,4 +115,17 @@ test('drops a hidden section this build does not have', () => {
 
 test('an absent cot key reads as nothing hidden', () => {
     expect(fromWire({dtg: {}}).cot.hiddenSections).toEqual([]);
+});
+
+test('a reader who has hidden only GeoJSON sections has made a choice', () => {
+    expect(wireHasNoChoices({geojson: {hidden_sections: ['map']}})).toBe(false);
+});
+
+test('a blob with nothing chosen anywhere is still empty', () => {
+    expect(wireHasNoChoices({
+        dtg: {zones: [], urgent_within_minutes: 0},
+        location: {hidden_rows: []},
+        cot: {hidden_sections: []},
+        geojson: {hidden_sections: []},
+    })).toBe(true);
 });

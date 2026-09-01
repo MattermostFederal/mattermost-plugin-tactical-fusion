@@ -427,15 +427,22 @@ ifneq ($(HAS_WEBAPP),)
 		echo "The standalone pages render nothing without it. Run 'make dist'."; \
 		exit 1; \
 	fi
-	@# MapLibre's worker is a module that imports ./maplibre-gl-shared.mjs by that
-	@# literal name. Shipping the worker without it is silent: the worker 404s,
-	@# the style never finishes, and the map sits on "Loading map..." with no
-	@# error. Neither the type checker nor any test sees this, so it is checked
-	@# here, where the bundle is actually assembled.
-	@if ls dist/$(PLUGIN_ID)/webapp/dist/maplibre-gl-worker.*.mjs >/dev/null 2>&1 && \
-		[ ! -f dist/$(PLUGIN_ID)/webapp/dist/maplibre-gl-shared.mjs ]; then \
-		echo "ERROR: the MapLibre worker ships without maplibre-gl-shared.mjs beside it."; \
-		echo "The worker imports it by a fixed relative name and will 404 at runtime."; \
+	@worker="$$(find dist/$(PLUGIN_ID)/webapp/dist -name maplibre-gl-worker.mjs 2>/dev/null | head -1)"; \
+	if [ -z "$$worker" ]; then \
+		echo "ERROR: the bundle ships no MapLibre worker."; \
+		echo "Without it no map ever finishes loading. Check the webpack asset rules."; \
+		exit 1; \
+	fi; \
+	dir="$$(dirname "$$worker")"; \
+	case "$$(basename "$$dir")" in \
+		maplibre-*) ;; \
+		*) echo "ERROR: the MapLibre worker is not in a content-keyed directory."; \
+		   echo "It is at $$worker. See maplibreAssetDir in webapp/webpack.config.js."; \
+		   exit 1 ;; \
+	esac; \
+	if [ ! -f "$$dir/maplibre-gl-shared.mjs" ]; then \
+		echo "ERROR: maplibre-gl-shared.mjs is missing from $$dir."; \
+		echo "The worker imports it by that relative name; without it the map never loads."; \
 		exit 1; \
 	fi
 endif

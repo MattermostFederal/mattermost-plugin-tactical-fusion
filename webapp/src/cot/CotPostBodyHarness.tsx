@@ -12,6 +12,8 @@ interface Props {
     uid?: string | null;
 
     version?: number;
+
+    postId?: string;
     source?: string;
     lead?: string;
     trail?: string;
@@ -42,6 +44,7 @@ interface Props {
 const CotPostBodyHarness: React.FC<Props> = ({
     uid = 'ANDROID-1',
     version = COT_PROPS_VERSION,
+    postId = 'post0000000000000000000000',
     source = 'fence',
     lead = '',
     trail = '',
@@ -84,6 +87,7 @@ const CotPostBodyHarness: React.FC<Props> = ({
         <div data-testid='cot-body'>
             <CotPostBody
                 post={{
+                    id: postId,
                     message,
                     props: postProps,
                     edit_at: editAt,

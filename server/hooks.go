@@ -75,12 +75,24 @@ func (p *Plugin) decoratePost(post *model.Post, ref time.Time) *model.Post {
 	// removed, and that clone is an ordinary message again: returning it here
 	// would cost it its decoration for no reason other than somebody having
 	// spoofed a type on it.
+	// Format-major, and each format asks its own fence, bare element and
+	// attachment questions in that order. Source-major sequencing was drafted
+	// and cut: it silently changes what a source that is found and then refuses
+	// to parse does, which today ends the attempt rather than falling through
+	// to an attachment.
 	result, stamped := p.cotStamp(post)
 	if stamped {
 		return result
 	}
 	if result != nil {
 		post = result
+	}
+
+	if geoResult, geoStamped := p.geoJSONStamp(post); geoStamped {
+		return geoResult
+	} else if geoResult != nil {
+		post = geoResult
+		result = geoResult
 	}
 
 	// decorateMessage answers nil for "nothing changed", so the strip has to be

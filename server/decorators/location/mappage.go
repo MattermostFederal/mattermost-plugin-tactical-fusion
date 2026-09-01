@@ -49,3 +49,14 @@ func RenderMapPage(w http.ResponseWriter, params url.Values, packages []string) 
 		Capability: decorators.PageMapping,
 	})
 }
+
+func RenderOverlayPage(w http.ResponseWriter, params url.Values, packages []string, kind, blob string) {
+	decorators.WritePage(w, decorators.Page{
+		Title:      mapPageTitle,
+		Theme:      decorators.ThemeFromParams(params),
+		StyleCSS:   pageStyles + mapPageStyles,
+		BodyHTML:   renderOverlayRoot(kind, blob, Maps{Page: true}, packages),
+		ScriptSrc:  pageAppFromRoot,
+		Capability: decorators.PageMapping,
+	})
+}

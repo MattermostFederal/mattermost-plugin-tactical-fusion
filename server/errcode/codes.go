@@ -103,6 +103,14 @@ const (
 	// useless advice.
 	HooksCotPropsUnmeasurable = 11008
 
+	HooksGeoJSONPanic             = 11009
+	HooksGeoJSONUnreadable        = 11010
+	HooksGeoJSONPropsTooLarge     = 11011
+	HooksGeoJSONPropsUnmeasurable = 11012
+	HooksGeoJSONPropertiesDropped = 11013
+	HooksGeoJSONFileUnreadable    = 11014
+	HooksGeoJSONFileNotOwned      = 11015
+
 	// server/http.go (12000-12999)
 
 	// HTTPMethodNotAllowed is returned for anything other than GET on the
@@ -137,6 +145,8 @@ const (
 	// HTTPPackageUnreadable reports a package that was discovered and then
 	// could not be opened, which usually means it moved between the two.
 	HTTPPackageUnreadable = 12007
+
+	HTTPMapPostUnavailable = 12008
 
 	// server/api.go (13000-13999)
 
@@ -342,6 +352,13 @@ var AllCodes = []int{
 	HooksCotUnreadable,
 	HooksCotDetailDropped,
 	HooksCotPropsUnmeasurable,
+	HooksGeoJSONPanic,
+	HooksGeoJSONUnreadable,
+	HooksGeoJSONPropsTooLarge,
+	HooksGeoJSONPropsUnmeasurable,
+	HooksGeoJSONPropertiesDropped,
+	HooksGeoJSONFileUnreadable,
+	HooksGeoJSONFileNotOwned,
 
 	HTTPMethodNotAllowed,
 	HTTPDecoratePathInvalid,
@@ -351,6 +368,7 @@ var AllCodes = []int{
 	HTTPPackagePathInvalid,
 	HTTPPackageUnknown,
 	HTTPPackageUnreadable,
+	HTTPMapPostUnavailable,
 
 	APINotAuthorized,
 	APINotFound,

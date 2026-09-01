@@ -14,6 +14,7 @@ export interface Recorded {
         dtg?: {zones?: WireZone[]; urgent_within_minutes?: number};
         location?: {hidden_rows?: string[]};
         cot?: {hidden_sections?: string[]};
+        geojson?: {hidden_sections?: string[]};
     } | null;
 }
 
@@ -27,6 +28,8 @@ export interface StubOptions {
 
     /** What the server already has stored, for the Cursor on Target editor. */
     storedHiddenSections?: string[];
+
+    storedGeoJsonSections?: string[];
 
     /**
      * Holds every GET open, handing back the function that releases them.
@@ -62,6 +65,7 @@ const NOTHING_SAVED = {
     dtg: {zones: [], urgent_within_minutes: 0},
     location: {hidden_rows: []},
     cot: {hidden_sections: []},
+    geojson: {hidden_sections: []},
 };
 
 /**
@@ -83,6 +87,7 @@ export async function stubPreferencesRoute(page: Page, options: StubOptions = {}
         },
         location: {hidden_rows: options.storedHiddenRows ?? []},
         cot: {hidden_sections: options.storedHiddenSections ?? []},
+        geojson: {hidden_sections: options.storedGeoJsonSections ?? []},
     };
 
     // Resolves when the test releases the held GETs. Held requests park on it
@@ -170,4 +175,9 @@ export function savedHiddenRows(calls: Recorded[]): string[] | undefined {
 /** The hidden sections the component asked to save, in order. */
 export function savedHiddenSections(calls: Recorded[]): string[] | undefined {
     return calls.filter((call) => call.method === 'PUT').at(-1)?.body?.cot?.hidden_sections;
+}
+
+/** The hidden GeoJSON sections the component asked to save, in order. */
+export function savedGeoJsonSections(calls: Recorded[]): string[] | undefined {
+    return calls.filter((call) => call.method === 'PUT').at(-1)?.body?.geojson?.hidden_sections;
 }

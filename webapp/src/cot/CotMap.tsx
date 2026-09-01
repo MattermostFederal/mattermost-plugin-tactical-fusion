@@ -4,10 +4,12 @@ import {isSectionVisible} from './sections';
 import type {CotEvent} from './types';
 import {accuracyMeters, affiliationColor, affiliationWord, isLinkable, statedColor} from './types';
 
-import type {MapGeometry} from '../decorators/location/map/LocationMap';
 import LocationMap, {MAP_HEIGHT} from '../decorators/location/map/LocationMap';
 import {useNearViewport} from '../decorators/location/map/near_viewport';
+import type {MapEllipse} from '../decorators/location/map/overlay';
+import type {MapShape} from '../decorators/location/map/paint';
 import {isRenderable} from '../decorators/location/map/span';
+import {overlayPageHref} from '../decorators/location/map/view';
 import {INLINE_ID, isRowVisible} from '../decorators/location/rows';
 import {withTheme} from '../decorators/theme';
 import {useFeatures} from '../features/store';
@@ -24,6 +26,17 @@ const styles: Record<string, React.CSSProperties> = {
 function mapPageHref(event: CotEvent): string {
     const params = new URLSearchParams({f: event.format, v: event.value});
     return withTheme(`${pluginBaseUrl()}/map?${params.toString()}`);
+}
+
+function largerHref(pageEnabled: boolean, only: CotEvent | undefined, postId: string | undefined): string | undefined {
+    if (!pageEnabled) {
+        return undefined;
+    }
+    if (only) {
+        return mapPageHref(only);
+    }
+
+    return postId ? overlayPageHref(postId) : undefined;
 }
 
 /** @internal exported for tests */
@@ -122,7 +135,7 @@ const UNCOLORED = '#8a8f98';
  * with nothing saying which belongs to which track, which is the argument the
  * accuracy ring is already drawn under.
  */
-function geometryFor(event: CotEvent | undefined): MapGeometry | undefined {
+function drawableGeometry(event: CotEvent | undefined) {
     if (!event?.geometry) {
         return undefined;
     }
@@ -135,26 +148,71 @@ function geometryFor(event: CotEvent | undefined): MapGeometry | undefined {
         return undefined;
     }
 
-    if (geometry.kind === 'ellipse') {
-        const {majorMeters, minorMeters, angleDegrees} = geometry;
-        if (!Number.isFinite(majorMeters) || !Number.isFinite(minorMeters) ||
-            majorMeters <= 0 || minorMeters <= 0) {
-            return undefined;
-        }
+    return geometry;
+}
 
-        return {
-            kind: 'ellipse',
-            major: majorMeters,
-            minor: minorMeters,
-            angle: Number.isFinite(angleDegrees) ? angleDegrees : 0,
-        };
-    }
-
-    if (geometry.points.length < 2) {
+/** The ellipse an event states, or undefined. Placed by the map's anchor. */
+function ellipseFor(event: CotEvent | undefined): MapEllipse | undefined {
+    const geometry = drawableGeometry(event);
+    if (geometry?.kind !== 'ellipse' || event === undefined) {
         return undefined;
     }
 
-    return {kind: 'outline', points: geometry.points, closed: geometry.closed};
+    const {majorMeters, minorMeters, angleDegrees} = geometry;
+    if (!Number.isFinite(majorMeters) || !Number.isFinite(minorMeters) ||
+        majorMeters <= 0 || minorMeters <= 0) {
+        return undefined;
+    }
+
+    const color = statedColor(event);
+
+    return {
+        major: majorMeters,
+        minor: minorMeters,
+        angle: Number.isFinite(angleDegrees) ? angleDegrees : 0,
+        ...(color === undefined ? {} : {color}),
+    };
+}
+
+/**
+ * The vertices an event drew, or undefined. NO color.
+ *
+ * Colorless on purpose: `soleOutline` decides WHICH event draws by calling
+ * this, and `statedColor` reads `event.detail`, which a caller counting
+ * outlines need not have. Folding the color in here made choosing an outline
+ * depend on a field that has nothing to do with the choice.
+ */
+function outlineOf(event: CotEvent | undefined): {
+    points: ReadonlyArray<{lat: number; lon: number}>;
+    closed: boolean;
+} | undefined {
+    const geometry = drawableGeometry(event);
+    if (geometry === undefined || geometry.kind === 'ellipse' || geometry.points.length < 2) {
+        return undefined;
+    }
+
+    return {points: geometry.points, closed: geometry.closed};
+}
+
+/**
+ * The outline an event drew, as a shape, or undefined.
+ *
+ * One ring: a Cursor on Target polyline has no holes. It carries absolute
+ * vertices, so it lands where the event put it whatever else is on the map.
+ */
+function shapeFor(event: CotEvent | undefined): MapShape | undefined {
+    const outline = outlineOf(event);
+    if (outline === undefined || event === undefined) {
+        return undefined;
+    }
+
+    const color = statedColor(event);
+
+    return {
+        rings: [outline.points],
+        closed: outline.closed,
+        ...(color === undefined ? {} : {color}),
+    };
 }
 
 /**
@@ -172,7 +230,7 @@ function geometryFor(event: CotEvent | undefined): MapGeometry | undefined {
  * first one's marker.
  */
 function soleOutline(drawn: readonly CotEvent[]): CotEvent | undefined {
-    const outlined = drawn.filter((event) => geometryFor(event)?.kind === 'outline');
+    const outlined = drawn.filter((event) => outlineOf(event) !== undefined);
     return outlined.length === 1 ? outlined[0] : undefined;
 }
 
@@ -184,18 +242,41 @@ export function _soleOutlineForTesting( // eslint-disable-line no-underscore-dan
 }
 
 /** @internal exported for tests */
-export function _geometryForTesting( // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
+export function _ellipseForTesting( // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
     event: CotEvent | undefined,
-): MapGeometry | undefined {
-    return geometryFor(event);
+): MapEllipse | undefined {
+    return ellipseFor(event);
 }
 
-const CotMapCanvas: React.FC<{events: readonly CotEvent[]; pageEnabled: boolean}> = ({
-    events, pageEnabled,
+/** @internal exported for tests */
+export function _shapeForTesting( // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
+    event: CotEvent | undefined,
+): MapShape | undefined {
+    return shapeFor(event);
+}
+
+export function drawsNothing(events: readonly CotEvent[]): boolean {
+    return markersFor(drawableEvents(events)).length === 0;
+}
+
+/**
+ * The drawing, with nothing consulted.
+ *
+ * Exported because the map page draws exactly this and must not consult the
+ * reader's sections or the admin's inline switch to do it: the page IS the map,
+ * so reaching it is the decision. The wrapper below is where those two live.
+ */
+export const CotMapCanvas: React.FC<{
+    events: readonly CotEvent[];
+    pageEnabled: boolean;
+    postId?: string;
+    fill?: boolean;
+}> = ({
+    events, pageEnabled, postId, fill,
 }) => {
     const drawn = drawableEvents(events);
     const markers = markersFor(drawn);
-    if (markers.length === 0) {
+    if (drawsNothing(events)) {
         return null;
     }
 
@@ -210,6 +291,10 @@ const CotMapCanvas: React.FC<{events: readonly CotEvent[]; pageEnabled: boolean}
     const only = events.length === 1 && drawn.length === 1 ? drawn[0] : undefined;
     const shaped = only ?? soleOutline(drawn);
 
+    // An outline is a shape like any other now; only the ellipse still needs
+    // the map's own anchor, and only a single event can state one.
+    const outline = shapeFor(shaped);
+
     return (
         <LocationMap
             lat={markers[0].lat}
@@ -221,10 +306,11 @@ const CotMapCanvas: React.FC<{events: readonly CotEvent[]; pageEnabled: boolean}
             accuracyMeters={only && accuracyMeters(only)}
             accuracyLabel={only?.ce}
             markers={markers}
-            geometry={geometryFor(shaped)}
-            geometryColor={shaped && statedColor(shaped)}
+            ellipse={ellipseFor(only)}
+            geometries={outline === undefined ? undefined : [outline]}
             markerLabel={only ? only.typeLabel : blockLabel(drawn, events.length)}
-            pageHref={pageEnabled && only ? mapPageHref(only) : undefined}
+            pageHref={largerHref(pageEnabled, only, postId)}
+            fill={fill}
         />
     );
 };
@@ -248,7 +334,11 @@ const CotMapCanvas: React.FC<{events: readonly CotEvent[]; pageEnabled: boolean}
  * live WebGL contexts at roughly sixteen and a channel of position reports is
  * exactly the shape that reaches it.
  */
-const CotMap: React.FC<{events: readonly CotEvent[]; surface: 'card' | 'panel'}> = ({events, surface}) => {
+const CotMap: React.FC<{
+    events: readonly CotEvent[];
+    surface: 'card' | 'panel';
+    postId?: string;
+}> = ({events, surface, postId}) => {
     const {preferences} = usePreferences();
     const {features} = useFeatures();
     const [box, setBox] = useState<HTMLDivElement | null>(null);
@@ -258,6 +348,10 @@ const CotMap: React.FC<{events: readonly CotEvent[]; surface: 'card' | 'panel'}>
         isRowVisible(preferences.location.hiddenRows, INLINE_ID) :
         isSectionVisible(preferences.cot.hiddenSections, 'map');
 
+    // Both surfaces, one switch, deliberately: docs/design/cot.md "Switches"
+    // argues it and TestCotHasNoMapSettingOfItsOwn is where it gets revisited.
+    // GeoJSON reads mapPanel for its panel instead, which is a different
+    // decision rather than a drift; see that file and geojson.md.
     if (!features.mapInline || !wanted) {
         return null;
     }
@@ -272,6 +366,7 @@ const CotMap: React.FC<{events: readonly CotEvent[]; surface: 'card' | 'panel'}>
                 <CotMapCanvas
                     events={events}
                     pageEnabled={features.mapPage}
+                    postId={postId}
                 />
             ) : <div style={styles.reserved}/>}
         </div>

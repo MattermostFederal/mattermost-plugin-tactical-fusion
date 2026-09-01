@@ -2,11 +2,11 @@ import type {Locator} from '@playwright/test';
 import React from 'react';
 
 import {serveMapAssets} from './asset_fixtures';
-import type {MapGeometry} from './LocationMap';
 import LocationMapHarness from './LocationMapHarness';
 import type {ViewName} from './LocationMapHarness';
 import {MARKER_SIZE} from './maplibre';
-import {DATA_MAX_ZOOM} from './span';
+import type {MapShape} from './paint';
+import {DATA_MAX_ZOOM, MAX_ZOOM} from './span';
 
 import {expect, test} from '../../../../playwright/ct-coverage';
 
@@ -1081,42 +1081,68 @@ test.describe('the accessible label for a block', () => {
 });
 
 test.describe('the color a shape is drawn in', () => {
-    const SQUARE: MapGeometry = {
-        kind: 'outline',
-        points: [
-            {lat: 34.05, lon: -118.25},
-            {lat: 34.06, lon: -118.25},
-            {lat: 34.06, lon: -118.24},
-            {lat: 34.05, lon: -118.24},
-        ],
+    const SQUARE_RING = [
+        {lat: 34.05, lon: -118.25},
+        {lat: 34.06, lon: -118.25},
+        {lat: 34.06, lon: -118.24},
+        {lat: 34.05, lon: -118.24},
+    ];
+
+    const square = (color?: string): MapShape => ({
+        rings: [SQUARE_RING],
         closed: true,
-    };
+        ...(color === undefined ? {} : {color}),
+    });
 
     test('is the stated one, at the fill alpha the theme uses', async ({mount, page}) => {
         await serveMapAssets(page);
 
         const component = await mount(
             <LocationMapHarness
-                geometry={SQUARE}
-                geometryColor='#ff0000'
+                geometries={[square('#ff0000')]}
             />,
         );
         await expectDrawn(component);
         await component.getByRole('button', {name: 'read the map'}).click();
 
-        await expect(component.getByTestId('shape-line')).toHaveText('#ff0000');
-        await expect(component.getByTestId('shape-fill')).toHaveText('rgba(255, 0, 0, 0.16)');
+        // Read off the FEATURE, not the layer: the paint is an expression now,
+        // so the layer reads the same whatever the author supplied.
+        await expect(component.getByTestId('shape-style')).
+            toHaveText('#ff0000|rgba(255, 0, 0, 0.16)');
     });
 
     test('falls back to the theme when the source states nothing', async ({mount, page}) => {
         await serveMapAssets(page);
 
-        const component = await mount(<LocationMapHarness geometry={SQUARE}/>);
+        const component = await mount(<LocationMapHarness geometries={[square()]}/>);
         await expectDrawn(component);
         await component.getByRole('button', {name: 'read the map'}).click();
 
-        await expect(component.getByTestId('shape-line')).not.toHaveText('#ff0000');
-        await expect(component.getByTestId('shape-line')).not.toHaveText('');
+        // No color on the feature at all, so the expression's fallback paints
+        // it in the theme's own color.
+        await expect(component.getByTestId('shape-style')).toHaveText('|');
+    });
+
+    /*
+     * An ELLIPSE carries its stated color too.
+     *
+     * When the paint became a data-driven expression, ellipseFeature still
+     * emitted empty properties, so a Cursor on Target drawn circle silently
+     * lost the color it states. The outline tests above could not see it.
+     */
+    test('an ellipse carries its stated color, not just an outline', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness
+                ellipse={{major: 4000, minor: 2000, angle: 0, color: '#ff0000'}}
+            />,
+        );
+        await expectDrawn(component);
+        await component.getByRole('button', {name: 'read the map'}).click();
+
+        await expect(component.getByTestId('shape-style')).
+            toHaveText('#ff0000|rgba(255, 0, 0, 0.16)');
     });
 
     test('falls back to the theme for a color that is not a hex triple', async ({mount, page}) => {
@@ -1124,16 +1150,685 @@ test.describe('the color a shape is drawn in', () => {
 
         const component = await mount(
             <LocationMapHarness
-                geometry={SQUARE}
-                geometryColor='url(https://attacker.example/px)'
+                geometries={[square('url(https://attacker.example/px)')]}
             />,
         );
         await expectDrawn(component);
         await component.getByRole('button', {name: 'read the map'}).click();
 
-        await expect(component.getByTestId('shape-line')).
-            not.toContainText('attacker.example');
-        await expect(component.getByTestId('shape-fill')).
+        // The gate: a value that is not a hex triple reaches the feature as no
+        // color at all, so the expression falls back to the theme and nothing
+        // an author wrote is ever handed to MapLibre.
+        await expect(component.getByTestId('shape-style')).toHaveText('|');
+        await expect(component.getByTestId('shape-style')).
             not.toContainText('attacker.example');
     });
+});
+
+/*
+ * Several shapes at once, which is what a GeoJSON document draws.
+ *
+ * The Cursor on Target card draws at most one outline on purpose, so every
+ * assertion here is about behavior nothing else exercises.
+ */
+test.describe('several shapes at once', () => {
+    const SQUARE_RINGS = [[
+        {lat: 34.00, lon: -118.30},
+        {lat: 34.00, lon: -118.10},
+        {lat: 34.20, lon: -118.10},
+        {lat: 34.20, lon: -118.30},
+    ]];
+
+    const HOLE = [
+        {lat: 34.05, lon: -118.25},
+        {lat: 34.05, lon: -118.20},
+        {lat: 34.10, lon: -118.20},
+    ];
+
+    /*
+     * The whole reason the plural prop carries rings.
+     *
+     * Two single-ring polygons and one two-ring polygon are indistinguishable
+     * in the DOM, and the difference is whether the hole is cut out of the fill
+     * or painted over it as a solid island.
+     */
+    test('a holed polygon is one polygon of two rings, not two polygons', async ({mount, page}) => {
+            await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness geometries={[{rings: [SQUARE_RINGS[0], HOLE], closed: true}]}/>,
+        );
+        await expectDrawn(component);
+        await component.getByRole('button', {name: 'read the map'}).click();
+
+        await expect(component.getByTestId('shapes')).toHaveText('Polygon:2');
+    });
+
+    test('each shape stays its own feature', async ({mount, page}) => {
+            await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness
+                geometries={[
+                    {rings: SQUARE_RINGS, closed: true},
+                    {rings: [HOLE], closed: false},
+                ]}
+            />,
+        );
+        await expectDrawn(component);
+        await component.getByRole('button', {name: 'read the map'}).click();
+
+        await expect(component.getByTestId('shapes')).toHaveText('Polygon:1|LineString:1');
+    });
+
+    test('an open shape is a line rather than a closed polygon', async ({mount, page}) => {
+            await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness geometries={[{rings: [HOLE], closed: false}]}/>,
+        );
+        await expectDrawn(component);
+        await component.getByRole('button', {name: 'read the map'}).click();
+
+        await expect(component.getByTestId('shapes')).toHaveText('LineString:1');
+    });
+});
+
+/*
+ * A surface with no position of its own.
+ *
+ * `lat`/`lon` of null already means "no mappable position" and renders a note
+ * over the frame, so extent-only is a separate prop rather than an overload of
+ * it. Every assertion here is about that separation holding.
+ */
+test.describe('extent-only', () => {
+    const AREA = [{
+        rings: [[
+            {lat: 34.00, lon: -118.30},
+            {lat: 34.00, lon: -118.10},
+            {lat: 34.20, lon: -118.10},
+            {lat: 34.20, lon: -118.30},
+        ]],
+        closed: true,
+    }];
+
+    test('draws the overlay with no position at all', async ({mount, page}) => {
+            await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness
+                start='unknown'
+                extentLabel='3 drawn shapes'
+                geometries={AREA}
+            />,
+        );
+        await expectDrawn(component);
+        await component.getByRole('button', {name: 'read the map'}).click();
+
+        await expect(component.getByTestId('shapes')).toHaveText('Polygon:1');
+    });
+
+    // The invariant this whole prop exists for: no pin at a position nobody
+    // stated. Without it drawableMarkers falls back to a pin at lat/lon, which
+    // for a positionless document is 0,0 in the Gulf of Guinea.
+    test('draws no pin, because there is no position to pin', async ({mount, page}) => {
+            await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness
+                start='unknown'
+                extentLabel='3 drawn shapes'
+                geometries={AREA}
+            />,
+        );
+        await expectDrawn(component);
+        await component.getByRole('button', {name: 'read the map'}).click();
+
+        await expect(component.getByTestId('pin-features')).toHaveText('0');
+    });
+
+    test('says what the overlay is rather than claiming a marked position', async ({mount, page}) => {
+            await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness
+                start='unknown'
+                extentLabel='3 drawn shapes'
+                geometries={AREA}
+            />,
+        );
+        await expectDrawn(component);
+
+        const label = component.getByText(/World map/);
+        await expect(label).toContainText('3 drawn shapes');
+        await expect(label).not.toContainText('position marked');
+    });
+
+    // Null lat/lon without the prop still means what it always meant. This is
+    // the regression the separate prop exists to avoid.
+    test('an unknown position without the prop still reads as unavailable', async ({mount, page}) => {
+            await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness start='unknown'/>);
+
+        await expect(component.getByText('The position for this coordinate is unavailable.').first()).
+            toBeVisible();
+    });
+});
+
+/*
+ * A box with no width or no height. fitBounds takes those to maxZoom, which is
+ * a street-level view of something that may be a country wide.
+ */
+test.describe('degenerate extents', () => {
+    const cases = [
+        {name: 'a single point', markers: [{lat: 34.0561, lon: -118.25, color: '#3f7fbf'}], geometries: undefined},
+        {
+            name: 'a due-north line',
+            markers: undefined,
+            geometries: [{rings: [[{lat: 34.0, lon: -118.25}, {lat: 34.5, lon: -118.25}]], closed: false}],
+        },
+        {
+            name: 'a zero-area polygon',
+            markers: undefined,
+            geometries: [{rings: [[
+                {lat: 34.0, lon: -118.25},
+                {lat: 34.0, lon: -118.25},
+                {lat: 34.0, lon: -118.25},
+            ]],
+closed: true}],
+        },
+    ];
+
+    for (const one of cases) {
+        test(`${one.name} opens at a readable zoom rather than at the maximum`, async ({mount, page}) => {
+            await serveMapAssets(page);
+
+            const component = await mount(
+                <LocationMapHarness
+                    start='unknown'
+                    extentLabel='an overlay'
+                    markers={one.markers}
+                    geometries={one.geometries}
+                />,
+            );
+            await expectDrawn(component);
+            await component.getByRole('button', {name: 'read the map'}).click();
+
+            const zoom = Number(await component.getByTestId('zoom').textContent());
+            expect(zoom).toBeLessThan(MAX_ZOOM);
+        });
+    }
+});
+
+/*
+ * The antimeridian, which is the case the per-shape unwrap could not see.
+ *
+ * Each shape unwraps to itself, so two either side of the seam union to a 359
+ * degree box, which slips under spansTheWorld's 360 test. The camera then frames
+ * the planet the wrong way round with both features at the edges.
+ */
+test.describe('the antimeridian', () => {
+    test('two shapes either side of the seam frame the seam, not the planet', async ({mount, page}) => {
+            await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness
+                start='unknown'
+                extentLabel='two shapes'
+                geometries={[
+                    {rings: [[{lat: 0, lon: 179.0}, {lat: 1, lon: 179.5}]], closed: false},
+                    {rings: [[{lat: 0, lon: -179.5}, {lat: 1, lon: -179.0}]], closed: false},
+                ]}
+            />,
+        );
+        await expectDrawn(component);
+        await component.getByRole('button', {name: 'read the map'}).click();
+
+        // The center is what says which way round the camera went. Framing the
+        // seam puts it near 180; framing the planet the other way puts it near
+        // zero.
+        const center = await component.getByTestId('camera').textContent();
+        const lon = Math.abs(Number((center ?? '0,0').split(',')[1]));
+        expect(lon).toBeGreaterThan(150);
+    });
+
+    // The single-shape case the per-shape unwrap already handled, so that
+    // moving the unwrap up does not regress it.
+    test('one shape crossing the seam still frames the seam', async ({mount, page}) => {
+            await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness
+                start='unknown'
+                extentLabel='one shape'
+                geometries={[
+                    {rings: [[{lat: 0, lon: 179.0}, {lat: 1, lon: -179.0}]], closed: false},
+                ]}
+            />,
+        );
+        await expectDrawn(component);
+        await component.getByRole('button', {name: 'read the map'}).click();
+
+        const center = await component.getByTestId('camera').textContent();
+        const lon = Math.abs(Number((center ?? '0,0').split(',')[1]));
+        expect(lon).toBeGreaterThan(150);
+    });
+});
+
+/*
+ * A map that is constructed and then never becomes ready.
+ *
+ * MapLibre tiles in a worker, so a worker that never arrives leaves every
+ * source unfinished and `load` never fires. That is not an error, so the error
+ * handler never runs either, and the map sat on "Loading map…" forever with a
+ * reload the only way out. It is the failure a worker URL that 404s produces in
+ * the field.
+ */
+test.describe('a map that never becomes ready', () => {
+    test('says so rather than waiting forever', async ({mount, page}) => {
+        // Held open for the life of the test: the worker never arrives, which
+        // is the only way to hold a map between construction and load.
+        await serveMapAssets(page, new Promise<void>(() => { /* never resolves */ }));
+
+        const component = await mount(<LocationMapHarness readyDeadlineMs={2500}/>);
+
+        await expect(component.getByText('Loading map…').first()).toBeVisible();
+        await expect(component.getByText('The map could not be loaded.').first()).toBeVisible({timeout: 15_000});
+    });
+
+    // The deadline must not fire over a map that came up normally, or every
+    // working map would blank itself twenty seconds in.
+    test('a map that loads normally is never failed by the deadline', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness readyDeadlineMs={2500}/>);
+        await expectDrawn(component);
+
+        await page.waitForTimeout(4000);
+
+        await expect(component.getByText('The map could not be loaded.')).toHaveCount(0);
+        await expect(component.getByRole('button', {name: RESET})).toBeVisible();
+    });
+
+    // Releasing the context matters as much as reporting: a map left in the ref
+    // makes every later attempt return at the creation guard, and holds a WebGL
+    // context for something that draws nothing.
+    test('releases the map it gave up on', async ({mount, page}) => {
+        await serveMapAssets(page, new Promise<void>(() => { /* never resolves */ }));
+
+        const component = await mount(<LocationMapHarness readyDeadlineMs={2500}/>);
+        await expect(component.getByText('The map could not be loaded.').first()).toBeVisible({timeout: 15_000});
+        await component.getByRole('button', {name: 'read the map'}).click();
+
+        // The observer is handed null when the map is released, so the harness
+        // has nothing left to read a camera off. That is the release: a map
+        // kept in the ref would make map.current truthy forever and every later
+        // attempt would return at the creation guard.
+        await expect(component.getByTestId('camera')).toHaveText('none');
+    });
+});
+
+/*
+ * The rest of the simplestyle a document may state.
+ *
+ * Colors were the whole of it once. Width, the two opacities and marker-size
+ * are read now, and each has to survive the second gate rather than be trusted
+ * because Go already checked: a props blob is not a trusted input either.
+ *
+ * Every assertion reads the FEATURE, never the layer, for the reason the color
+ * tests record: these are data-driven expressions and the layer reads the same
+ * whatever the document said.
+ */
+test.describe('the rest of a stated style', () => {
+    const RING = [[
+        {lat: 34.00, lon: -118.30},
+        {lat: 34.00, lon: -118.10},
+        {lat: 34.20, lon: -118.10},
+        {lat: 34.00, lon: -118.30},
+    ]];
+
+    test('a width and a line opacity reach the shape', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness
+                geometries={[{rings: RING, closed: true, color: '#ff0000', width: '3', lineOpacity: '0.8'}]}
+            />,
+        );
+        await expectDrawn(component);
+        await component.getByRole('button', {name: 'read the map'}).click();
+
+        await expect(component.getByTestId('shape-stroke')).toHaveText('3|0.8');
+    });
+
+    // A quarter, not a quarter of the 0.16 an unstyled shape composites at.
+    test('a stated fill opacity replaces the theme alpha rather than multiplying it', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness
+                geometries={[{rings: RING, closed: true, color: '#ff0000', fillOpacity: '0.25'}]}
+            />,
+        );
+        await expectDrawn(component);
+        await component.getByRole('button', {name: 'read the map'}).click();
+
+        await expect(component.getByTestId('shape-style')).
+            toHaveText('#ff0000|rgba(255, 0, 0, 0.25)');
+    });
+
+    test('a shape that states none is drawn at the theme alpha', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness geometries={[{rings: RING, closed: true, color: '#ff0000'}]}/>,
+        );
+        await expectDrawn(component);
+        await component.getByRole('button', {name: 'read the map'}).click();
+
+        await expect(component.getByTestId('shape-style')).
+            toHaveText('#ff0000|rgba(255, 0, 0, 0.16)');
+        await expect(component.getByTestId('shape-stroke')).toHaveText('|');
+    });
+
+    /*
+     * The second gate, on values Go would already have refused.
+     *
+     * A width of 4000 paints the whole map solid with no way to tell it from a
+     * rendering fault, and Number('') is 0 while Number('1e999') is Infinity,
+     * so an unguarded parse turns an empty string into a real width.
+     */
+    for (const [name, style] of [
+        ['a width past what this build draws', {width: '4000'}],
+        ['a width that is not a number', {width: 'wide'}],
+        ['an infinite width', {width: '1e999'}],
+        ['a negative width', {width: '-3'}],
+        ['an opacity above one', {lineOpacity: '1.5'}],
+        ['an opacity that is not a number', {lineOpacity: 'solid'}],
+        ['an empty width, which Number() reads as 0', {width: ''}],
+        ['a width of zero', {width: '0'}],
+    ] as Array<[string, Partial<MapShape>]>) {
+        test(`falls back to the theme for ${name}`, async ({mount, page}) => {
+            await serveMapAssets(page);
+
+            const component = await mount(
+                <LocationMapHarness geometries={[{rings: RING, closed: true, color: '#ff0000', ...style}]}/>,
+            );
+            await expectDrawn(component);
+            await component.getByRole('button', {name: 'read the map'}).click();
+
+            await expect(component.getByTestId('shape-stroke')).toHaveText('|');
+        });
+    }
+
+    test('marker-size scales the reticle, and an unknown size does not', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness
+                markers={[
+                    {lat: 34.05, lon: -118.25, color: '#ff0000', size: 'large'},
+                    {lat: 34.06, lon: -118.24, color: '#ff0000', size: 'small'},
+                    {lat: 34.07, lon: -118.23, color: '#ff0000'},
+                    {lat: 34.08, lon: -118.22, color: '#ff0000', size: 'enormous'},
+                ]}
+            />,
+        );
+        await expectDrawn(component);
+        await component.getByRole('button', {name: 'read the map'}).click();
+
+        await expect(component.getByTestId('marker-scales')).toHaveText('1.5,0.7,,');
+    });
+});
+
+/*
+ * An open shape is a LINE, and a line is not filled.
+ *
+ * A MapLibre fill layer does not ignore a LineString. It closes the ring and
+ * fills it, so a route drew a translucent wash between its first and last point
+ * with the map underneath it showing through. The source carried exactly the
+ * right geometry throughout; the defect was that the layer drew both kinds.
+ *
+ * It hid for as long as every line took the theme's own faint fill, and became
+ * obvious the moment a document could state a saturated color of its own.
+ */
+test.describe('what the fill layer draws', () => {
+    const OPEN = [[
+        {lat: 21.3315, lon: -157.9513},
+        {lat: 21.3435, lon: -157.9337},
+        {lat: 21.3670, lon: -157.9074},
+    ]];
+
+    const CLOSED = [[
+        {lat: 21.330, lon: -157.960},
+        {lat: 21.330, lon: -157.900},
+        {lat: 21.370, lon: -157.900},
+        {lat: 21.330, lon: -157.960},
+    ]];
+
+    /*
+     * Drawn WITH a closed shape, which is the positive control.
+     *
+     * queryRenderedFeatures answers [] until the worker has parsed the source
+     * and a render pass has run, and 0 is also what a renamed layer reports. So
+     * asserting 0 on an open shape alone passed before anything had painted and
+     * would have passed against the missing filter this test exists for. The
+     * mixed document below is the one that can tell those apart, and this one
+     * polls until the count settles rather than reading once.
+     */
+    test('an open shape is not filled', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness geometries={[{rings: OPEN, closed: false, color: '#0000ff'}]}/>,
+        );
+        await expectDrawn(component);
+
+        await expect(async () => {
+            await component.getByRole('button', {name: 'read the map'}).click();
+            await expect(component.getByTestId('tiles')).toHaveText('loaded');
+            await expect(component.getByTestId('filled-shapes')).toHaveText('0');
+        }).toPass();
+    });
+
+    // The other half, so the fix cannot be "fill nothing at all".
+    test('a closed shape still is', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness geometries={[{rings: CLOSED, closed: true, color: '#ff0000'}]}/>,
+        );
+        await expectDrawn(component);
+
+        // toHaveText('1'), not not.toHaveText('0'): the harness reports -1 for
+        // a dead map and -2 for a missing layer, and both satisfy a negation.
+        await expect(async () => {
+            await component.getByRole('button', {name: 'read the map'}).click();
+            await expect(component.getByTestId('filled-shapes')).toHaveText('1');
+        }).toPass();
+    });
+
+    test('a document of both fills only the area', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness
+                geometries={[
+                    {rings: CLOSED, closed: true, color: '#ff0000', fillOpacity: '0.25'},
+                    {rings: OPEN, closed: false, color: '#0000ff', width: '3'},
+                ]}
+            />,
+        );
+        await expectDrawn(component);
+
+        await expect(async () => {
+            await component.getByRole('button', {name: 'read the map'}).click();
+            await expect(component.getByTestId('filled-shapes')).toHaveText('1');
+        }).toPass();
+    });
+});
+
+/*
+ * The paint properties themselves, which nothing asserted.
+ *
+ * Every other style test reads the FEATURE, which is right for proving the gate
+ * wrote a validated value. But it means `paintGeometry` could stop wiring
+ * line-width and line-opacity to the layer entirely and every one of them would
+ * stay green while no stated width or opacity was ever drawn.
+ */
+test.describe('the stroke paint is wired to the layer', () => {
+    test('reads the width and the opacity off the feature, with a fallback', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness
+                geometries={[{
+                    rings: [[{lat: 34.00, lon: -118.30}, {lat: 34.20, lon: -118.10}]],
+                    closed: false,
+                    color: '#ff0000',
+                }]}
+            />,
+        );
+        await expectDrawn(component);
+        await component.getByRole('button', {name: 'read the map'}).click();
+
+        const paint = component.getByTestId('stroke-paint');
+
+        await expect(paint).toContainText('width');
+        await expect(paint).toContainText('lineOpacity');
+    });
+});
+
+/*
+ * A stated fill opacity is the second gate on the alpha, and it had no test.
+ *
+ * Swap numberWithin for a bare Number() and `fill-opacity: "wide"` composites
+ * to rgba(255, 0, 0, NaN), which is what the gate exists to stop.
+ */
+test.describe('a fill opacity this build will not draw', () => {
+    for (const [name, fillOpacity] of [
+        ['above one', '1.5'],
+        ['negative', '-0.2'],
+        ['not a number', 'solid'],
+        ['empty', ''],
+    ] as Array<[string, string]>) {
+        test(`falls back to the theme alpha when it is ${name}`, async ({mount, page}) => {
+            await serveMapAssets(page);
+
+            const component = await mount(
+                <LocationMapHarness
+                    geometries={[{
+                        rings: [[
+                            {lat: 34.00, lon: -118.30},
+                            {lat: 34.00, lon: -118.10},
+                            {lat: 34.20, lon: -118.10},
+                            {lat: 34.00, lon: -118.30},
+                        ]],
+                        closed: true,
+                        color: '#ff0000',
+                        fillOpacity,
+                    }]}
+                />,
+            );
+            await expectDrawn(component);
+            await component.getByRole('button', {name: 'read the map'}).click();
+
+            await expect(component.getByTestId('shape-style')).
+                toHaveText('#ff0000|rgba(255, 0, 0, 0.16)');
+        });
+    }
+});
+
+/*
+ * marker-size on the EXTENT-ONLY map, which is the only map GeoJSON draws.
+ *
+ * applyView had two write paths: the positioned one called drawableMarkers and
+ * the extent-only one hand-rolled its own markedPoints call that omitted the
+ * scale. GeoJsonMapCanvas always passes lat={null} extentOnly, so a stated
+ * marker-size was validated, carried the whole way, and dropped at the last hop
+ * on the one surface it was added for.
+ *
+ * The existing marker-size test mounts a positioned harness, so it exercised
+ * the branch that already worked and passed against this.
+ */
+test('marker-size survives the extent-only write path', async ({mount, page}) => {
+    await serveMapAssets(page);
+
+    const component = await mount(
+        <LocationMapHarness
+            start='unknown'
+            markers={[
+                {lat: 34.05, lon: -118.25, color: '#ff0000', size: 'large'},
+                {lat: 34.06, lon: -118.24, color: '#ff0000', size: 'small'},
+                {lat: 34.07, lon: -118.23, color: '#ff0000'},
+            ]}
+        />,
+    );
+    await expectDrawn(component);
+    await component.getByRole('button', {name: 'read the map'}).click();
+
+    await expect(component.getByTestId('marker-scales')).toHaveText('1.5,0.7,');
+});
+
+// A props blob is not trusted input, and this lookup used to walk the prototype
+// chain: 'constructor' returned a function where the type promised a number.
+test('a marker size from the prototype chain is not a size', async ({mount, page}) => {
+    await serveMapAssets(page);
+
+    const component = await mount(
+        <LocationMapHarness
+            start='unknown'
+            markers={[
+                {lat: 34.05, lon: -118.25, color: '#ff0000', size: 'constructor'},
+                {lat: 34.06, lon: -118.24, color: '#ff0000', size: '__proto__'},
+                {lat: 34.07, lon: -118.23, color: '#ff0000', size: 'toString'},
+            ]}
+        />,
+    );
+    await expectDrawn(component);
+    await component.getByRole('button', {name: 'read the map'}).click();
+
+    await expect(component.getByTestId('marker-scales')).toHaveText(',,');
+});
+
+/*
+ * A stated style survives the EXTENT-ONLY write path.
+ *
+ * Every other style test here mounts a positioned map, and GeoJSON is never
+ * positioned: it passes a null lat and lon always. So the branch that actually
+ * draws every GeoJSON document had no assertion on it at all, and deleting
+ * `styleOf` from the write left all 806 tests green while every stated color,
+ * width and opacity silently became the theme's.
+ *
+ * This is the same hole the marker-size test closed for markers, on the other
+ * half of the same fork.
+ */
+test('a stated style survives the extent-only write path', async ({mount, page}) => {
+    await serveMapAssets(page);
+
+    const component = await mount(
+        <LocationMapHarness
+            start='unknown'
+            extentLabel='an overlay'
+            geometries={[{
+                rings: [[
+                    {lat: 34.00, lon: -118.30},
+                    {lat: 34.00, lon: -118.10},
+                    {lat: 34.20, lon: -118.10},
+                    {lat: 34.00, lon: -118.30},
+                ]],
+                closed: true,
+                color: '#ff0000',
+                width: '3',
+                lineOpacity: '0.8',
+                fillOpacity: '0.25',
+            }]}
+        />,
+    );
+    await expectDrawn(component);
+    await component.getByRole('button', {name: 'read the map'}).click();
+
+    await expect(component.getByTestId('shape-style')).toHaveText('#ff0000|rgba(255, 0, 0, 0.25)');
+    await expect(component.getByTestId('shape-stroke')).toHaveText('3|0.8');
 });

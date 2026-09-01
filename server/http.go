@@ -23,8 +23,12 @@ const decoratePath = "/decorate"
 //
 // A sibling of /decorate rather than a mode of it: the decorator route answers
 // "what is this token" and every page under it opens onto a table, where this
-// answers "where is it" and gives the window to one picture. Authenticated and a
-// pure function of its query string on the same terms.
+// answers "where is it" and gives the window to one picture.
+//
+// Addressed two ways. By coordinate it stays a pure function of its query
+// string, exactly like /decorate. By post id it is not: it reads a post, and is
+// therefore the one page route in this plugin whose answer depends on WHO is
+// asking. mappost.go is that gate.
 const mapPath = "/map"
 
 /*
@@ -90,6 +94,15 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 		if !p.locationMaps().Page {
 			decorators.WriteError(w, http.StatusNotFound,
 				errcode.WithCode(errcode.HTTPMapDisabled, "Not found."))
+			return
+		}
+
+		// A post id addresses an overlay, which has no coordinate to be
+		// addressed by. Checked first, so a request carrying both is never
+		// answered with the coordinate: the two would draw different pictures
+		// and only one of them was asked for.
+		if postID := r.URL.Query().Get(postParam); postID != "" {
+			p.serveOverlayMapPage(w, r, postID)
 			return
 		}
 

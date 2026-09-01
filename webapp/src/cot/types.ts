@@ -208,6 +208,7 @@ export interface CotPayload {
     trail: string;
     src: string;
     fileId: string;
+    postId?: string;
     fileName: string;
     events: CotEvent[];
 }

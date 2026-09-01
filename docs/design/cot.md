@@ -141,14 +141,35 @@ gap exists only for the file case.
 
 ### The fallback may never be blank
 
-A file-case post has an empty message by construction, and
-`docs/design/mapping.md` records, measured against Mattermost master, that
-**attachments are dropped when a plugin owns the body**. A fallback that rendered
-`post.message` alone would therefore leave a permanently blank post with no exit.
+A file-case post has an empty message by construction, so a fallback that
+rendered `post.message` alone would leave a blank post. It therefore renders the
+message, or, when there is none, a download link per entry in `post.file_ids`.
 
-So the fallback renders the message, or, when there is none, a download link per
-entry in `post.file_ids`. For the same reason the card **always** renders the
-source file as a download link in the file case, unconditionally.
+That was once argued from `mapping.md`'s "attachments are dropped when a plugin
+owns the body", which was read too broadly and has been narrowed there: what a
+plugin-owned body loses is `PostBodyAdditionalContent`, and the FILE attachment
+list is not part of it. The fallback keeps its links anyway, because they cost
+nothing on a path that only runs when a card has already stood down, and because
+belt and braces is the right posture for the one branch whose whole job is to
+never render nothing.
+
+The CARD is the case where the difference mattered, and its link is gone. See
+"The card does not carry the attachment" below.
+
+### `postId` rides the payload, and is never read from props
+
+The payload's `postId` is set by the post body, not decoded by `fromProps`.
+Props do not carry it, and could not be trusted for it if they did. It rides the
+payload into the sidebar, which is what lets the card and the panel address the
+same map page. Empty is the honest value for a harness or a card built from a
+payload directly, and it costs exactly the "Open larger" link.
+
+### The example messages are measured as they will be posted
+
+`cotExampleMessages` returns the body of every example the command will post, so
+the size gate runs against the real thing. The attachment examples carry a lead
+and no fence, and are measured that way: a gate that measured a fenced form the
+command never posts would pass a run that then failed.
 
 ### The post type is forgeable, and is stripped
 
@@ -236,10 +257,25 @@ read a claim and checked it, which is more than a channel post needs to be: the
 rows are the answer, and the raw source is the thing you go and look at when the
 answer surprises you.
 
-So the source is the panel's, reached through "Open details", and the card keeps
-only the file download link, which is a different thing: for a file-case post it
-is the sole route to the original attachment, and `Post.Type` has already cost
-that post Mattermost's own attachment list.
+So the source is the panel's, reached through "Open details".
+
+### The card does not carry the attachment
+
+The card kept a "Download <name>" link after the source pane moved to the panel,
+on the argument that it was the sole route to the original attachment because
+`Post.Type` had cost the post Mattermost's own attachment list. It had not.
+
+That argument was false, and observing a running server is what settled it: the
+link sat directly above Mattermost's own attachment for the same file, naming it
+twice. `mapping.md` now says why the measurement did not mean what this
+paragraph took it to mean. The link is gone; the panel's `Source file` row
+stays, because that is a labeled reading of what the event was read from rather
+than a second control for reaching it.
+
+The path-traversal guard in `fileHref` is unchanged and still tested. Its test
+moved to the fallback, which is the one surface left that builds a file href: on
+the card it would have gone on passing against a card that no longer draws a
+link at all.
 
 The forgery and sanitising arguments elsewhere in this note are unchanged by the
 move. They are about the pane being trustworthy wherever it is drawn, and it is
@@ -254,12 +290,20 @@ reused `styles.summary`, which is the group heading style, so "As posted" sat in
 the panel as uppercase micro-text with a small native triangle beside it, in a
 column of sections headed exactly that way. It read as a heading over an empty
 section rather than as something to open, and the processing path had the same
-problem for longer. `Disclosure` is the shared answer: a bordered, tinted row, a
-normal-case bold label, and the word **Show** or **Hide** in the link color
-beside it. The word is the part that cannot be mistaken for a label, which is
-why the state is held in React rather than left to the browser: `<details>` knows
-whether it is open and CSS could rotate a caret, but nothing inline can make it
-say so in words. It carries a `CopyButton`, the
+problem for longer. `Disclosure` is the shared answer: a bordered row on the
+panel's own background, a normal-case bold label, and a caret in the link color
+at the far end.
+
+The caret was originally the word **Show** or **Hide**, on the argument that a
+word cannot be mistaken for a label where a triangle can. That was overruled:
+the row is now bordered and its label is normal-case bold, so the border already
+does the work the word was hired for, and a caret is what a collapsible section
+looks like everywhere else in the product. The state is still held in React
+rather than left to the browser, because the caret is two different paths rather
+than one path rotated: `data-state` on the glyph is then a thing a test can read,
+where a transform matrix is not. The native marker is suppressed with
+`listStyle: 'none'` and a flex summary, or it would sit beside the caret saying
+the same thing and pointing the other way. It carries a `CopyButton`, the
 location decorator's, inside its `<summary>`, in a span that calls
 `preventDefault` so copying does not also toggle the disclosure. The button
 hides itself on a plain-HTTP origin, which for an air-gapped install is the
@@ -418,12 +462,12 @@ beside the callsign reads, so the two cannot disagree about what a track is.
 The caveat: on the map, color is the ONLY thing carrying affiliation, and the
 hues are close in luminance, so hostile red and neutral green are one mark to a
 reader with a common color vision deficiency. `markerLabel` is the other channel
-and is why `markerColor` should never be passed without it. It is not a full
+and is why `markers[].color` should never be passed without it. It is not a full
 answer. MIL-STD-2525 solves this with SHAPE, a diamond for hostile and a
 rectangle for friendly, and that is the honest fix if this proves to matter;
 `toMarker` is the place it would go.
 
-Only a surface that passes `markerColor` gets any of this. Every location surface
+Only a surface that passes `markers[].color` gets any of this. Every location surface
 passes none and keeps the circle it has always drawn, which `the marker` in
 `style.spec.ts` pins from both sides.
 
@@ -644,7 +688,8 @@ would be one this plugin invented.
 
 Two, and deliberately not three. `EnableCot` governs stamping only, matching the
 format-switch invariant; a post already stamped keeps rendering. `EnableCotFile`
-governs the only filestore read this plugin puts on the post path.
+governs one of the two filestore reads this plugin puts on the post path;
+`EnableGeoJSONFile` is the other.
 
 **There is no `EnableCotMap`.** `EnableLocationMapInline` already means "the map
 under a post", and its parent ANDs with `EnableLocation` and `EnableLocationMap`
@@ -1146,7 +1191,7 @@ left to each call site.
 
 The panel used to print a color the map then ignored, which is the panel and the
 map disagreeing in front of the reader about the same event. `LocationMap` takes
-an optional `geometryColor`, and `CotMap` passes the event's stated color when
+an optional colored `ellipse` and colored shapes, and `CotMap` passes the event's stated color when
 there is exactly one event, which is already the condition the shape and the
 accuracy ring are drawn under. Absent, the shape keeps the theme's own cell
 color, which is what every location surface gets.
@@ -1159,7 +1204,7 @@ hostile-colored reticle on a friendly track. A shape has no affiliation to
 contradict, so there is nothing for a stated color to overwrite.
 
 The validation is unchanged and is now load-bearing twice: `statedColor` gates
-the value before it reaches a style property, and `fillOf` in `LocationMap` gates
+the value before it reaches a style property, and `fillOf` in `map/paint.ts` gates
 it again before it reaches MapLibre, falling back to the theme rather than
 passing an unparsed string through. The fill is written as `rgba()` at the
 theme's own alpha rather than as an eight-digit hex, which MapLibre's color

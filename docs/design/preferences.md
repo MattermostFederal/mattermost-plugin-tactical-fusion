@@ -6,6 +6,15 @@
 
 ### A forgiving read must not become a destructive write
 
+"Restore defaults" is a delete, so `wireHasNoChoices` is what decides whether a
+reader's stored choices survive a reset in another section. `geojson` was
+declared in its cast and never tested, and a reader who had hidden only GeoJSON
+sections lost them when they reset the Cursor on Target panel.
+
+The GeoJSON panel's `hiddenSections` is its own key rather than a field on
+`CotPreferences`. The two panels have different sections, and sharing a key
+would mean hiding "Map" on one hid it on the other.
+
 The read is deliberately more forgiving than the write. `validHiddenSections`
 refuses an unknown id on the way in, so a hand-written request cannot store
 junk; `kvPreferenceStore.Get` does not validate on the way out, so retiring a

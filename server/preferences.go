@@ -13,6 +13,7 @@ import (
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/cot"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/geojson"
 )
 
 // preferencesVersion is stamped on every blob written.
@@ -111,6 +112,18 @@ type CotPreferences struct {
 	HiddenSections []string `json:"hidden_sections"`
 }
 
+// GeoJSONPreferences is one reader's view of a GeoJSON document.
+//
+// Its own key rather than a field on CotPreferences, even though both hold the
+// same kind of list: the two panels have different sections, and sharing a key
+// would mean hiding "Map" on one hid it on the other.
+type GeoJSONPreferences struct {
+	// HiddenSections are the groups to leave out of the sidebar panel, by id.
+	// Empty means every section, which is the default, for the reason
+	// CotPreferences.HiddenSections records.
+	HiddenSections []string `json:"hidden_sections"`
+}
+
 // UserPreferences is the whole per-user blob.
 //
 // Decorators get a key of their own rather than a flat namespace, so a second
@@ -120,6 +133,7 @@ type UserPreferences struct {
 	DTG      DTGPreferences      `json:"dtg"`
 	Location LocationPreferences `json:"location"`
 	Cot      CotPreferences      `json:"cot"`
+	GeoJSON  GeoJSONPreferences  `json:"geojson"`
 }
 
 // clone returns a copy that shares no slice with the original.
@@ -135,6 +149,9 @@ func (p UserPreferences) clone() UserPreferences {
 	}
 	if p.Cot.HiddenSections != nil {
 		p.Cot.HiddenSections = append([]string(nil), p.Cot.HiddenSections...)
+	}
+	if p.GeoJSON.HiddenSections != nil {
+		p.GeoJSON.HiddenSections = append([]string(nil), p.GeoJSON.HiddenSections...)
 	}
 	return p
 }
@@ -237,6 +254,12 @@ func (p *UserPreferences) validate() error {
 	}
 	p.Cot.HiddenSections = sections
 
+	geoSections, err := validGeoJSONSections(p.GeoJSON.HiddenSections)
+	if err != nil {
+		return err
+	}
+	p.GeoJSON.HiddenSections = geoSections
+
 	return nil
 }
 
@@ -296,6 +319,33 @@ func validHiddenSections(ids []string) ([]string, error) {
 		if !cot.KnownSection(id) {
 			return nil, errcode.Errorf(errcode.PreferencesSectionUnknown,
 				"%q is not a section of the Cursor on Target panel", id)
+		}
+		seen[id] = true
+		sections = append(sections, id)
+	}
+
+	return sections, nil
+}
+
+// validGeoJSONSections normalizes a hidden-section selection for the GeoJSON
+// panel.
+//
+// Its own function rather than a parameterized one shared with the Cursor on
+// Target sections: the two vocabularies are separate, and a shared checker
+// would have to be told which one to use at every call site, which is the same
+// coupling this avoids by keeping the two preference keys apart.
+func validGeoJSONSections(ids []string) ([]string, error) {
+	sections := make([]string, 0, len(ids))
+	seen := make(map[string]bool, len(ids))
+
+	for _, id := range ids {
+		id = strings.TrimSpace(id)
+		if id == "" || seen[id] {
+			continue
+		}
+		if !geojson.KnownSection(id) {
+			return nil, errcode.Errorf(errcode.PreferencesSectionUnknown,
+				"%q is not a section of the GeoJSON panel", id)
 		}
 		seen[id] = true
 		sections = append(sections, id)

@@ -42,7 +42,7 @@ test('registers the sidebar before the header button', async ({mount, page}) => 
 
     const result = await recorded(page);
 
-    expect(result.order).toEqual(['rhs', 'tooltip', 'post-type', 'post-type', 'header']);
+    expect(result.order).toEqual(['rhs', 'tooltip', 'post-type', 'post-type', 'post-type', 'header']);
 });
 
 // One registration for the whole plugin: a decorator gets a hover by declaring
@@ -59,17 +59,13 @@ test('registers the tooltip exactly once', async ({mount, page}) => {
 // One registration per declared post type, and only for a decorator that has an
 // inline view to put in it. DTG declares neither, so a lone date-time group
 // stays an ordinary post.
-//
-// Cursor on Target is registered beside them and unconditionally: it is not a
-// decorator, so it is not in the registry loop, and a post already stamped must
-// keep rendering after an admin turns the feature off.
 test('registers a post body for every decorator that declares one', async ({mount, page}) => {
     await mount(<IndexHarness/>);
 
     const result = await recorded(page);
 
-    expect(result.postTypes).toEqual(['custom_tf_location', 'custom_tf_cot']);
-    expect(result.postBodyComponentNames).toEqual(['DecoratorPostBody', 'CotPostBody']);
+    expect(result.postTypes).toEqual(['custom_tf_location', 'custom_tf_cot', 'custom_tf_geojson']);
+    expect(result.postBodyComponentNames).toEqual(['DecoratorPostBody', 'CotPostBody', 'GeoJsonPostBody']);
 });
 
 test('wires the channel header button', async ({mount, page}) => {
@@ -165,7 +161,8 @@ test('uninitialize gives back every registry component', async ({mount, page}) =
     await page.getByTestId('uninitialize').click();
 
     await expect(page.getByTestId('unregistered')).toHaveText(
-        'rhs-id,tooltip-id,post-type-id-custom_tf_location,post-type-id-custom_tf_cot,header-id');
+        'rhs-id,tooltip-id,post-type-id-custom_tf_location,post-type-id-custom_tf_cot,' +
+        'post-type-id-custom_tf_geojson,header-id');
 });
 
 // Calling it twice must be a no-op rather than running every disposer again.

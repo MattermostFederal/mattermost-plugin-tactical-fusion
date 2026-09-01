@@ -6,7 +6,7 @@ import {_resetConversionsForTesting} from './convert';
 import {parseCanonical} from './format';
 import type {LocationFormat} from './format';
 import LocationInline from './LocationInline';
-import {_setMapObserverForTesting} from './map/LocationMap';
+import {_setMapObserverForTesting} from './map/use_map_instance';
 
 import {_resetForTesting as resetFeatures} from '../../features/store';
 import {featuresReply, isFeaturesRequest, setStubbedFeatures} from '../../features/stub_fetch';
@@ -117,9 +117,7 @@ const LocationInlineHarness: React.FC<Props> = ({
         resetPreferences();
         _setMapObserverForTesting((instance) => {
             live.current = instance;
-            setMaps((seen) => (instance ?
-                {...seen, built: seen.built + 1} :
-                {...seen, released: seen.released + 1}));
+            setMaps((seen) => (instance ? {...seen, built: seen.built + 1} : {...seen, released: seen.released + 1}));
         });
 
         return () => _setMapObserverForTesting(null);

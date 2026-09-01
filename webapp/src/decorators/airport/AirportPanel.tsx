@@ -313,9 +313,7 @@ function renderBody(
     }
 
     const {airport, coordinate} = answer;
-    const openPosition = position ?
-        () => setSelection({type: location.type, payload: position.payload}) :
-        undefined;
+    const openPosition = position ? () => setSelection({type: location.type, payload: position.payload}) : undefined;
 
     return (
         <>
@@ -363,9 +361,7 @@ function renderBody(
 
             {position === null && (
                 <p style={styles.note}>
-                    {coordinate === undefined ?
-                        'This airfield has no position in the database, so there is nothing to draw and no coordinate readings for it.' :
-                        'This airfield\'s position could not be read by this version of the plugin, so there is nothing to draw and no coordinate readings for it.'}
+                    {coordinate === undefined ? 'This airfield has no position in the database, so there is nothing to draw and no coordinate readings for it.' : 'This airfield\'s position could not be read by this version of the plugin, so there is nothing to draw and no coordinate readings for it.'}
                 </p>
             )}
         </>

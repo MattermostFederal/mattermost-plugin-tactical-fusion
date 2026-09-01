@@ -133,8 +133,8 @@ test('every label is drawn beneath the cell and the pin', () => {
     const overlay = Math.min(indexOf('cell-fill'), indexOf('cell-outline'), indexOf('pin'));
 
     const symbols = style.layers.
-        map((layer, i) => ({type: layer.type, i})).
-        filter((entry) => entry.type === 'symbol');
+        map((layer, i) => ({type: layer.type, id: layer.id, i})).
+        filter((entry) => entry.type === 'symbol' && !entry.id.startsWith('pin'));
 
     expect(symbols.length).toBeGreaterThan(0);
     for (const symbol of symbols) {
@@ -634,7 +634,7 @@ test.describe('the accuracy circle', () => {
     // Order is the contract. A fill drawn over the marker would hide the
     // position the circle exists to qualify.
     test('is drawn under the pin, never over it', () => {
-        const ids = buildStyle(ARCHIVE, [], palette(false), false, true).layers.map((layer) => layer.id);
+        const ids = buildStyle(ARCHIVE, [], palette(false), false).layers.map((layer) => layer.id);
 
         const pin = ids.indexOf('pin');
         expect(pin).toBeGreaterThan(ids.indexOf('accuracy-fill'));
@@ -642,7 +642,7 @@ test.describe('the accuracy circle', () => {
     });
 
     test('draws from its own source and nothing else does', () => {
-        const style = buildStyle(ARCHIVE, [], palette(false), false, true);
+        const style = buildStyle(ARCHIVE, [], palette(false), false);
 
         const fromAccuracy = style.layers.
             filter((layer) => 'source' in layer && layer.source === 'accuracy').
@@ -669,7 +669,7 @@ test.describe('the geometry layers', () => {
     // A shape qualifies a position the same way an accuracy ring does, so it
     // goes under the marker for the same reason.
     test('are drawn under the pin, never over it', () => {
-        const ids = buildStyle(ARCHIVE, [], palette(false), false, true).layers.map((layer) => layer.id);
+        const ids = buildStyle(ARCHIVE, [], palette(false), false).layers.map((layer) => layer.id);
 
         const pin = ids.indexOf('pin');
         expect(pin).toBeGreaterThan(ids.indexOf('geometry-fill'));
@@ -695,20 +695,19 @@ test.describe('the geometry layers', () => {
  * says "somewhere around here" and a reticle says "this point".
  */
 test.describe('the marker', () => {
-    function pinLayer(withMarker: boolean) {
-        const style = buildStyle(ARCHIVE, [], palette(false), false, withMarker);
-        return style.layers.find((layer) => layer.id === 'pin');
+    function pinLayer(id: 'pin' | 'pin-plain') {
+        return buildStyle(ARCHIVE, [], palette(false)).layers.find((layer) => layer.id === id);
     }
 
     test('is the circle every location surface has always drawn', () => {
-        const pin = pinLayer(false);
+        const pin = pinLayer('pin-plain');
 
         expect(pin?.type).toBe('circle');
         expect(JSON.stringify(buildStyle(ARCHIVE, [], palette(false)))).not.toContain('tf-marker');
     });
 
     test('becomes a reticle for a surface that colors it', () => {
-        const pin = pinLayer(true);
+        const pin = pinLayer('pin');
 
         expect(pin?.type).toBe('symbol');
 
@@ -722,19 +721,20 @@ test.describe('the marker', () => {
     // The reticle marks the one point the map is drawn to show, so a label
     // arriving first must not displace it.
     test('is never dropped for a label', () => {
-        const layout = (pinLayer(true) as {layout?: Record<string, unknown>}).layout ?? {};
+        const layout = (pinLayer('pin') as {layout?: Record<string, unknown>}).layout ?? {};
 
         expect(layout['icon-allow-overlap']).toBe(true);
         expect(layout['icon-ignore-placement']).toBe(true);
     });
 
+    // Both are last, and which of the two is bottom-most between them does not
+    // matter: the filter makes them mutually exclusive, so no feature can be
+    // drawn by both. What matters is that nothing else is above either.
     test('stays the last thing drawn, whichever shape it is', () => {
-        for (const withMarker of [false, true]) {
-            const style = buildStyle(ARCHIVE, [], palette(false), false, withMarker);
-            const ids = style.layers.map((layer) => layer.id);
+        const ids = buildStyle(ARCHIVE, [], palette(false)).layers.map((layer) => layer.id);
+        const pins = ['pin', 'pin-plain'];
 
-            expect(ids[ids.length - 1], `marker=${withMarker}`).toBe('pin');
-        }
+        expect(ids.slice(-2).slice().sort()).toEqual(pins.slice().sort());
     });
 });
 
@@ -803,7 +803,7 @@ test('the location pin wears no affiliation color', () => {
 
     for (const dark of [false, true]) {
         const style = buildStyle(ARCHIVE, [], palette(dark));
-        const pin = style.layers.find((layer) => layer.id === 'pin');
+        const pin = style.layers.find((layer) => layer.id === 'pin-plain');
         const fill = (pin as {paint: {'circle-color': string}}).paint['circle-color'];
 
         for (const color of claimed) {
@@ -814,4 +814,42 @@ test('the location pin wears no affiliation color', () => {
             ).toBeGreaterThanOrEqual(HUE_CLEARANCE_DEG);
         }
     }
+});
+
+/*
+ * Both pin layers are built, always, and split by a filter.
+ *
+ * The layer used to be chosen at construction from whether the caller happened
+ * to have markers right then. A panel reuses one map across selections, so a
+ * document with no points built the plain circle layer and the NEXT document's
+ * markers drew as theme dots with their stated color and size ignored. That is
+ * the defect buildStyle already records fixing for the accuracy and geometry
+ * sources; the pin layer was left behind.
+ */
+test.describe('the pin layers', () => {
+    test('are both built, whatever the caller has to draw', () => {
+        const ids = buildStyle(ARCHIVE, [], palette(false)).layers.map((layer) => layer.id);
+
+        expect(ids).toContain('pin');
+        expect(ids).toContain('pin-plain');
+    });
+
+    test('are split by the feature, so one map can draw either', () => {
+        const style = buildStyle(ARCHIVE, [], palette(false));
+        const byId = (id: string) => style.layers.find((layer) => layer.id === id);
+
+        const filterOf = (id: string) => (byId(id) as {filter?: unknown} | undefined)?.filter;
+
+        expect(filterOf('pin')).toEqual(['has', 'icon']);
+        expect(filterOf('pin-plain')).toEqual(['!', ['has', 'icon']]);
+    });
+
+    test('both sit above the shape and accuracy layers', () => {
+        const ids = buildStyle(ARCHIVE, [], palette(false)).layers.map((layer) => layer.id);
+
+        for (const pin of ['pin', 'pin-plain']) {
+            expect(ids.indexOf(pin)).toBeGreaterThan(ids.indexOf('geometry-fill'));
+            expect(ids.indexOf(pin)).toBeGreaterThan(ids.indexOf('accuracy-fill'));
+        }
+    });
 });

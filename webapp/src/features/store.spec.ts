@@ -145,9 +145,7 @@ test('serves the cached answer until the TTL lapses', async () => {
  */
 test('a failed refresh keeps the last good answer', async () => {
     let failing = false;
-    stubFetch(() => (failing ?
-        Promise.reject(new Error('blip')) :
-        ok({map_panel: false, map_inline: false, map_page: false})));
+    stubFetch(() => (failing ? Promise.reject(new Error('blip')) : ok({map_panel: false, map_inline: false, map_page: false})));
 
     let clock = 1000;
     _setClockForTesting(() => clock);

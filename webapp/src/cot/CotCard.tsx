@@ -3,7 +3,7 @@ import React from 'react';
 import CotMap from './CotMap';
 import {ClassSummary, chatReading} from './summary';
 import type {CotEvent, CotPayload} from './types';
-import {SOURCE_FILE, affiliationColor, isLinkable, validFor} from './types';
+import {affiliationColor, isLinkable, validFor} from './types';
 
 import ErrorBoundary from '../components/ErrorBoundary';
 import HoverLink from '../decorators/HoverLink';
@@ -44,7 +44,6 @@ const styles: Record<string, React.CSSProperties> = {
     term: {opacity: 0.85},
     value: {margin: 0, wordBreak: 'break-word'},
     note: {opacity: 0.9, padding: '0 12px 8px'},
-    disclosure: {borderTop: '1px solid rgba(var(--center-channel-color-rgb), 0.16)', padding: '6px 12px'},
     actions: {display: 'flex', gap: '12px', padding: '0 12px 8px'},
     list: {listStyle: 'none', margin: 0, padding: '0 12px 8px'},
     listItem: {alignItems: 'baseline', display: 'flex', flexWrap: 'wrap', gap: '0.5em', padding: '3px 0'},
@@ -303,6 +302,7 @@ export const CotCard: React.FC<Props> = ({payload, compactDisplay}) => {
                         <CotMap
                             events={events}
                             surface='card'
+                            postId={payload.postId}
                         />
                     </ErrorBoundary>
                 )}
@@ -322,14 +322,6 @@ export const CotCard: React.FC<Props> = ({payload, compactDisplay}) => {
                         {'Open details'}
                     </button>
                 </div>
-
-                {payload.source === SOURCE_FILE && fileHref(payload.fileId) !== null && (
-                    <div style={styles.disclosure}>
-                        <a href={fileHref(payload.fileId) ?? undefined}>
-                            {payload.fileName === '' ? 'Download the source file' : `Download ${payload.fileName}`}
-                        </a>
-                    </div>
-                )}
             </div>
 
             {payload.trail !== '' && <div style={styles.text}>{payload.trail}</div>}

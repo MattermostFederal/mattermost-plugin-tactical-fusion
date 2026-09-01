@@ -1,6 +1,6 @@
 import {expect, test} from '@playwright/test';
 
-import {_geometryForTesting as geometryForTesting} from './CotMap';
+import {_ellipseForTesting as ellipseForTesting, _shapeForTesting as shapeForTesting} from './CotMap';
 import {SUMMARY_MAX_RUNES, TOO_LONG, oneLine} from './summary';
 import {AFFILIATION_COLORS, COT_CLASSES, COT_PROPS_KEY, accuracyMeters, affiliationWord, fromProps, isLinkable, statedColor} from './types';
 import type {CotEvent} from './types';
@@ -435,13 +435,15 @@ test('an event that describes no shape carries none', () => {
 });
 
 test.describe('what the map is asked to draw', () => {
-    function geometryOf(overrides: Record<string, unknown>) {
-        const payload = fromProps(props({}, {geometry: overrides}));
-        return geometryForTesting(payload!.events[0]);
+    function eventOf(overrides: Record<string, unknown>) {
+        return fromProps(props({}, {geometry: overrides}))!.events[0];
     }
 
+    const ellipseOf = (o: Record<string, unknown>) => ellipseForTesting(eventOf(o));
+    const shapeOf = (o: Record<string, unknown>) => shapeForTesting(eventOf(o));
+
     test('an ellipse is taken from the raw numbers, not from the rendered strings', () => {
-        const drawn = geometryOf({
+        const drawn = ellipseOf({
             kind: 'ellipse',
             major: '400 m',
 minor: '250 m',
@@ -451,13 +453,11 @@ minor_m: '250',
 angle_deg: '30',
         });
 
-        expect(drawn).toEqual({kind: 'ellipse', major: 400, minor: 250, angle: 30});
+        expect(drawn).toEqual({major: 400, minor: 250, angle: 30, color: undefined});
     });
 
-    // The server refuses a shape it will not stand behind. Drawing one anyway
-    // made the card say "not drawn" over a shape the map had drawn.
     test('a shape the server refused is not drawn', () => {
-        const drawn = geometryOf({
+        const drawn = ellipseOf({
             kind: 'ellipse',
 major_m: '400',
 minor_m: '250',
@@ -468,23 +468,34 @@ minor_m: '250',
     });
 
     test('an ellipse whose axes did not survive is not drawn', () => {
-        expect(geometryOf({kind: 'ellipse', major: '400 m'})).toBeUndefined();
-        expect(geometryOf({kind: 'ellipse', major_m: '0', minor_m: '250'})).toBeUndefined();
+        expect(ellipseOf({kind: 'ellipse', major: '400 m'})).toBeUndefined();
+        expect(ellipseOf({kind: 'ellipse', major_m: '0', minor_m: '250'})).toBeUndefined();
     });
 
-    test('an outline is drawn from its points', () => {
-        const drawn = geometryOf({
+    // An outline is a MapShape now, one ring: a polyline has no holes.
+    test('an outline is drawn from its points, as one ring', () => {
+        const drawn = shapeOf({
             kind: 'polyline',
 closed: 'stated',
             points: [{lat: '1.0000', lon: '2.0000'}, {lat: '3.0000', lon: '4.0000'}],
         });
 
-        expect(drawn).toEqual({kind: 'outline', points: [{lat: 1, lon: 2}, {lat: 3, lon: 4}], closed: true});
+        expect(drawn).toEqual({rings: [[{lat: 1, lon: 2}, {lat: 3, lon: 4}]], closed: true});
+    });
+
+    // The two are exclusive: neither reader answers for the other's kind.
+    test('an ellipse is not a shape, and an outline is not an ellipse', () => {
+        expect(shapeOf({kind: 'ellipse', major_m: '400', minor_m: '250'})).toBeUndefined();
+        expect(ellipseOf({
+            kind: 'polyline',
+            points: [{lat: '1.0000', lon: '2.0000'}, {lat: '3.0000', lon: '4.0000'}],
+        })).toBeUndefined();
     });
 
     test('an event with no shape asks for nothing', () => {
-        expect(geometryForTesting(undefined)).toBeUndefined();
-        expect(geometryForTesting(fromProps(props({}, {}))!.events[0])).toBeUndefined();
+        expect(ellipseForTesting(undefined)).toBeUndefined();
+        expect(shapeForTesting(undefined)).toBeUndefined();
+        expect(shapeForTesting(fromProps(props({}, {}))!.events[0])).toBeUndefined();
     });
 });
 

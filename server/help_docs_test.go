@@ -34,6 +34,7 @@ var helpPages = []string{
 	"location.html",
 	"airfields.html",
 	"cot.html",
+	"geojson.html",
 	"formats.html",
 	"panel.html",
 	"admin.html",
@@ -516,4 +517,79 @@ func escapeForHelp(s string) string {
 	s = strings.ReplaceAll(s, "<", "&lt;")
 	s = strings.ReplaceAll(s, ">", "&gt;")
 	return s
+}
+
+func TestTheStatedSettingCountsMatchTheManifest(t *testing.T) {
+	switches, off := 0, []string{}
+	for _, setting := range loadSettings(t).allSettings() {
+		if setting.Type != "bool" {
+			continue
+		}
+		switches++
+		if on, ok := setting.Default.(bool); !ok || !on {
+			off = append(off, setting.Key)
+		}
+	}
+	sections := len(loadSettings(t).SettingsSchema.Sections)
+
+	for _, claim := range []struct {
+		file   string
+		phrase string
+	}{
+		{"admin.html", spellNumber(t, sections) + " sections and " + spellNumber(t, switches) + " switches"},
+		{"help.html", "The " + spellNumber(t, switches) + " switches in the System Console, in " + spellNumber(t, sections) + " sections"},
+	} {
+		if !strings.Contains(strings.ToLower(readHelpFile(t, claim.file)), strings.ToLower(claim.phrase)) {
+			t.Errorf("%s does not state %q; the manifest has %d switches in %d sections",
+				claim.file, claim.phrase, switches, sections)
+		}
+	}
+
+	for _, claim := range []struct {
+		path   string
+		phrase string
+	}{
+		{
+			path:   filepath.Join("..", "docs", "design", "admin-settings.md"),
+			phrase: spellNumber(t, switches) + " switches across " + spellNumber(t, sections) + " sections",
+		},
+		{
+			path:   filepath.Join("..", "CLAUDE.md"),
+			phrase: "The " + spellNumber(t, switches) + " switches, the two map-package settings, the " + spellNumber(t, sections) + " sections",
+		},
+	} {
+		// #nosec G304 -- fixed, repo-relative path
+		data, err := os.ReadFile(claim.path)
+		if err != nil {
+			t.Fatalf("failed to read %s: %v", claim.path, err)
+		}
+		if !strings.Contains(strings.ToLower(string(data)), strings.ToLower(claim.phrase)) {
+			t.Errorf("%s does not state %q; the manifest has %d switches in %d sections",
+				claim.path, claim.phrase, switches, sections)
+		}
+	}
+
+	page := readHelpFile(t, "admin.html")
+	for _, key := range off {
+		if !strings.Contains(page, "<code>"+key+"</code> and") && !strings.Contains(page, "and <code>"+key+"</code>") {
+			t.Errorf("%s ships off but admin.html's tagline does not name it among the ones that do", key)
+		}
+	}
+}
+
+func spellNumber(t *testing.T, n int) string {
+	t.Helper()
+
+	words := map[int]string{
+		20: "twenty", 21: "twenty-one", 22: "twenty-two", 23: "twenty-three",
+		24: "twenty-four", 25: "twenty-five", 26: "twenty-six", 27: "twenty-seven",
+		28: "twenty-eight", 29: "twenty-nine", 30: "thirty",
+		4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight",
+	}
+	word, ok := words[n]
+	if !ok {
+		t.Fatalf("no spelling for %d; extend the table when the manifest grows", n)
+	}
+
+	return word
 }

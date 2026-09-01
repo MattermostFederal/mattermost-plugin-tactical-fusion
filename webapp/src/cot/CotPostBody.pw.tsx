@@ -3,6 +3,7 @@ import React from 'react';
 import CotPostBodyHarness from './CotPostBodyHarness';
 
 import {expect, test} from '../../playwright/ct-coverage';
+import {stubFeaturesRoute} from '../features/stub_route';
 
 test('renders the card for a well formed post', async ({mount}) => {
     const component = await mount(
@@ -87,7 +88,7 @@ test.describe('a post the card cannot vouch for', () => {
 
 /*
  * The file case has an empty message by construction, and a post whose type a
- * plugin owns has already lost Mattermost's attachment list. A fallback that
+ * plugin owns has already lost its embeds. A fallback that
  * rendered post.message alone would therefore be a permanently blank post.
  */
 test.describe('the fallback is never blank', () => {
@@ -118,7 +119,17 @@ test.describe('the fallback is never blank', () => {
     });
 });
 
-test('a file post always offers its source', async ({mount}) => {
+/*
+ * The card does NOT offer the attachment, because Mattermost already does.
+ *
+ * The card carried a "Download <name>" link on the argument that Post.Type had
+ * cost the post its file attachment list. That was wrong: what a plugin-owned
+ * body loses is PostBodyAdditionalContent, which is link previews, image embeds
+ * and slack-style message attachments. The file attachment list is drawn by
+ * post_body itself and survives, so the link sat directly above Mattermost's own
+ * attachment for the same file, naming it twice.
+ */
+test('a file post leaves the attachment to Mattermost', async ({mount}) => {
     const component = await mount(
         <CotPostBodyHarness
             source='file'
@@ -128,9 +139,8 @@ test('a file post always offers its source', async ({mount}) => {
         />,
     );
 
-    await expect(component.getByRole('link', {name: 'Download event.cot'})).toHaveAttribute(
-        'href', '/api/v4/files/abcdefghijklmnopqrstuvwxyz',
-    );
+    await expect(component.getByTestId('cot-card')).toBeVisible();
+    await expect(component.getByText(/^Download/)).toHaveCount(0);
 });
 
 // The source is the panel's, not the card's: the card names the event and the
@@ -216,19 +226,26 @@ test('the rows are a labeled description list', async ({mount}) => {
     ).toBeVisible();
 });
 
-// A file id reaches an href, so the function has to be safe on its own terms
-// rather than on an invariant of the host that populates file_ids.
+/*
+ * A file id reaches an href, so the function has to be safe on its own terms
+ * rather than on an invariant of the host that populates file_ids.
+ *
+ * Pointed at the FALLBACK, which is the one surface left that builds a file
+ * href. It used to assert on the card's download link, and when that link was
+ * removed the assertion would have passed against a card that never draws one,
+ * proving nothing about the guard it was written for.
+ */
 test('a file id that is not one is not turned into a link', async ({mount}) => {
     const component = await mount(
         <CotPostBodyHarness
-            source='file'
-            fileId='../../../admin/console'
-            fileName='event.cot'
+            uid={null}
+            message=''
             fileIds={['../../../admin/console']}
         />,
     );
 
-    await expect(component.getByRole('link', {name: /Download/})).toHaveCount(0);
+    await expect(component).toContainText('Attached');
+    await expect(component.getByRole('link')).toHaveCount(0);
 });
 
 // A prototype key is not an affiliation. The dot is decorative and redundant
@@ -590,4 +607,66 @@ test.describe('a class whose block is absent degrades to the ordinary card', () 
             await expect(card).toContainText('still a remark');
         });
     }
+});
+
+/*
+ * "Open larger" on a BLOCK, which had no link at all.
+ *
+ * The map page is addressed by a coordinate, and a block of events has none, so
+ * the link was simply omitted and the control read as broken. A block addresses
+ * the page by the post instead, and the page redraws the whole block.
+ */
+test.describe('Open larger on a block of events', () => {
+    test('addresses the map page by the post, not by one event in it', async ({mount, page}) => {
+        await stubFeaturesRoute(page);
+
+        const component = await mount(
+            <CotPostBodyHarness
+                postId='post0000000000000000000000'
+                events={[
+                    {lat: '34.0561', lon: '-118.2500', format: 'dd', value: '34.0561,-118.2500'},
+                    {lat: '35.0000', lon: '-119.0000', format: 'dd', value: '35.0000,-119.0000'},
+                ]}
+            />,
+        );
+
+        const larger = component.getByRole('link', {name: 'Open larger'});
+        await expect(larger).toHaveAttribute('href', /post=post0000000000000000000000/);
+        await expect(larger).not.toHaveAttribute('href', /[?&]f=/);
+    });
+
+    // One event still goes to its own coordinate page, which carries the token
+    // and a way through to every reading of it. A post id cannot offer that.
+    test('a single event still addresses the map page by its coordinate', async ({mount, page}) => {
+        await stubFeaturesRoute(page);
+
+        const component = await mount(
+            <CotPostBodyHarness
+                postId='post0000000000000000000000'
+                event={{lat: '34.0561', lon: '-118.2500', format: 'dd', value: '34.0561,-118.2500'}}
+            />,
+        );
+
+        const larger = component.getByRole('link', {name: 'Open larger'});
+        await expect(larger).toHaveAttribute('href', /[?&]f=dd/);
+        await expect(larger).not.toHaveAttribute('href', /post=/);
+    });
+
+    // A card built from a payload directly has nothing to address.
+    test('no post id means no link, rather than a link to nothing', async ({mount, page}) => {
+        await stubFeaturesRoute(page);
+
+        const component = await mount(
+            <CotPostBodyHarness
+                postId=''
+                events={[
+                    {lat: '34.0561', lon: '-118.2500', format: 'dd', value: '34.0561,-118.2500'},
+                    {lat: '35.0000', lon: '-119.0000', format: 'dd', value: '35.0000,-119.0000'},
+                ]}
+            />,
+        );
+
+        await expect(component.getByTestId('cot-map')).toBeVisible();
+        await expect(component.getByText('Open larger')).toHaveCount(0);
+    });
 });

@@ -2,6 +2,100 @@
 
 > Design rationale for Tactical Fusion. See [CLAUDE.md](../../CLAUDE.md) for the rules that govern day-to-day work; this file records the measurements, the defects that produced the current shape, and the contracts a later change would silently break.
 
+## Two ways a map used to fail silently
+
+Both were found by driving a real browser against a running server rather than
+by reading the code, and both are recorded here because neither is visible from
+the source alone.
+
+### A map that is built and never becomes ready
+
+MapLibre tiles in a **worker**. If that worker never arrives, no source ever
+finishes, `load` never fires, and because that is not an `error` the error
+handler never runs either. The note stays "Loading map…" forever and a reload is
+the only way out. `asset_fixtures.ts` records the same failure from the other
+side, where it is used deliberately to hold a map between construction and load.
+
+A worker URL that 404s is how this happens in the field. The URL comes from
+webpack's public path, so a wrong `window.basename`, a blocked `.mjs`, or a
+bundler whose asset shape `assetUrl` does not recognize all produce it.
+
+So readiness is **bounded**, exactly as `loadMapLibre` and `basemap.ts` bound
+their own fetches: `READY_DEADLINE_MS` after the map is constructed, a map that
+has not fired `load` reports `NO_BASEMAP` and is torn down, which hands back its
+WebGL context and lets a later attempt retry. The deadline is generous rather
+than tight, because `load` waits for the first tiles and these readers are on
+constrained links; the point is to end an infinite wait, not to police a slow
+one. `_setReadyDeadlineForTesting` is how the suite exercises it without sitting
+through twenty seconds.
+
+### The MapLibre worker and its shared chunk ship in a hashed directory
+
+MapLibre tiles in a worker, and that worker is a module which imports
+`./maplibre-gl-shared.mjs` by that literal relative name. So the shared chunk
+cannot be content-hashed the way every other emitted asset is: the name the
+worker asks for is fixed.
+
+Mattermost serves `/static/plugins/**` with `Cache-Control: max-age=31556926`,
+a year. A fixed name under that policy is a file a browser will not re-fetch
+until long after it has stopped matching the worker beside it. Upgrade MapLibre
+and a fresh, content-hashed worker is paired with a year-old shared chunk: the
+worker fails to start, no source finishes tiling, `load` never fires, and the
+map sits on "Loading map…" with no error. It is the same silent failure the
+worker's own comment describes, arriving by a different route.
+
+A hashed **directory** fixes what a hashed filename cannot. `maplibreAssetDir`
+in `webpack.config.js` keys a directory on the contents of both files and emits
+the pair into it. The worker's relative import resolves inside whatever
+directory the worker was loaded from, so the name it asks for is preserved while
+the URL moves whenever either file does.
+
+`make bundle` checks the layout, because webpack is not the only way the pair
+can end up wrong and the failure is invisible in exactly the builds nobody looks
+at. The guard it replaced was `ls <worker> && ! -f <shared>`, which passed
+silently on a bundle with **no worker at all**, and would have passed silently
+again the moment the worker moved out of the top level. The current one fails on
+a missing worker, a missing shared chunk, and a pair that is not in a
+content-keyed directory; all three were verified by sabotaging a tree rather
+than by reading the recipe.
+
+### The basemap's cache buster is a digest, not the version
+
+Mattermost re-extracts the bundle on every install, so `world.pmtiles` gets a
+fresh modification time even when its bytes do not change. It is served out of
+`public/`, where this plugin sets no headers at all: no `ETag`, no
+`Cache-Control`, only `Last-Modified`. A browser holding cached byte ranges
+therefore revalidates with `If-Range: <old time>`, the validator no longer
+matches, and the server answers a 16 KB range request with **HTTP 200 and the
+entire 43 MB archive**. `probeArchive` reads 127 bytes and refuses that, so a
+browser that takes this path reports that the map could not be loaded until its
+cache is cleared.
+
+The SERVER half is measured and reproducible. Whether a given browser hits it
+depends on the state of its own range cache: a warm profile driven through a
+redeploy in Chrome revalidated cleanly and kept working, so this is a latent
+trap rather than a guaranteed one. What is not in doubt is that the response
+below is what the server sends when a browser does ask this way.
+
+```
+Range: bytes=0-16383  +  If-Range: <stale>   ->  200, Content-Length: 43074410
+Range: bytes=0-16383  +  If-Range: <current> ->  206, Content-Length: 16384
+```
+
+Keying the URL on the archive's **content** fixes it. A redeploy that changes
+nothing keeps the URL and its cached ranges; a new archive lands on a URL no
+browser holds an entry for, so nothing ever revalidates a range against a
+validator that moved underneath it. The digest is computed at build time by
+`webpack.config.js` and falls back to the plugin version for a webapp-only build
+where the archive is not on disk to hash.
+
+**Serving the archive from the plugin's own route was considered and rejected.**
+It would let us set a stable `ETag` and a long `Cache-Control`, which is the
+tidier fix, but it would also put every tile range request through the plugin's
+RPC bridge instead of Mattermost's static file server. `servePackage` accepts
+that cost for an optional, small archive; the global basemap is the one every
+map reads, and the digest fixes the same failure without moving it.
+
 ## Mapping
 
 The location panel and both server-rendered location pages draw a world map,
@@ -1360,6 +1454,15 @@ assumed.** All three were checked and accepted deliberately:
 - **Link previews, image embeds and message attachments are dropped**, because
   `message_with_additional_content.tsx` computes `hasPlugin` from the raw
   `post.type` and skips `PostBodyAdditionalContent` when a plugin owns the body.
+  "Message attachments" here is Mattermost's own term for slack-style
+  `props.attachments`, which is what that component renders.
+
+  **The FILE attachment list is not among them**, and reading this bullet as
+  though it were is what put a "Download <name>" link on the Cursor on Target
+  card. Files are drawn by `post_body` itself, outside
+  `PostBodyAdditionalContent`, so a stamped post keeps them: observed on a
+  running server, where the card's link sat directly above Mattermost's own
+  attachment for the same file. Nothing else in this list changes.
 
 `Props["type"]` was the alternative: `post_message_view.tsx` reads
 `post.props?.type ?? post.type` while all three of the above key on `post.type`,
@@ -1626,7 +1729,10 @@ throws on a latitude past 90 rather than clamping, and the throw is swallowed by
 its own render loop from the load handler, so the reader gets a blank map with
 no note. The union is clamped to the Mercator limit before it is used.
 
-**A shape can carry a color, and only a shape.** `geometryColor` repaints
+**Superseded, kept for the argument.** What follows described `geometryColor`,
+a scalar prop deleted when the paint became data-driven; the current shape is
+"simplestyle, and the two gates it passes" in `geojson.md` and the module table
+below. `geometryColor` repainted
 `geometry-outline` and `geometry-fill` from `applyView`, always to an explicit
 value rather than only when one is given: the panel reuses one map across
 selections, so leaving the previous paint in place drew the next event's shape in
@@ -1641,7 +1747,8 @@ single map across selections: opening a shapeless event and then a shape drew
 nothing, forever, because `getSource('geometry')` stayed undefined and `setData`
 was an optional chain that no-opped. An empty collection costs nothing.
 
-**The frame is the union of the markers and the geometry.** `spreadOf` answers
+**The frame is the union of the markers and the geometry.** `frameBounds`'s
+`nothingToFrame` guard answers
 only about markers and returns nothing below two of them, which is right for a
 set of pins and wrong for one polygon: a shape whose extent is larger than its
 `<point>` would open half off screen, or at a zoom picked for a point that
@@ -1684,3 +1791,240 @@ position somebody reported.
 
 Geometry draws on the card and in the panel both. A drawn shape whose shape is
 not drawn is a card that has said nothing.
+
+## The map page, addressed by a post
+
+`/map` was addressed only by a coordinate: `?f=<format>&v=<canonical>`, with
+every reading re-derived from the token, which is what "a link may never
+disagree with itself" means on that route.
+
+A block of Cursor on Target events and a GeoJSON document have no canonical
+token. There is no coordinate that names an overlay, so "Open larger" was not
+offered at all: `CotMap` passed a `pageHref` only for a post with exactly one
+drawable event, and `GeoJsonMap` never passed one. To a reader that read as the
+control being broken on precisely the posts where a bigger map is worth most.
+
+`?post=<id>` is the second address. The invariant survives it: nothing derived
+travels in the URL there either, and the whole overlay is re-read from stored
+props at render.
+
+### `drawsNothing` is the single authority on an empty overlay
+
+Both canvases answer a payload that draws nothing with `null`: `unplaceable`,
+which is Go's refusal to place a document whose axis order it could not confirm,
+and an event or feature set that yields no marker and no shape. The overlay page
+rendered that `null` inside a framed window with a populated label bar, so a
+document that drew nothing appeared as an empty basemap captioned "1 event".
+
+The test lives in one exported `drawsNothing` per format, which the canvas and
+the page both call. It was tempting to restate the condition in the page, since
+it already had the counts for the label. That is how the defect arose in the
+first place: the page renders the canvas directly and inherits none of the
+wrapper's gates, so a second copy of the test in the caller is exactly how the
+two come apart again.
+
+### One event keeps its coordinate address
+
+"Open larger" chooses between the two addresses rather than always using the
+post. A single drawable event still links to `?f=&v=`, because that page carries
+the token and a way through to every reading of it, which the post form cannot
+offer. A block has no SINGLE coordinate to be addressed by. It has one per
+drawable event, which is what its markers are built from, and no one of them
+names the block: linking the first event's page would frame that position and
+say nothing about the rest, the same argument that keeps the accuracy ring off a
+block map. A card with no post id, which is what a harness builds, has nothing
+to address and so offers no link.
+
+### The overlay page is a mode of `/map`, not a route of its own
+
+`/map` is a route of its own rather than a mode of `/decorate`, and the reason
+is above. The overlay goes the other way: it is the same window given to the
+same picture over the same basemap, behind the same admin switch, and a reader
+arrives at it from the same "Open larger". Only what is drawn differs, which is
+why the mode is a shell attribute rather than a path.
+
+`RenderOverlayPage` therefore takes `kind` and `blob` as opaque strings. By the
+time it is called, `ServeHTTP` has already decided that the post is one this
+plugin stamped, that this reader may see it, and that its card has not stood
+down. The renderer's whole job is the shell around what it was handed, and it
+must not re-derive any of those three: a second answer to "may this reader see
+it" is how the two come to disagree.
+
+### The shell carries the props blob, not markers and shapes
+
+The obvious alternative was to distil the post into markers and shapes in Go and
+put those in the shell. That would be a second answer to "what does this document
+draw", and the two would part company the first time either map changed.
+
+So the shell carries the format's own props blob verbatim, and the bundle hands
+it to the same `fromProps` the card in the channel calls and renders the same
+canvas. `CotMapCanvas` and `GeoJsonMapCanvas` are exported for that: the canvas
+is the part that consults nothing, and the wrapper around it is where the
+reader's sections and the admin's inline switch live. The page IS the map, so
+reaching it is the decision and neither of those applies.
+
+`data-overlay-kind` is the post type, which is already pinned to the webapp's
+copy by `TestWebappCotPostTypeMatches` and `TestWebappGeoJSONPostTypeMatches`, so
+this mode introduced no new vocabulary that could drift.
+
+### The map's modules, and why the file was split
+
+`LocationMap.tsx` reached 1511 lines by accretion: the pin, the accuracy ring,
+the cell, the outline, the ringed shapes, the simplestyle gate, the framing math
+and the accessible label all landed in one file. It is now the component and its
+lifecycle, and four modules beside it:
+
+| Module | Holds |
+|---|---|
+| `paint.ts` | `fillOf`, `numberWithin`, `styleOf`, `paintGeometry`, `MapShape`. The gate an author-supplied color, width or opacity passes before it is paint |
+| `overlay.ts` | every `drawable*` builder, `markerFeatures`, `overlayDigest`, `MapMarker`, `MapEllipse`, `addMarkerImages`. What gets drawn |
+| `bounds.ts` | `overlayBounds`, `frameBounds`, `unionOf`, `openingAnchor`. Where the camera goes |
+| `label.ts` | `label`, `positionNote`, and the strings a map says when it cannot draw |
+| `use_map_instance.ts` | `MapProps`, and the hook that owns the MapLibre instance, `applyView` and every effect |
+
+**Not `style.ts`.** `style.spec.ts` already means the MapLibre *style
+specification* built by `buildStyle` in `maplibre.ts`. The simplestyle gate is
+`paint.ts`, after what it guards.
+
+The split needed one type change rather than being a pure move: 21 helper
+signatures were typed as `Props['markers']` and its siblings, so a helper in its
+own module could not describe its own arguments without importing `Props` back
+from the component. `MapMarker` is now a named export beside `MapShape` and
+`MapEllipse`, and the dependency runs one way: `paint` → `overlay` → `bounds`,
+with `use_map_instance` above those three and `LocationMap` above it.
+
+Three `_ForTesting` wrappers went with it. `_frameBoundsForTesting`,
+`_drawableCellForTesting` and `_positionNoteForTesting` existed only because the
+functions were private to a component module; two forwarded unchanged and one
+reordered arguments, which is why `geometry.spec.ts` had been calling
+`frameBounds` with `geometries` last when the real signature takes it third.
+The specs now call the real functions.
+
+### `useMapInstance` owns the map; the component presents it
+
+The lifecycle came out too: creation, the readiness deadline, the camera and
+overlay writes, and teardown are `use_map_instance.ts`, which returns the
+container to attach, the instance, `applyView`, and what to tell the reader.
+`LocationMap.tsx` is 184 lines of presentation.
+
+`MapProps` moved with it, because it is the map's contract rather than the
+component's: the hook consumes almost all of it and the component forwards it
+whole. `MAP_HEIGHT` is re-exported from `LocationMap` so the three surfaces that
+size themselves against it keep their import path.
+
+The seam was chosen, not taken. Passing the eleven refs the effects share with
+`applyView` into a hook would have moved lines without separating anything;
+moving `applyView` in as well is what let the hook own `map` and `ready`
+outright, so the boundary is "give me what to draw" rather than "hold these for
+me".
+
+### One overlay path, and `extentOnly` derived
+
+There were two ways to hand this map a shape: the singular `geometry` with its
+`geometryColor`, and the plural `geometries`. Each had exactly one production
+caller. `MapShape` is strictly the more general of the two, so the `outline`
+variant folded into `geometries` and `outlineFeature` went with it: it was
+`shapesFeature` for one single-ring shape.
+
+`MapEllipse` is what remains of the singular slot, and it is not a simplification
+that it stayed. An ellipse is placed by the map's own anchor rather than by its
+own vertices, so a plural array of them would stack every one on a single point.
+
+`extentOnly` is now derived: `lat === null && (markers or geometries)`. It was an
+explicit prop to stop a null position meaning two things, and the case that
+argument was protecting is a null with **nothing** to draw, which must still read
+as unavailable. That clause is what keeps it true, and a mutation test proves it:
+drop it and "an unknown position still reads as unavailable" fails.
+
+One trap found on the way. `soleOutline` decides which event in a block draws,
+and folding the color into the shape it inspects made that decision read
+`event.detail.colorArgb`, which a caller counting outlines need not have.
+`outlineOf` is colorless for that reason and `shapeFor` adds the color at the
+render; the split is not stylistic.
+
+### The write path, collapsed for real this time
+
+Phase 3 unified the MARKER half of `applyView`'s fork and left the shape half,
+while the commit said the path was one. The extent-only branch kept its own
+`shapesFeature` call, which meant a second `styleOf` call site on the branch
+GeoJSON always takes, and it silently dropped the ellipse.
+
+`drawableOverlay` now takes a nullable `lat`/`lon` and returns the plural
+collection when either is null, so both branches call it. The check that the
+duplication is gone is that `shapesFeature` and `styleOf` are no longer imported
+by `use_map_instance.ts` at all.
+
+It was found by mutation rather than by reading: deleting `style: styleOf(shape)`
+from the inline copy left all 806 tests green, because every style test mounted a
+POSITIONED map and GeoJSON is never positioned. The test that closes it is
+"a stated style survives the extent-only write path", the sibling of the
+marker-size one.
+
+### A verdict outlives its coordinate only where the coordinate changes
+
+The failure-clearing effect keyed on `[lat, lon]`. An extent-only surface passes
+a literal null for both, so on GeoJSON it ran once at mount and never again: one
+transient basemap failure latched "The map could not be loaded" for every later
+document, while the creation effect beside it retried on `overlayKey`. It keys on
+`overlayKey` too now.
+
+### Two channel permissions, not one
+
+`overlayForPost` requires `read_channel` AND `read_channel_content`. It shipped
+with only the first, which is "may see that this channel exists"; the second is
+what Mattermost's own post reads gate on, and the two are separately grantable
+through a custom scheme or channel moderation. This route returns the whole
+stamped document, `src` included, so the weaker permission alone would have
+served a post body out of a channel a reader may see but not read.
+
+The permission check also runs before `DeleteAt` is read. It shipped the other
+way round, which leaked nothing (both answers are the same 404) but contradicted
+the ordering this file claims.
+
+### Every refusal is one 404 and one code
+
+Any reader with a session can put any id on this route. `TF-12008` is therefore
+the single answer for a post that does not exist, a post in a channel this
+reader may not read, a post this plugin never stamped, and a stamped post whose
+card has stood down. Finer codes would answer, one id at a time, whether a given
+post exists and what kind of thing it holds.
+
+The permission check runs before anything is read out of the post, so behavior
+cannot leak what is in a channel the reader cannot see. Only the plugin's own
+props key is encoded into the page, never the whole props map: everything else
+on a post belongs to Mattermost or to another plugin, and this page republishes
+what it is given.
+
+### The card's stand-downs are restated on the page
+
+`CotPostBody` and `GeoJsonPostBody` refuse an edited post, and a file source
+whose file is no longer attached, because `Post.Type` survives an edit and Props
+may not. The page applies both. A page that drew what the card had already
+refused to draw would be the one surface still claiming something no reader can
+check.
+
+### The overlay page carries no link out of itself
+
+It shipped with a "Back to the post" permalink, on the argument that "Open
+larger" opens a new tab so the browser's Back is not the way back. That was
+removed.
+
+It cost two API calls, `GetChannel` and `GetTeam`, on every page load, to build
+a second route to the post the reader had arrived from and still has open in the
+tab behind them. It could not be built at all for a direct or group message,
+whose permalink needs a team name that does not exist, so the one page that
+could not offer it was also the one where a reader is least likely to find the
+post again by other means. A link that is absent exactly where it would help
+most is not a way back.
+
+Removing it took the two API calls with it, which is why `fakeAPI` stubs neither
+any more: an unstubbed call panics there, so a future `GetChannel` on this path
+cannot be added without the test suite saying so.
+
+The coordinate map page keeps its own "All readings" link. That is not a way
+back, it is the way to the other half of what the plugin knows about that token,
+and there is no equivalent for an overlay.
+
+A single Cursor on Target event still addresses the page by its coordinate
+rather than by its post. That page carries the token and a way through to every
+reading of it, which a post id cannot offer.

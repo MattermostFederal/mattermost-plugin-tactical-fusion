@@ -103,6 +103,22 @@ type fakeAPI struct {
 	loadedConfig string
 	loadErr      error
 
+	// posts backs the /map?post= gate. Nil until a test needs one, so a test
+	// that never opens an overlay page still panics on an unexpected lookup
+	// rather than reading a post that is not there.
+	posts map[string]*model.Post
+
+	// channelsPermitted is the set of channels HasPermissionToChannel says yes
+	// to, and channelsAsked records every one it was asked about, so a test can
+	// prove the gate asked at all rather than trusting a false to come from the
+	// right place.
+	channelsPermitted map[string]bool
+	channelsAsked     []string
+
+	// channelDenied refuses one permission id while allowing the rest, so a
+	// test can prove each of the two the map page requires is load-bearing.
+	channelDenied map[string]bool
+
 	// files and fileContent are the fake filestore the Cursor on Target file
 	// path reads. Nil until a test needs one, so a test that does not attach a
 	// file still panics on an unexpected call.
@@ -191,6 +207,22 @@ func (a *fakeAPI) GetFile(fileID string) ([]byte, *model.AppError) {
 }
 
 func (a *fakeAPI) GetConfig() *model.Config { return a.config }
+
+func (a *fakeAPI) GetPost(postID string) (*model.Post, *model.AppError) {
+	post, ok := a.posts[postID]
+	if !ok {
+		return nil, model.NewAppError("GetPost", "app.post.get.app_error", nil, "", 404)
+	}
+
+	return post, nil
+}
+
+func (a *fakeAPI) HasPermissionToChannel(_, channelID string, permission *model.Permission) bool {
+	a.channelsAsked = append(a.channelsAsked, channelID)
+	a.permissionsAsked = append(a.permissionsAsked, permission)
+
+	return a.channelsPermitted[channelID] && !a.channelDenied[permission.Id]
+}
 
 func (a *fakeAPI) GetBundlePath() (string, error) {
 	if a.bundlePath == "" {
@@ -353,6 +385,13 @@ func newTestPlugin(t *testing.T, siteURL string, enabled bool) *Plugin {
 
 		EnableCot:     enabled,
 		EnableCotFile: enabled,
+
+		EnableGeoJSON:     enabled,
+		EnableGeoJSONFile: enabled,
+
+		// Off, like the shipped default: the ambiguous spellings are opt-in, so
+		// a test that wants them says so.
+		EnableGeoJSONUnlabeled: false,
 	})
 
 	registerDecoratorsForTest(t, p)

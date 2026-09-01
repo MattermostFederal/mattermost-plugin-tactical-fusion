@@ -59,8 +59,43 @@ export type Bounds = [number, number, number, number];
 
 type ZoomRule = (minZoom: number, maxZoom: number) => boolean;
 
+/*
+ * The cache buster for the bundled basemap.
+ *
+ * The CONTENT digest where this used to carry the plugin version, and the
+ * difference is the whole point. Mattermost re-extracts the bundle on every
+ * install, so world.pmtiles gets a fresh modification time even when its bytes
+ * do not change, and it is served out of public/ where this plugin sets no
+ * headers: no ETag, no Cache-Control, only Last-Modified. A browser holding
+ * cached byte ranges revalidates with `If-Range: <old time>`, the validator no
+ * longer matches, and the server answers a 16 KB range request with HTTP 200
+ * and the entire 43 MB archive. `probeArchive` reads 127 bytes and refuses
+ * that, so every map on the install reported that it could not be loaded until
+ * the reader cleared their cache. Measured against a live server, not inferred.
+ *
+ * A digest moves only when the archive does, so a redeploy of the same build
+ * keeps the URL and its cached ranges, and a new archive lands on a URL no
+ * browser has an entry for. The version is the fallback for a webapp-only build
+ * where the archive is not on disk to hash; `make bundle` is what enforces that
+ * it ships at all.
+ */
+/* eslint-disable @typescript-eslint/naming-convention, no-underscore-dangle */
+declare const __TF_BASEMAP_DIGEST__: string;
+
+function basemapVersion(): string {
+    // Guarded on the IDENTIFIER, not on `process`. There is no `process` in a
+    // browser, so reading the digest through `process.env` made it permanently
+    // unreachable and the URL fell back to the version, which is exactly the
+    // failure this function exists to prevent. The typeof guard is for the
+    // component runner, which builds with Vite and defines nothing.
+    const digest = typeof __TF_BASEMAP_DIGEST__ === 'undefined' ? '' : __TF_BASEMAP_DIGEST__;
+
+    return digest === '' ? manifest.version : digest;
+}
+/* eslint-enable @typescript-eslint/naming-convention, no-underscore-dangle */
+
 export function basemapUrl(): string {
-    return `${pluginBaseUrl()}/public/map/world.pmtiles?v=${encodeURIComponent(manifest.version)}`;
+    return `${pluginBaseUrl()}/public/map/world.pmtiles?v=${encodeURIComponent(basemapVersion())}`;
 }
 
 /*

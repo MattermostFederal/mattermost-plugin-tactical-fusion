@@ -33,6 +33,10 @@ export interface Plant {
     r?: string;
     conversion?: string;
     mode?: string;
+
+    /** The overlay shell, which carries no coordinate at all. */
+    overlayKind?: string;
+    overlay?: string;
 }
 
 interface Props {

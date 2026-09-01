@@ -3,22 +3,47 @@ import React, {useState} from 'react';
 const styles: Record<string, React.CSSProperties> = {
     details: {margin: '16px 0 4px'},
     summary: {
-        background: 'rgba(var(--center-channel-color-rgb), 0.04)',
+        alignItems: 'center',
+        background: 'var(--center-channel-bg)',
         border: '1px solid rgba(var(--center-channel-color-rgb), 0.16)',
         borderRadius: 4,
         cursor: 'pointer',
+        display: 'flex',
+        gap: '8px',
+        justifyContent: 'space-between',
+        listStyle: 'none',
         padding: '6px 10px',
     },
     row: {
         alignItems: 'center',
         display: 'inline-flex',
         gap: '8px',
-        verticalAlign: 'middle',
+        minWidth: 0,
     },
     label: {fontSize: '13px', fontWeight: 600},
-    state: {color: 'var(--link-color)', fontSize: '12px'},
+    chevron: {color: 'var(--link-color)', flex: 'none'},
     body: {marginTop: '8px'},
 };
+
+const ChevronGlyph: React.FC<{open: boolean}> = ({open}) => (
+    <svg
+        width='16'
+        height='16'
+        viewBox='0 0 24 24'
+        fill='none'
+        stroke='currentColor'
+        strokeWidth='2'
+        strokeLinecap='round'
+        strokeLinejoin='round'
+        style={styles.chevron}
+        data-testid='disclosure-chevron'
+        data-state={open ? 'open' : 'closed'}
+        aria-hidden='true'
+        focusable='false'
+    >
+        <path d={open ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6'}/>
+    </svg>
+);
 
 interface Props {
     label: string;
@@ -40,11 +65,11 @@ export const Disclosure: React.FC<Props> = ({label, trailing, children}) => {
             <summary style={styles.summary}>
                 <span style={styles.row}>
                     <span style={styles.label}>{label}</span>
-                    <span style={styles.state}>{open ? 'Hide' : 'Show'}</span>
                     {trailing !== undefined && (
                         <span onClick={(clicked) => clicked.preventDefault()}>{trailing}</span>
                     )}
                 </span>
+                <ChevronGlyph open={open}/>
             </summary>
             <div style={styles.body}>{children}</div>
         </details>

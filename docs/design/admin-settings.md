@@ -4,23 +4,37 @@
 
 ## Admin settings
 
-The count is **twenty-two switches across five sections**. Cursor on Target added
+The count is **twenty-five switches across six sections**. Cursor on Target added
 the fifth section and two of the switches, `EnableCot` and `EnableCotFile`, and
+GeoJSON added the sixth and three more. Cursor on Target
 deliberately added no third: the card's map reads `EnableLocationMapInline`,
 whose parent ANDs with `EnableLocation` and `EnableLocationMap` already live in
 Go. A second "is the map on" answer is the thing `features/types.ts` argues
-against by name. See [`cot.md`](cot.md), "Switches".
+against by name. See [`cot.md`](cot.md), "Switches". GeoJSON added no map switch
+either, for the same reason and reading the same answer: its three are
+`EnableGeoJSON`, `EnableGeoJSONFile` and `EnableGeoJSONUnlabeled`.
 
 `EnableLocationMapInline` is now worded as **the map under a post** rather than
 "under a coordinate-only post", because two surfaces reach it.
 
 `EnableCot` carries the same Elasticsearch and OpenSearch warning
 `EnableLocationMapInline` carries, in the same words, plus the two costs only it
-pays: the file attachment list is dropped, and Markdown written around an event
-renders as plain text.
+pays: link previews and image embeds are dropped, and Markdown written around
+an event renders as plain text. The FILE attachment list is not among them; see
+[`mapping.md`](mapping.md), "What setting `Post.Type` costs".
 
-`plugin.json` declares twenty switches and two map-package settings in **four
-`settings_schema.sections`**:
+The counts written in prose are the one thing about the settings that no test
+would otherwise read, and they are stated in four places: this file, two help
+pages and `CLAUDE.md`. Adding the GeoJSON section left the design note and the
+help pages disagreeing, none of them true of the same manifest.
+`TestTheStatedSettingCountsMatchTheManifest` is what holds all four to
+`plugin.json`: the two help pages, this file, and `CLAUDE.md`. It derives the
+totals from the manifest rather than restating them, so adding a switch or a
+section fails the test until the prose is caught up.
+
+The **first four** of those sections hold twenty of the switches, plus the two
+map-package settings, which are a path and a control rather than switches. The
+Cursor on Target and GeoJSON sections below add the remaining five:
 
 - **Date and time**: `EnableDTG` with `EnableDTGMilitary`, `EnableDTGTimestamp`
   and `EnableDTGMoniker`.
@@ -30,8 +44,7 @@ renders as plain text.
   `EnableLocationPlusCode` and `EnableLocationMoniker`.
 - **Maps**: `EnableLocationMap` with `EnableLocationMapPanel`,
   `EnableLocationMapInline` and `EnableLocationMapPage`, then
-  `LocationMapPackagesDir` and `LocationMapPackages`, which are a path and a
-  control rather than switches. See
+  `LocationMapPackagesDir` and `LocationMapPackages`. See
   [`mapping.md`](mapping.md#the-openstreetmap-detail-tier-above-the-seam) for
   why the storage is a real directory.
 - **Airfields**: `EnableAirport` with `EnableAirportTable`.

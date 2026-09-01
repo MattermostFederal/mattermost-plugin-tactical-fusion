@@ -1,4 +1,4 @@
-import type {FeatureCollection} from 'geojson';
+import type {Feature, FeatureCollection} from 'geojson';
 import type {StyleSpecification} from 'maplibre-gl';
 
 import type {Archive, Bounds, DetailArchive} from './basemap';
@@ -315,7 +315,7 @@ export function markerImageID(color: string): string {
 
 export function buildStyle(
     archive: Archive, details: readonly DetailArchive[], colors: MapColors,
-    overzoomGlobal = false, withMarker = false,
+    overzoomGlobal = false,
 ): StyleSpecification {
     const globalCap = overzoomGlobal ? MAX_ZOOM : SEAM_ZOOM;
     const sources: StyleSpecification['sources'] = {
@@ -596,34 +596,51 @@ export function buildStyle(
             },
             ...accuracyLayers(colors),
             ...geometryLayers(colors),
-            ...(withMarker ? [{
+
+            // BOTH layers, always, split by a filter on the feature rather than
+            // chosen once at construction. A `withMarker` parameter read
+            // `hasMarkers` at build time, and a panel reuses one map across
+            // selections: a
+            // document with no points built the circle layer, and the next
+            // document's markers then drew as plain theme dots with their
+            // stated color and size ignored. That is the defect this file
+            // already records fixing for the accuracy and geometry SOURCES;
+            // the pin LAYER was left behind.
+            {
                 id: 'pin',
                 type: 'symbol' as const,
                 source: 'pin',
+                filter: ['has', 'icon'] as unknown as never,
                 layout: {
 
                     // Read from the feature, so a block of events draws each
                     // one in its own affiliation's color.
                     'icon-image': ['get', 'icon'] as unknown as string,
-                    'icon-size': 1,
 
-                    // The reticle marks a point, so it stays put and stays put
-                    // on top: dropping it because a label got there first would
+                    // Read from the feature so a document may state a
+                    // marker-size, scaling the one reticle rather than needing
+                    // an image per size. Absent means the theme's own.
+                    'icon-size': ['coalesce', ['get', 'scale'], 1] as unknown as number,
+
+                    // The reticle marks a point, so it stays put and stays on
+                    // top: dropping it because a label got there first would
                     // hide the one thing the map is drawn to show.
                     'icon-allow-overlap': true,
                     'icon-ignore-placement': true,
                 },
-            }] : [{
-                id: 'pin',
+            },
+            {
+                id: 'pin-plain',
                 type: 'circle' as const,
                 source: 'pin',
+                filter: ['!', ['has', 'icon']] as unknown as never,
                 paint: {
                     'circle-radius': 4,
                     'circle-color': colors.pin,
                     'circle-stroke-color': colors.pinEdge,
                     'circle-stroke-width': 1.5,
                 },
-            }]),
+            },
         ],
     };
 }
@@ -979,13 +996,13 @@ export function emptyCollection(): FeatureCollection {
  * would paint a hostile track in a friendly color.
  */
 export function markedPoints(
-    points: ReadonlyArray<{lat: number; lon: number; icon: string}>,
+    points: ReadonlyArray<{lat: number; lon: number; icon: string; scale?: number}>,
 ): FeatureCollection {
     return {
         type: 'FeatureCollection',
         features: points.map((point) => ({
             type: 'Feature',
-            properties: {icon: point.icon},
+            properties: point.scale === undefined ? {icon: point.icon} : {icon: point.icon, scale: point.scale},
             geometry: {type: 'Point', coordinates: [point.lon, point.lat]},
         })),
     };
@@ -1072,12 +1089,24 @@ export function geometryLayers(colors: MapColors): StyleSpecification['layers'] 
             id: 'geometry-fill',
             type: 'fill',
             source: 'geometry',
+
+            // Polygons ONLY. A fill layer does not ignore a LineString: it
+            // closes it and fills the ring, so an open shape was drawn as a
+            // translucent wash between its first and last point. That was
+            // invisible while every line took the theme's own faint fill and
+            // obvious the moment a document could state a saturated one.
+            filter: ['==', ['geometry-type'], 'Polygon'],
             paint: {'fill-color': colors.cellFill},
         },
         {
             id: 'geometry-outline',
             type: 'line',
             source: 'geometry',
+
+            // Round, not the default miter and butt. A route bends, and a
+            // mitered join on a bend at any real width throws a spike out past
+            // the corner that reads as part of the drawing.
+            layout: {'line-join': 'round', 'line-cap': 'round'},
             paint: {'line-color': colors.cell, 'line-width': 2},
         },
     ];
@@ -1138,6 +1167,7 @@ function geodesicRing(
  */
 export function ellipseFeature(
     lat: number, lon: number, majorMeters: number, minorMeters: number, angleDeg: number,
+    style: {color?: string; fill?: string} = {},
 ): FeatureCollection {
     const ring = geodesicRing(lat, lon, majorMeters, minorMeters, angleDeg);
     if (ring === null) {
@@ -1146,34 +1176,115 @@ export function ellipseFeature(
 
     return {
         type: 'FeatureCollection',
-        features: [{type: 'Feature', properties: {}, geometry: {type: 'Polygon', coordinates: [ring]}}],
+        features: [{type: 'Feature', properties: style, geometry: {type: 'Polygon', coordinates: [ring]}}],
     };
 }
 
-/** A drawn outline, closed into a polygon or left as a line. */
-export function outlineFeature(
-    points: ReadonlyArray<{lat: number; lon: number}>, closed: boolean,
+/**
+ * Several shapes at once, each keeping its own rings.
+ *
+ * The style each shape carries is validated by the CALLER, through `styleOf`.
+ * That is stated here because these properties are read straight into
+ * `line-color` and `fill-color`, so a caller that skips the gate would be a
+ * one-line regression on the only value the browser interprets.
+ *
+ * SINGLE-ring polygon, which is all a Cursor on Target shape ever needs; a
+ * GeoJSON polygon carries its holes in rings 1..n, and passing those as separate
+ * outlines paints each hole as a solid island on the fill layer.
+ *
+ * Longitudes are unwrapped across EVERY ring of EVERY shape as one sequence,
+ * not per shape. Unwrapping each independently lets two shapes either side of
+ * the antimeridian land in different world copies, so one of them is drawn a
+ * planet away from where the camera framed it.
+ */
+export function shapesFeature(
+    shapes: ReadonlyArray<{
+        rings: ReadonlyArray<ReadonlyArray<{lat: number; lon: number}>>;
+        closed: boolean;
+        style?: {color?: string; fill?: string};
+    }>,
 ): FeatureCollection {
-    const usable = points.filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lon));
-    if (usable.length < 2) {
+    const usable = shapes.
+        map((shape) => ({
+            closed: shape.closed,
+            style: shape.style ?? {},
+            rings: shape.rings.
+                map((ring) => ring.filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lon))).
+                filter((ring) => ring.length >= 2),
+            kept: shape.rings.length,
+        })).
+
+        // Ring 0 is the exterior. Dropping ONE ring is not enough to drop the
+        // shape, but if the ring that lost its positions was ring 0 then a hole
+        // is promoted to the outer boundary and painted as the shape. shapesFor
+        // in geojson/GeoJsonMap.tsx guards this and records why; this second
+        // filter is the same rule at the other end of the same data.
+        filter((shape) => shape.rings.length > 0 && shape.rings.length === shape.kept);
+
+    if (usable.length === 0) {
         return emptyCollection();
     }
 
-    const lons = unwrapLongitudes(usable.map((point) => point.lon));
-    const ring: Array<[number, number]> = usable.map((point, i) => [lons[i], point.lat]);
+    const flat = unwrapLongitudes(
+        usable.flatMap((shape) => shape.rings.flatMap((ring) => ring.map((point) => point.lon))),
+    );
 
-    if (!closed || ring.length < 3) {
-        return {
-            type: 'FeatureCollection',
-            features: [{type: 'Feature', properties: {}, geometry: {type: 'LineString', coordinates: ring}}],
-        };
+    let offset = 0;
+    const features: Feature[] = [];
+
+    for (const shape of usable) {
+        // Plain loops rather than map callbacks: the running offset into the
+        // unwrapped longitudes is shared across every ring of every shape, and
+        // closing over it inside a callback declared in a loop is the kind of
+        // aliasing that reads correct and is not.
+        const rings: Array<Array<[number, number]>> = [];
+        for (const ring of shape.rings) {
+            const coordinates: Array<[number, number]> = [];
+            for (const point of ring) {
+                coordinates.push([flat[offset], point.lat]);
+                offset += 1;
+            }
+            rings.push(coordinates);
+        }
+
+        if (!shape.closed || rings[0].length < 3) {
+            // Every ring of an open shape is its own line. A MultiLineString
+            // arrives as one shape per line, so this is normally a single ring.
+            for (const ring of rings) {
+                features.push({
+                    type: 'Feature',
+                    properties: shape.style,
+                    geometry: {type: 'LineString', coordinates: ring},
+                });
+            }
+            continue;
+        }
+
+        // Ring 0 is the exterior and the rest are holes, per RFC 7946 section
+        // 3.1.6. One Polygon carrying all of them is what makes the fill layer
+        // cut the holes out rather than fill them in.
+        features.push({
+            type: 'Feature',
+            properties: shape.style,
+            geometry: {
+                type: 'Polygon',
+                coordinates: rings.map((ring) => closeRing(ring)),
+            },
+        });
     }
 
-    ring.push(ring[0]);
-    return {
-        type: 'FeatureCollection',
-        features: [{type: 'Feature', properties: {}, geometry: {type: 'Polygon', coordinates: [ring]}}],
-    };
+    return {type: 'FeatureCollection', features};
+}
+
+function closeRing(ring: Array<[number, number]>): Array<[number, number]> {
+    const first = ring[0];
+    const last = ring[ring.length - 1];
+
+    if (first[0] === last[0] && first[1] === last[1]) {
+        return ring;
+    }
+
+    return [...ring, first];
 }
 
 export function accuracyFeature(lat: number, lon: number, meters: number): FeatureCollection {

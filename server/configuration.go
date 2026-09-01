@@ -139,15 +139,12 @@ type configuration struct {
 	// EnableCot governs stamping only. A post already stamped keeps rendering
 	// after this is turned off, for the same reason a decorator link already
 	// written into a message keeps working.
-	//
-	// EnableCotFile is the only setting in this plugin that puts a filestore
-	// read on the post path.
-	//
-	// There is deliberately no EnableCotMap. EnableLocationMapInline already
-	// means "the map under a post" and the CoT card reads the same answer, so
-	// the parent ANDs cannot be re-implemented differently here.
 	EnableCot     bool
 	EnableCotFile bool
+
+	EnableGeoJSON          bool
+	EnableGeoJSONFile      bool
+	EnableGeoJSONUnlabeled bool
 }
 
 func (c *configuration) Clone() *configuration {

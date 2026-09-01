@@ -22,6 +22,7 @@
             <a href="location.html">Coordinates</a>
             <a href="airfields.html">Airfields</a>
             <a href="cot.html">Cursor on Target</a>
+            <a href="geojson.html">GeoJSON</a>
             <span class="nav-section">Guides</span>
             <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
@@ -138,6 +139,41 @@
                     <td><code>HooksCotPropsUnmeasurable</code> <span class="level">Warn</span></td>
                     <td>Something already attached to the post could not be converted to JSON, so the size of the post's properties could not be checked and nothing was rendered. This is not caused by the event and cannot be fixed by posting a smaller one: look for another integration writing a value it cannot serialize.</td>
                 </tr>
+                <tr>
+                    <td><code>TF-11009</code></td>
+                    <td><code>HooksGeoJSONPanic</code> <span class="level">Warn</span></td>
+                    <td>Reading a GeoJSON document panicked. The post was created unchanged, so nothing was lost, but the document was not rendered. Please report it with the message that caused it.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-11010</code></td>
+                    <td><code>HooksGeoJSONUnreadable</code> <span class="level">Warn</span></td>
+                    <td>A fenced block the author labeled <code>geojson</code> could not be read as a GeoJSON document, so it was left as an ordinary code block. The author is told, and nobody else sees the notice. The commonest causes are a document over 64 KB, more than 256 features, or more than 4096 coordinates.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-11011</code></td>
+                    <td><code>HooksGeoJSONPropsTooLarge</code> <span class="level">Warn</span></td>
+                    <td>The parsed document would not fit in the post's properties even with the feature properties dropped, so the post was left as ordinary text. Post a smaller document, or attach the file rather than pasting it.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-11012</code></td>
+                    <td><code>HooksGeoJSONPropsUnmeasurable</code> <span class="level">Warn</span></td>
+                    <td>Something already attached to the post could not be converted to JSON, so the size of the post's properties could not be checked and nothing was rendered. This is not caused by the document and cannot be fixed by posting a smaller one: look for another integration writing a value it cannot serialize.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-11013</code></td>
+                    <td><code>HooksGeoJSONPropertiesDropped</code> <span class="level">Warn</span></td>
+                    <td>The parsed document carried more feature properties than the post's props map had room for, so the card was rendered without them rather than not rendered at all. The feature names, geometry and counts are unaffected, and the whole document is still readable under "As posted" in the sidebar.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-11014</code></td>
+                    <td><code>HooksGeoJSONFileUnreadable</code> <span class="level">Warn</span></td>
+                    <td>An attachment offered to the GeoJSON reader could not be read from file storage, so the post was left as ordinary text. Attachments fail silently to the author, so this is the only record.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-11015</code></td>
+                    <td><code>HooksGeoJSONFileNotOwned</code> <span class="level">Warn</span></td>
+                    <td>An attachment offered to the GeoJSON reader was not the poster's own, is already attached to another post, or has been deleted, so it was left alone. This is the check that stops a post quoting somebody else's file into its own properties.</td>
+                </tr>
             </tbody>
         </table>
 
@@ -187,6 +223,11 @@
                     <td><code>TF-12007</code></td>
                     <td><code>HTTPPackageUnreadable</code> <span class="level">404</span></td>
                     <td><code>Not found.</code> A package was discovered and then could not be opened, which usually means it moved or its permissions changed between the two.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-12008</code></td>
+                    <td><code>HTTPMapPostUnavailable</code> <span class="level">404</span></td>
+                    <td><code>There is no map here.</code> The one answer <code>/map?post=</code> gives for every way it can decline: no such post, a post in a channel you may not read, a post this plugin never rendered, and a post whose card has stood down because it was edited or its attachment is gone. They are deliberately one code, so the address cannot be used to find out which.</td>
                 </tr>
                 <tr>
                     <td><code>TF-12004</code></td>

@@ -4,6 +4,7 @@ import CotCard, {fileHref} from './CotCard';
 import {SOURCE_FILE, fromProps} from './types';
 
 interface PostLike {
+    id?: string;
     message?: string;
     props?: unknown;
     edit_at?: number;
@@ -21,13 +22,6 @@ const styles: Record<string, React.CSSProperties> = {
     files: {opacity: 0.75},
 };
 
-/**
- * The fallback, which may never render nothing.
- *
- * A file-case post has an empty message by construction, and a post whose type
- * this plugin owns has already lost Mattermost's own attachment list, so a
- * props loss would otherwise leave a permanently blank post with no way out.
- */
 function Fallback({post}: {post?: PostLike}) {
     const message = post?.message ?? '';
     if (message !== '') {
@@ -75,7 +69,7 @@ export const CotPostBody: React.FC<Props> = ({post, compactDisplay}) => {
 
     return (
         <CotCard
-            payload={payload}
+            payload={{...payload, postId: post?.id ?? ''}}
             compactDisplay={compactDisplay}
         />
     );

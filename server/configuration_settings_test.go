@@ -195,6 +195,11 @@ func TestEverySettingBelongsToANamedSection(t *testing.T) {
 var defaultsOff = map[string]string{
 	"EnableLocationUTM": "the band letter is ambiguous, so a wrong reading is a " +
 		"confidently misplaced position rather than a missed decoration",
+
+	"EnableGeoJSONUnlabeled": "stamping a post is permanent and costs it its search " +
+		"matches, and ordinary JSON is pasted into chat constantly, so reading a json " +
+		"fence, a .json attachment or an unfenced object has to be asked for rather " +
+		"than arrived at",
 }
 
 // Every switch declares a default, and it is the one intended.

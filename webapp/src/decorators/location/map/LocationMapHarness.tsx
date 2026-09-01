@@ -1,9 +1,12 @@
 import type {GeoJSONSource, Map as MapLibreMap} from 'maplibre-gl';
 import React, {useEffect, useRef, useState} from 'react';
 
-import type {MapGeometry} from './LocationMap';
-import LocationMap, {_setMapObserverForTesting} from './LocationMap';
+import LocationMap from './LocationMap';
+import type {MapEllipse} from './overlay';
+import type {MapShape} from './paint';
 import {DATA_MAX_ZOOM} from './span';
+import {_setMapObserverForTesting, _setReadyDeadlineForTesting} from './use_map_instance';
+import type {MapProps} from './use_map_instance';
 import type {View} from './view';
 
 /**
@@ -143,6 +146,112 @@ function landAtCentre(map: MapLibreMap | null): number {
     }
 }
 
+/**
+ * What the geometry source is actually carrying, as "Type:rings" per feature.
+ *
+ * The ring COUNT is the point. A holed polygon has to arrive as one Polygon of
+ * two rings, because two single-ring polygons paint the hole as a solid island
+ * and the DOM looks identical either way.
+ */
+/*
+ * The paint each drawn feature carries, as "color|fill" per feature.
+ *
+ * Read from the FEATURE rather than from the layer's paint property, and that
+ * move is the point. The paint is now a data-driven expression, so reading it
+ * back gives `["coalesce",["get","color"],"#..."]` whatever an author supplied:
+ * the assertion that an unvalidated string never reaches the map would pass
+ * against any input at all. The feature property is where the value actually
+ * lands, so it is where the gate has to be checked.
+ */
+function shapeStyleIn(map: MapLibreMap | null): string {
+    const source = map?.getSource<GeoJSONSource>('geometry');
+    if (!source) {
+        return '';
+    }
+
+    const data = (source.serialize() as {data?: {features?: Array<{properties?: Record<string, unknown>}>}}).data;
+
+    return (data?.features ?? []).
+        map((feature) => `${String(feature.properties?.color ?? '')}|${String(feature.properties?.fill ?? '')}`).
+        join(',');
+}
+
+/**
+ * The width and line opacity a shape carries, read off the FEATURE.
+ *
+ * The same argument `shapeStyleIn` records: both are data-driven expressions
+ * now, so reading the layer back gives `["coalesce",["get","width"],2]`
+ * whatever the document said.
+ */
+function shapeStrokeIn(map: MapLibreMap | null): string {
+    const source = map?.getSource<GeoJSONSource>('geometry');
+    if (!source) {
+        return '';
+    }
+
+    const data = (source.serialize() as {data?: {features?: Array<{properties?: Record<string, unknown>}>}}).data;
+
+    return (data?.features ?? []).
+        map((feature) => `${String(feature.properties?.width ?? '')}|${String(feature.properties?.lineOpacity ?? '')}`).
+        join(',');
+}
+
+/**
+ * How many shapes the FILL layer actually renders.
+ *
+ * Read through queryRenderedFeatures rather than off the source, because the
+ * defect this exists for was in the layer and not in the data: a fill layer
+ * does not ignore a LineString, it closes it and fills the ring, so an open
+ * shape was drawn as a wash between its first and last point while the source
+ * carried exactly the right geometry.
+ */
+function filledShapesIn(map: MapLibreMap | null): number {
+    if (!map || wasRemoved(map)) {
+        return -1;
+    }
+
+    if (map.getLayer('geometry-fill') === undefined) {
+        return -2;
+    }
+
+    try {
+        return map.queryRenderedFeatures({layers: ['geometry-fill']}).length;
+    } catch {
+        return -1;
+    }
+}
+
+/** The icon scale each marker carries, which is what marker-size decides. */
+function markerScalesIn(map: MapLibreMap | null): string {
+    const source = map?.getSource<GeoJSONSource>('pin');
+    if (!source) {
+        return '';
+    }
+
+    const data = (source.serialize() as {data?: {features?: Array<{properties?: Record<string, unknown>}>}}).data;
+
+    return (data?.features ?? []).
+        map((feature) => String(feature.properties?.scale ?? '')).
+        join(',');
+}
+
+function shapesIn(map: MapLibreMap | null): string {
+    const source = map?.getSource<GeoJSONSource>('geometry');
+    if (!source) {
+        return '';
+    }
+
+    const data = (source.serialize() as {
+        data?: {features?: Array<{geometry?: {type?: string; coordinates?: unknown[]}}>};
+    }).data;
+
+    return (data?.features ?? []).map((feature) => {
+        const type = feature.geometry?.type ?? '?';
+        const rings = type === 'Polygon' ? (feature.geometry?.coordinates ?? []).length : 1;
+        return `${type}:${rings}`;
+    }).join('|');
+}
+
 /** How many features a source is carrying, or -1 when there is no map to ask. */
 function countIn(map: MapLibreMap | null, id: string): number {
     const source = map?.getSource<GeoJSONSource>(id);
@@ -196,7 +305,11 @@ function projectedPins(
     });
 }
 
-function paintOf(map: MapLibreMap | null, layer: string, property: 'line-color' | 'fill-color'): string {
+function paintOf(
+    map: MapLibreMap | null,
+    layer: string,
+    property: 'line-color' | 'fill-color' | 'line-width' | 'line-opacity',
+): string {
     if (map === null || wasRemoved(map) || map.getLayer(layer) === undefined) {
         return '';
     }
@@ -224,7 +337,7 @@ interface Props {
     preview?: boolean;
 
     /** A block of events, which the map frames all of rather than opening on one. */
-    markers?: ReadonlyArray<{lat: number; lon: number; color: string}>;
+    markers?: ReadonlyArray<{lat: number; lon: number; color: string; size?: string}>;
 
     /** What the marker or markers are, for the accessible label. */
     markerLabel?: string;
@@ -232,14 +345,34 @@ interface Props {
     accuracyMeters?: number;
     accuracyLabel?: string;
 
-    geometry?: MapGeometry;
-    geometryColor?: string;
+    ellipse?: MapEllipse;
+
+    /** Several ringed shapes, which is what a GeoJSON document draws. */
+    geometries?: readonly MapShape[];
+
+    /** Frame the overlay and draw no pin, for a surface with no position. */
+    extentLabel?: string;
+
+    /**
+     * A short readiness deadline, so a test can exercise the bound without
+     * sitting through the real twenty seconds.
+     */
+    readyDeadlineMs?: number;
 }
 
 const LocationMapHarness: React.FC<Props> = ({
     start = 'Los Angeles', region = '', pending = false, pageHref, fill, noWebGL, preview, markers,
-    markerLabel, accuracyMeters, accuracyLabel, geometry, geometryColor,
+    markerLabel, accuracyMeters, accuracyLabel, ellipse, geometries,
+    extentLabel, readyDeadlineMs,
 }) => {
+    // Set during render, before the child's effects construct a map, and
+    // restored on unmount so one test cannot shorten another's.
+    useState(() => {
+        _setReadyDeadlineForTesting(readyDeadlineMs ?? null);
+        return true;
+    });
+    useEffect(() => () => _setReadyDeadlineForTesting(null), []);
+
     // Assigned during render, never installed during render: the patch above is
     // already in place, so this only has to be decided before the child probes
     // from its own effect, and child effects run before the parent's.
@@ -251,6 +384,12 @@ const LocationMapHarness: React.FC<Props> = ({
     const [created, setCreated] = useState(0);
     const [reading, setReading] = useState({
         pin: -1,
+shapes: '',
+shapeStyle: '',
+shapeStroke: '',
+strokePaint: '',
+filledShapes: -1,
+markerScales: '',
 cell: -1,
 labels: -1,
 land: -1,
@@ -294,6 +433,17 @@ removed: false,
             zoom: map && !wasRemoved(map) ? Number(map.getZoom().toFixed(2)) : -1,
             removed: wasRemoved(map),
             pins: projectedPins(map, markers),
+            shapes: shapesIn(map),
+            shapeStyle: shapeStyleIn(map),
+            shapeStroke: shapeStrokeIn(map),
+
+            // The EXPRESSION on the layer, not the value on the feature. The
+            // feature readings prove styleOf wrote the properties; only this
+            // proves paintGeometry wired them to a paint property at all.
+            strokePaint: paintOf(map, 'geometry-outline', 'line-width') + '|' +
+                paintOf(map, 'geometry-outline', 'line-opacity'),
+            filledShapes: filledShapesIn(map),
+            markerScales: markerScalesIn(map),
             shapeLine: paintOf(map, 'geometry-outline', 'line-color'),
             shapeFill: paintOf(map, 'geometry-fill', 'fill-color'),
 
@@ -319,12 +469,13 @@ removed: false,
                     pageHref={pageHref}
                     fill={fill}
                     preview={preview}
-                    markers={markers}
+                    markers={markers as MapProps['markers']}
                     markerLabel={markerLabel}
                     accuracyMeters={accuracyMeters}
                     accuracyLabel={accuracyLabel}
-                    geometry={geometry}
-                    geometryColor={geometryColor}
+                    ellipse={ellipse}
+                    geometries={geometries}
+                    extentLabel={extentLabel}
                 />
             )}
             {Object.keys(VIEWS).map((key) => (
@@ -366,6 +517,12 @@ removed: false,
             <output data-testid='zoom'>{String(reading.zoom)}</output>
             <output data-testid='removed'>{reading.removed ? 'yes' : 'no'}</output>
             <output data-testid='pins'>{reading.pins}</output>
+            <output data-testid='shapes'>{reading.shapes}</output>
+            <output data-testid='shape-style'>{reading.shapeStyle}</output>
+            <output data-testid='shape-stroke'>{reading.shapeStroke}</output>
+            <output data-testid='stroke-paint'>{reading.strokePaint}</output>
+            <output data-testid='filled-shapes'>{String(reading.filledShapes)}</output>
+            <output data-testid='marker-scales'>{reading.markerScales}</output>
             <output data-testid='shape-line'>{reading.shapeLine}</output>
             <output data-testid='shape-fill'>{reading.shapeFill}</output>
             <output data-testid='wheel-zoom'>{reading.wheelZoom}</output>

@@ -364,6 +364,7 @@ func TestStoredBlobKeepsItsWireNames(t *testing.T) {
 		{"dtg", "urgent_within_minutes"},
 		{"location", "hidden_rows"},
 		{"cot", "hidden_sections"},
+		{"geojson", "hidden_sections"},
 	} {
 		t.Run(tc.section+"."+tc.field, func(t *testing.T) {
 			section, ok := raw[tc.section].(map[string]any)

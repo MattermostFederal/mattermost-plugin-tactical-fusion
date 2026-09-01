@@ -22,6 +22,7 @@
             <a href="location.html">Coordinates</a>
             <a href="airfields.html">Airfields</a>
             <a href="cot.html">Cursor on Target</a>
+            <a href="geojson.html">GeoJSON</a>
             <span class="nav-section">Guides</span>
             <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
@@ -370,6 +371,72 @@
             </p>
         </div>
 
+        <h2 id="geojson-not-rendered">A GeoJSON document was left as plain text</h2>
+
+        <p>
+            A document that cannot be rendered is never refused: the post goes out with the
+            JSON as ordinary text, which is exactly what you typed. When the document was in a
+            block you labeled <code>geojson</code> the plugin also sends you a message,
+            visible only to you, saying what happened.
+        </p>
+
+        <p>
+            <strong>Only a <code>geojson</code> block gets that message.</strong> By default
+            only a <code>geojson</code> block is read at all, and a block labeled
+            <code>json</code> is passed over in silence: rendering a post costs it its search
+            matches permanently, ordinary JSON is pasted into chat constantly, and an author
+            who got one rendered by mistake has no way back. Labeling the block
+            <code>geojson</code> is how you say you meant it.
+        </p>
+
+        <p>
+            An admin can turn on
+            <a href="admin.html#enable-geojson-unlabeled"><code>EnableGeoJSONUnlabeled</code></a>,
+            which also reads a <code>json</code> fence, a <code>.json</code> attachment and a
+            document pasted with no fence at all. It ships off. Even with it on, a document
+            that will not parse still fails silently rather than reporting: the message above
+            is only ever produced for the <code>geojson</code> spelling, because that is the
+            only one whose author certainly meant a document.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>The GeoJSON document you just posted could not be read, so it was left as ordinary text.</code></td>
+                    <td>The JSON did not parse, or it parsed into something this plugin refuses: a type it does not read, more than 256 features, more than 4096 coordinates, nesting over 32 levels, a <code>GeometryCollection</code> inside another, content after the document, or text that is not valid UTF-8. Code <a href="error-codes.html#hooks"><code>TF-11010</code></a>.</td>
+                    <td>Check the document against <a href="geojson.html#geojson-limits">what this build refuses</a>. The message text is unchanged, so nothing was lost.</td>
+                </tr>
+                <tr>
+                    <td><code>The GeoJSON document you just posted carries too much detail to render, so it was left as ordinary text.</code></td>
+                    <td>The document parsed, but its data would have been larger than the space a post has for it, even after the feature properties were dropped. Code <a href="error-codes.html#hooks"><code>TF-11011</code></a>.</td>
+                    <td>Attach the file to the post instead of pasting it, or split the overlay. The whole document is still in the message.</td>
+                </tr>
+                <tr>
+                    <td>The card is there but says the properties were omitted</td>
+                    <td>The document fitted only once its feature properties were dropped, which is the plugin choosing the card over the property bags. Code <a href="error-codes.html#hooks"><code>TF-11013</code></a> in the server log.</td>
+                    <td>Nothing is broken. The features, their geometry and the whole document under <strong>As posted</strong> in the sidebar are unaffected. Post fewer or shorter properties to keep them.</td>
+                </tr>
+                <tr>
+                    <td>An attached <code>.geojson</code> file did nothing, and nothing said why</td>
+                    <td><strong>Attachments fail silently</strong>, for the reason above. What reaches the server log depends on where it stopped: <a href="error-codes.html#hooks"><code>TF-11003</code></a> when the file could not be read at all; <a href="error-codes.html#hooks"><code>TF-11006</code></a> when it was read but is not yours, is already on another post, or has been deleted; <a href="error-codes.html#hooks"><code>TF-11010</code></a> when it was read but did not parse. A file whose name does not end <code>.geojson</code>, and one over 64 KB, are passed over with nothing logged at all.</td>
+                    <td>Check the rules in <a href="geojson.html#geojson-file">as an attachment</a>: exactly one file, under 64 KB, one you attached to this post. A <code>.json</code> attachment is never read. Pasting the same document into a <code>geojson</code> fence gives you the reason directly.</td>
+                </tr>
+                <tr>
+                    <td>The card lists every feature but draws no map</td>
+                    <td>The document states a <code>crs</code> that is not CRS84, so the axis order cannot be confirmed. <code>EPSG:4326</code> is the usual one: many tools write it with latitude first, and drawing it would put every feature in the wrong place.</td>
+                    <td>Re-export without a <code>crs</code> member, which is what RFC 7946 requires. If the map is missing with no note instead, the map settings are off: see <a href="#no-map">the map is missing</a>.</td>
+                </tr>
+                <tr>
+                    <td>One feature is listed with a note and is missing from the map</td>
+                    <td>That feature carries a coordinate outside the range of the earth, or a ring that does not close. The rest of the document is unaffected.</td>
+                    <td>Fix that feature in the source. The note on the card says which of the two it was.</td>
+                </tr>
+            </tbody>
+        </table>
+
         <h2 id="only-me">Nobody else sees the link, or only some clients do</h2>
 
         <p>
@@ -387,6 +454,44 @@
             <em>is</em> the stored text. Deleting the link syntax while editing is the
             supported way to opt one post out; the plugin will not put it back.
         </p>
+
+        <h2 id="no-map-here">"Open larger" says "There is no map here."</h2>
+
+        <p>
+            The full-window map opened from a Cursor on Target block or a GeoJSON document is
+            addressed by the <strong>post</strong>, not by a coordinate, so opening it re-reads
+            the post. Every reason it can decline gives the same answer and the same code, on
+            purpose: a page that distinguished them could be used to find out whether a given
+            post exists and what it holds.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Code</th><th>Cause</th><th>Fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><a href="error-codes.html#http"><code>TF-12008</code></a></td>
+                    <td>The post was deleted, or edited after it was posted. Editing stands the card down too, so the card beside it will have reverted to text.</td>
+                    <td>Post the document again. A card is <a href="geojson.html#geojson-honesty">frozen at the moment it was posted</a> and editing is the supported way to remove one.</td>
+                </tr>
+                <tr>
+                    <td><a href="error-codes.html#http"><code>TF-12008</code></a></td>
+                    <td>The document came from an attachment that is no longer on the post.</td>
+                    <td>Nothing to fix. The card stands down for the same reason, so the two agree.</td>
+                </tr>
+                <tr>
+                    <td><a href="error-codes.html#http"><code>TF-12008</code></a></td>
+                    <td>You may see the channel but not read its contents. The map page asks for both permissions, because it republishes the whole document.</td>
+                    <td>Ask an admin for <code>read_channel_content</code> on that channel. This is the one case where the page refuses something the <em>card</em> beside it still shows you, and it is deliberate: the card is rendered from a post you were already sent, where the page fetches it again.</td>
+                </tr>
+                <tr>
+                    <td><a href="error-codes.html#http"><code>TF-12004</code></a></td>
+                    <td>The map page is switched off for the whole install, so no map page of any kind is served.</td>
+                    <td>See <a href="admin.html#enable-location-map-page"><code>EnableLocationMapPage</code></a>. The card and its map are unaffected.</td>
+                </tr>
+            </tbody>
+        </table>
 
         <h2 id="404">Old links return "Not found"</h2>
 

@@ -95,13 +95,18 @@ func (p *Plugin) examplesResponse(args *model.CommandArgs) *model.CommandRespons
 	tagger := &decorators.Tagger{Registry: p.decorators, URLPrefix: p.decorateURLPrefix()}
 	messages := examplePosts(tagger, time.Now().UTC())
 
-	if len(messages) == 0 && !p.cotEnabled() {
+	if len(messages) == 0 && !p.cotEnabled() && !p.geoJSONEnabled() {
 		return ephemeralResponse(errcode.WithCode(errcode.CommandExamplesNothingEnabled,
 			"Nothing would be decorated, so there is nothing to show. "+
 				"Every format is switched off in the System Console, under Plugins > Tactical Fusion."))
 	}
 
-	for _, message := range messages {
+	// EVERY message, including the ones the format commands build for
+	// themselves. They used to be written after this loop had already measured,
+	// so the invariant ("measures every message against the same floor before it
+	// writes any of them, refusing the whole run rather than posting some of
+	// it") was not enforced for exactly the two that carry the largest bodies.
+	for _, message := range append(append([]string(nil), messages...), p.formatExampleMessages()...) {
 		if utf8.RuneCountInString(message) > safePostRunes {
 			return ephemeralResponse(errcode.WithCode(errcode.CommandExamplesTooLong,
 				"The examples do not fit in a post on this server. "+
@@ -112,8 +117,14 @@ func (p *Plugin) examplesResponse(args *model.CommandArgs) *model.CommandRespons
 	return p.postExamples(args, messages)
 }
 
+// formatExampleMessages is every message the format commands will write, so the
+// size gate above can measure them alongside the decorator sets.
+func (p *Plugin) formatExampleMessages() []string {
+	return append(p.cotExampleMessages(), p.geoJSONExampleMessages()...)
+}
+
 func (p *Plugin) postExamples(args *model.CommandArgs, messages []string) *model.CommandResponse {
-	failed, total := 0, len(messages)+p.cotExampleCount()
+	failed, total := 0, len(messages)+p.cotExampleCount()+p.geoJSONExampleCount()
 
 	for _, message := range messages {
 		if _, appErr := p.API.CreatePost(examplePost(args, message)); appErr != nil {
@@ -124,6 +135,7 @@ func (p *Plugin) postExamples(args *model.CommandArgs, messages []string) *model
 	}
 
 	failed += p.postCotExamples(args)
+	failed += p.postGeoJSONExamples(args)
 
 	if failed == total {
 		return ephemeralResponse(errcode.WithCode(errcode.CommandExamplesPostFailed,
