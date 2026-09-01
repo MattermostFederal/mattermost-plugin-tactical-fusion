@@ -1835,6 +1835,21 @@ say nothing about the rest, the same argument that keeps the accuracy ring off a
 block map. A card with no post id, which is what a harness builds, has nothing
 to address and so offers no link.
 
+### The overlay page is a mode of `/map`, not a route of its own
+
+`/map` is a route of its own rather than a mode of `/decorate`, and the reason
+is above. The overlay goes the other way: it is the same window given to the
+same picture over the same basemap, behind the same admin switch, and a reader
+arrives at it from the same "Open larger". Only what is drawn differs, which is
+why the mode is a shell attribute rather than a path.
+
+`RenderOverlayPage` therefore takes `kind` and `blob` as opaque strings. By the
+time it is called, `ServeHTTP` has already decided that the post is one this
+plugin stamped, that this reader may see it, and that its card has not stood
+down. The renderer's whole job is the shell around what it was handed, and it
+must not re-derive any of those three: a second answer to "may this reader see
+it" is how the two come to disagree.
+
 ### The shell carries the props blob, not markers and shapes
 
 The obvious alternative was to distil the post into markers and shapes in Go and

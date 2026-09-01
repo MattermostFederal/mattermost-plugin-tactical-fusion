@@ -139,35 +139,11 @@ type configuration struct {
 	// EnableCot governs stamping only. A post already stamped keeps rendering
 	// after this is turned off, for the same reason a decorator link already
 	// written into a message keeps working.
-	//
-	// EnableCotFile is one of the two settings that put a filestore
-	// read on the post path.
-	//
-	// There is deliberately no EnableCotMap. EnableLocationMapInline already
-	// means "the map under a post" and the CoT card reads the same answer, so
-	// the parent ANDs cannot be re-implemented differently here.
 	EnableCot     bool
 	EnableCotFile bool
 
-	// EnableGeoJSON is the switch for rendering a GeoJSON document, and
-	// EnableGeoJSONFile decides whether an attached .geojson file is read at
-	// post time. Both are false at zero, exactly as every switch above is, and
-	// both mean for GeoJSON what the pair above means for Cursor on Target.
-	//
-	// There is deliberately no EnableGeoJSONMap, for the reason the CoT block
-	// above gives: EnableLocationMapInline already means "the map under a
-	// post".
-	EnableGeoJSON     bool
-	EnableGeoJSONFile bool
-
-	// EnableGeoJSONUnlabeled reads the spellings that do not name the format: a
-	// fence labeled json, a .json attachment, and a document with no fence at
-	// all. False at zero, and unlike every other switch here it also ships off.
-	//
-	// Stamping a post is permanent and costs it its search matches, and ordinary
-	// JSON is pasted into chat constantly, so the ambiguous spellings are opt-in
-	// rather than opt-out. An install whose channels carry overlays rather than
-	// API payloads can turn it on.
+	EnableGeoJSON          bool
+	EnableGeoJSONFile      bool
 	EnableGeoJSONUnlabeled bool
 }
 

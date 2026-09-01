@@ -10,7 +10,9 @@ GeoJSON added the sixth and three more. Cursor on Target
 deliberately added no third: the card's map reads `EnableLocationMapInline`,
 whose parent ANDs with `EnableLocation` and `EnableLocationMap` already live in
 Go. A second "is the map on" answer is the thing `features/types.ts` argues
-against by name. See [`cot.md`](cot.md), "Switches".
+against by name. See [`cot.md`](cot.md), "Switches". GeoJSON added no map switch
+either, for the same reason and reading the same answer: its three are
+`EnableGeoJSON`, `EnableGeoJSONFile` and `EnableGeoJSONUnlabeled`.
 
 `EnableLocationMapInline` is now worded as **the map under a post** rather than
 "under a coordinate-only post", because two surfaces reach it.

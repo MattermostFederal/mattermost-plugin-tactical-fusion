@@ -427,24 +427,6 @@ ifneq ($(HAS_WEBAPP),)
 		echo "The standalone pages render nothing without it. Run 'make dist'."; \
 		exit 1; \
 	fi
-	@# MapLibre's worker is a module that imports ./maplibre-gl-shared.mjs by that
-	@# literal name. Shipping the worker without it is silent: the import 404s,
-	@# the style never finishes, and the map sits on "Loading map..." with no
-	@# error. Neither the type checker nor any test sees this, so it is checked
-	@# here, where the bundle is actually assembled.
-	@#
-	@# The pair must also sit in a CONTENT-KEYED DIRECTORY. The shared chunk
-	@# cannot be content-hashed, because the name the worker asks for is fixed,
-	@# and Mattermost serves /static/plugins/** with a one year max-age: under a
-	@# fixed name that is a file a browser will not re-fetch until long after it
-	@# has stopped matching the worker beside it. An upgraded MapLibre then pairs
-	@# a fresh worker with a stale shared chunk and the map never loads. The
-	@# directory is what moves both URLs together.
-	@#
-	@# Written to FAIL when the worker is missing entirely, which the version
-	@# this replaced did not: it guarded on `ls <worker> && ! -f <shared>`, so a
-	@# bundle with no worker at all passed silently, and so did this layout the
-	@# moment the worker moved out of the top level.
 	@worker="$$(find dist/$(PLUGIN_ID)/webapp/dist -name maplibre-gl-worker.mjs 2>/dev/null | head -1)"; \
 	if [ -z "$$worker" ]; then \
 		echo "ERROR: the bundle ships no MapLibre worker."; \
