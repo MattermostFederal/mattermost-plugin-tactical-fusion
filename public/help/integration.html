@@ -50,10 +50,13 @@
         <p>
             Another Mattermost plugin can ask Tactical Fusion for a decorator link and embed
             it in whatever it writes. The link is ordinary markdown, <code>[label](url)</code>,
-            and once rendered it behaves exactly like one Tactical Fusion wrote into a posted
-            message: a <strong>hover card</strong>, a <strong>click that opens the
-            <a href="panel.html">sidebar panel</a></strong>, and a standalone page on clients
-            without the web app, such as mobile.
+            and once rendered it behaves like one Tactical Fusion wrote into a posted message: a
+            <strong>click that opens the <a href="panel.html">sidebar panel</a></strong>, and a
+            standalone page on clients without the web app, such as mobile. A
+            <strong>hover card</strong> appears wherever Mattermost renders the markdown in a post
+            or message, and on the <a href="#webapp-component"><code>Link</code> component</a>.
+            Markdown your own web app renders is <a href="#webapp-promises">not yet verified</a>
+            to get one.
         </p>
 
         <table>
@@ -373,7 +376,7 @@ request.Header.Set("Content-Type", "application/json")
 
 response := p.API.PluginHTTP(request)
 if response == nil {
-    // Tactical Fusion did not answer.
+    return plainTextFallback
 }
 defer response.Body.Close()</code></pre>
 
@@ -419,10 +422,12 @@ Content-Type: application/json
         <h3 id="webapp-ready">Waiting for it</h3>
 
         <p>
-            Plugins initialize in no fixed order, so yours may run first. Check for the global,
-            and if it is not there yet, listen for the <code>tactical-fusion:ready</code> event
-            on <code>window</code>, whose <code>detail</code> is the API. If neither ever arrives,
-            Tactical Fusion is not installed and you render plain text.
+            Plugins initialize in no fixed order, so yours may run first. Listen for the
+            <code>tactical-fusion:ready</code> event on <code>window</code>, whose
+            <code>detail</code> is the API, and <strong>then</strong> check for the global. In that
+            order, an install that lands between your first render and your listener is still
+            seen. If neither ever arrives, Tactical Fusion is not installed and you render plain
+            text.
         </p>
 
         <pre tabindex="0"><code>import React, {useEffect, useState} from 'react';
@@ -436,6 +441,9 @@ export function useTacticalFusion() {
         }
         const onReady = () =&gt; setApi(window.TacticalFusion);
         window.addEventListener('tactical-fusion:ready', onReady);
+        if (window.TacticalFusion) {
+            onReady();
+        }
         return () =&gt; window.removeEventListener('tactical-fusion:ready', onReady);
     }, [api]);
 

@@ -40,6 +40,16 @@ test('a declined token renders the fallback as plain text', async ({mount}) => {
     await expect(component.getByRole('link')).toHaveCount(0);
 });
 
+test('a changed token never shows the link for the previous one', async ({mount}) => {
+    const component = await mount(<LinkHarness token='091630ZAUG26'/>);
+    await expect(component.getByRole('link', {name: '091630ZAUG26'})).toBeVisible();
+
+    await component.update(<LinkHarness token='091630J'/>);
+
+    await expect(component.getByRole('link')).toHaveCount(0);
+    await expect(component.locator('[data-tactical-fusion-link="declined"]')).toHaveText('091630J');
+});
+
 test('a declined token with no fallback renders the token', async ({mount}) => {
     const component = await mount(<LinkHarness token='091630J'/>);
 
