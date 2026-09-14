@@ -123,8 +123,13 @@ panic there takes the whole plugin process down, and message decoration with it.
 Mattermost gives plugin webapps no registry for sharing functions with each other,
 so the API is a global: `window.TacticalFusion`, frozen, installed in `initialize()`
 and withdrawn by its disposer. Plugins initialize in no defined order, so a
-`tactical-fusion:ready` event is dispatched on install, and a host checks for the
-global first and listens for the event second.
+`tactical-fusion:ready` event is dispatched on install. A host **attaches its
+listener first and re-checks the global second**. The event is dispatched
+synchronously inside `installBridgeGlobal`, so a host that checked first could see
+no global during its render, have Tactical Fusion install before its effect
+attached the listener, and miss the only event there will ever be, staying on its
+plain-text fallback for the life of the page. The help page's `useTacticalFusion`
+example is written in that order for that reason.
 
 The disposer deletes the global only if it is still the one it installed, so an
 upgrade in a live tab, which runs the new `initialize()` before the old
