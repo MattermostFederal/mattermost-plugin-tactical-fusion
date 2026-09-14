@@ -18,6 +18,7 @@
 //	16000-16999   server/command*.go            the slash command
 //	17000-17999   server/decorators/            framework and decorator pages
 //	18000-18999   server/packages.go            detail map packages
+//	19000-19999   server/bridge.go              the plugin bridge
 //
 // Within a range codes are allocated in source order the first time a file is
 // instrumented; a site added later takes the next free number in its range, so
@@ -333,6 +334,16 @@ const (
 	// well formed and the fix is to re-download the area or upgrade the
 	// plugin, not to rebuild a corrupt one.
 	PackagesSchemaMismatch = 18008
+
+	BridgeNotAuthorized      = 19000
+	BridgeNotFound           = 19001
+	BridgeMethodNotAllowed   = 19002
+	BridgeInvalidBody        = 19003
+	BridgeNotReady           = 19004
+	BridgeUnknownType        = 19005
+	BridgeTokenNotRecognized = 19006
+	BridgeFormatDisabled     = 19007
+	BridgePanic              = 19008
 )
 
 // AllCodes lists every code declared above. TestAllCodesComplete enforces that
@@ -414,4 +425,14 @@ var AllCodes = []int{
 	PackagesUploadNotAnArchive,
 	PackagesUploadWriteFailed,
 	PackagesSchemaMismatch,
+
+	BridgeNotAuthorized,
+	BridgeNotFound,
+	BridgeMethodNotAllowed,
+	BridgeInvalidBody,
+	BridgeNotReady,
+	BridgeUnknownType,
+	BridgeTokenNotRecognized,
+	BridgeFormatDisabled,
+	BridgePanic,
 }

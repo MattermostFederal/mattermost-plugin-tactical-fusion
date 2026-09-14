@@ -69,6 +69,11 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	if strings.HasPrefix(r.URL.Path, bridgePath+"/") {
+		p.serveBridge(w, r)
+		return
+	}
+
 	if r.Method != http.MethodGet {
 		decorators.WriteError(w, http.StatusMethodNotAllowed,
 			errcode.WithCode(errcode.HTTPMethodNotAllowed, "Method not allowed."))

@@ -158,6 +158,16 @@ func (p *Plugin) serveAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.URL.Path == decoratePathAPI {
+		p.serveBridgeOperation(w, r, p.serveDecorateText)
+		return
+	}
+
+	if r.URL.Path == linkPathAPI {
+		p.serveBridgeOperation(w, r, p.serveLink)
+		return
+	}
+
 	if r.URL.Path == featuresPath {
 		p.serveFeatures(w, r)
 		return

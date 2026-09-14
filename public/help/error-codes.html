@@ -28,6 +28,7 @@
             <a href="panel.html">The Sidebar Panel</a>
             <a href="admin.html">Admin Settings</a>
             <a href="commands.html">Slash Commands</a>
+            <a href="integration.html">Plugin Integration</a>
             <span class="nav-section">Reference</span>
             <a href="troubleshooting.html">Troubleshooting</a>
             <a href="error-codes.html" class="active">Error Codes</a>
@@ -501,6 +502,70 @@
                     <td><code>TF-18008</code></td>
                     <td><code>PackagesSchemaMismatch</code> <span class="level">log</span></td>
                     <td>A well formed archive built for a different map schema. The message says which way round it is: an older archive is re-downloaded for the area, and a newer one means this plugin is behind the archive and should be upgraded. Areas are otherwise portable across plugin versions, so this only appears when the map data itself changed shape.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="bridge">Plugin bridge <code>19000</code> to <code>19999</code></h2>
+
+        <p>
+            Answers to another plugin calling Tactical Fusion, either server to server
+            through <code>/bridge/v1</code> or from a browser through
+            <code>/api/v1/decorate</code> and <code>/api/v1/link</code>. Every one of these
+            responses is JSON carrying <code>message</code>, <code>code</code> and, for a
+            declined link, <code>reason</code>. See
+            <a href="integration.html#errors">Plugin Integration</a>.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Code</th><th>Name and level</th><th>Meaning</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>TF-19000</code></td>
+                    <td><code>BridgeNotAuthorized</code> <span class="level">401</span></td>
+                    <td><code>Not authorized.</code> A request reached <code>/bridge/v1</code> without the <code>Mattermost-Plugin-ID</code> header. Mattermost sets that header only on a request another plugin sends through <code>PluginHTTP</code>, and strips it from anything a browser sends, so a browser always gets this. A webapp uses <code>/api/v1</code> instead.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-19001</code></td>
+                    <td><code>BridgeNotFound</code> <span class="level">404</span></td>
+                    <td><code>Not found.</code> A path under <code>/bridge/v1</code> that names no operation. The operations are <code>decorate</code>, <code>link</code> and <code>info</code>.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-19002</code></td>
+                    <td><code>BridgeMethodNotAllowed</code> <span class="level">405</span></td>
+                    <td><code>Method not allowed.</code> <code>decorate</code> and <code>link</code> take POST; <code>info</code> takes GET.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-19003</code></td>
+                    <td><code>BridgeInvalidBody</code> <span class="level">400</span></td>
+                    <td><code>That is not a valid request body.</code> The body is not JSON, is larger than 64 KB, or is a link request whose <code>label</code> contains a line break, which the message says separately.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-19004</code></td>
+                    <td><code>BridgeNotReady</code> <span class="level">503</span></td>
+                    <td><code>Not ready.</code> The request landed before activation finished or before the plugin configuration loaded. Retrying works.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-19005</code></td>
+                    <td><code>BridgeUnknownType</code> <span class="level">422</span></td>
+                    <td><code>Unknown decorator type.</code> A link request named a <code>type</code> other than <code>dtg</code>, <code>location</code> or <code>airport</code>. Reason <code>unknown_type</code>.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-19006</code></td>
+                    <td><code>BridgeTokenNotRecognized</code> <span class="level">422</span></td>
+                    <td><code>The token is not one this decorator type reads.</code> The <code>token</code> is not a value of that type with every format switched on: a J date-time group, a coordinate short of the required decimal places, an airfield code the database does not hold, or a token still carrying its field label. Reason <code>not_recognized</code>.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-19007</code></td>
+                    <td><code>BridgeFormatDisabled</code> <span class="level">422</span></td>
+                    <td><code>The token's format is switched off by an administrator.</code> The token is well formed, but the format it is written in, or its whole section, is off in the <a href="admin.html">admin settings</a>. UTM is off by default, so a UTM token gets this on a default install. Reason <code>disabled</code>.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-19008</code></td>
+                    <td><code>BridgePanic</code> <span class="level">500</span> <span class="level">Error</span></td>
+                    <td><code>Internal error.</code> A bridge request panicked and was recovered. Logged with the same code, the path and the calling plugin's id. This is a bug worth reporting with the text that caused it.</td>
                 </tr>
             </tbody>
         </table>

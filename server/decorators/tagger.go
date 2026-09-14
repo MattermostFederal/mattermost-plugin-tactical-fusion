@@ -601,10 +601,13 @@ func (t *Tagger) applyReplacements(message string, accepted []candidate) string 
 
 	result := message
 	for _, c := range accepted {
-		link := "[" + labelEscaper.Replace(c.label) + "](" + t.buildURL(c.typ, c.params) + ")"
-		result = result[:c.replace.start] + link + result[c.replace.end:]
+		result = result[:c.replace.start] + t.LinkFor(c.typ, c.label, c.params) + result[c.replace.end:]
 	}
 	return result
+}
+
+func (t *Tagger) LinkFor(typ, label string, params url.Values) string {
+	return "[" + labelEscaper.Replace(label) + "](" + t.buildURL(typ, params) + ")"
 }
 
 // URLFor returns the root-relative decorator URL for a set of params.

@@ -39,6 +39,7 @@ var helpPages = []string{
 	"panel.html",
 	"admin.html",
 	"commands.html",
+	"integration.html",
 	"troubleshooting.html",
 	"error-codes.html",
 }

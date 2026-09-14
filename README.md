@@ -191,6 +191,30 @@ and covers every recognized format, the panel, each admin switch, the slash
 commands, troubleshooting, and the `TF-NNNN` error codes you may see quoted in a
 message.
 
+## Using Tactical Fusion from another plugin
+
+Another Mattermost plugin can ask Tactical Fusion for a decorator link and embed
+it in its own output, where it gets the same hover card, sidebar panel and
+standalone page as a link in a posted message.
+
+- **Server side**, over the plugin API's `PluginHTTP`, with the Go client in
+  [`bridgeclient/`](bridgeclient/README.md):
+
+  ```go
+  link, err := bridgeclient.NewClient(p.API).Link(ctx, bridgeclient.LinkRequest{
+      Type:  bridgeclient.TypeAirport,
+      Token: "PHIK",
+  })
+  // link.Markdown == "[PHIK](/plugins/com.mattermost.plugin-tactical-fusion/decorate/airport?v=PHIK)"
+  ```
+
+- **Web app side**, through `window.TacticalFusion`, which offers `decorate()`,
+  `link()` and a `<Link>` React component.
+
+The full contract, with every request, response, error and worked example, is the
+**Plugin Integration** page of the built-in documentation:
+`/plugins/com.mattermost.plugin-tactical-fusion/public/help/integration.html`.
+
 ---
 
 ## For developers

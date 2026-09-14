@@ -102,3 +102,22 @@ tests mount the panel in a bare div and render none of that chrome, so they
 cannot see the bug or the fix. Verify on a real install, in both themes and with
 a short window, and record the result here.
 
+
+### The plugin bridge
+
+**Nobody has called the bridge from a real second plugin.** `bridgeclient` is
+tested against `Plugin.ServeHTTP` in process, with a fake `PluginHTTP` that
+strips the plugin id and stamps `Mattermost-Plugin-ID` the way
+`ServeInterPluginRequest` is read to. Whether the real server delivers the path,
+body and header exactly that way has not been checked. Verify it with a throwaway
+caller plugin, and record the result here.
+
+**The hover on `decorate()` output rendered by a host webapp is unverified.** A
+host rendering the markdown through `window.PostUtils.formatText` and
+`messageHtmlToComponent` gets anchors that Mattermost's renderer drew, which may
+or may not be offered to `registerLinkTooltipComponent` outside a post. The click
+to the sidebar works either way, since the capture-phase handler sees every
+anchor in the document. `TacticalFusion.Link` does not depend on this, because it
+renders through `HoverLink`, which is why the help page recommends it when the
+hover matters.
+

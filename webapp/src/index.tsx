@@ -5,6 +5,7 @@ import type {Store} from 'redux';
 import type {PluginRegistry} from 'types/mattermost-webapp';
 
 import PackageUploader from './admin/PackageUploader';
+import {installBridgeGlobal} from './bridge/global';
 import {RhsTitle, RhsView} from './components/rhs/RhsView';
 import CotPostBody from './cot/CotPostBody';
 import {registerCotPanel} from './cot/index';
@@ -58,6 +59,7 @@ export default class Plugin {
         // this bundle.
         this.disposers.push(installDecoratorClickHandler());
         this.disposers.push(installDecoratorStyles());
+        this.disposers.push(installBridgeGlobal());
 
         // One registration for the whole plugin. A decorator gets a hover card
         // by declaring one, not by touching the bootstrap.
