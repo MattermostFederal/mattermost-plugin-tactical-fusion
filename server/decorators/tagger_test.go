@@ -220,6 +220,54 @@ func TestTokensOutsideProtectedSpansAreDecorated(t *testing.T) {
 	}
 }
 
+func TestUSMTFMessagesAreNeverRewritten(t *testing.T) {
+	tagger := taggerWith(t, testPrefix, newFixture("tok", `\bAAA\b`))
+
+	cases := []struct {
+		name  string
+		input string
+	}{
+		{"set line", "AMSNDAT/F/2001/-/AAA//"},
+		{"set line with free text", "AMPN/MISSION ID:0001, START TASK TIME:AAA/-/-//"},
+		{"set line with trailing spaces", "TSKCNTRY/AAA//  "},
+		{"set line with crlf", "TIMEFRAM/FROM:AAA//\r\n"},
+		{"column table", "7CONTROL\n/MSNNO /TOSTA\n/2001  /AAA\n//"},
+		{"continuation line before its terminator", "ARINFO/SAMPLE03/ARCT:AAA\n/NDAR:091515ZAUG/BOM//"},
+		{"block after a blank line", "OPER/ATO//\n\nTASKUNIT/AAA/-//"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tagger.Decorate(tc.input, testRef); got != tc.input {
+				t.Fatalf("Decorate() rewrote a USMTF message\n got: %q\nwant: %q", got, tc.input)
+			}
+		})
+	}
+}
+
+func TestSlashedProseIsNotMistakenForUSMTF(t *testing.T) {
+	tagger := taggerWith(t, testPrefix, newFixture("tok", `\bAAA\b`))
+	link := "[AAA](" + testPrefix + "/tok?v=AAA)"
+
+	cases := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"set shaped line with no terminator", "ETA/ETD AAA", "ETA/ETD " + link},
+		{"lowercase line ending in a terminator", "and/or AAA//", "and/or " + link + "//"},
+		{"prose line after a usmtf block", "TSKCNTRY/US//\nlaunch AAA", "TSKCNTRY/US//\nlaunch " + link},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tagger.Decorate(tc.input, testRef); got != tc.want {
+				t.Fatalf("Decorate()\n got: %s\nwant: %s", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestOrdinaryMessagesAreDecorated(t *testing.T) {
 	tagger := taggerWith(t, testPrefix, newFixture("tok", `\bAAA\b`))
 

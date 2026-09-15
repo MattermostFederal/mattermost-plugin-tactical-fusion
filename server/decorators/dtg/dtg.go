@@ -97,12 +97,12 @@ const anyTokenExpr = dtgLongExpr + `|` + dtgShortYear + `|` + isoExpr + `|` + dt
 // instead of the token.
 var (
 	militaryPatterns = []decorators.Pattern{
-		{Regexp: regexp.MustCompile(`\b` + dtgLongExpr + `\b`)},
-		{Regexp: regexp.MustCompile(`\b` + dtgShortYear + `\b`)},
-		{Regexp: regexp.MustCompile(`\b` + dtgBareExpr + `\b`)},
+		{Regexp: regexp.MustCompile(`\b` + dtgLongExpr + `\b`), Boundary: outsideDelimitedField},
+		{Regexp: regexp.MustCompile(`\b` + dtgShortYear + `\b`), Boundary: outsideDelimitedField},
+		{Regexp: regexp.MustCompile(`\b` + dtgBareExpr + `\b`), Boundary: outsideDelimitedField},
 	}
 
-	timestampPattern = decorators.Pattern{Regexp: regexp.MustCompile(`\b` + isoExpr + `\b`)}
+	timestampPattern = decorators.Pattern{Regexp: regexp.MustCompile(`\b` + isoExpr + `\b`), Boundary: outsideDelimitedField}
 
 	// One per combination of enabled grammars, so the moniker only ever claims
 	// a shape that is switched on in its own right. Turning military formats
@@ -120,8 +120,17 @@ var (
 // on its own.
 func monikerPattern(tokens string) decorators.Pattern {
 	return decorators.Pattern{
-		Regexp: regexp.MustCompile(`\b(?i:DTG)[ \t]*:[ \t]*(` + tokens + `)\b`),
+		Regexp:   regexp.MustCompile(`\b(?i:DTG)[ \t]*:[ \t]*(` + tokens + `)\b`),
+		Boundary: outsideDelimitedField,
 	}
+}
+
+func outsideDelimitedField(before, after rune) bool {
+	return !isFieldDelimiter(before) && !isFieldDelimiter(after)
+}
+
+func isFieldDelimiter(r rune) bool {
+	return r == '/' || r == ':'
 }
 
 // Patterns returns the enabled patterns. The tagger resolves overlaps by match
