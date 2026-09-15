@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/compare/v0.4.0...v0.5.0) (2026-09-15)
+
+
+### Features
+
+* add a plugin bridge so other plugins can embed decorator links ([#38](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/38)) ([7178155](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/7178155770c20b597a4e773c84a3ab15e7b91a88))
+
 ## [0.4.0](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/compare/v0.3.0...v0.4.0) (2026-09-01)
 
 
