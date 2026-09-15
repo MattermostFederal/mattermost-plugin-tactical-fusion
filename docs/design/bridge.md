@@ -127,8 +127,9 @@ and withdrawn by its disposer. Plugins initialize in no defined order, so a
 listener first and re-checks the global second**. The event is dispatched
 synchronously inside `installBridgeGlobal`, so a host that checked first could see
 no global during its render, have Tactical Fusion install before its effect
-attached the listener, and miss the only event there will ever be, staying on its
-plain-text fallback for the life of the page. The help page's `useTacticalFusion`
+attached the listener, and miss the event for that installation, staying on its
+plain-text fallback until Tactical Fusion installs again, which in a live tab means
+a plugin upgrade or re-enable dispatching a fresh event. The help page's `useTacticalFusion`
 example is written in that order for that reason.
 
 The disposer deletes the global only if it is still the one it installed, so an
