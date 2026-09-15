@@ -414,6 +414,33 @@ func registerDecoratorsForTest(t *testing.T, p *Plugin) {
 	p.decorators = registry
 }
 
+func TestPastedUSMTFSetsAreLeftVerbatim(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	snippets := []struct {
+		name string
+		body string
+	}{
+		{"time frame", "TIMEFRAM/FROM:091200ZAUG2026/TO:101159ZAUG2026/ASOF:091200ZAUG2026//"},
+		{"free text", "AMPN/MISSION ID:0001, START TASK TIME:091200ZAUG2026, END TASK TIME:101159ZAUG2026/-/-//"},
+		{"column table", "7CONTROL\n/MSNNO /ACSIGN   /TOSTA    /RIP\n/0101  /SAMPLE01 /091300Z  /0200N02100W\n//"},
+		{"continuation line", "ARINFO/SAMPLE03/0301/03301/NAME:SAMPLE/240/ARCT:091500Z\n/NDAR:091515ZAUG/KLBS:010/300.0/200.0/ACTYP:KC135R/BOM//"},
+		{"airfield and coordinate", "TASKUNIT/1 TEST SQ/ICAO:ZZZZ/-/-//\nAMSNLOC/091300ZAUG/092100ZAUG/-/-/-/LATM:0100N02000W//"},
+		{"target location", "GTGTLOC/P/-/NET:091700ZAUG/NLT:091715ZAUG/EXAMPLE TARGET\n/ID:0000-00000XX000/-/EXAMPLE AREA/DMPID:010000.0N0200000.0W/-/100FT\n/X00000//"},
+		{"fleet operations", "NAVFLTOP/USS EXAMPLE/091200ZAUG2026/101159ZAUG2026//"},
+	}
+
+	for _, s := range snippets {
+		for form, message := range map[string]string{"bare": s.body, "fenced": "```\n" + s.body + "\n```"} {
+			t.Run(s.name+" "+form, func(t *testing.T) {
+				if got := p.decoratePost(&model.Post{Message: message}, hookRef); got != nil {
+					t.Fatalf("decoratePost rewrote a pasted USMTF set\n%s", got.Message)
+				}
+			})
+		}
+	}
+}
+
 func TestDecoratePostRewritesMessage(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 

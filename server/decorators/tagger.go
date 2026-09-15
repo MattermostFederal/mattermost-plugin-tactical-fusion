@@ -264,6 +264,7 @@ const tokenSurroundingSpace = " \t\r\n\v\f"
 func findProtectedRanges(message string) []byteRange {
 	ranges := blockRanges(message)
 	ranges = append(ranges, codeSpanRanges(message)...)
+	ranges = append(ranges, usmtfRanges(message)...)
 
 	for _, re := range inlineProtectedRes {
 		for _, m := range re.FindAllStringIndex(message, -1) {
@@ -323,6 +324,49 @@ func blockRanges(message string) []byteRange {
 	if fenceStart >= 0 {
 		ranges = append(ranges, byteRange{fenceStart, len(message)})
 	}
+
+	return ranges
+}
+
+var usmtfLineRe = regexp.MustCompile(`^(?:/|[0-9]*[A-Z][A-Z0-9]*(?:/|$))`)
+
+const usmtfSetTerminator = "//"
+
+func usmtfRanges(message string) []byteRange {
+	var ranges []byteRange
+
+	blockStart, blockEnd, terminated := -1, 0, false
+	closeBlock := func() {
+		if blockStart >= 0 && terminated {
+			ranges = append(ranges, byteRange{blockStart, blockEnd})
+		}
+		blockStart, terminated = -1, false
+	}
+
+	for offset := 0; offset < len(message); {
+		end := strings.IndexByte(message[offset:], '\n')
+		lineEnd := len(message)
+		if end >= 0 {
+			lineEnd = offset + end
+		}
+		line := strings.TrimRight(message[offset:lineEnd], " \t\r")
+
+		if usmtfLineRe.MatchString(line) {
+			if blockStart < 0 {
+				blockStart = offset
+			}
+			blockEnd = lineEnd
+			terminated = terminated || strings.HasSuffix(line, usmtfSetTerminator)
+		} else {
+			closeBlock()
+		}
+
+		if end < 0 {
+			break
+		}
+		offset = lineEnd + 1
+	}
+	closeBlock()
 
 	return ranges
 }

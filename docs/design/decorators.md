@@ -67,6 +67,16 @@ case-insensitive; the token keeps its own casing rules. It **vouches for
 nothing**: a token it marks still has to be one, so `DTG: 091630R` stays
 declined exactly as `091630R` does.
 
+**Every DTG pattern declines a `/` or `:` beside the match.** The patterns are
+anchored with `\b`, which counts both as a boundary, so `FROM:091200ZAUG2026`,
+the `/091300Z  /` cell of a USMTF table and `ARCT:091500Z` were all linked. The
+guard is `outsideDelimitedField` rather than `decorators.BoundaryOK`, because
+that one also refuses `.`, `,` and `-`, and `091630Z-091830Z` and a time ending a
+sentence are the ordinary chat this decorator exists for. `DTG:091630ZAUG26`
+still links, because the moniker is part of the match and the guard looks
+outside it. The cost is a range written with a slash, `091630Z/091830Z`, which
+is no longer linked.
+
 Both the bare patterns and the labeled one are built from the same token
 sub-expressions, so a change to what a token looks like cannot reach one and
 miss the other.
@@ -173,6 +183,19 @@ definitions, any bracketed span, angle autolinks, inline HTML tags, and bare
 dropping one because it overlapped an earlier one let a construct lose its
 protection entirely and have a link written into its interior, which is the
 opposite of what a protected range is for.
+
+**A USMTF message is protected as a whole.** A run of consecutive lines that
+each start with `/`, start with a set identifier and `/`, or are a set
+identifier alone (the `7CONTROL` column header) is protected when at least one
+of them ends in the `//` set terminator. A blank line or any other line ends the
+run. These messages are pasted as records and copied back out of chat verbatim,
+so a link written into one corrupts the record even when the token in it
+parses, and they arrive both fenced and bare. The terminator requirement is what
+keeps `ETA/ETD 091630Z` decorated. The cost is a token in a set line somebody
+typed by hand, which is the safe direction.
+`TestPastedUSMTFSetsAreLeftVerbatim` runs one invented snippet per line shape
+through the hook, bare and fenced. Keep fixtures invented: pasted tasking
+messages can be real, and a test fixture ships with the source.
 
 `findProtectedRanges` is the entire safety story here, so anything it fails to
 recognize is a corruption bug in code that permanently rewrites what a user

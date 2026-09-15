@@ -941,6 +941,58 @@ func TestTaggerLeavesProtectedTimestampsAlone(t *testing.T) {
 	}
 }
 
+func TestTaggerDeclinesATimeInsideADelimitedField(t *testing.T) {
+	registry, err := decorators.NewDefaultRegistry(&Decorator{})
+	if err != nil {
+		t.Fatalf("failed to build the registry: %v", err)
+	}
+	tagger := &decorators.Tagger{Registry: registry, URLPrefix: "/p"}
+
+	for _, message := range []string{
+		"window FROM:091200ZAUG2026 onward",
+		"cell /091300Z  / here",
+		"tanker ARCT:091500Z",
+		"logs a/091630Z",
+		"range 091630Z/091830Z",
+		"as of ASOF:2026-08-09T16:30:00Z",
+		"ref REF/DTG:091630ZAUG26",
+	} {
+		t.Run(message, func(t *testing.T) {
+			if got := tagger.Decorate(message, ref); got != message {
+				t.Fatalf("Decorate(%q) rewrote it to %q", message, got)
+			}
+		})
+	}
+}
+
+func TestTaggerStillDecoratesTimesBesideOrdinaryPunctuation(t *testing.T) {
+	registry, err := decorators.NewDefaultRegistry(&Decorator{})
+	if err != nil {
+		t.Fatalf("failed to build the registry: %v", err)
+	}
+	tagger := &decorators.Tagger{Registry: registry, URLPrefix: "/p"}
+
+	cases := []struct {
+		message string
+		links   int
+	}{
+		{"window 091630Z-091830Z", 2},
+		{"at 091630Z, then recover", 1},
+		{"launch at 091630Z.", 1},
+		{"(091630ZAUG26)", 1},
+		{"DTG:091630ZAUG26", 1},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.message, func(t *testing.T) {
+			got := tagger.Decorate(tc.message, ref)
+			if n := strings.Count(got, "](/p/dtg?"); n != tc.links {
+				t.Fatalf("Decorate(%q) = %q, want %d links, got %d", tc.message, got, tc.links, n)
+			}
+		})
+	}
+}
+
 // Some military formats put "DTG:" in front of a time to mark where it starts.
 // The moniker is matched so it can be consumed, and only the time is captured,
 // so the link reads as the time alone.
