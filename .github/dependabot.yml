@@ -98,6 +98,24 @@ updates:
       - dependency-name: typescript
         update-types:
           - version-update:semver-major
+      # @playwright/test and @playwright/experimental-ct-react each bundle
+      # their own playwright-core, so the two have to move together. When the
+      # versions differ, TypeScript sees two incompatible Page types and
+      # `npm run check-types` fails on every .pw.tsx file with "Property
+      # 'ariaSnapshotJSON' is missing". That is what broke PR #37: dependabot
+      # bumped @playwright/test to 1.63.0 while the component-test package had
+      # published only 1.63.0 alphas, and it breaks the same way whenever
+      # either side moves first. Patch updates within a shared minor still
+      # flow. Bump the pair together in a deliberate commit once both publish
+      # the same stable version.
+      - dependency-name: "@playwright/test"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+      - dependency-name: "@playwright/experimental-ct-react"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
 
   # GitHub Actions used by .github/workflows/*.yml. We pin every action
   # to a full commit SHA (supply-chain hardening — a moved tag can't
