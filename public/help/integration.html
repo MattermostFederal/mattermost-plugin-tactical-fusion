@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plugin Integration - Tactical Fusion</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="copy.js" defer></script>
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <h2>Tactical Fusion</h2>
+            <span class="version">Plugin Documentation</span>
+        </div>
+        <nav>
+            <span class="nav-section">Documentation</span>
+            <a href="help.html">Overview</a>
+            <span class="nav-section">Decorators</span>
+            <a href="dtg.html">Date-Time Groups</a>
+            <a href="location.html">Coordinates</a>
+            <a href="airfields.html">Airfields</a>
+            <a href="cot.html">Cursor on Target</a>
+            <a href="geojson.html">GeoJSON</a>
+            <span class="nav-section">Guides</span>
+            <a href="formats.html">Recognized Formats</a>
+            <a href="panel.html">The Sidebar Panel</a>
+            <a href="admin.html">Admin Settings</a>
+            <a href="commands.html">Slash Commands</a>
+            <a href="integration.html" class="active">Plugin Integration</a>
+            <span class="nav-section">Reference</span>
+            <a href="troubleshooting.html">Troubleshooting</a>
+            <a href="error-codes.html">Error Codes</a>
+        </nav>
+    </aside>
+
+    <main class="content">
+        <div class="breadcrumb">
+            <a href="help.html">Docs</a>
+            <span class="separator">/</span>
+            Plugin Integration
+        </div>
+
+        <h1>Plugin Integration</h1>
+        <p class="tagline">Put a Tactical Fusion link into another plugin's output, from its server or from its web app.</p>
+
+        <h2 id="overview">What you get</h2>
+
+        <p>
+            Another Mattermost plugin can ask Tactical Fusion for a decorator link and embed
+            it in whatever it writes. The link is ordinary markdown, <code>[label](url)</code>,
+            and once rendered it behaves like one Tactical Fusion wrote into a posted message: a
+            <strong>click that opens the <a href="panel.html">sidebar panel</a></strong>, and a
+            standalone page on clients without the web app, such as mobile. A
+            <strong>hover card</strong> appears wherever Mattermost renders the markdown in a post
+            or message, and on the <a href="#webapp-component"><code>Link</code> component</a>.
+            Markdown your own web app renders is <a href="#webapp-promises">not yet verified</a>
+            to get one.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Your plugin runs</th><th>Use</th><th>Transport</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Server side (Go): bot posts, slash commands, ephemeral messages, dialogs</td>
+                    <td><a href="#server">The Go client, <code>bridgeclient</code></a></td>
+                    <td><code>PluginHTTP</code> to <code>/bridge/v1</code></td>
+                </tr>
+                <tr>
+                    <td>Server side, not Go, or without the client</td>
+                    <td><a href="#http">The HTTP contract</a></td>
+                    <td><code>PluginHTTP</code> to <code>/bridge/v1</code></td>
+                </tr>
+                <tr>
+                    <td>In the browser: your own components, panels, modals</td>
+                    <td><a href="#webapp"><code>window.TacticalFusion</code></a></td>
+                    <td>The reader's session, to <code>/api/v1</code></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>Every transport offers the same two operations:</p>
+
+        <table>
+            <thead>
+                <tr><th>Operation</th><th>Give it</th><th>Get back</th><th>Use it when</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><a href="#link"><code>link</code></a></td>
+                    <td>A decorator type and one token</td>
+                    <td>One link</td>
+                    <td>You hold a structured value and know what it is: a field in a record, a column in an API response</td>
+                </tr>
+                <tr>
+                    <td><a href="#decorate"><code>decorate</code></a></td>
+                    <td>A piece of markdown text</td>
+                    <td>The text with every recognized token linked</td>
+                    <td>You produce free text, such as a generated report, and want it treated exactly like a posted message</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-info">
+            <p class="alert-title">Always have a plain-text fallback.</p>
+            <p>
+                Tactical Fusion may not be installed, may be disabled, or may have the format
+                switched off. Every call can decline, and the right answer in all of those
+                cases is to show the token as plain text. Nothing here should ever stop your
+                plugin from writing its output.
+            </p>
+        </div>
+
+        <h2 id="link">link: one token</h2>
+
+        <table class="field-table">
+            <thead>
+                <tr><th>Request field</th><th>Type</th><th>Required</th><th>Meaning</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>type</code></td>
+                    <td>string</td>
+                    <td>yes</td>
+                    <td><code>dtg</code>, <code>location</code> or <code>airport</code></td>
+                </tr>
+                <tr>
+                    <td><code>token</code></td>
+                    <td>string</td>
+                    <td>yes</td>
+                    <td>The value <strong>without</strong> a field label: <code>PHIK</code>, not <code>ICAO:PHIK</code>. Leading and trailing whitespace is trimmed. See <a href="#tokens">tokens</a></td>
+                </tr>
+                <tr>
+                    <td><code>label</code></td>
+                    <td>string</td>
+                    <td>no</td>
+                    <td>The link text. Defaults to the trimmed token. Markdown characters are escaped for you. May not contain a line break</td>
+                </tr>
+                <tr>
+                    <td><code>reference_time</code></td>
+                    <td>integer</td>
+                    <td>no</td>
+                    <td>Unix milliseconds. Supplies the month and year of a short date-time group such as <code>091630Z</code>. Omitted or zero means now</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="field-table">
+            <thead>
+                <tr><th>Response field</th><th>Type</th><th>Meaning</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>markdown</code></td><td>string</td><td>The complete link, <code>[label](url)</code>, ready to embed</td></tr>
+                <tr><td><code>url</code></td><td>string</td><td>The link destination alone. Root-relative, carrying the server's subpath if it has one</td></tr>
+                <tr><td><code>type</code></td><td>string</td><td>The decorator type that built it</td></tr>
+                <tr><td><code>label</code></td><td>string</td><td>The link text, before markdown escaping</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            A token is read by the decorator you name, with no field label required, because
+            naming the type is a stronger signal than a label. Every other rule still applies:
+            a J date-time group is declined, a coordinate needs its decimal places, and an
+            airfield has to be in the database.
+        </p>
+
+        <h2 id="decorate">decorate: a whole message</h2>
+
+        <table class="field-table">
+            <thead>
+                <tr><th>Request field</th><th>Type</th><th>Required</th><th>Meaning</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>message</code></td>
+                    <td>string</td>
+                    <td>yes</td>
+                    <td>Markdown text, at most 64 KB of request</td>
+                </tr>
+                <tr>
+                    <td><code>reference_time</code></td>
+                    <td>integer</td>
+                    <td>no</td>
+                    <td>Unix milliseconds, as for <code>link</code>. Pass the time the text is about, such as the original post's <code>create_at</code></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="field-table">
+            <thead>
+                <tr><th>Response field</th><th>Type</th><th>Meaning</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>message</code></td><td>string</td><td>The text with links written in</td></tr>
+                <tr><td><code>changed</code></td><td>boolean</td><td>Whether anything was linked</td></tr>
+                <tr><td><code>fits_post</code></td><td>boolean</td><td>Whether <code>message</code> fits 4,000 characters, the smallest post limit any Mattermost server enforces</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            This is the matcher a posted message goes through, so the rules on the
+            <a href="formats.html">Recognized Formats</a> page apply exactly: an airfield code
+            needs its <code>ICAO:</code> label, and anything inside
+            <a href="formats.html#protected">code, links and URLs</a> is left alone.
+            Decorating text that is already decorated changes nothing.
+        </p>
+
+        <pre tabindex="0"><code>Convoy departs 141200ZSEP26 from ICAO:PHIK to 18S UJ 23478 06483</code></pre>
+
+        <p>becomes</p>
+
+        <pre tabindex="0"><code>Convoy departs [141200ZSEP26](/plugins/com.mattermost.plugin-tactical-fusion/decorate/dtg?a=&amp;dtg=141200ZSEP26&amp;t=1789387200000&amp;z=Z) from ICAO:[PHIK](/plugins/com.mattermost.plugin-tactical-fusion/decorate/airport?v=PHIK) to [18S UJ 23478 06483](/plugins/com.mattermost.plugin-tactical-fusion/decorate/location?f=mgrs&amp;r=18S+UJ+23478+06483&amp;v=18SUJ2347806483)</code></pre>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">Links are long.</p>
+            <p>
+                A twelve-character date-time group becomes roughly a hundred characters once
+                linked, so text that fits in a post before decoration may not after. When
+                <code>fits_post</code> is <code>false</code> and you are about to create a post,
+                post your original text instead. Tactical Fusion makes the same trade for posted
+                messages.
+            </p>
+        </div>
+
+        <h2 id="tokens">Tokens each type reads</h2>
+
+        <table>
+            <thead>
+                <tr><th>Type</th><th>Example tokens for <code>link</code></th><th>Full rules</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>dtg</code></td>
+                    <td><code>141200ZSEP26</code>, <code>141200ZSEP2026</code>, <code>141200Z</code>, <code>2026-08-09T16:30:00Z</code>, <code>2026-08-09T20:30:00+04:00</code></td>
+                    <td><a href="dtg.html">Date-Time Groups</a></td>
+                </tr>
+                <tr>
+                    <td><code>location</code></td>
+                    <td><code>34.0561, -118.2500</code>, <code>34.0561 N, 118.2500 W</code>, <code>3510N07901W</code>, <code>18S UJ 23478 06483</code>, <code>18SUJ2347806483</code>, <code>GJPJ3718</code>, <code>006AG39</code>, <code>849VCWC8+R9</code>, and UTM such as <code>11S 384640E 3769080N</code> where an admin has turned UTM on</td>
+                    <td><a href="location.html">Coordinates</a></td>
+                </tr>
+                <tr>
+                    <td><code>airport</code></td>
+                    <td><code>PHIK</code>, <code>KIND</code>: four upper-case letters naming a field in the plugin's database</td>
+                    <td><a href="airfields.html">Airfields</a></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="server">From your plugin's server, in Go</h2>
+
+        <p>
+            Import the client package that ships in the Tactical Fusion repository. It uses
+            only the Go standard library and your plugin's existing <code>p.API</code>.
+        </p>
+
+        <pre tabindex="0"><code>go get github.com/MattermostFederal/mattermost-plugin-tactical-fusion/bridgeclient@latest</code></pre>
+
+        <pre tabindex="0"><code>import "github.com/MattermostFederal/mattermost-plugin-tactical-fusion/bridgeclient"
+
+func (p *Plugin) OnActivate() error {
+    p.tacticalFusion = bridgeclient.NewClient(p.API)
+    return nil
+}</code></pre>
+
+        <h3 id="server-link">A link in a bot post</h3>
+
+        <pre tabindex="0"><code>field := "PHIK"
+link, err := p.tacticalFusion.Link(ctx, bridgeclient.LinkRequest{
+    Type:  bridgeclient.TypeAirport,
+    Token: "PHIK",
+    Label: "Hickam",
+})
+if err == nil {
+    field = link.Markdown
+}
+
+_, appErr := p.API.CreatePost(&amp;model.Post{
+    UserId:    p.botUserID,
+    ChannelId: channelID,
+    Message:   "Recovery field: " + field,
+})</code></pre>
+
+        <h3 id="server-ephemeral">A decorated slash command reply</h3>
+
+        <pre tabindex="0"><code>report := p.buildReport(args.ChannelId)
+
+decorated, err := p.tacticalFusion.Decorate(ctx, bridgeclient.DecorateRequest{Message: report})
+if err == nil &amp;&amp; decorated.FitsPost {
+    report = decorated.Message
+}
+
+return &amp;model.CommandResponse{
+    ResponseType: model.CommandResponseTypeEphemeral,
+    Text:         report,
+}, nil</code></pre>
+
+        <h3 id="server-errors">Handling a decline</h3>
+
+        <pre tabindex="0"><code>link, err := p.tacticalFusion.Link(ctx, request)
+switch {
+case err == nil:
+    text = link.Markdown
+case errors.Is(err, bridgeclient.ErrPluginNotActive),
+    errors.Is(err, bridgeclient.ErrNotRecognized),
+    errors.Is(err, bridgeclient.ErrDisabled):
+    text = request.Token
+default:
+    p.API.LogWarn("Tactical Fusion link failed", "error", err.Error())
+    text = request.Token
+}</code></pre>
+
+        <table>
+            <thead>
+                <tr><th>Sentinel</th><th>Means</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>ErrPluginNotActive</code></td><td>Tactical Fusion is not installed, not enabled, or gave an answer that is not its own</td></tr>
+                <tr><td><code>ErrNotRecognized</code></td><td>The token is not a value of that type</td></tr>
+                <tr><td><code>ErrDisabled</code></td><td>The token is valid but its format is switched off</td></tr>
+                <tr><td><code>ErrUnknownType</code></td><td>The type is not <code>dtg</code>, <code>location</code> or <code>airport</code></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            <code>errors.As(err, &amp;bridgeErr)</code> with a <code>*bridgeclient.Error</code>
+            gives the HTTP status, the numeric <code>TF</code> code, the reason and the message.
+            <code>client.Info(ctx)</code> returns the plugin version, the bridge version, every
+            decorator type and the ones an administrator has left on. The package's
+            <code>README.md</code> carries more examples.
+        </p>
+
+        <h2 id="http">Calling the bridge over HTTP</h2>
+
+        <p>
+            The Go client is a thin wrapper. Any plugin can send the same requests through the
+            plugin API's <code>PluginHTTP</code>. The path starts with Tactical Fusion's plugin
+            id, and Mattermost adds the <code>Mattermost-Plugin-ID</code> header naming your
+            plugin, which is how the bridge authenticates you. You cannot set that header
+            yourself, and a browser request never carries it.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Method</th><th>Path</th><th>Body</th><th>Answers</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>POST</code></td>
+                    <td><code>/com.mattermost.plugin-tactical-fusion/bridge/v1/link</code></td>
+                    <td>A <a href="#link">link request</a></td>
+                    <td>200 with a link, or an <a href="#errors">error</a></td>
+                </tr>
+                <tr>
+                    <td><code>POST</code></td>
+                    <td><code>/com.mattermost.plugin-tactical-fusion/bridge/v1/decorate</code></td>
+                    <td>A <a href="#decorate">decorate request</a></td>
+                    <td>200 with the decorated text, or an error</td>
+                </tr>
+                <tr>
+                    <td><code>GET</code></td>
+                    <td><code>/com.mattermost.plugin-tactical-fusion/bridge/v1/info</code></td>
+                    <td>None</td>
+                    <td>200 with <code>plugin_version</code>, <code>api_version</code>, <code>types</code> and <code>enabled_types</code></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <pre tabindex="0"><code>request, _ := http.NewRequest(http.MethodPost,
+    "/com.mattermost.plugin-tactical-fusion/bridge/v1/link",
+    strings.NewReader(`{"type":"airport","token":"PHIK"}`))
+request.Header.Set("Content-Type", "application/json")
+
+response := p.API.PluginHTTP(request)
+if response == nil {
+    return plainTextFallback
+}
+defer response.Body.Close()</code></pre>
+
+        <pre tabindex="0"><code>HTTP/1.1 200 OK
+Content-Type: application/json
+Cache-Control: no-store
+
+{"markdown":"[PHIK](/plugins/com.mattermost.plugin-tactical-fusion/decorate/airport?v=PHIK)","url":"/plugins/com.mattermost.plugin-tactical-fusion/decorate/airport?v=PHIK","type":"airport","label":"PHIK"}</code></pre>
+
+        <pre tabindex="0"><code>HTTP/1.1 422 Unprocessable Entity
+Content-Type: application/json
+
+{"message":"The token's format is switched off by an administrator. (TF-19007)","code":19007,"reason":"disabled"}</code></pre>
+
+        <p>
+            Unknown request fields are ignored, and bodies over 64 KB are refused. A response
+            that is not JSON with a non-zero <code>code</code> did not come from Tactical Fusion,
+            usually because it is not installed or not enabled.
+        </p>
+
+        <h2 id="webapp">From your plugin's web app</h2>
+
+        <p>
+            Tactical Fusion's web app publishes <code>window.TacticalFusion</code> when it
+            initializes. Calls go to the server with the reader's own session, so there is
+            nothing to configure.
+        </p>
+
+        <table class="field-table">
+            <thead>
+                <tr><th>Member</th><th>Meaning</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>apiVersion</code></td><td><code>1</code></td></tr>
+                <tr><td><code>version</code></td><td>The installed Tactical Fusion version</td></tr>
+                <tr><td><code>types</code></td><td><code>["dtg", "location", "airport"]</code></td></tr>
+                <tr><td><code>link(type, token, options?)</code></td><td>A promise of <code>{markdown, url, type, label}</code>. Options: <code>label</code>, <code>referenceTime</code> (a <code>Date</code> or milliseconds), <code>signal</code></td></tr>
+                <tr><td><code>decorate(message, options?)</code></td><td>A promise of <code>{message, changed, fitsPost}</code>. Options: <code>referenceTime</code>, <code>signal</code></td></tr>
+                <tr><td><code>Link</code></td><td>A React component rendering one link with its hover card. Props: <code>type</code>, <code>token</code>, <code>label?</code>, <code>referenceTime?</code>, <code>fallback?</code></td></tr>
+            </tbody>
+        </table>
+
+        <h3 id="webapp-ready">Waiting for it</h3>
+
+        <p>
+            Plugins initialize in no fixed order, so yours may run first. Listen for the
+            <code>tactical-fusion:ready</code> event on <code>window</code>, whose
+            <code>detail</code> is the API, and <strong>then</strong> check for the global. In that
+            order, an install that lands between your first render and your listener is still
+            seen. If neither ever arrives, Tactical Fusion is not installed and you render plain
+            text.
+        </p>
+
+        <pre tabindex="0"><code>import React, {useEffect, useState} from 'react';
+
+export function useTacticalFusion() {
+    const [api, setApi] = useState(() =&gt; window.TacticalFusion);
+
+    useEffect(() =&gt; {
+        if (api) {
+            return undefined;
+        }
+        const onReady = () =&gt; setApi(window.TacticalFusion);
+        window.addEventListener('tactical-fusion:ready', onReady);
+        if (window.TacticalFusion) {
+            onReady();
+        }
+        return () =&gt; window.removeEventListener('tactical-fusion:ready', onReady);
+    }, [api]);
+
+    return api;
+}</code></pre>
+
+        <h3 id="webapp-component">The Link component</h3>
+
+        <p>
+            The simplest way in, and the one to use when the hover card matters. It renders
+            the token as plain text while it asks, the link once it has one, and your
+            <code>fallback</code> (or the token) if it is declined. Results are cached for five
+            minutes, so a list of rows naming the same field asks once.
+        </p>
+
+        <pre tabindex="0"><code>export const FieldCell = ({icao}: {icao: string}) =&gt; {
+    const tacticalFusion = useTacticalFusion();
+    if (!tacticalFusion) {
+        return &lt;span&gt;{icao}&lt;/span&gt;;
+    }
+
+    return (
+        &lt;tacticalFusion.Link
+            type='airport'
+            token={icao}
+            fallback={&lt;span&gt;{icao}&lt;/span&gt;}
+        /&gt;
+    );
+};</code></pre>
+
+        <p>
+            Clicking the link opens the Tactical Fusion sidebar panel. Your plugin does not
+            need to handle the click.
+        </p>
+
+        <h3 id="webapp-promises">link and decorate</h3>
+
+        <pre tabindex="0"><code>try {
+    const link = await window.TacticalFusion.link('location', '18S UJ 23478 06483', {label: 'Rally point'});
+    draft = `Meet at ${link.markdown}`;
+} catch (error) {
+    draft = 'Meet at 18S UJ 23478 06483';
+}</code></pre>
+
+        <p>
+            A declined call rejects with an <code>Error</code> whose <code>name</code> is
+            <code>TacticalFusionError</code> and which carries <code>status</code>,
+            <code>code</code> and <code>reason</code> (<code>unknown_type</code>,
+            <code>not_recognized</code>, <code>disabled</code>, or <code>null</code> for a
+            failure that is not a decline).
+        </p>
+
+        <p>
+            To show <code>decorate()</code> output in your own component, render it as markdown,
+            for example with the <code>window.PostUtils.formatText</code> and
+            <code>window.PostUtils.messageHtmlToComponent</code> helpers Mattermost gives
+            plugins. A click on any of the links opens the sidebar. Whether the hover card
+            appears on links rendered that way outside a post has not been verified; use
+            <code>Link</code> where it matters.
+        </p>
+
+        <h3 id="webapp-types">TypeScript declaration</h3>
+
+        <p>Copy this into your plugin to type the global.</p>
+
+        <pre tabindex="0"><code>import type React from 'react';
+
+export interface TacticalFusionLink {
+    markdown: string;
+    url: string;
+    type: string;
+    label: string;
+}
+
+export interface TacticalFusionDecorated {
+    message: string;
+    changed: boolean;
+    fitsPost: boolean;
+}
+
+export interface TacticalFusionApi {
+    readonly apiVersion: number;
+    readonly version: string;
+    readonly types: readonly string[];
+    decorate(message: string, options?: {referenceTime?: Date | number; signal?: AbortSignal}): Promise&lt;TacticalFusionDecorated&gt;;
+    link(type: string, token: string, options?: {label?: string; referenceTime?: Date | number; signal?: AbortSignal}): Promise&lt;TacticalFusionLink&gt;;
+    readonly Link: React.ComponentType&lt;{
+        type: string;
+        token: string;
+        label?: string;
+        referenceTime?: Date | number;
+        fallback?: React.ReactNode;
+    }&gt;;
+}
+
+declare global {
+    interface Window {
+        TacticalFusion?: TacticalFusionApi;
+    }
+}</code></pre>
+
+        <h2 id="rules">Rules worth knowing</h2>
+
+        <ul>
+            <li>
+                <strong>Admin switches apply.</strong> A format an administrator turned off in the
+                <a href="admin.html">admin settings</a> is not linked for another plugin either.
+                <code>link</code> declines with reason <code>disabled</code>; <code>decorate</code>
+                leaves the token as text. UTM ships off.
+            </li>
+            <li>
+                <strong>Embed the markdown as markdown.</strong> Do not HTML-escape it or wrap it
+                in code, or it renders as text.
+            </li>
+            <li>
+                <strong>Do not add a host.</strong> URLs are root-relative so they follow
+                whichever address the reader uses, and they already carry the server's subpath.
+            </li>
+            <li>
+                <strong>Posting the result is safe.</strong> Tactical Fusion's own message hook
+                leaves existing decorator links alone, so nothing is linked twice.
+            </li>
+            <li>
+                <strong>Links keep working after a format is switched off</strong>, and stop
+                working if Tactical Fusion is uninstalled, like every link it writes.
+            </li>
+            <li>
+                <strong>There is no per-user data on the bridge.</strong> Every answer depends only
+                on the request and the admin settings, which is why a plugin needs no user to call it.
+            </li>
+        </ul>
+
+        <h2 id="versioning">Versioning</h2>
+
+        <p>
+            This page describes bridge version <code>1</code>, served at <code>/bridge/v1</code>
+            and reported as <code>api_version</code> and <code>apiVersion</code>. Within a version
+            changes are additive only: new optional request fields, new response fields, new
+            decorator types and new reasons. Treat a reason you do not recognize as "not
+            linked". A breaking change would be a new path served alongside this one.
+        </p>
+
+        <h2 id="errors">Errors</h2>
+
+        <p>
+            Every refusal is JSON with <code>message</code>, which ends in its code,
+            <code>code</code> and, for a declined link, <code>reason</code>. The codes are
+            <code>TF-19000</code> to <code>TF-19008</code>, each explained under
+            <a href="error-codes.html#bridge">Plugin bridge</a> on the Error Codes page.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Status</th><th>Reason</th><th>Means</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>400</td><td></td><td>The body is not JSON, is over 64 KB, or the label has a line break</td></tr>
+                <tr><td>401</td><td></td><td>The request did not come from a plugin (bridge) or has no session (web app)</td></tr>
+                <tr><td>404</td><td></td><td>No such operation</td></tr>
+                <tr><td>405</td><td></td><td>Wrong method</td></tr>
+                <tr><td>422</td><td><code>unknown_type</code></td><td>The type is not a decorator</td></tr>
+                <tr><td>422</td><td><code>not_recognized</code></td><td>The token is not a value of that type</td></tr>
+                <tr><td>422</td><td><code>disabled</code></td><td>The token is valid but its format is switched off</td></tr>
+                <tr><td>500</td><td></td><td>A bug, logged on the server with <code>TF-19008</code></td></tr>
+                <tr><td>503</td><td></td><td>The plugin is still starting. Retry</td></tr>
+            </tbody>
+        </table>
+    </main>
+</div>
+</body>
+</html>

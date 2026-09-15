@@ -28,6 +28,7 @@
             <a href="panel.html">The Sidebar Panel</a>
             <a href="admin.html">Admin Settings</a>
             <a href="commands.html">Slash Commands</a>
+            <a href="integration.html">Plugin Integration</a>
             <span class="nav-section">Reference</span>
             <a href="troubleshooting.html" class="active">Troubleshooting</a>
             <a href="error-codes.html">Error Codes</a>
@@ -1007,6 +1008,80 @@
             </tbody>
         </table>
 
+        <h2 id="plugin-integration">A link from another plugin shows as plain text</h2>
+
+        <p>
+            Another plugin can ask Tactical Fusion for a link and put it into its own posts or
+            screens (see <a href="integration.html">Plugin Integration</a>). When Tactical
+            Fusion declines, that plugin is expected to show the value as plain text instead,
+            so a reader sees an ordinary time, coordinate or airfield code where a link was
+            meant to be. The reason is in the answer the other plugin received, and usually in
+            its own log.
+        </p>
+
+        <div class="alert alert-tip">
+            <p class="alert-title">The most common cause is a switch, not a fault.</p>
+            <p>
+                The <a href="admin.html">admin settings</a> apply to other plugins exactly as they
+                apply to posted messages. If a whole kind of value is never linked, check that its
+                section and format are on. UTM ships off, so a UTM coordinate from another plugin
+                is declined on a default install.
+            </p>
+        </div>
+
+        <table>
+            <thead>
+                <tr><th>Message</th><th>Code</th><th>Cause and fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>The token's format is switched off by an administrator.</code></td>
+                    <td><a href="error-codes.html#bridge"><code>TF-19007</code></a></td>
+                    <td>The value is well formed, but its format or its whole section is off. Turn it on in the <a href="admin.html">admin settings</a> if your workspace wants it linked.</td>
+                </tr>
+                <tr>
+                    <td><code>The token is not one this decorator type reads.</code></td>
+                    <td><a href="error-codes.html#bridge"><code>TF-19006</code></a></td>
+                    <td>The value is not one Tactical Fusion recognizes as that kind, even with every format on: a J date-time group, a coordinate short of its decimal places, an airfield code not in the database, or a value still carrying a label such as <code>ICAO:</code>. The other plugin has to send the bare value. <a href="commands.html#check"><code>/tactical-fusion check</code></a> shows how the same text would be read in a message.</td>
+                </tr>
+                <tr>
+                    <td><code>Unknown decorator type.</code></td>
+                    <td><a href="error-codes.html#bridge"><code>TF-19005</code></a></td>
+                    <td>The other plugin asked for a kind of value this build does not have. The types are <code>dtg</code>, <code>location</code> and <code>airport</code>. A fault in that plugin.</td>
+                </tr>
+                <tr>
+                    <td><code>Not ready.</code></td>
+                    <td><a href="error-codes.html#bridge"><code>TF-19004</code></a></td>
+                    <td>Tactical Fusion was still starting, or its configuration had not loaded. Retrying works.</td>
+                </tr>
+                <tr>
+                    <td><code>That is not a valid request body.</code> or <code>A label may not contain a line break.</code></td>
+                    <td><a href="error-codes.html#bridge"><code>TF-19003</code></a></td>
+                    <td>The other plugin sent something that is not a valid request, one larger than 64 KB, or a link label spanning lines. A fault in that plugin.</td>
+                </tr>
+                <tr>
+                    <td><code>Not authorized.</code></td>
+                    <td><a href="error-codes.html#bridge"><code>TF-19000</code></a></td>
+                    <td>A request reached the server-to-server bridge without coming from a plugin, which is what a browser or <code>curl</code> produces. A web app uses <code>window.TacticalFusion</code> instead.</td>
+                </tr>
+                <tr>
+                    <td><code>Not found.</code> or <code>Method not allowed.</code></td>
+                    <td><a href="error-codes.html#bridge"><code>TF-19001</code></a>, <a href="error-codes.html#bridge"><code>TF-19002</code></a></td>
+                    <td>The other plugin called an operation that does not exist, or with the wrong method: <code>decorate</code> and <code>link</code> take POST, <code>info</code> takes GET.</td>
+                </tr>
+                <tr>
+                    <td><code>Internal error.</code></td>
+                    <td><a href="error-codes.html#bridge"><code>TF-19008</code></a></td>
+                    <td>A bug in Tactical Fusion, logged on the server with the same code and the calling plugin's id. Report it with the text that caused it.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>
+            When the other plugin reports no Tactical Fusion code at all, Tactical Fusion did not
+            answer: it is not installed, or not enabled.
+        </p>
+
         <h2 id="hand-written-requests">Messages only a hand-written request can produce</h2>
 
         <p>
@@ -1028,7 +1103,7 @@
                 <tr>
                     <td><code>Not found.</code></td>
                     <td><a href="error-codes.html#api"><code>TF-13001</code></a></td>
-                    <td>A path under <code>/api/v1</code> that names no resource. The API has four: your settings, the coordinate conversion, the map feature switches, and the airfield lookup.</td>
+                    <td>A path under <code>/api/v1</code> that names no resource. The API has seven: your settings, the coordinate conversion, the map feature switches, the airfield lookup, the detail map package list, and the <code>decorate</code> and <code>link</code> operations <a href="#plugin-integration">other plugins' web apps</a> use.</td>
                 </tr>
                 <tr>
                     <td><code>Method not allowed.</code></td>

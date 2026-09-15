@@ -27,7 +27,8 @@ right-hand sidebar, and a standalone server-rendered page.
 | `hooks.go` | `MessageWillBePosted`, `decoratePost`, `stampStandalonePost`, the post size constants |
 | `hooks_stamp.go` | The forged-type strip, the props ladder, the attachment ownership check |
 | `http.go` | `ServeHTTP`: `/decorate/<type>`, `/map`, `/api/v1/*`, and the session gate |
-| `api.go` | Authenticated JSON API: `/preferences`, `/convert`, `/features`, `/airport` |
+| `api.go` | Authenticated JSON API: `/preferences`, `/convert`, `/features`, `/airport`, `/decorate`, `/link` |
+| `bridge.go` | The plugin bridge: `/bridge/v1/{decorate,link,info}` for other plugins, and the `decorate`/`link` operations `/api/v1` shares |
 | `preferences.go`, `preferences_cache.go` | Per-reader KV store and its cluster-aware cache |
 | `command*.go` | The `/tactical-fusion` slash command and its example builders |
 | `errcode/` | The `TF-NNNN` catalog |
@@ -51,12 +52,14 @@ right-hand sidebar, and a standalone server-rendered page.
 | `src/page/` | Standalone pages' entry point, built by a second webpack config into `public/app/page.js` |
 | `src/components/rhs/` | `RhsView` and `RhsTitle` |
 | `src/preferences/`, `src/features/` | Module-state caches in front of the two API routes |
+| `src/bridge/` | `window.TacticalFusion` for other plugins' webapps: `decorate`, `link`, the `Link` component, the ready event |
 
 ### Elsewhere
 
 - `plugin.json` generates `server/manifest.go` and `webapp/src/manifest.ts` at build time (both gitignored).
 - `build/mapdata/` (stdlib-only, `make map-data`) generates the country polygons; `build/maptiles/` (containerised, `make map-tiles`) generates the PMTiles basemap and glyph ranges. Both outputs are committed.
 - `build/airportdata/` (stdlib-only, `make airport-data`) filters the upstream airfield CSV. Not in the test path.
+- `bridgeclient/` is the importable Go client other plugins call the bridge through. It is a published package, so its exported symbols carry doc comments for pkg.go.dev; that is the only code here that does.
 - `public/help/` is the built-in documentation, served by Mattermost with no route in the server code.
 - `docker-compose.dev.yml` and `docker/` back `make deploy`.
 - `implementation-plans/` holds the plans features were built from.
@@ -75,6 +78,7 @@ there rather than here or in a comment.
 | [`docs/design/cot.md`](docs/design/cot.md) | Cursor on Target: why it is not a decorator, the exclusivity rule, the props budget, `edit_at` over a digest, the parser's refusals, the CE circle |
 | [`docs/design/geojson.md`](docs/design/geojson.md) | GeoJSON: why recognition is narrow, why format order stayed format-major, what the two stampers share and what they must not, the parts/rings shape, why `decimalShape` is not reused, the ringed map prop, extent-only, the cross-shape antimeridian unwrap |
 | [`docs/design/mapping.md`](docs/design/mapping.md) | The vector basemap, the OpenStreetMap detail tier and its seam, detail map packages, `PageStatic` vs `PageMapping`, the page bundle, zoom numbers, the country lookup, `Conversion`, the map page, the panel map, turning maps off, the map under a post |
+| [`docs/design/bridge.md`](docs/design/bridge.md) | The plugin bridge: why `PluginHTTP`, why `Mattermost-Plugin-ID` is trusted, the two transports, why `link` takes no label and still honors switches, the window global and its ready event, where the wire types live |
 | [`docs/design/preferences.md`](docs/design/preferences.md) | The KV store, both caches, the location hover, the location rows, the zone picker and ordering |
 | [`docs/design/admin-settings.md`](docs/design/admin-settings.md) | The twenty-five switches, the two map-package settings, the six sections, why `EnableLocationUTM` and `EnableGeoJSONUnlabeled` ship off |
 | [`docs/design/help-and-errors.md`](docs/design/help-and-errors.md) | `public/help/` and the `TF-NNNN` catalog |
@@ -204,6 +208,13 @@ matching the post's type.** The commit copies existing props forward, so a
 forged sibling blob would otherwise reach stored props permanently.
 `custom_tf_location` is deliberately outside the table.
 
+**`/bridge/v1` is gated only on `Mattermost-Plugin-ID`, so it may never answer
+with per-user or per-channel data.** A plugin request carries no reader. Every
+bridge answer is a pure function of the request and the admin switches; a route
+that needs a reader belongs somewhere a user id is proven. Within `v1` changes are
+additive only, because the callers are other teams' plugins. `bridge.md` argues
+both.
+
 **`plugin.json` may not contain a backtick.** Both generated manifests embed it
 inside a literal a backtick terminates, so one breaks the Go and the webapp build
 at once, hundreds of lines from the cause.
@@ -261,6 +272,9 @@ side moves alone. Change both halves together.
 | The map schema: `mapSchemaVersion` and `schemaPrefix`, and `MAP_SCHEMA` and `SCHEMA_PREFIX` in `build/maposm/build.sh` | `TestMapSchemaMatchesTheGenerator` |
 | Rendering fixtures | `format_test.go` and `format.spec.ts` hold the same table |
 | Zone ordering and its tiebreak | Both sides assert the same London/Reykjavik pair |
+| The bridge wire types: `bridgeclient` structs and `webapp/src/bridge/types.ts`, names, types, optionality and order | `TestWebappBridgeShapeMatches` |
+| The bridge decline reasons | `TestWebappBridgeDeclineReasonsMatch` |
+| `bridgeclient.PluginID` and its type constants | `TestBridgeClientPluginIDMatchesManifest`, `TestBridgeClientTypesAreTheRegisteredDecorators` |
 
 The token grammar itself is Go-only, so the two sides cannot drift on it.
 

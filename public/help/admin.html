@@ -28,6 +28,7 @@
             <a href="panel.html">The Sidebar Panel</a>
             <a href="admin.html" class="active">Admin Settings</a>
             <a href="commands.html">Slash Commands</a>
+            <a href="integration.html">Plugin Integration</a>
             <span class="nav-section">Reference</span>
             <a href="troubleshooting.html">Troubleshooting</a>
             <a href="error-codes.html">Error Codes</a>
@@ -82,6 +83,14 @@
         <p>
             Changes take effect immediately. The configuration is read fresh for every
             message, so no restart is needed.
+        </p>
+
+        <p>
+            The format switches also govern links that <strong>other plugins</strong> ask
+            Tactical Fusion for. A format switched off here is not linked in a bot post or a
+            component another plugin builds either; that plugin is told the format is disabled
+            and shows the plain value. See <a href="integration.html#rules">Plugin
+            Integration</a>.
         </p>
 
         <h3>There is no "decorate at all" switch</h3>
