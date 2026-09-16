@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.1](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/compare/v0.5.0...v0.5.1) (2026-09-16)
+
+
+### Bug Fixes
+
+* leave pasted USMTF messages undecorated ([#40](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/40)) ([8210c8e](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/8210c8ee6db954a17ba818f478a519aecbeafb6c))
+
+
+### Dependencies
+
+* **actions:** bump github/codeql-action/upload-sarif ([#36](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/36)) ([5d2915c](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/5d2915c7a2c664ba88fc8d42d6b9bc6d2c442ccf))
+* **webapp:** bump the npm-minor-patch group across 1 directory with 14 updates ([#43](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/43)) ([81add5d](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/81add5db74aaf086b6ebb0690969037936aebf91))
+
 ## [0.5.0](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/compare/v0.4.0...v0.5.0) (2026-09-15)
 
 
