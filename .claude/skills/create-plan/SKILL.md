@@ -28,47 +28,7 @@ Call `EnterPlanMode` first, before any research. If plan mode is already active,
 
 ### 3. Write the plan
 
-Scale the plan to the change. These sections, dropping any that would be empty:
-
-```markdown
-# [Feature Name]
-
-## Context
-[The problem, why now, and the intended outcome]
-
-## Current State
-[What exists today, with file references, and what is missing]
-
-## Requirements
-- [ ] ...
-
-## Out of Scope
-- ...
-
-## Approach
-[How it will be built, the existing patterns it follows (`file:line`), and the
-project invariants it touches with how each is honored]
-
-## Decisions
-| Question | Decision | Rationale |
-|----------|----------|-----------|
-
-## Files to Modify
-| File | Change |
-|------|--------|
-
-## Tasks
-1. [ ] ...
-
-## Risks
-| Risk | Mitigation |
-|------|------------|
-
-## Verification
-[The tests to add, and the commands that prove the change works]
-```
-
-Include the documentation, help pages and design notes that must change with the code under Files to Modify.
+Write the plan the way you normally would in plan mode. This skill prescribes no template, sections or length.
 
 ### 4. Save the plan (MANDATORY)
 
