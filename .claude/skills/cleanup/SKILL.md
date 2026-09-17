@@ -22,7 +22,7 @@ This skill assumes the trunk branch is `main`. If a repo uses `master` as its tr
 - The current branch is `main` or `master`. **Refuses outright.**
 - The feature PR is still open, draft, or closed-without-merging. The skill will abort and tell you to merge first.
 - You have uncommitted changes or unpushed commits. The skill will abort. Commit and push (or stash) first.
-- You are partway through a feature and want to "clean up" build artifacts only. Use `make docker-stop` or `make nuke` directly instead — this skill is about ending the branch's life entirely.
+- You are partway through a feature and want to "clean up" build artifacts only. Use `make docker-stop` or `make nuke` directly instead. This skill is about ending the branch's life entirely.
 
 ## Hard Safety Rule
 
@@ -50,8 +50,8 @@ For each non-bare, non-`main` entry, classify the worktree:
 | `PROTECTED` | path basename is `main` OR branch is `main`/`master` | **Never clean.** Skip. |
 | `DIRTY` | `git -C <path> status --porcelain` is non-empty | Skip. User must commit/stash first. |
 | `UNPUSHED` | local HEAD is ahead of `origin/<branch>` | Skip. User must push or rebase first. |
-| `OPEN PR` | `gh pr list --state open --head <branch>` returns a PR | Skip. PR not merged yet. |
-| `NO PR` | no merged or open PR for the branch | Skip. Either work in progress or branch was abandoned without merging. |
+| `OPEN_PR` | `gh pr list --state open --head <branch>` returns a PR | Skip. PR not merged yet. |
+| `NO_PR` | no merged or open PR for the branch | Skip. Either work in progress or branch was abandoned without merging. |
 | `READY` | merged PR exists AND working tree clean AND HEAD pushed (or remote branch deleted post-merge) | Safe to clean. |
 
 The classification commands per row:
@@ -62,35 +62,47 @@ WORKTREE_PATH=...
 WORKTREE_BRANCH=...
 WORKTREE_NAME=$(basename "$WORKTREE_PATH")
 
+# The checks run in this order and the FIRST one that matches wins. A later
+# check must never overwrite an earlier status: a dirty worktree whose PR is
+# merged is DIRTY, not READY.
+STATUS=""
+
 # 1. PROTECTED check
 if [ "$WORKTREE_NAME" = "main" ] || [ "$WORKTREE_BRANCH" = "main" ] || [ "$WORKTREE_BRANCH" = "master" ]; then
     STATUS=PROTECTED
 fi
 
 # 2. DIRTY check
-if [ -n "$(git -C "$WORKTREE_PATH" status --porcelain)" ]; then
+if [ -z "$STATUS" ] && [ -n "$(git -C "$WORKTREE_PATH" status --porcelain)" ]; then
     STATUS=DIRTY
 fi
 
 # 3. UNPUSHED check
-git -C "$WORKTREE_PATH" fetch origin "$WORKTREE_BRANCH" 2>/dev/null || true
-LOCAL=$(git -C "$WORKTREE_PATH" rev-parse HEAD)
-REMOTE=$(git -C "$WORKTREE_PATH" rev-parse "origin/$WORKTREE_BRANCH" 2>/dev/null || echo "")
-if [ -n "$REMOTE" ] && [ "$LOCAL" != "$REMOTE" ]; then
-    STATUS=UNPUSHED
+if [ -z "$STATUS" ]; then
+    git -C "$WORKTREE_PATH" fetch origin "$WORKTREE_BRANCH" 2>/dev/null || true
+    LOCAL=$(git -C "$WORKTREE_PATH" rev-parse HEAD)
+    REMOTE=$(git -C "$WORKTREE_PATH" rev-parse "origin/$WORKTREE_BRANCH" 2>/dev/null || echo "")
+    if [ -n "$REMOTE" ] && [ "$LOCAL" != "$REMOTE" ]; then
+        STATUS=UNPUSHED
+    fi
 fi
 
 # 4. PR state via gh (preferred over `git branch --merged main` because squash/rebase merges are invisible to it)
-MERGED=$(gh pr list --state merged --head "$WORKTREE_BRANCH" --json number --limit 1 --jq 'length')
-OPEN=$(gh pr list --state open --head "$WORKTREE_BRANCH" --json number --limit 1 --jq 'length')
-if [ "$MERGED" = "1" ]; then
-    STATUS=READY
-elif [ "$OPEN" = "1" ]; then
-    STATUS=OPEN_PR
-else
-    STATUS=NO_PR
+if [ -z "$STATUS" ]; then
+    MERGED=$(gh pr list --state merged --head "$WORKTREE_BRANCH" --json number --limit 1 --jq 'length')
+    OPEN=$(gh pr list --state open --head "$WORKTREE_BRANCH" --json number --limit 1 --jq 'length')
+    if [ "$OPEN" = "1" ]; then
+        STATUS=OPEN_PR
+    elif [ "$MERGED" = "1" ]; then
+        STATUS=READY
+    else
+        STATUS=NO_PR
+    fi
 fi
 ```
+
+An open PR outranks a merged one: a branch name reused after an earlier merge
+has both, and the open one is the work that would be lost.
 
 Render a table summarizing the survey for the user:
 
@@ -105,7 +117,7 @@ feature-d        feature-d           UNPUSHED   2 commits ahead of origin
 feature-e        feature-e           NO_PR      no PR opened yet
 ```
 
-Then ask the user which `READY` worktrees to clean up. Accept "all", a specific name, or a comma-separated list. **Only `READY` worktrees are eligible.** Do not offer `DIRTY`, `UNPUSHED`, `OPEN_PR`, or `NO_PR` — those need user action that is out of scope for this skill.
+Then ask the user which `READY` worktrees to clean up. Accept "all", a specific name, or a comma-separated list. **Only `READY` worktrees are eligible.** Do not offer `DIRTY`, `UNPUSHED`, `OPEN_PR`, or `NO_PR`: those need user action that is out of scope for this skill.
 
 If the user invokes `/cleanup` while sitting inside a `READY` worktree and does not specify a target, default to cleaning that worktree. If they invoke from `main/`, the survey output is the whole answer: list candidates and ask which to operate on.
 
@@ -208,7 +220,7 @@ git --git-dir=../.bare worktree remove --force "../$WORKTREE_DIR"
 
 The `--force` flag handles untracked files that may remain if `make nuke` did not remove every artifact. **Re-verify `$WORKTREE_DIR` is not `main` immediately before this command.** If it is, abort.
 
-If the `worktree remove` command fails because the worktree directory is "Directory not empty", that is a real problem — `make nuke` should have cleaned everything. Surface the error and stop.
+If the `worktree remove` command fails because the worktree directory is "Directory not empty", that is a real problem: `make nuke` should have cleaned everything. Surface the error and stop.
 
 ### 8. Delete the local branch
 
@@ -226,7 +238,7 @@ The repo root has a `project.code-workspace` file listing every active worktree 
 WORKSPACE="$(git rev-parse --git-common-dir)/../project.code-workspace"
 ```
 
-Use the `Edit` tool to remove the matching `{ "name": "$WORKTREE_DIR", "path": "$WORKTREE_DIR" }` block, preserving the `main` and any other entries.
+Use the `Edit` tool to remove the folder entry whose `"path"` is `$WORKTREE_DIR` (entries are `{ "path": "<name>" }`, sometimes with a `"name"` beside it), preserving `main` and every other entry. Leave the file valid JSON: mind the trailing comma.
 
 Then remove the directory itself if `worktree remove` did not already do so (it usually does):
 

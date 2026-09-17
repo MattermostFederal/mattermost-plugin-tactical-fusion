@@ -19,7 +19,8 @@ by hand.
 - After changing a token grammar, or what the tagger protects
 - After adding or changing a slash command
 - After adding an error code, or changing any user-visible message text
-- After changing panel or editor behaviour in `webapp/src/decorators/dtg/`
+- After changing hover, panel or card behavior under `webapp/src/decorators/`, `webapp/src/cot/` or `webapp/src/geojson/`
+- After changing the plugin bridge (`server/bridge.go`, `bridgeclient/`, `webapp/src/bridge/`)
 - Before cutting a release
 
 ## When NOT to Use
@@ -59,7 +60,7 @@ heading structure.
 
 #### Layout
 
-The bundle is organised **by feature**: one page per decorator, covering it end
+The bundle is organized **by feature**: one page per decorator, covering it end
 to end. `formats.html` and `panel.html` hold only what is shared.
 
 | File | Covers | Kept in sync with |
@@ -69,33 +70,41 @@ to end. `formats.html` and `panel.html` hold only what is shared.
 | `location.html` | The twelve coordinate grammars, the rows, the map, the declined list, the panel | `server/decorators/location/` |
 | `airfields.html` | The label-only grammar, the database, the table expansion, the panel | `server/decorators/airport/` |
 | `cot.html` | The schema, the type tables, limits and refusals, worked examples, card, panel, map | `server/cot/`, `server/hooks_cot.go`, `webapp/src/cot/` |
+| `geojson.html` | What is read and what is refused, the narrow recognition rule, styles, the card, the panel, the map | `server/geojson/`, `server/hooks_geojson.go`, `webapp/src/geojson/` |
 | `formats.html` | The index, and the shared rules: boundaries, consumed labels, protected spans | `server/decorators/{tagger,boundary}.go` |
 | `panel.html` | What a hover, a click and a standalone page are; preferences and row ordering | `webapp/src/decorators/` |
 | `admin.html` | One section per switch, and what a switch does not do | `plugin.json` `settings_schema.settings` |
-| `commands.html` | `/tactical-fusion examples`, bare and unknown subcommands | `server/command.go`, `server/command_examples.go` |
+| `commands.html` | `/tactical-fusion examples` and `check`, bare and unknown subcommands | `server/command.go`, `server/command_examples.go`, `server/command_check.go` |
+| `integration.html` | The plugin bridge for other plugins: the Go client, the routes, `window.TacticalFusion` | `server/bridge.go`, `bridgeclient/`, `webapp/src/bridge/` |
 | `troubleshooting.html` | Symptom, cause and fix, quoting the exact user-facing strings | Every message the server can produce |
 | `error-codes.html` | The `TF-NNNN` registry, grouped by source file | `server/errcode/codes.go` |
 | `styles.css` | Shared stylesheet. Rarely changes | Adapted from `mattermost-plugin-chatsurfer` |
+| `copy.js` | The one script. Makes copyable examples copy on click; every page loads it and works without it | `docs/design/help-and-errors.md` |
+
+The list of pages the tests walk is `helpPages` in `server/help_docs_test.go`. If this table and that list disagree, the list is right and this table needs fixing.
 
 #### Change-to-file matrix
 
 | What changed | Pages to update |
 |---|---|
 | New or renamed setting in `plugin.json` | `admin.html`: a section with `id` **and** `data-setting="<Key>"`, plus a row in the summary table |
-| New or changed token grammar | That decorator's page (`dtg`, `location`, `airfields`), in the recognised or the declined table. A declined entry must say **why** |
-| New row in `detailSets` or a new CoT example constant | The matching decorator page. `TestEveryCommandExampleIsDocumented` and `TestEveryCotExampleIsDocumented` **fail until you do** |
+| New or changed token grammar | That decorator's page (`dtg`, `location`, `airfields`), in the recognized or the declined table. A declined entry must say **why** |
+| New row in `exampleSets` or a new entry in `cotExampleOrder` | The matching decorator page, or `cot.html`. `TestEveryCommandExampleIsDocumented` and `TestEveryCotExampleIsDocumented` **fail until you do** |
 | New `<detail>` extension or CoT type | `cot.html`, in the extension table or the type tables |
+| GeoJSON recognition, limits, styles, card or panel | `geojson.html` |
+| Bridge route, wire type, decline reason or `window.TacticalFusion` member | `integration.html` |
 | New protected span or boundary rule in the tagger | `formats.html#protected` or `formats.html#shared-rules` |
 | New or renamed slash subcommand | `commands.html`, plus the "Other input" table if the unknown-subcommand text changed |
-| New panel behaviour for one decorator | That decorator's page |
-| New panel behaviour shared by all of them | `panel.html` |
+| New panel behavior for one decorator | That decorator's page |
+| New panel behavior shared by all of them | `panel.html` |
 | New error code | `error-codes.html` in that file's section, **and** `troubleshooting.html` if a reader can see it |
 | Changed user-facing message text | `troubleshooting.html`, which quotes them verbatim |
 
 **Examples come from the slash commands.** The decorator pages teach from the
-same corpus `example-details` posts (`detailSets` in
-`server/command_example_details.go`, and the CoT documents in
-`server/command_cot_example.go`). Copy the literal from there rather than
+same corpus `/tactical-fusion examples` posts: `exampleSets` in
+`server/command_examples.go`, the CoT documents in
+`server/command_cot_example.go`, and the GeoJSON document in
+`server/command_geojson_example.go`. Copy the literal from there rather than
 inventing one, so a reader meets the same token in both places. A page may show
 more than the command does, never less.
 
@@ -105,8 +114,11 @@ of the sidebar, and its failures are documented as messages in
 
 #### Rules
 
-1. **No JavaScript and no remote assets.** No CDN, no web fonts, no external
+1. **No remote assets, and one script only.** No CDN, no web fonts, no external
    images, no inline event handlers. These must render on an air-gapped host.
+   The only script a page may load is its own `copy.js`, which every page loads
+   and which enhances and never enables: every page must still work with
+   scripting off. Do not add a second script or make content depend on the first.
 2. **No em dashes**, per `CLAUDE.md`. `check-style` does not lint HTML, so a
    test covers it.
 3. **Preserve anchor ids.** Pages deep-link into each other and a rename fails
@@ -148,8 +160,9 @@ make dist
 tar tzf dist/com.mattermost.plugin-tactical-fusion-*.tar.gz | grep public/help
 ```
 
-`server/help_docs_test.go` covers anchors, navigation, the air-gap rules, em
-dashes, and both directions of the code and setting inventories. It does not
+`server/help_docs_test.go` covers anchors, navigation, the air-gap rules, the
+copy script, em dashes, the command examples, and both directions of the code
+and setting inventories. It does not
 cover whether the prose is any good: open `public/help/help.html` over `file://`
 and read it.
 
@@ -173,6 +186,6 @@ Summarize which pages changed and why, and anything intentionally left alone.
 - Using em dashes. The repo convention forbids them in docs and code.
 - Hardcoding the plugin id. It belongs in `plugin.json` only; the webapp uses
   `docsUrl()` in `webapp/src/plugin_url.ts`. If a Go helper is ever needed it
-  must be a **function**, not a package-level `var`, because var initialisers
+  must be a **function**, not a package-level `var`, because var initializers
   run before the generated `init()` populates the manifest and would panic at
   activation.
