@@ -287,7 +287,7 @@ Review these changes before committing (`/review-code` if the project has it).
 User request
     │
     ▼
-/create-plan "feature"     # Create and validate plan
+/create-plan "feature"     # Create and save the plan
     │
     ▼
 User approves plan
