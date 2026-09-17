@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
 
 import {useConversion} from './convert';
-import LocationMap, {MAP_HEIGHT} from './map/LocationMap';
+import LocationMap, {INLINE_MAP_HEIGHT} from './map/LocationMap';
 import {useNearViewport} from './map/near_viewport';
 import {mapPageHref, viewFor} from './map/view';
 import {INLINE_ID, isRowVisible} from './rows';
@@ -15,7 +15,7 @@ export const INLINE_MAX_WIDTH_PX = 640;
 
 const styles: Record<string, React.CSSProperties> = {
     frame: {maxWidth: INLINE_MAX_WIDTH_PX, marginTop: 8},
-    reserved: {height: MAP_HEIGHT},
+    reserved: {height: INLINE_MAP_HEIGHT},
 };
 
 const LocationInlineMap: React.FC<{payload: LocationPayload; pageEnabled: boolean}> = ({payload, pageEnabled}) => {
@@ -31,6 +31,7 @@ const LocationInlineMap: React.FC<{payload: LocationPayload; pageEnabled: boolea
             {...viewFor(payload, conversion)}
             pageHref={pageEnabled ? mapPageHref(payload) : undefined}
             pending={conversion.status === 'loading'}
+            inline={true}
         />
     );
 };

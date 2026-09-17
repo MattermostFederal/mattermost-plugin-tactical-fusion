@@ -254,6 +254,64 @@ test.describe('with a basemap it can verify', () => {
     });
 });
 
+test.describe('the camera the larger view opens at', () => {
+    test('Open larger carries where the reader is looking', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness pageHref='/plugins/x/map?f=dd'/>);
+        await expectDrawn(component);
+
+        await expect(component.getByRole('link', {name: 'Open larger'})).
+            toHaveAttribute('href', /^\/plugins\/x\/map\?f=dd#map=\d+\.\d\d\/34\.05\d+\/-118\.2\d+$/);
+    });
+
+    test('the link follows a reader who pans', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness pageHref='/plugins/x/map?f=dd'/>);
+        await expectDrawn(component);
+
+        const link = component.getByRole('link', {name: 'Open larger'});
+        const opened = await link.getAttribute('href');
+
+        await page.mouse.move(160, 120);
+        await page.mouse.down();
+        await page.mouse.move(40, 120, {steps: 8});
+        await page.mouse.up();
+
+        await expect(link).not.toHaveAttribute('href', String(opened));
+        await expect(link).toHaveAttribute('href', /#map=/);
+    });
+
+    test('opens at the camera it was handed rather than at the coordinate', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness openAt={{lat: 38.8895, lon: -77.0353, zoom: 14}}/>,
+        );
+        await expectDrawn(component);
+        await readMap(component);
+
+        await expect(component.getByTestId('camera')).toHaveText('38.889,-77.035');
+        await expect(component.getByTestId('zoom')).toHaveText('14');
+    });
+
+    test('Reset view goes to the coordinate rather than back to that camera', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness openAt={{lat: 38.8895, lon: -77.0353, zoom: 14}}/>,
+        );
+        await expectDrawn(component);
+
+        await component.getByRole('button', {name: RESET}).click();
+        await readMap(component);
+
+        await expect(component.getByTestId('camera')).toHaveText('34.056,-118.250');
+        await expect(component.getByTestId('zoom')).not.toHaveText('14');
+    });
+});
+
 test.describe('changing selection', () => {
     /*
      * The panel stays mounted across a change of selection, so the map is moved

@@ -4,6 +4,8 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import type {Bounds} from './basemap';
 import {loadBasemap, loadPackages} from './basemap';
 import {centerOf, degenerate, frameBounds, openingAnchor} from './bounds';
+import type {Camera} from './camera';
+import {hashForCamera} from './camera';
 import {outsideMercator, positionNote} from './label';
 import {
     SEAM_CAPPED_LAYERS,
@@ -33,6 +35,11 @@ const MAP_MAX_HEIGHT_PX = 360;
  * ResizeObserver already picks up the change.
  */
 export const MAP_HEIGHT = `clamp(${MAP_MIN_HEIGHT_PX}px, 30vh, ${MAP_MAX_HEIGHT_PX}px)`;
+
+const INLINE_MAP_MIN_HEIGHT_PX = 320;
+const INLINE_MAP_MAX_HEIGHT_PX = 540;
+
+export const INLINE_MAP_HEIGHT = `clamp(${INLINE_MAP_MIN_HEIGHT_PX}px, 45vh, ${INLINE_MAP_MAX_HEIGHT_PX}px)`;
 
 /** What to assume the box is before it has been laid out. */
 const DEFAULT_WIDTH_PX = 320;
@@ -92,6 +99,10 @@ export interface MapProps extends View {
 
     /** Fills its parent rather than sitting in the flow of a panel. */
     fill?: boolean;
+
+    inline?: boolean;
+
+    openAt?: Camera;
 
     /**
      * A picture and nothing else: no controls, no gestures, no readout.
@@ -198,13 +209,14 @@ export interface MapProps extends View {
  */
 export function useMapInstance({
     lat, lon, cellDegLat, cellDegLon, pending, preview, accuracyMeters,
-    markers, ellipse, geometries,
+    markers, ellipse, geometries, openAt,
 }: MapProps): {
     container: React.RefObject<HTMLDivElement | null>;
     applyView: () => void;
     note: string | null;
     credited: boolean;
     zoomLevel: number | null;
+    cameraHash: string | null;
     extentOnly: boolean;
 } {
     const container = useRef<HTMLDivElement | null>(null);
@@ -220,6 +232,8 @@ export function useMapInstance({
     // The live camera zoom, and the only thing on this map read from a `zoom`
     // event. Null until the map exists.
     const [zoomLevel, setZoomLevel] = useState<number | null>(null);
+
+    const [cameraHash, setCameraHash] = useState<string | null>(null);
 
     // Whether the OpenStreetMap tier made it into the style, which is the only
     // thing that decides whether its credit is drawn. Set from the archive that
@@ -281,6 +295,8 @@ export function useMapInstance({
     const extentOnlyRef = useRef(extentOnly);
     extentOnlyRef.current = extentOnly;
 
+    const openAtRef = useRef<Camera | undefined>(openAt);
+
     // Pending readiness deadlines, so unmounting cannot leave one to fire
     // against a component that is gone.
     const deadlines = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
@@ -316,6 +332,13 @@ export function useMapInstance({
         // shapes together: a shape larger than its own <point> would otherwise
         // open half off screen, or at a zoom chosen for a point inside it.
         const frame = (fallback: {lat: number; lon: number} | null) => {
+            const start = openAtRef.current;
+            if (start !== undefined) {
+                openAtRef.current = undefined;
+                instance.jumpTo({center: [start.lon, start.lat], zoom: start.zoom});
+                return;
+            }
+
             const box = frameBounds(
                 drawn.current, shape.current, shapes.current, current.lat, current.lon);
 
@@ -484,7 +507,8 @@ export function useMapInstance({
             // ?? 0 fallbacks below put it at 0,0 for the frame or two before
             // applyView runs, which is a visible jump from the Gulf of Guinea
             // to wherever the document actually is.
-            const anchor = openingAnchor(start, drawn.current, shapes.current);
+            const anchor = openAtRef.current ?? openingAnchor(start, drawn.current, shapes.current);
+            const openingZoom = openAtRef.current?.zoom ?? zoomForSpan(anchor.lat, width);
 
             // A point rather than the opening viewport, and it does not matter
             // which: zoomForSpan clamps the opening zoom to DATA_MAX_ZOOM, which
@@ -501,7 +525,7 @@ export function useMapInstance({
                     container: container.current,
                     style,
                     center: [anchor.lon, anchor.lat],
-                    zoom: zoomForSpan(anchor.lat, width),
+                    zoom: openingZoom,
 
                     // A rotatable map with no compass means a reader misreads
                     // every bearing taken off it.
@@ -541,7 +565,16 @@ export function useMapInstance({
                 instance.on('zoom', (event) => setZoomLevel(Math.round(event.target.getZoom() * 10) / 10));
                 setZoomLevel(Math.round(instance.getZoom() * 10) / 10);
 
-                instance.on('moveend', (event) => syncGlobalReach(event.target, details, SEAM_CAPPED_LAYERS));
+                const reportCamera = (target: MapLibreMap) => {
+                    const center = target.getCenter();
+                    setCameraHash(hashForCamera({lat: center.lat, lon: center.lng, zoom: target.getZoom()}));
+                };
+
+                instance.on('moveend', (event) => {
+                    syncGlobalReach(event.target, details, SEAM_CAPPED_LAYERS);
+                    reportCamera(event.target);
+                });
+                reportCamera(instance);
             } catch (e) {
                 // The constructor allocates its canvas and GL context before it
                 // validates the style, so a throw here leaks a context unless it
@@ -700,7 +733,7 @@ export function useMapInstance({
         return () => observer.disconnect();
     }, []);
 
-    return {container, applyView, note, credited, zoomLevel, extentOnly};
+    return {container, applyView, note, credited, zoomLevel, cameraHash, extentOnly};
 }
 
 /** Shortens the readiness deadline so a test can prove it fires. */

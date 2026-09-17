@@ -3,7 +3,8 @@ import React, {useState} from 'react';
 import {isSectionVisible} from './sections';
 import type {GeoJsonFeature, GeoJsonPart, GeoJsonPayload, GeoJsonPosition} from './types';
 
-import LocationMap, {MAP_HEIGHT} from '../decorators/location/map/LocationMap';
+import type {Camera} from '../decorators/location/map/camera';
+import LocationMap, {INLINE_MAP_HEIGHT, MAP_HEIGHT} from '../decorators/location/map/LocationMap';
 import {useNearViewport} from '../decorators/location/map/near_viewport';
 import type {MapMarker} from '../decorators/location/map/overlay';
 import {isMarkerSize} from '../decorators/location/map/overlay';
@@ -20,6 +21,7 @@ export const GEOJSON_MAP_MAX_WIDTH_PX = 640;
 const styles: Record<string, React.CSSProperties> = {
     frame: {maxWidth: GEOJSON_MAP_MAX_WIDTH_PX, padding: '0 12px 8px'},
     reserved: {height: MAP_HEIGHT},
+    reservedInline: {height: INLINE_MAP_HEIGHT},
 };
 
 /**
@@ -261,7 +263,9 @@ export const GeoJsonMapCanvas: React.FC<{
     payload: GeoJsonPayload;
     pageEnabled?: boolean;
     fill?: boolean;
-}> = ({payload, pageEnabled, fill}) => {
+    inline?: boolean;
+    openAt?: Camera;
+}> = ({payload, pageEnabled, fill, inline, openAt}) => {
     const markers = markersFor(payload.features);
     const shapes = shapesFor(payload.features);
 
@@ -285,6 +289,8 @@ export const GeoJsonMapCanvas: React.FC<{
             geometries={shapes}
             pageHref={pageEnabled && payload.postId ? overlayPageHref(payload.postId) : undefined}
             fill={fill}
+            inline={inline}
+            openAt={openAt}
         />
     );
 };
@@ -345,8 +351,9 @@ const GeoJsonMap: React.FC<{payload: GeoJsonPayload; surface: 'card' | 'panel'}>
                 <GeoJsonMapCanvas
                     payload={payload}
                     pageEnabled={features.mapPage}
+                    inline={surface === 'card'}
                 />
-            ) : <div style={styles.reserved}/>}
+            ) : <div style={surface === 'card' ? styles.reservedInline : styles.reserved}/>}
         </div>
     );
 };

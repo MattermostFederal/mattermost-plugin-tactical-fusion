@@ -3,6 +3,7 @@ import React from 'react';
 import type {LocationPageData} from './payload';
 
 import {vouchedText} from '../decorators/location/convert';
+import {openingCamera} from '../decorators/location/map/camera';
 import LocationMap from '../decorators/location/map/LocationMap';
 import {viewFor} from '../decorators/location/map/view';
 import {withTheme} from '../decorators/theme';
@@ -71,6 +72,7 @@ const MapPageView: React.FC<{data: LocationPageData}> = ({data}) => {
                     {...view}
                     pending={false}
                     fill={true}
+                    openAt={openingCamera() ?? undefined}
                 />
             </div>
             <div style={styles.bar}>

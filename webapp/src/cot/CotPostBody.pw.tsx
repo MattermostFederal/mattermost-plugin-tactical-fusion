@@ -635,14 +635,35 @@ test.describe('Open larger on a block of events', () => {
         await expect(larger).not.toHaveAttribute('href', /[?&]f=/);
     });
 
-    // One event still goes to its own coordinate page, which carries the token
-    // and a way through to every reading of it. A post id cannot offer that.
-    test('a single event still addresses the map page by its coordinate', async ({mount, page}) => {
+    /*
+     * A single event addresses the post too, because the coordinate page draws
+     * a pin and a cell and nothing else: an event's drawn area, its ellipse and
+     * its accuracy ring all vanished on the way to the larger view of them.
+     * The readings are still one click away, from the position beside the map.
+     */
+    test('a single event addresses the post as well, not its coordinate', async ({mount, page}) => {
         await stubFeaturesRoute(page);
 
         const component = await mount(
             <CotPostBodyHarness
                 postId='post0000000000000000000000'
+                event={{lat: '34.0561', lon: '-118.2500', format: 'dd', value: '34.0561,-118.2500'}}
+            />,
+        );
+
+        const larger = component.getByRole('link', {name: 'Open larger'});
+        await expect(larger).toHaveAttribute('href', /post=post0000000000000000000000/);
+        await expect(larger).not.toHaveAttribute('href', /[?&]f=/);
+    });
+
+    // With nothing to address by, one event can still offer its own coordinate
+    // page, which is more than no link at all.
+    test('a single event with no post id falls back to its coordinate page', async ({mount, page}) => {
+        await stubFeaturesRoute(page);
+
+        const component = await mount(
+            <CotPostBodyHarness
+                postId=''
                 event={{lat: '34.0561', lon: '-118.2500', format: 'dd', value: '34.0561,-118.2500'}}
             />,
         );

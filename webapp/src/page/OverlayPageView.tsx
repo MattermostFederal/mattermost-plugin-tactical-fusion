@@ -4,6 +4,7 @@ import type {OverlayPageData} from './payload';
 
 import {CotMapCanvas, drawsNothing as cotDrawsNothing} from '../cot/CotMap';
 import {COT_POST_TYPE, fromProps as cotFromProps} from '../cot/types';
+import {openingCamera} from '../decorators/location/map/camera';
 import {GeoJsonMapCanvas, drawsNothing as geoJsonDrawsNothing, mapLabel, markersFor, shapesFor} from '../geojson/GeoJsonMap';
 import {GEOJSON_POST_TYPE, fromProps as geoJsonFromProps} from '../geojson/types';
 
@@ -78,6 +79,7 @@ function drawingFor(data: OverlayPageData): {canvas: React.ReactNode; label: str
                     events={payload.events}
                     pageEnabled={false}
                     fill={true}
+                    openAt={openingCamera() ?? undefined}
                 />
             ),
             label: `${payload.events.length} event${payload.events.length === 1 ? '' : 's'}`,
@@ -102,6 +104,7 @@ function drawingFor(data: OverlayPageData): {canvas: React.ReactNode; label: str
                 <GeoJsonMapCanvas
                     payload={payload}
                     fill={true}
+                    openAt={openingCamera() ?? undefined}
                 />
             ),
             label: mapLabel(markers, shapes),

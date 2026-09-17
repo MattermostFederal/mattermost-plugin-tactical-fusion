@@ -47,7 +47,7 @@ test.describe('the viewport gate', () => {
         const component = await mount(<LocationInlineHarness/>);
 
         const empty = await component.getByTestId('location-inline').boundingBox();
-        expect(empty?.height ?? 0).toBeGreaterThanOrEqual(200);
+        expect(empty?.height ?? 0).toBeGreaterThanOrEqual(320);
     });
 
     test('builds the map once the post scrolls into range', async ({mount, page}) => {
@@ -86,6 +86,18 @@ test.describe('the map itself', () => {
 
         await expect(component.getByRole('link', {name: 'Open larger'})).
             toHaveAttribute('href', /\/map\?f=dd&v=/);
+    });
+
+    test('stands taller than the panel map', async ({mount, page}) => {
+        await serveMapAssets(page);
+        await stubPreferencesRoute(page);
+
+        const component = await mount(<LocationInlineHarness inView={true}/>);
+        await component.getByRole('button', {name: ANSWER}).click();
+        await expect(component.getByRole('button', {name: RESET})).toBeVisible();
+
+        const box = await component.getByTestId('location-inline').boundingBox();
+        expect(box?.height ?? 0).toBeGreaterThanOrEqual(320);
     });
 
     /*

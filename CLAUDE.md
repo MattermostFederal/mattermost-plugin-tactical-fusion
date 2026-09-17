@@ -109,7 +109,9 @@ ending a line would claim the start of the next one.
 **A link may never disagree with itself.** The URL carries the identity only
 (`f`/`v` for location, `v` for airfields, the canonical token for DTG), and
 every route re-derives the rest and requires it to round-trip. Nothing derived
-travels in the URL.
+travels in the URL. An "Open larger" link also carries the reader's camera as a
+`#map=<zoom>/<lat>/<lon>` fragment, which no route ever receives: it decides
+where the page opens, never what it says.
 
 **Render to the resolution the token carried, and round rather than truncate.**
 Padding a field the author never wrote is a claim. Grid cells and area cells are

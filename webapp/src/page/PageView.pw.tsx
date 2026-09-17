@@ -1,6 +1,7 @@
 import React from 'react';
 
 import MapPageView from './MapPageView';
+import OverlayPageHarness from './OverlayPageHarness';
 // eslint-disable-next-line import/no-duplicates
 import {OverlayPageView} from './OverlayPageView';
 // eslint-disable-next-line import/no-duplicates
@@ -10,6 +11,7 @@ import type {LocationPageData, OverlayPageData, PageData} from './payload';
 import {expect, test} from '../../playwright/ct-coverage';
 import {parseCanonical} from '../decorators/location/format';
 import LocationReadings from '../decorators/location/LocationReadings';
+import {serveMapAssets} from '../decorators/location/map/asset_fixtures';
 import {ROWS} from '../decorators/location/rows';
 import {ALL_FEATURES} from '../features/types';
 
@@ -218,6 +220,29 @@ test('the map page leaves the readings to the readings page', async ({mount}) =>
     await expect(component.getByText('18SUJ2347806483', {exact: true})).toHaveCount(0);
     await expect(component.getByText('38.8895° N, 77.0353° W')).toHaveCount(0);
     await expect(component.getByText('United States of America (Natural Earth 110m)')).toHaveCount(0);
+});
+
+test('the map page opens at the camera the fragment names', async ({mount, page}) => {
+    await serveMapAssets(page);
+    await page.evaluate(() => {
+        window.location.hash = '#map=14.00/38.88950/-77.03530';
+    });
+
+    const component = await mount(<MapPageView data={{...GRID, mode: 'map'}}/>);
+
+    await expect(component.getByText('z14.0')).toBeVisible({timeout: 15_000});
+});
+
+test('a fragment the page cannot read leaves the framing to the token', async ({mount, page}) => {
+    await serveMapAssets(page);
+    await page.evaluate(() => {
+        window.location.hash = '#map=whatever';
+    });
+
+    const component = await mount(<MapPageView data={{...GRID, mode: 'map'}}/>);
+
+    await expect(component.getByText(/^z\d/)).toBeVisible({timeout: 15_000});
+    await expect(component.getByText('z14.0')).toHaveCount(0);
 });
 
 /*
@@ -485,6 +510,127 @@ test.describe('the overlay page', () => {
 
         await expect(component).toContainText('1 event');
         await expect(component).not.toContainText('1 events');
+    });
+
+    /*
+     * What the larger view of a stamped post actually draws.
+     *
+     * Every other assertion here reads the label bar, which the page writes
+     * from the payload: it proves the blob arrived and nothing about what
+     * reached the map. A single Cursor on Target event used to address the
+     * COORDINATE page from its card, and that page draws a pin and a cell, so
+     * an event's drawn area arrived as a point.
+     */
+    const GEOJSON_AREA = {
+        tactical_fusion_geojson: {
+            version: 1,
+            source: 'fence',
+            src: '{"type":"Polygon"}',
+            counts: {features: 1, points: 5},
+            features: [{
+                name: 'Zone',
+                kind: 'Polygon',
+                parts: [{
+                    kind: 'Polygon',
+                    rings: [[
+                        {lat: '34.0000', lon: '-118.0000', alt: ''},
+                        {lat: '34.5000', lon: '-118.0000', alt: ''},
+                        {lat: '34.5000', lon: '-117.5000', alt: ''},
+                        {lat: '34.0000', lon: '-117.5000', alt: ''},
+                        {lat: '34.0000', lon: '-118.0000', alt: ''},
+                    ]],
+                    ring_counts: [1],
+                }],
+            }],
+        },
+    };
+
+    const COT_AREA = {
+        tactical_fusion_cot: {
+            version: 2,
+            source: 'fence',
+            src: '<event uid="ANDROID-1"/>',
+            events: [{
+                ...COT_PROPS.tactical_fusion_cot.events[0],
+                geometry: {
+                    kind: 'polyline',
+                    closed: 'true',
+                    points: [
+                        {lat: '34.0000', lon: '-118.0000'},
+                        {lat: '34.5000', lon: '-118.0000'},
+                        {lat: '34.5000', lon: '-117.5000'},
+                        {lat: '34.0000', lon: '-118.0000'},
+                    ],
+                    note: '',
+                },
+            }],
+        },
+    };
+
+    test('a GeoJSON area is drawn as an area, not as a point', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <OverlayPageHarness data={overlay({kind: 'custom_tf_geojson', props: GEOJSON_AREA})}/>,
+        );
+
+        await expect(component.getByRole('button', {name: 'Reset view'})).toBeVisible({timeout: 15_000});
+        await component.getByRole('button', {name: 'read the map'}).dispatchEvent('click');
+
+        await expect(component.getByTestId('drawn-geometry')).toHaveText('Polygon:1');
+    });
+
+    test('a Cursor on Target outline is drawn as an outline, not as a point', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <OverlayPageHarness data={overlay({kind: 'custom_tf_cot', props: COT_AREA})}/>,
+        );
+
+        await expect(component.getByRole('button', {name: 'Reset view'})).toBeVisible({timeout: 15_000});
+        await component.getByRole('button', {name: 'read the map'}).dispatchEvent('click');
+
+        await expect(component.getByTestId('drawn-geometry')).toHaveText('Polygon:1');
+        await expect(component.getByTestId('drawn-pins')).toHaveText('Point:1');
+    });
+
+    test('every outline in a block is drawn, not just one of them', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const [first] = COT_AREA.tactical_fusion_cot.events;
+        const second = {
+            ...first,
+            uid: 'ANDROID-2',
+            lat: '35.0000',
+            lon: '-119.0000',
+            value: '35.0000,-119.0000',
+            geometry: {
+                ...first.geometry,
+                points: [
+                    {lat: '35.0000', lon: '-119.0000'},
+                    {lat: '35.5000', lon: '-119.0000'},
+                    {lat: '35.5000', lon: '-118.5000'},
+                    {lat: '35.0000', lon: '-119.0000'},
+                ],
+            },
+        };
+
+        const block = {
+            tactical_fusion_cot: {
+                ...COT_AREA.tactical_fusion_cot,
+                events: [first, second],
+            },
+        };
+
+        const component = await mount(
+            <OverlayPageHarness data={overlay({kind: 'custom_tf_cot', props: block})}/>,
+        );
+
+        await expect(component.getByRole('button', {name: 'Reset view'})).toBeVisible({timeout: 15_000});
+        await component.getByRole('button', {name: 'read the map'}).dispatchEvent('click');
+
+        await expect(component.getByTestId('drawn-geometry')).toHaveText('Polygon:1|Polygon:1');
+        await expect(component.getByTestId('drawn-pins')).toHaveText('Point:1|Point:1');
     });
 
     test('carries no link out of itself', async ({mount}) => {
