@@ -40,9 +40,11 @@ This workflow is driven by the harness task list. Do not work without a task.
 
 Read both files and build two inventories:
 
-**API endpoints** (from `server/api.go` or equivalent):
+**API endpoints** (from `server/api.go` or equivalent). How routes are registered varies, so find the project's form before trusting an empty result. A router registers with `HandleFunc`; a hand-written `ServeHTTP` compares `r.URL.Path` against path constants:
 ```bash
-grep -E 'HandleFunc\(' server/*.go
+grep -nE 'HandleFunc\(' server/*.go
+grep -nE 'r\.URL\.Path ==|strings\.HasPrefix\(r\.URL\.Path' server/*.go
+grep -nE 'Path\s*=\s*"' server/*.go
 ```
 
 **Slash command subcommands** (from `server/command.go`):
@@ -105,6 +107,7 @@ For each approved new command, follow this pattern:
    case "new-command":
        return p.executeNewCommand(args, fields[2:])
    ```
+   Match the dispatcher's existing shape rather than this sketch: its return types, how it names handlers, and how it recovers the argument text. Where an argument is free text whose spacing matters, use the project's own helper for it instead of re-joining `fields`.
 
 2. **Implement the handler** following the pattern of the most similar existing command. Two handler signatures are common:
 
@@ -141,6 +144,7 @@ For each approved new command, follow this pattern:
 
    In both cases:
    - Check permissions before doing any work.
+   - Log and word failures the way the project's existing handlers do. If it requires an error code on every log call and user-facing failure, a new command needs one too.
    - Return `model.CommandResponseTypeEphemeral` for all responses.
    - Call the same shared business logic that the API handler already uses. Do not reimplement business logic in the command handler.
    - For async operations, return an immediate ephemeral response and do the work in a goroutine with a `defer recover()`.
@@ -158,7 +162,7 @@ In the command registration function:
 
 - Run `make check-style` to ensure Go formatting and lint pass
 - Run `make test` to confirm existing tests still pass
-- Verify the new switch cases and autocomplete entries are consistent:
+- Verify the new switch cases and autocomplete entries are consistent (the counts should match, `default` aside), and that any help text or subcommand list constant names the new command:
   ```bash
   grep -cE '^\s+case\s+"' server/command.go
   grep -c 'autocomplete.AddCommand' server/command.go

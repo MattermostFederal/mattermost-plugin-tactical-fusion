@@ -21,7 +21,7 @@ This skill uses a plan-then-execute workflow:
 
 ## Step 1: Measure Current Coverage (in plan mode)
 
-Run the coverage target (typically `make coverage-backend` or `make coverage`) and capture the output. This runs `go test -coverprofile` then `go tool cover -func` to show per-function coverage.
+Run the coverage target (typically `make coverage-backend` or `make coverage`) and capture the output. This runs `go test -coverprofile` then `go tool cover -func` to show per-function coverage. Read the target's recipe first: flags such as `-coverpkg` and `-short` change what the numbers mean, and tests skipped under `-short` leave code reading as uncovered that the full `make test` does exercise.
 
 ```bash
 make coverage-backend 2>&1
@@ -90,16 +90,36 @@ Exit plan mode and wait for user approval before proceeding to Step 3.
 
 ### Test Infrastructure
 
-Mattermost plugins typically use `github.com/mattermost/mattermost/server/public/plugin/plugintest` for mocking the plugin API:
+**Use the test double the project already has. Do not introduce a second one, and do not add a mocking dependency to get one.** Before writing anything, open the largest existing `*_test.go` beside the code under test and find:
+
+- how a `Plugin` (or the type under test) is constructed for tests, usually a `newTestPlugin`-style helper
+- what stands in for `plugin.API`
+- how HTTP handlers are called, usually a small `call(...)` helper around `httptest`
+- which assertion style is in use: the standard library (`t.Fatalf`, `t.Errorf`) or an assertion package
+
+Two doubles are common in Mattermost plugins. Match whichever the project uses:
+
+**A hand-rolled fake** embeds the interface and implements only the methods the plugin calls. The embedded interface is nil, so any call that is not stubbed panics, which surfaces unexpected API use instead of returning a zero value. It records what it was asked (log lines, posts, KV writes) in fields the test reads back, and carries error fields that force a failure path:
+
+```go
+type fakeAPI struct {
+    plugin.API
+    kv       map[string][]byte
+    kvGetErr *model.AppError
+    errors   []string
+}
+
+func (a *fakeAPI) LogError(msg string, _ ...any) { a.errors = append(a.errors, msg) }
+```
+
+To reach a new code path, add the method or the error field to the existing fake rather than writing a new fake.
+
+**`plugintest.API` with testify/mock**, only where the project already depends on it:
 
 ```go
 api := &plugintest.API{}
-api.On("LogError", mock.Anything, mock.Anything, mock.Anything).Return()
 api.On("GetTeamByName", "team-a").Return(&model.Team{Id: "team-id"}, nil)
 defer api.AssertExpectations(t)
-
-p := &Plugin{}
-p.SetAPI(api)
 ```
 
 **HTTP handler testing:**
@@ -110,10 +130,10 @@ w := httptest.NewRecorder()
 
 p.ServeHTTP(nil, w, req)
 
-assert.Equal(t, http.StatusOK, w.Code)
+if w.Code != http.StatusOK {
+    t.Fatalf("status = %d, want 200", w.Code)
+}
 ```
-
-**KV store mocking**: if the plugin defines its own KV store interface, implement a test double that satisfies the interface and override only the methods the function under test actually calls. Interface-based KV stores are much easier to mock than calling `p.API.KVSet` directly.
 
 ### Testing Patterns to Follow
 
@@ -140,11 +160,11 @@ tests := []struct {
 for _, tt := range tests {
     t.Run(tt.name, func(t *testing.T) {
         got, err := Transform(tt.input)
-        if tt.wantErr {
-            require.Error(t, err)
-        } else {
-            require.NoError(t, err)
-            assert.Equal(t, tt.want, got)
+        if (err != nil) != tt.wantErr {
+            t.Fatalf("err = %v, wantErr %v", err, tt.wantErr)
+        }
+        if got != tt.want {
+            t.Errorf("got %q, want %q", got, tt.want)
         }
     })
 }
@@ -154,7 +174,7 @@ for _, tt := range tests {
 
 - **Tests behavior, not implementation**: assert on observable outcomes (HTTP status, return values, mock expectations), not internal state
 - **One logical assertion per subtest**: test one path/branch per t.Run
-- **Descriptive names**: `TestHandleFoo_NotFound_Returns404` not `TestHandleFoo3`
+- **Descriptive names that state the invariant**, in whatever style the project's existing tests use: `TestPreferencesRequireASession`, not `TestHandleFoo3`
 - **Isolated**: each subtest sets up its own state, no shared mutable state between subtests
 - **Fast**: prefer mocks over real I/O
 - **No synthetic/mock data to fix failures**: if a test fails, fix the code or the test logic, never fabricate data
@@ -184,8 +204,8 @@ Start with the largest completely-untested files. Write a full test file for eac
 **Phase 2, Remaining 0% functions (Tier 2):**
 Individual uncovered functions in files that already have partial test coverage. Add subtests to the existing test file following its established mock patterns.
 
-**Phase 3, KV store and dependency mocks:**
-Functions that read/write via the plugin API or a KV store interface. Create mock implementations that override only the methods the function under test actually calls.
+**Phase 3, KV store and dependency doubles:**
+Functions that read/write via the plugin API or a KV store interface. Extend the project's existing double with only the methods and failure switches the function under test actually needs.
 
 **Phase 4, Branch coverage (Tiers 3-4, low coverage functions):**
 Functions that have tests but miss important branches. Read existing tests carefully to avoid duplication.
@@ -228,7 +248,7 @@ Report the before/after coverage delta per package and overall.
 ## Common Pitfalls
 
 - **Testing the mock, not the code**: ensure your mock setup actually forces the code path you intend. If a mock returns nil where the real code would return data, you may be testing a different branch.
-- **Forgetting `defer api.AssertExpectations(t)`**: without this, unmet mock expectations silently pass.
+- **With testify mocks, forgetting `defer api.AssertExpectations(t)`**: without this, unmet mock expectations silently pass. With a hand-rolled fake, forgetting to assert on what it recorded has the same effect.
 - **Not reading existing tests first**: you'll write duplicates or miss established patterns.
 - **Over-mocking**: if a function is pure logic with no dependencies, test it directly without mocks.
 - **Ignoring goroutine cleanup**: any test that spawns goroutines must cancel the context and wait for completion to avoid test pollution.
