@@ -843,17 +843,25 @@ a bounding box the plugin drew itself.
 
 Drawing it needed a change. `CotMap` drew geometry only for a single-event card,
 so the polygon would have appeared in the panel's Shape section and on no map,
-which is the panel and the map disagreeing in front of the reader. **Exactly one
-outline in a block is now drawn.** The argument against N shapes still holds, and
-is why it is one rather than all: a pile of outlines says nothing about which
-belongs to which track.
+which is the panel and the map disagreeing in front of the reader.
+
+**Every outline in a block is drawn.** This was one for a while, on the argument
+that a pile of outlines says nothing about which belongs to which track. The
+argument is about LABELING, and the remedy it chose was to draw fewer facts: a
+post carrying two suspected areas drew neither of them, on the card and in the
+larger view of that card, so the map disagreed with the panel's Shape section
+exactly as it had before, and a reader comparing the two had no way to tell a
+block with no shapes from a block with several. Ambiguity about which track owns
+an outline is a smaller cost than an outline nobody is shown; the shapes are
+drawn in the events' own order and each carries its own stated color, which is
+the channel that ties one to its track where the author supplied it.
 
 **Outlines only, and that is not laziness.** An outline carries absolute
 vertices, so it lands where the event put it whatever else is on the map. An
 ellipse is drawn around the map's PRIMARY position, which in a block is the first
 event's, so a circle belonging to the third would be drawn around the first one's
-marker. `soleOutline` refuses ellipses in a block for that reason, and
-`label.spec.ts` pins it.
+marker. `outlineOf` refuses ellipses for that reason, so a block draws none at
+all, and `label.spec.ts` pins it.
 
 The accuracy ring is unchanged and stays single-event: a ring per track is a map
 of overlapping blobs, and unlike a drawn area a ring qualifies one specific
@@ -1191,10 +1199,10 @@ left to each call site.
 
 The panel used to print a color the map then ignored, which is the panel and the
 map disagreeing in front of the reader about the same event. `LocationMap` takes
-an optional colored `ellipse` and colored shapes, and `CotMap` passes the event's stated color when
-there is exactly one event, which is already the condition the shape and the
-accuracy ring are drawn under. Absent, the shape keeps the theme's own cell
-color, which is what every location surface gets.
+an optional colored `ellipse` and colored shapes, and every outline `CotMap`
+draws carries the color its OWN event stated, which is what lets a block of
+shapes say which is which. Absent, the shape keeps the theme's own cell color,
+which is what every location surface gets.
 
 The **marker** still does not take it, and that is the line. A marker's color is
 this plugin's claim about what a track IS: red is hostile, blue is friend, green

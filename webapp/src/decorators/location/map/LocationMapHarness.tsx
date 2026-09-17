@@ -1,6 +1,7 @@
 import type {GeoJSONSource, Map as MapLibreMap} from 'maplibre-gl';
 import React, {useEffect, useRef, useState} from 'react';
 
+import type {Camera} from './camera';
 import LocationMap from './LocationMap';
 import type {MapEllipse} from './overlay';
 import type {MapShape} from './paint';
@@ -330,6 +331,8 @@ interface Props {
     pageHref?: string;
     fill?: boolean;
 
+    openAt?: Camera;
+
     /** Makes this browser look like one with WebGL2 switched off. */
     noWebGL?: boolean;
 
@@ -361,7 +364,7 @@ interface Props {
 }
 
 const LocationMapHarness: React.FC<Props> = ({
-    start = 'Los Angeles', region = '', pending = false, pageHref, fill, noWebGL, preview, markers,
+    start = 'Los Angeles', region = '', pending = false, pageHref, fill, openAt, noWebGL, preview, markers,
     markerLabel, accuracyMeters, accuracyLabel, ellipse, geometries,
     extentLabel, readyDeadlineMs,
 }) => {
@@ -468,6 +471,7 @@ removed: false,
                     pending={pending}
                     pageHref={pageHref}
                     fill={fill}
+                    openAt={openAt}
                     preview={preview}
                     markers={markers as MapProps['markers']}
                     markerLabel={markerLabel}

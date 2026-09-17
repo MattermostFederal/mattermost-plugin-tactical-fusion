@@ -3,7 +3,7 @@ import React from 'react';
 import {label} from './label';
 import {OSM_CREDIT} from './maplibre';
 import type {MapProps} from './use_map_instance';
-import {MAP_HEIGHT, useMapInstance} from './use_map_instance';
+import {INLINE_MAP_HEIGHT, MAP_HEIGHT, useMapInstance} from './use_map_instance';
 
 /*
  * The hover card's map.
@@ -37,6 +37,7 @@ const styles: Record<string, React.CSSProperties> = {
         background: 'rgba(var(--center-channel-color-rgb), 0.04)',
     },
     canvas: {position: 'absolute', inset: 0},
+    inlineFrame: {height: INLINE_MAP_HEIGHT},
     fillRoot: {marginBottom: 0, display: 'flex', flexDirection: 'column', height: '100%'},
     fillFrame: {flex: 1, borderRadius: 0, border: 'none'},
     previewRoot: {marginBottom: 0},
@@ -115,11 +116,15 @@ const styles: Record<string, React.CSSProperties> = {
  * at 0, 0 because a conversion failed is a position, and a wrong one.
  */
 const LocationMap: React.FC<MapProps> = (props) => {
-    const {region, pageHref, fill, preview, accuracyLabel, markers, markerLabel, extentLabel} = props;
-    const {container, applyView, note, credited, zoomLevel, extentOnly} = useMapInstance(props);
+    const {region, pageHref, fill, inline, preview, accuracyLabel, markers, markerLabel, extentLabel} = props;
+    const {container, applyView, note, credited, zoomLevel, cameraHash, extentOnly} = useMapInstance(props);
+    const largerHref = pageHref === undefined ? undefined : `${pageHref}${cameraHash ?? ''}`;
 
     let root = fill ? {...styles.root, ...styles.fillRoot} : styles.root;
-    let frame = fill ? {...styles.frame, ...styles.fillFrame} : styles.frame;
+    let frame = inline ? {...styles.frame, ...styles.inlineFrame} : styles.frame;
+    if (fill) {
+        frame = {...frame, ...styles.fillFrame};
+    }
     if (preview) {
         root = {...styles.root, ...styles.previewRoot};
         frame = {...styles.frame, ...styles.previewFrame};
@@ -150,7 +155,7 @@ const LocationMap: React.FC<MapProps> = (props) => {
                 )}
                 <span style={styles.srOnly}>{label(region, note, accuracyLabel, markerLabel, markers?.length ?? 1, extentOnly ? extentLabel : undefined)}</span>
             </div>
-            {!preview && (credited || (!fill && pageHref !== undefined)) && (
+            {!preview && (credited || (!fill && largerHref !== undefined)) && (
                 <div style={styles.caption}>
                     {credited && (
                         <span style={styles.credit}>
@@ -165,10 +170,10 @@ const LocationMap: React.FC<MapProps> = (props) => {
                             ))}
                         </span>
                     )}
-                    {!fill && pageHref !== undefined && (
+                    {!fill && largerHref !== undefined && (
                         <a
                             style={styles.link}
-                            href={pageHref}
+                            href={largerHref}
                             target='_blank'
                             rel='noreferrer'
                         >{'Open larger'}</a>
@@ -179,6 +184,6 @@ const LocationMap: React.FC<MapProps> = (props) => {
     );
 };
 
-export {MAP_HEIGHT};
+export {INLINE_MAP_HEIGHT, MAP_HEIGHT};
 
 export default LocationMap;

@@ -4,7 +4,8 @@ import {isSectionVisible} from './sections';
 import type {CotEvent} from './types';
 import {accuracyMeters, affiliationColor, affiliationWord, isLinkable, statedColor} from './types';
 
-import LocationMap, {MAP_HEIGHT} from '../decorators/location/map/LocationMap';
+import type {Camera} from '../decorators/location/map/camera';
+import LocationMap, {INLINE_MAP_HEIGHT, MAP_HEIGHT} from '../decorators/location/map/LocationMap';
 import {useNearViewport} from '../decorators/location/map/near_viewport';
 import type {MapEllipse} from '../decorators/location/map/overlay';
 import type {MapShape} from '../decorators/location/map/paint';
@@ -21,6 +22,7 @@ export const COT_MAP_MAX_WIDTH_PX = 640;
 const styles: Record<string, React.CSSProperties> = {
     frame: {maxWidth: COT_MAP_MAX_WIDTH_PX, padding: '0 12px 8px'},
     reserved: {height: MAP_HEIGHT},
+    reservedInline: {height: INLINE_MAP_HEIGHT},
 };
 
 function mapPageHref(event: CotEvent): string {
@@ -32,11 +34,11 @@ function largerHref(pageEnabled: boolean, only: CotEvent | undefined, postId: st
     if (!pageEnabled) {
         return undefined;
     }
-    if (only) {
-        return mapPageHref(only);
+    if (postId) {
+        return overlayPageHref(postId);
     }
 
-    return postId ? overlayPageHref(postId) : undefined;
+    return only ? mapPageHref(only) : undefined;
 }
 
 /** @internal exported for tests */
@@ -128,13 +130,6 @@ function joinWords(parts: readonly string[]): string {
  */
 const UNCOLORED = '#8a8f98';
 
-/**
- * The shape one event describes, ready for the map.
- *
- * Only for a single event. A block of shapes on one map is a pile of outlines
- * with nothing saying which belongs to which track, which is the argument the
- * accuracy ring is already drawn under.
- */
 function drawableGeometry(event: CotEvent | undefined) {
     if (!event?.geometry) {
         return undefined;
@@ -174,14 +169,6 @@ function ellipseFor(event: CotEvent | undefined): MapEllipse | undefined {
     };
 }
 
-/**
- * The vertices an event drew, or undefined. NO color.
- *
- * Colorless on purpose: `soleOutline` decides WHICH event draws by calling
- * this, and `statedColor` reads `event.detail`, which a caller counting
- * outlines need not have. Folding the color in here made choosing an outline
- * depend on a field that has nothing to do with the choice.
- */
 function outlineOf(event: CotEvent | undefined): {
     points: ReadonlyArray<{lat: number; lon: number}>;
     closed: boolean;
@@ -215,30 +202,15 @@ function shapeFor(event: CotEvent | undefined): MapShape | undefined {
     };
 }
 
-/**
- * The one event in a block that draws an outline, or undefined.
- *
- * A block of shapes on one map is a pile of outlines with nothing saying which
- * belongs to which track, which is why more than one draws none. Exactly one is
- * unambiguous, and a suspected area beside the tracks inside it is the case this
- * exists for.
- *
- * Outlines only, and that is not a simplification. An outline carries absolute
- * vertices, so it lands where the event put it whatever else is on the map. An
- * ellipse is drawn around the map's PRIMARY position, which in a block is the
- * first event's, so a circle belonging to the third would be drawn around the
- * first one's marker.
- */
-function soleOutline(drawn: readonly CotEvent[]): CotEvent | undefined {
-    const outlined = drawn.filter((event) => outlineOf(event) !== undefined);
-    return outlined.length === 1 ? outlined[0] : undefined;
+function outlinesFor(drawn: readonly CotEvent[]): MapShape[] {
+    return drawn.map((event) => shapeFor(event)).filter((shape) => shape !== undefined);
 }
 
 /** @internal exported for tests */
-export function _soleOutlineForTesting( // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
+export function _outlinesForTesting( // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
     drawn: readonly CotEvent[],
-): CotEvent | undefined {
-    return soleOutline(drawn);
+): MapShape[] {
+    return outlinesFor(drawn);
 }
 
 /** @internal exported for tests */
@@ -271,8 +243,10 @@ export const CotMapCanvas: React.FC<{
     pageEnabled: boolean;
     postId?: string;
     fill?: boolean;
+    inline?: boolean;
+    openAt?: Camera;
 }> = ({
-    events, pageEnabled, postId, fill,
+    events, pageEnabled, postId, fill, inline, openAt,
 }) => {
     const drawn = drawableEvents(events);
     const markers = markersFor(drawn);
@@ -289,11 +263,7 @@ export const CotMapCanvas: React.FC<{
     // event's accuracy ring and its Open larger link on a map the other two
     // are missing from, and say nothing about the two.
     const only = events.length === 1 && drawn.length === 1 ? drawn[0] : undefined;
-    const shaped = only ?? soleOutline(drawn);
-
-    // An outline is a shape like any other now; only the ellipse still needs
-    // the map's own anchor, and only a single event can state one.
-    const outline = shapeFor(shaped);
+    const outlines = outlinesFor(drawn);
 
     return (
         <LocationMap
@@ -307,10 +277,12 @@ export const CotMapCanvas: React.FC<{
             accuracyLabel={only?.ce}
             markers={markers}
             ellipse={ellipseFor(only)}
-            geometries={outline === undefined ? undefined : [outline]}
+            geometries={outlines.length === 0 ? undefined : outlines}
             markerLabel={only ? only.typeLabel : blockLabel(drawn, events.length)}
             pageHref={largerHref(pageEnabled, only, postId)}
             fill={fill}
+            inline={inline}
+            openAt={openAt}
         />
     );
 };
@@ -367,8 +339,9 @@ const CotMap: React.FC<{
                     events={events}
                     pageEnabled={features.mapPage}
                     postId={postId}
+                    inline={surface === 'card'}
                 />
-            ) : <div style={styles.reserved}/>}
+            ) : <div style={surface === 'card' ? styles.reservedInline : styles.reserved}/>}
         </div>
     );
 };

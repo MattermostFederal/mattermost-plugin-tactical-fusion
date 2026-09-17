@@ -3,12 +3,14 @@ import {expect, test} from '@playwright/test';
 import {
     _blockLabelForTesting as blockLabel,
     _drawableEventsForTesting as drawableEvents,
-    _soleOutlineForTesting as soleOutline,
+    _outlinesForTesting as outlines,
 } from './CotMap';
 import type {CotEvent} from './types';
 
 function ev(affiliation: string, lat = '21.3353', lon = '-157.9483'): CotEvent {
-    return {affiliation, lat, lon, format: 'dd', value: `${lat},${lon}`} as CotEvent;
+    return {
+        affiliation, lat, lon, format: 'dd', value: `${lat},${lon}`, detail: {colorArgb: ''},
+    } as unknown as CotEvent;
 }
 
 /*
@@ -79,7 +81,7 @@ test('an event past the projection is not drawable', () => {
     expect(drawableEvents([ev('friend', '88.0000', '10.0000')])).toHaveLength(0);
 });
 
-function outlined(uid: string, points: Array<{lat: string; lon: string}>): CotEvent {
+function outlined(uid: string, points: Array<{lat: number; lon: number}>): CotEvent {
     return {
         ...ev('unknown'),
         uid,
@@ -88,30 +90,44 @@ function outlined(uid: string, points: Array<{lat: string; lon: string}>): CotEv
 }
 
 const SQUARE = [
-    {lat: '21.34', lon: '-157.95'},
-    {lat: '21.35', lon: '-157.94'},
-    {lat: '21.33', lon: '-157.93'},
+    {lat: 21.34, lon: -157.95},
+    {lat: 21.35, lon: -157.94},
+    {lat: 21.33, lon: -157.93},
 ];
 
 /*
  * A drawn area beside the tracks inside it is the case this exists for, and it
- * arrives in a block rather than alone. More than one outline is still refused:
- * a map of overlapping outlines says nothing about which belongs to which.
+ * arrives in a block rather than alone. Every outline in the block is drawn:
+ * each one carries its own absolute vertices, so it lands where its event put
+ * it whatever else is on the map.
  */
 test('one outline in a block is drawn', () => {
     const drawn = [ev('friend'), ev('hostile'), outlined('AREA-1', SQUARE)];
 
-    expect(soleOutline(drawn)?.uid).toBe('AREA-1');
+    expect(outlines(drawn)).toHaveLength(1);
 });
 
-test('two outlines in a block are not', () => {
+test('two outlines in a block are both drawn', () => {
     const drawn = [ev('friend'), outlined('AREA-1', SQUARE), outlined('AREA-2', SQUARE)];
 
-    expect(soleOutline(drawn)).toBeUndefined();
+    expect(outlines(drawn)).toHaveLength(2);
+});
+
+test('each outline keeps its own vertices rather than sharing one ring', () => {
+    const elsewhere = [
+        {lat: 35.0, lon: -118.0},
+        {lat: 35.1, lon: -118.1},
+        {lat: 35.2, lon: -117.9},
+    ];
+    const drawn = [outlined('AREA-1', SQUARE), outlined('AREA-2', elsewhere)];
+
+    const rings = outlines(drawn).map((shape) => shape.rings[0][0].lat);
+
+    expect(rings).toEqual([21.34, 35]);
 });
 
 test('a block with no outline draws none', () => {
-    expect(soleOutline([ev('friend'), ev('hostile')])).toBeUndefined();
+    expect(outlines([ev('friend'), ev('hostile')])).toHaveLength(0);
 });
 
 // An ellipse is drawn around the map's primary position, which in a block is the
@@ -124,5 +140,5 @@ test('an ellipse in a block is left undrawn rather than drawn in the wrong place
         geometry: {kind: 'ellipse', majorMeters: 400, minorMeters: 250, angleDegrees: 30, note: ''},
     } as unknown as CotEvent;
 
-    expect(soleOutline([ev('friend'), ellipse])).toBeUndefined();
+    expect(outlines([ev('friend'), ellipse])).toHaveLength(0);
 });

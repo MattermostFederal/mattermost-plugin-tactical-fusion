@@ -1542,18 +1542,40 @@ a channel of coordinate-only posts is exactly the shape that stresses that.
   posture `LocationMap` takes for a missing `ResizeObserver`, so no host is left
   on a permanent placeholder because it lacked an optimisation.
 
-While the map is down, the box **reserves `MAP_HEIGHT`** so the channel does not
-jump as the reader scrolls past. That is why `MAP_HEIGHT` is exported;
+While the map is down, the box **reserves the map's height** so the channel does
+not jump as the reader scrolls past. That is why the heights are exported;
 passing `fill` instead would also suppress the "Open larger" caption.
+
+**The map under a post is taller than the panel's**, and that is the only place
+the two differ. `INLINE_MAP_HEIGHT` is `clamp(320px, 45vh, 540px)` against
+`MAP_HEIGHT`'s `clamp(200px, 30vh, 360px)`, half again as tall. It was first
+raised by a quarter, to `clamp(250px, 36vh, 450px)`, which measured 259px
+against the panel's 216px on a 720px viewport: correct, deployed, and invisible
+to the reader who asked for it. A difference nobody can see is not a change, so
+the second attempt is one no one has to measure. The channel is
+where a reader meets the map first and does not choose to open it, so the
+panel's height, sized for a column the reader deliberately widened, read as a
+thumbnail under a post; the panel and the standalone page keep `MAP_HEIGHT`
+because neither is competing with a message for the eye. It is selected by
+`MapProps.inline`, a variant beside `fill` and `preview` rather than a height
+passed in, so the numbers stay in `use_map_instance.ts` with the ones they are
+relative to. `CotMap` and `GeoJsonMap` render the same component on both
+surfaces, so each passes `inline` from its own `surface === 'card'` and picks
+the matching reserved box; the hover card is unaffected, since `preview` fixes
+its frame at 320x180.
+
+The cost is that `INLINE_MAX_WIDTH_PX` at 640 is no longer 16:9 at the tall end.
+That ratio was a consequence of the two numbers rather than a constraint on
+them: the width cap exists for `zoomForSpan`, argued below, and nothing reads
+the aspect.
 
 The preference is read in the **outer** component so the inner one never mounts,
 and `useConversion` lives in the **inner** one. Mattermost renders on the order
 of thirty posts at a time, so outside the gate every qualifying post in the
 rendered window would fetch whether or not the reader ever sees it.
 
-`INLINE_MAX_WIDTH_PX` is 640, which at the tall end of `MAP_HEIGHT` is 16:9. It
-matters because `zoomForSpan(lat, widthPx)` holds `TARGET_SPAN_METERS` across the
-**width**: uncapped, a 2000px center channel would open roughly 1.6 zoom levels
+`INLINE_MAX_WIDTH_PX` is 640. It matters because `zoomForSpan(lat, widthPx)`
+holds `TARGET_SPAN_METERS` across the **width**: uncapped, a 2000px center channel would open roughly 1.6 zoom levels
 deeper than the panel does for the same coordinate.
 
 The map is the panel's, not the hover's: controls, gestures, zoom readout and
@@ -1808,6 +1830,57 @@ control being broken on precisely the posts where a bigger map is worth most.
 travels in the URL there either, and the whole overlay is re-read from stored
 props at render.
 
+### The camera rides in the fragment
+
+"Open larger" used to open on whatever the token or the overlay framed, which
+threw away the pan and the zoom the reader had just done to decide the bigger
+map was worth opening. The camera now travels with the link, as
+`#map=<zoom>/<lat>/<lon>`: zoom to two places, latitude and longitude to five,
+which is about a meter.
+
+**A fragment, not a query parameter, and that is the whole reason this does not
+touch the invariant above.** The server never receives a fragment, so `/map`
+still answers exactly the identity it was addressed by and still re-derives
+every reading from it; `ServeHTTP` gains no parameter to validate and the route
+that echoes author text under `PageMapping` gains no new input. What the
+fragment decides is where the page OPENS, never what it SAYS. A camera cannot
+make a link disagree with itself, because nothing is read off it: the pin, the
+cell, the overlay and the label all still come from `f`/`v` or from the post's
+stored props.
+
+**Written at render, from `moveend`, rather than at click.** The href on the
+anchor is the whole feature: a middle-click, a "copy link address" and an
+"open in new tab" all carry the camera because the attribute already holds it.
+The hook keeps the fragment as a STRING in state rather than a camera object, so
+React's `Object.is` bailout drops the render when a `moveend` leaves the camera
+where it was, and a pan costs one render rather than one per frame. `zoom`
+stays a separate piece of state at the readout's own precision, for the reason
+the comment beside it gives.
+
+**Latitude is clamped and longitude is wrapped on the way out, and everything
+is refused rather than clamped on the way in.** `MERCATOR_LIMIT` rounded to five
+places is above the limit, so a camera at the very top of the projection would
+write a latitude `isRenderable` then refuses; the writer clamps to the limit
+truncated to the fragment's own precision instead, and a test holds the
+round-trip. A pan across the antimeridian gives MapLibre a center of 190, which
+is wrapped to -170 rather than written as a longitude off the globe. The reader
+is the strict one: three fields, each matching a plain decimal (`Number('')` is
+0 and `Number('1e999')` is `Infinity`, which is the gate `styleOf` learned the
+same lesson from), a zoom within what the map draws, a renderable latitude and a
+longitude on the globe. Anything else is null, and null means the page frames
+what the token or the overlay asks for, which is what it did before this
+existed.
+
+**It is consumed once.** `openAt` is taken into a ref at mount and cleared by
+the first framing, so "Reset view" goes to the coordinate rather than back to
+the camera the link carried. The token and the overlay stay the authority on
+where the map belongs; the fragment only says where the reader was standing.
+
+Only the standalone pages read it, in `MapPageView` and `OverlayPageView`, and
+they pass it down as a prop rather than the hook reaching for
+`window.location`. A channel URL carries a fragment of its own (a permalink),
+and a map under a post that read the address bar would open on it.
+
 ### `drawsNothing` is the single authority on an empty overlay
 
 Both canvases answer a payload that draws nothing with `null`: `unplaceable`,
@@ -1823,17 +1896,34 @@ first place: the page renders the canvas directly and inherits none of the
 wrapper's gates, so a second copy of the test in the caller is exactly how the
 two come apart again.
 
-### One event keeps its coordinate address
+### The post is the address, even for one event
 
-"Open larger" chooses between the two addresses rather than always using the
-post. A single drawable event still links to `?f=&v=`, because that page carries
-the token and a way through to every reading of it, which the post form cannot
-offer. A block has no SINGLE coordinate to be addressed by. It has one per
-drawable event, which is what its markers are built from, and no one of them
-names the block: linking the first event's page would frame that position and
-say nothing about the rest, the same argument that keeps the accuracy ring off a
-block map. A card with no post id, which is what a harness builds, has nothing
-to address and so offers no link.
+A stamped post addresses `?post=` whatever it carries. A block has no SINGLE
+coordinate to be addressed by: it has one per drawable event, which is what its
+markers are built from, and no one of them names the block, so linking the first
+event's page would frame that position and say nothing about the rest, the same
+argument that keeps the accuracy ring off a block map.
+
+**One event used to keep the coordinate address, and that was the defect.** The
+reasoning was that `?f=&v=` carries the token and a way through to every reading
+of it, which the post form cannot offer. What it also does is draw a pin and a
+cell and nothing else: `MapPageView` renders the coordinate, not the event. So
+an event's drawn area, its ellipse, its accuracy ring and its affiliation color
+all survived as far as the card and vanished on the way to the larger view OF
+that card, which is the one place a reader goes to see them better. A control
+that shows less than the thing it was clicked from is broken however well the
+address is argued.
+
+The readings were never only reachable that way: `CotCard` and `CotPanel` both
+link the event's own position to `/decorate/location?f=&v=`, which is that page,
+one click from the same card. So the post wins whenever there is one, and the
+coordinate page stays as the fallback for a single event with no post id, where
+it is the difference between a link and none. A card with no post id and no
+single event, which is what a harness builds, has nothing to address and offers
+no link at all.
+
+GeoJSON never had the choice: a document has no canonical token, so its card
+addressed `?post=` from the start.
 
 ### The overlay page is a mode of `/map`, not a route of its own
 
@@ -1909,8 +1999,8 @@ container to attach, the instance, `applyView`, and what to tell the reader.
 
 `MapProps` moved with it, because it is the map's contract rather than the
 component's: the hook consumes almost all of it and the component forwards it
-whole. `MAP_HEIGHT` is re-exported from `LocationMap` so the three surfaces that
-size themselves against it keep their import path.
+whole. `MAP_HEIGHT` and `INLINE_MAP_HEIGHT` are re-exported from `LocationMap`
+so the surfaces that size themselves against them keep their import path.
 
 The seam was chosen, not taken. Passing the eleven refs the effects share with
 `applyView` into a hook would have moved lines without separating anything;
@@ -1936,11 +2026,14 @@ argument was protecting is a null with **nothing** to draw, which must still rea
 as unavailable. That clause is what keeps it true, and a mutation test proves it:
 drop it and "an unknown position still reads as unavailable" fails.
 
-One trap found on the way. `soleOutline` decides which event in a block draws,
-and folding the color into the shape it inspects made that decision read
-`event.detail.colorArgb`, which a caller counting outlines need not have.
-`outlineOf` is colorless for that reason and `shapeFor` adds the color at the
-render; the split is not stylistic.
+One trap found on the way. While a block drew ONE outline, `soleOutline` decided
+which event that was, and folding the color into the shape it inspected made
+that decision read `event.detail.colorArgb`, which a caller counting outlines
+need not have. Every outline is drawn now, so nothing chooses between them and
+`shapeFor` is the only caller of `outlineOf`; the split survives because
+`outlineOf` is also what refuses an ellipse, which is a question about geometry
+rather than about paint. `statedColor` still reaches into `detail`, and the
+fixtures in `label.spec.ts` carry one for that reason.
 
 ### The write path, collapsed for real this time
 
