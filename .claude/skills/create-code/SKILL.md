@@ -8,14 +8,7 @@ user-invocable: true
 
 Implement code from an approved plan. Ensures quality through structured workflow with linting and testing.
 
-> **Taxonomy**:
-> - `/create-plan` → `/create-code` → `/review-code`
-> - Plan first, then implement, then review
-
-**Related**:
-- `/create-plan` - Create and validate a plan first
-- `/review-code` - Review implementation after coding
-- `/tdd-workflow` - TDD-specific methodology (absorbed into this skill)
+It needs nothing beyond the built-in tools and the project's own lint and test commands. If the project also has `/create-plan` and `/review-code`, they come before and after, but any plan file works.
 
 ## CRITICAL: Plan File is Source of Truth
 
@@ -100,8 +93,8 @@ Which plan should I implement?"
          ▼
 ┌─────────────────────────────────────────┐
 │  Step 3: QUALITY CHECKS                 │
-│  - Run linters (go vet, eslint)         │
-│  - Run type checks (tsc)                │
+│  - Run the project's lint target        │
+│  - Run its type checks, if any          │
 │  - Fix any issues                       │
 └─────────────────────────────────────────┘
          │
@@ -119,7 +112,7 @@ Which plan should I implement?"
 │  - All tasks implemented                │
 │  - Tests passing                        │
 │  - Linters clean                        │
-│  - Ready for /review-code               │
+│  - Ready for review                     │
 └─────────────────────────────────────────┘
 ```
 
@@ -168,40 +161,26 @@ For each task in the plan:
 
 ### Step 3: Quality Checks
 
-Run all relevant linters:
+Use the project's own commands. Find them, in this order, in its root `CLAUDE.md`, its `Makefile`, then `package.json` scripts or the language's standard tooling. Do not invent a command the project does not define.
 
-**Go (server/):**
-```bash
-cd server && make check-style
-# or: golangci-lint run ./...
-```
+| Look for | Typical examples (examples only) |
+|----------|----------------------------------|
+| A combined style target | `make check-style`, `make lint`, `npm run lint` |
+| Type checks | `npm run check-types`, `tsc --noEmit`, `go vet ./...` |
+| Auto-fixers | `gofmt -s -w .`, `npm run fix` |
 
-**TypeScript (webapp/):**
-```bash
-cd webapp/channels && npm run check-types
-cd webapp/channels && npm run check  # ESLint + Stylelint
-```
-
-**Auto-fix when possible:**
-```bash
-cd server && gofmt -s -w .
-cd webapp/channels && npm run fix
-```
+Fix every issue the linters report in code this task touched. Follow the project's conventions (comments, naming, spelling, formatting) as its `CLAUDE.md` states them, since a linter does not check all of them.
 
 ### Step 4: Test Verification
 
-Run all tests to ensure no regressions:
+Run the project's full test target (for example `make test`) to catch regressions, not only the tests for the new code. While iterating on one task, a narrower run is fine:
 
-**Go tests:**
 ```bash
-cd server && go test ./channels/app/... -v
-# or specific: go test ./channels/app -run TestFeatureName -v
+go test ./path/to/pkg -run TestFeatureName -v
+npm test -- <pattern>
 ```
 
-**TypeScript tests:**
-```bash
-cd webapp/channels && npm test -- --testPathPattern="feature"
-```
+Report failures with their output. Do not mark a task complete while its tests fail.
 
 ## TDD Workflow (`--tdd` flag)
 
@@ -259,11 +238,10 @@ When using TDD mode, follow the RED-GREEN-REFACTOR cycle:
 - **All passing**: ✅
 
 ### Linting
-- **Go**: ✅ Clean
-- **TypeScript**: ✅ Clean
+- **[lint target]**: ✅ Clean
 
 ### Ready for Review
-Use `/review-code` to review these changes before committing.
+Review these changes before committing (`/review-code` if the project has it).
 ```
 
 ## Flags
@@ -321,7 +299,7 @@ User approves plan
 /review-code               # Review implementation
     │
     ▼
-/commit (if approved)
+Commit (if approved)
 ```
 
 ## Tips
