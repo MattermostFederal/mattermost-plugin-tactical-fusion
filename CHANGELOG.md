@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/compare/v0.5.1...v0.6.0) (2026-09-17)
+
+
+### Features
+
+* **map:** taller inline map, and a larger view that keeps its camera ([#45](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/45)) ([d1a361a](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/d1a361a953f26503a6b10278116d4f2383cb631d))
+
 ## [0.5.1](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/compare/v0.5.0...v0.5.1) (2026-09-16)
 
 
