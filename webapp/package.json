@@ -17,15 +17,15 @@
     "test:coverage-merged": "rm -rf .v8-merged-coverage && mkdir -p .v8-merged-coverage && cp .v8-unit-coverage/*.json .v8-merged-coverage/ 2>/dev/null; cp .v8-ct-coverage/*.json .v8-merged-coverage/ 2>/dev/null; c8 report --config=c8-merged.json --temp-directory=.v8-merged-coverage --reports-dir=coverage-merged --reporter=text --reporter=html"
   },
   "devDependencies": {
-    "@babel/core": "8.0.5",
-    "@babel/preset-env": "8.0.5",
+    "@babel/core": "8.0.6",
+    "@babel/preset-env": "8.0.6",
     "@babel/preset-react": "8.0.1",
     "@babel/preset-typescript": "8.0.1",
     "@babel/runtime": "8.0.5",
     "@mattermost/types": "11.9.0",
     "@playwright/experimental-ct-react": "1.62.1",
     "@playwright/test": "1.62.1",
-    "@types/node": "26.5.1",
+    "@types/node": "26.6.1",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@types/react-redux": "7.1.34",
@@ -45,12 +45,12 @@
     "sass-loader": "17.0.1",
     "style-loader": "4.0.0",
     "typescript": "6.0.3",
-    "webpack": "5.110.3",
+    "webpack": "5.111.1",
     "webpack-cli": "7.2.3"
   },
   "dependencies": {
     "core-js": "3.50.0",
-    "maplibre-gl": "6.9.0",
+    "maplibre-gl": "6.10.0",
     "pmtiles": "4.5.0",
     "react": "19.3.0",
     "react-redux": "9.3.0",
