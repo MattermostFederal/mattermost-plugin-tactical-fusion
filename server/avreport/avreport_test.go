@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-	"unicode/utf8"
 )
 
 var ref = time.Date(2026, time.September, 22, 18, 0, 0, 0, time.UTC)
@@ -80,9 +79,6 @@ func TestDecodesAKeywordMETAR(t *testing.T) {
 	}
 	if len(report.Unknown) != 0 {
 		t.Errorf("unknown = %v", report.Unknown)
-	}
-	if !strings.HasPrefix(report.Summary, "Wind 280° at 12 kt, gusting 20 kt; 10 statute miles; light rain") {
-		t.Errorf("summary = %q", report.Summary)
 	}
 }
 
@@ -321,7 +317,7 @@ func TestPropsCarryTheWholeShapeAndMarshal(t *testing.T) {
 	}
 	blob := Props(report, Source{Kind: SourceFence, Lead: "wx", Trail: "end"})
 
-	for _, key := range []string{"version", "source", "lead", "trail", "src", "kind", "station", "station_name", "issued", "issued_at", "inferred", "summary", "flags", "rows", "periods", "remarks", "unknown", "format", "value", "region", "radius_nm"} {
+	for _, key := range []string{"version", "source", "lead", "trail", "src", "kind", "station", "station_name", "issued", "issued_at", "inferred", "flags", "rows", "periods", "remarks", "unknown", "format", "value", "region", "radius_nm"} {
 		if _, ok := blob[key]; !ok {
 			t.Errorf("props lack %q", key)
 		}
@@ -491,20 +487,6 @@ func TestAnFAANotamWhoseLocationCannotBeResolvedNamesNoStation(t *testing.T) {
 	}
 	if report.Station != "" || report.Format != "" {
 		t.Errorf("station = %q, format = %q, want neither", report.Station, report.Format)
-	}
-}
-
-func TestTheSummaryIsCutOnRunesNotBytes(t *testing.T) {
-	text := "!HNL 09/123 HNL RWY 08L/26R CLSD " + strings.Repeat("é", 200)
-	report, err := Decode(text, ref)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !utf8.ValidString(report.Summary) {
-		t.Fatalf("the summary is not valid UTF-8: %q", report.Summary)
-	}
-	if n := utf8.RuneCountInString(report.Summary); n > summaryMaxRunes+1 {
-		t.Errorf("summary is %d runes", n)
 	}
 }
 

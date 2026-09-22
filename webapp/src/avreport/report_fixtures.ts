@@ -7,7 +7,6 @@ export const HONOLULU_METAR: ReportPayload = {
     issued: '22 Sep 2026 16:51Z',
     issuedAt: '1790095860000',
     inferred: true,
-    summary: 'Wind 070° at 12 kt, gusting 18 kt; 10 statute miles; few clouds at 2,500 ft; 27°C, dew point 19°C; 30.10 inHg',
     flags: [],
     rows: [
         {label: 'Wind', value: '070° at 12 kt, gusting 18 kt'},
@@ -37,7 +36,6 @@ export const NOTAM_WITH_RADIUS: ReportPayload = {
     issued: '22 Sep 2026 12:00Z',
     issuedAt: '1790078400000',
     inferred: false,
-    summary: 'Runway 08L/26R closed',
     rows: [{label: 'Effective', value: '22 Sep 2026 12:00Z to 23 Sep 2026 23:59Z'}, {label: 'Text', value: 'RWY 08L/26R CLSD'}],
     remarks: [],
     unknown: [],
@@ -60,7 +58,6 @@ export function propsFor(payload: ReportPayload, version: unknown = 1): Record<s
             issued: payload.issued,
             issued_at: payload.issuedAt,
             inferred: payload.inferred,
-            summary: payload.summary,
             flags: payload.flags,
             rows: payload.rows,
             periods: payload.periods,

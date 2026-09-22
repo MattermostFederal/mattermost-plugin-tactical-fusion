@@ -30,8 +30,6 @@ const (
 	MaxUnknown     = 64
 	MaxFlags       = 8
 
-	summaryMaxRunes = 160
-
 	maxNoteRunes = 65536
 )
 
@@ -57,7 +55,6 @@ type Report struct {
 	StationName string
 	IssuedAt    time.Time
 	Inferred    bool
-	Summary     string
 	Flags       []string
 	Rows        []Row
 	Periods     []Period
@@ -245,7 +242,6 @@ func Blob(report Report) map[string]any {
 		"issued":       zuluText(report.IssuedAt),
 		"issued_at":    strconv.FormatInt(report.Instant(), 10),
 		"inferred":     report.Inferred,
-		"summary":      report.Summary,
 		"flags":        stringsAny(report.Flags),
 		"rows":         rowsAny(report.Rows),
 		"periods":      periodsAny(report.Periods),

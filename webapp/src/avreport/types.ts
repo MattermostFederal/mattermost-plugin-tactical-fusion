@@ -39,7 +39,6 @@ export interface Report {
     issued: string;
     issuedAt: string;
     inferred: boolean;
-    summary: string;
     flags: string[];
     rows: ReportRow[];
     periods: ReportPeriod[];
@@ -182,10 +181,9 @@ export function fromWire(body: unknown): Report | null {
     const station = text(blob, 'station');
     const stationName = text(blob, 'station_name');
     const issued = text(blob, 'issued');
-    const summary = text(blob, 'summary');
     const region = text(blob, 'region');
     const radiusNm = text(blob, 'radius_nm');
-    if (station === null || stationName === null || issued === null || summary === null || region === null || radiusNm === null) {
+    if (station === null || stationName === null || issued === null || region === null || radiusNm === null) {
         return null;
     }
 
@@ -205,7 +203,6 @@ export function fromWire(body: unknown): Report | null {
         issued,
         issuedAt,
         inferred: flag(blob, 'inferred'),
-        summary,
         flags,
         rows: bodyRows,
         periods: bodyPeriods,
