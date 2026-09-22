@@ -115,6 +115,7 @@ func TestWebappAvReportFixtureIsWhatGoRenders(t *testing.T) {
 		t.Fatalf("Decode: %v", err)
 	}
 	for _, want := range []string{
+		"summary: '" + report.Summary + "'",
 		"value: '" + report.Value + "'",
 		"issuedAt: '" + strconv.FormatInt(report.Instant(), 10) + "'",
 		"issued: '" + zuluOf(t, report) + "'",

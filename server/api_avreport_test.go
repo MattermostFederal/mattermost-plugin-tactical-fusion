@@ -59,8 +59,8 @@ func TestAvReportReturnsTheBlobForALinkTheServerIssued(t *testing.T) {
 	if got["kind"] != avreport.KindMETAR || got["station"] != "PHNL" || got["src"] != reportMETAR {
 		t.Errorf("body = %v", got)
 	}
-	if _, present := got["summary"]; present {
-		t.Error("the API answer still carries a summary")
+	if got["summary"] == "" {
+		t.Error("no summary")
 	}
 	if _, stamped := got["version"]; stamped {
 		t.Error("the API answer carries stamp-only keys")

@@ -47,8 +47,16 @@ func decodeTAF(text string, ref time.Time) (Report, bool) {
 	}
 
 	report.Periods, report.Unknown = decodeTAFBody(tokens, &report.Rows, &report.Flags)
+	report.Summary = summarize(baseRows(report))
 
 	return report, true
+}
+
+func baseRows(report Report) []Row {
+	if len(report.Periods) == 0 {
+		return report.Rows
+	}
+	return report.Periods[0].Rows
 }
 
 func decodeTAFBody(tokens []string, rows *[]Row, flags *[]string) ([]Period, []string) {

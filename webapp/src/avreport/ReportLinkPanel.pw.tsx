@@ -67,7 +67,7 @@ test.describe('the link panel', () => {
 });
 
 test.describe('the hover', () => {
-    test('names the kind, the station and its airfield, and nothing else', async ({mount}) => {
+    test('names the station and gives the one-line summary', async ({mount}) => {
         const hover = await mount(
             <ReportLinkPanelHarness
                 surface='hover'
@@ -75,7 +75,7 @@ test.describe('the hover', () => {
             />);
 
         await expect(hover.getByText('METAR PHNL, Daniel K. Inouye International Airport')).toBeVisible();
-        await expect(hover.getByText(/Wind 070°/)).toHaveCount(0);
+        await expect(hover.getByText(/Wind 070°/)).toBeVisible();
     });
 
     for (const reply of ['hold', 'failed', 'rejected'] as const) {

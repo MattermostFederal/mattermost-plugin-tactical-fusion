@@ -79,12 +79,12 @@ test.describe('fromWire', () => {
     });
 
     test('refuses a text field that is present and not a string, and reads an absent one as empty', () => {
-        for (const key of ['station', 'station_name', 'region', 'radius_nm', 'issued', 'format', 'value']) {
+        for (const key of ['station', 'station_name', 'summary', 'region', 'radius_nm', 'issued', 'format', 'value']) {
             expect(fromWire({...wire(), [key]: 5}), key).toBeNull();
         }
         const absent = {...wire()};
-        delete absent.region;
-        expect(fromWire(absent)?.region).toBe('');
+        delete absent.summary;
+        expect(fromWire(absent)?.summary).toBe('');
     });
 
     test('caps the flags', () => {

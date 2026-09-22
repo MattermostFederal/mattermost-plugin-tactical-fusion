@@ -566,6 +566,9 @@ func TestOverBudgetTheRowsAreDroppedBeforeTheCardIs(t *testing.T) {
 	if blob["src"] != strings.TrimSpace(reportTAF) {
 		t.Fatal("the lower rung lost the report text")
 	}
+	if blob["summary"] == "" {
+		t.Fatal("the lower rung lost the summary")
+	}
 
 	found := false
 	for _, code := range api.warnCodes {

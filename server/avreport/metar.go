@@ -50,6 +50,7 @@ func decodeMETAR(line string, ref time.Time) (Report, bool) {
 	if remarks != "" {
 		report.Remarks, report.Unknown = decodeRemarks(strings.Fields(remarks), report.Unknown)
 	}
+	report.Summary = summarize(report.Rows)
 
 	return report, true
 }
@@ -272,4 +273,29 @@ func precipitationEventText(m []string) string {
 		events = append(events, verb+" at "+at+"Z")
 	}
 	return name + " " + strings.Join(events, ", ")
+}
+
+func summarize(rows []Row) string {
+	wanted := []string{"Wind", "Visibility", "Weather", "Sky", "Temperature", "Altimeter"}
+	seen := map[string]bool{}
+	var parts []string
+	for _, label := range wanted {
+		for _, row := range rows {
+			if row.Label != label || seen[label] {
+				continue
+			}
+			seen[label] = true
+			switch label {
+			case "Wind":
+				parts = append(parts, "wind "+row.Value)
+			default:
+				parts = append(parts, row.Value)
+			}
+		}
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	text := strings.Join(parts, "; ")
+	return strings.ToUpper(text[:1]) + text[1:]
 }

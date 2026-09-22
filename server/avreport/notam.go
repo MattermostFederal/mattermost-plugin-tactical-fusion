@@ -140,6 +140,7 @@ func decodeFAANotam(line string, ref time.Time) (Report, bool) {
 	if text != "" {
 		report.Rows = append(report.Rows, Row{Label: "Text", Value: expandContractions(text)})
 	}
+	report.Summary = summarizeNotam(report)
 
 	return report, true
 }
@@ -240,6 +241,7 @@ func decodeICAONotam(text string, ref time.Time) (Report, bool) {
 		return Report{}, false
 	}
 
+	report.Summary = summarizeNotam(report)
 	return report, true
 }
 
@@ -328,4 +330,20 @@ func expandContractions(text string) string {
 		}
 	}
 	return strings.Join(words, " ")
+}
+
+func summarizeNotam(report Report) string {
+	var parts []string
+	for _, label := range []string{"Condition", "Subject", "Text"} {
+		for _, row := range report.Rows {
+			if row.Label == label {
+				parts = append(parts, row.Value)
+				break
+			}
+		}
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return sanitizeText(strings.Join(parts, "; "), summaryMaxRunes)
 }
