@@ -82,7 +82,7 @@ link.Label    // "Rally point"
 
 | Field | Required | Meaning |
 |---|---|---|
-| `Type` | yes | `TypeDTG`, `TypeLocation`, `TypeAirport` or `TypeAvReport` |
+| `Type` | yes | `TypeDTG`, `TypeLocation`, `TypeAirport`, `TypeAvReport` or `TypeFrequency` |
 | `Token` | yes | The value **without** a field label: `PHIK`, not `ICAO:PHIK`. Surrounding whitespace is trimmed |
 | `Label` | no | Link text; defaults to the trimmed token. Markdown characters are escaped for you. May not contain a line break |
 | `ReferenceTime` | no | Unix milliseconds. Supplies the month and year of a short date-time group such as `091630Z`. Zero means now |
@@ -94,6 +94,7 @@ Tokens each type accepts:
 | `TypeDTG` | `141200ZSEP26`, `141200ZSEP2026`, `141200Z`, `2026-08-09T16:30:00Z`, `2026-08-09T20:30:00+04:00` |
 | `TypeLocation` | `34.0561, -118.2500`, `34.0561 N, 118.2500 W`, `3510N07901W`, `18S UJ 23478 06483`, `18SUJ2347806483`, `11S 384640E 3769080N` (UTM, off by default), `GJPJ3718` (GEOREF), `006AG39` (GARS), `849VCWC8+R9` (Plus Code) |
 | `TypeAirport` | `PHIK`, `KIND`, any four-letter ICAO ident in the plugin's database |
+| `TypeFrequency` | `121.5`, `118.300 MHZ`, `8992 KHZ`: a frequency as an author writes it behind `FREQ:`, from 2 MHz to 1,300 MHz |
 | `TypeAvReport` | `METAR PHNL 221651Z 07012KT 10SM CLR 27/19 A3010`, a METAR, SPECI, TAF or FAA-format NOTAM on one line; `ReferenceTime` supplies the month and year |
 
 The full grammars are on the plugin's **Recognized Formats** help page.
@@ -130,7 +131,7 @@ alone. Decorating text that is already decorated changes nothing.
 info, err := p.tacticalFusion.Info(ctx)
 // info.PluginVersion "0.5.0"
 // info.APIVersion    1
-// info.Types         ["dtg" "location" "airport" "avreport"]
+// info.Types         ["dtg" "location" "airport" "avreport" "frequency"]
 // info.EnabledTypes  the types an administrator has left on
 ```
 

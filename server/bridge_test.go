@@ -454,8 +454,8 @@ func TestBridgeInfoListsTypesAndWhichAreOn(t *testing.T) {
 	want := bridgeclient.InfoResponse{
 		PluginVersion: manifest.Version,
 		APIVersion:    bridgeclient.APIVersion,
-		Types:         []string{"dtg", "location", "airport", "avreport"},
-		EnabledTypes:  []string{"dtg", "airport", "avreport"},
+		Types:         []string{"dtg", "location", "airport", "avreport", "frequency"},
+		EnabledTypes:  []string{"dtg", "airport", "avreport", "frequency"},
 	}
 	if !reflect.DeepEqual(info, want) {
 		t.Fatalf("info = %+v, want %+v", info, want)
@@ -537,7 +537,7 @@ func TestTheGoClientRoundTripsThroughTheBridge(t *testing.T) {
 func TestBridgeClientTypesAreTheRegisteredDecorators(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 
-	named := []string{bridgeclient.TypeDTG, bridgeclient.TypeLocation, bridgeclient.TypeAirport, bridgeclient.TypeAvReport}
+	named := []string{bridgeclient.TypeDTG, bridgeclient.TypeLocation, bridgeclient.TypeAirport, bridgeclient.TypeAvReport, bridgeclient.TypeFrequency}
 	for _, typ := range named {
 		if p.decorators.Get(typ) == nil {
 			t.Errorf("bridgeclient names type %q, which is not registered", typ)

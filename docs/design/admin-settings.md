@@ -4,11 +4,13 @@
 
 ## Admin settings
 
-The count is **thirty-two switches across seven sections**. Cursor on Target added
-the fifth section and two of the switches, `EnableCot` and `EnableCotFile`,
-GeoJSON added the sixth and three more, and aviation reports added the seventh
-and five: `EnableAvReport`, one per kind, and `EnableAvReportCard`, which is the
-one that stamps and carries the search warning. See [`avreports.md`](avreports.md). Cursor on Target
+The count is **thirty-three switches across eight sections**. Cursor on Target
+added the fifth section and two of the switches, `EnableCot` and `EnableCotFile`,
+GeoJSON added the sixth and three more, aviation reports added the seventh and
+five (`EnableAvReport`, one per kind, and `EnableAvReportCard`, which is the one
+that stamps and carries the search warning; see [`avreports.md`](avreports.md)),
+and frequencies added the eighth with the one switch `EnableFrequency`
+([`frequencies.md`](frequencies.md)). Cursor on Target
 deliberately added no third: the card's map reads `EnableLocationMapInline`,
 whose parent ANDs with `EnableLocation` and `EnableLocationMap` already live in
 Go. A second "is the map on" answer is the thing `features/types.ts` argues
@@ -36,8 +38,8 @@ section fails the test until the prose is caught up.
 
 The **first four** of those sections hold twenty-two of the switches, plus the two
 map-package settings, which are a path and a control rather than switches. The
-Cursor on Target, GeoJSON and Aviation reports sections below add the remaining
-ten:
+Cursor on Target, GeoJSON, Aviation reports and Frequencies sections below add
+the remaining eleven:
 
 - **Date and time**: `EnableDTG` with `EnableDTGMilitary`, `EnableDTGTimestamp`
   and `EnableDTGMoniker`.
@@ -54,6 +56,7 @@ ten:
   `EnableAirportRoute`.
 - **Aviation reports**: `EnableAvReport` with `EnableAvReportMETAR`,
   `EnableAvReportTAF`, `EnableAvReportNOTAM` and `EnableAvReportCard`.
+- **Frequencies**: `EnableFrequency`.
 
 `model.PluginSettingsSchema` carries a `Sections` field
 (`PluginSettingsSection{Key, Title, Subtitle, Settings, Header, Footer}`), so

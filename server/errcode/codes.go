@@ -314,6 +314,8 @@ const (
 
 	AvReportPageInvalid = 17004
 
+	FrequencyPageInvalid = 17005
+
 	// server/packages.go (18000-18999)
 
 	// PackagesNoBundlePath reports that the plugin cannot locate its own
@@ -446,6 +448,7 @@ var AllCodes = []int{
 	AirportPageInvalid,
 	AirportPageParamsConflict,
 	AvReportPageInvalid,
+	FrequencyPageInvalid,
 
 	PackagesNoBundlePath,
 	PackagesBadName,

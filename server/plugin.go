@@ -11,6 +11,7 @@ import (
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/frequency"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
@@ -122,6 +123,10 @@ func (p *Plugin) avreportFormats() avreport.Formats {
 	}
 }
 
+func (p *Plugin) frequencyFormats() frequency.Formats {
+	return frequency.Formats{Frequency: p.getConfiguration().EnableFrequency}
+}
+
 func (p *Plugin) avreportCardEnabled() bool {
 	config := p.getConfiguration()
 	return config.EnableAvReport && config.EnableAvReportCard
@@ -199,6 +204,7 @@ func (p *Plugin) OnActivate() error {
 		&location.Decorator{Enabled: p.locationFormats, Maps: p.locationMaps, Packages: p.packageNames},
 		&airport.Decorator{Enabled: p.airportFormats},
 		&avreport.Decorator{Enabled: p.avreportFormats},
+		&frequency.Decorator{Enabled: p.frequencyFormats},
 	)
 	// Expected to stay uncovered: Register only rejects a duplicate or empty
 	// type, and there is one decorator here with a constant one. It is what

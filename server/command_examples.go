@@ -12,6 +12,7 @@ import (
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/frequency"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
@@ -35,7 +36,7 @@ type exampleSet struct {
 	rows      []exampleRow
 }
 
-var exampleSetOrder = []string{dtg.Type, location.Type, airport.Type, avreport.Type}
+var exampleSetOrder = []string{dtg.Type, location.Type, airport.Type, avreport.Type, frequency.Type}
 
 var exampleSets = map[string]exampleSet{
 	dtg.Type: {
@@ -89,6 +90,16 @@ var exampleSets = map[string]exampleSet{
 			{label: "METAR", text: "METAR PHNL 221651Z 07012G18KT 10SM FEW025 SCT045 27/19 A3010", note: "hover for the plain-language summary"},
 			{label: "TAF", text: "TAF PGUA 221720Z 2218/2324 07012KT P6SM SCT025", note: "one line; a multi-line forecast posted on its own gets a card instead"},
 			{label: "NOTAM", text: "!HNL 09/123 HNL RWY 08L/26R CLSD 2609221200-2609232359", note: "the FAA domestic form"},
+		},
+	},
+
+	frequency.Type: {
+		decorator: frequency.Type,
+		name:      "Frequencies",
+		rows: []exampleRow{
+			{label: "Guard", text: "FREQ:121.5", note: "the label is required; hover for the band and the allocation"},
+			{label: "Tower", text: "FREQ:118.3", note: "VHF air band, no known allocation"},
+			{label: "UHF guard", text: "FREQ:243.0", note: "the military emergency frequency"},
 		},
 	},
 }

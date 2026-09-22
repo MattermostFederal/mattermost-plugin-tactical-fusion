@@ -24,6 +24,7 @@
             <a href="cot.html">Cursor on Target</a>
             <a href="geojson.html">GeoJSON</a>
             <a href="reports.html">Aviation Reports</a>
+            <a href="frequencies.html">Frequencies</a>
             <span class="nav-section">Guides</span>
             <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
@@ -488,6 +489,46 @@
                     <td>No report in any message links or renders</td>
                     <td>The decorator is off.</td>
                     <td>Check <a href="admin.html#avreport-switches">the admin settings</a>: the parent, the kind's switch, and the card's.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="frequency-not-linked">A frequency was not turned into a link</h2>
+
+        <table>
+            <thead>
+                <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>121.5</code> on its own was not linked</td>
+                    <td>There is no bare grammar, permanently. A decimal is any decimal.</td>
+                    <td>Write <code>FREQ:121.5</code>. The label is consumed and the link reads <code>121.5</code>.</td>
+                </tr>
+                <tr>
+                    <td><code>freq:121.5</code> or <code>FREQ: 121.5</code> was not linked</td>
+                    <td>The label is upper case only and nothing may follow the colon, as with every other label.</td>
+                    <td>Write <code>FREQ:121.5</code>.</td>
+                </tr>
+                <tr>
+                    <td><code>FREQ:1090</code> was not linked</td>
+                    <td>A whole number is kilohertz, and 1,090 kHz is below the 2 MHz floor.</td>
+                    <td>Write <code>FREQ:1090.0</code> for 1,090 MHz, or add the unit.</td>
+                </tr>
+                <tr>
+                    <td><code>FREQ:121.5 GHZ</code> was not linked</td>
+                    <td>A unit this plugin does not read refuses the whole token rather than linking the number and leaving the unit outside.</td>
+                    <td>Write the frequency in megahertz or kilohertz.</td>
+                </tr>
+                <tr>
+                    <td>The panel says the frequency is outside the aviation bands</td>
+                    <td>It is inside none of the six bands the plugin names. The readings are still shown.</td>
+                    <td>Nothing to do. See <a href="frequencies.html#frequency-bands">the bands</a>.</td>
+                </tr>
+                <tr>
+                    <td>No frequency in any message links</td>
+                    <td>The decorator is off.</td>
+                    <td>Check <a href="admin.html#enable-frequency">the admin setting</a>.</td>
                 </tr>
             </tbody>
         </table>

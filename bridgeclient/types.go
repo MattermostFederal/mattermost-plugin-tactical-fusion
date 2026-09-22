@@ -29,6 +29,10 @@ const (
 	// TypeAvReport is a METAR, SPECI, TAF or FAA-format NOTAM on one line,
 	// exactly as written.
 	TypeAvReport = "avreport"
+
+	// TypeFrequency is a radio frequency as an author writes it behind FREQ:,
+	// such as "121.5", "118.300 MHZ" or "8992 KHZ".
+	TypeFrequency = "frequency"
 )
 
 // Reasons a Link request is declined, carried in ErrorResponse.Reason.
@@ -73,7 +77,7 @@ type DecorateResponse struct {
 
 // LinkRequest asks for one decorator link for a token of a known type.
 type LinkRequest struct {
-	// Type is TypeDTG, TypeLocation, TypeAirport or TypeAvReport.
+	// Type is TypeDTG, TypeLocation, TypeAirport, TypeAvReport or TypeFrequency.
 	Type string `json:"type"`
 
 	// Token is the value alone, with no field label: "PHIK" rather than

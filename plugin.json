@@ -262,6 +262,20 @@
                 ]
             },
             {
+                "key": "frequencies",
+                "title": "Frequencies",
+                "subtitle": "Recognize a radio frequency written behind FREQ: and name its band and any known allocation.",
+                "settings": [
+                    {
+                        "key": "EnableFrequency",
+                        "display_name": "Decorate frequencies behind their label",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Recognize a frequency written behind FREQ:, in upper case, such as \"FREQ:121.5\", \"FREQ:118.300 MHZ\" or \"FREQ:8992 KHZ\", and rewrite it as a link whose panel names the band (HF aeronautical, VHF navigation, VHF air band, VHF marine, UHF military air band, distress beacons) and any known allocation, such as the aeronautical emergency frequency. A decimal without a unit is megahertz and a whole number is kilohertz; anything outside 2 MHz to 1,300 MHz is left alone. The label is required, because a bare number is any decimal. Turning this off stops new messages being decorated; links already written keep working."
+                    }
+                ]
+            },
+            {
                 "key": "cot",
                 "title": "Cursor on Target",
                 "subtitle": "Render a Cursor on Target event pasted into a message or attached to a post, with its position on a map.",

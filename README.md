@@ -12,7 +12,7 @@ Nobody has to change how they write. The formats are the ones already used in
 mission traffic.
 
 > **Status:** early. Date-time groups, coordinates, airfields, aviation reports
-> (METAR, TAF, NOTAM), Cursor on Target and GeoJSON work today. IP intelligence
+> (METAR, TAF, NOTAM), frequencies, Cursor on Target and GeoJSON work today. IP intelligence
 > and CVE lookups are planned and not yet built.
 
 Requires Mattermost **11.8.0** or later.

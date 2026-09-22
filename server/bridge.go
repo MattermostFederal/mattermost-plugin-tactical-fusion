@@ -14,6 +14,7 @@ import (
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/frequency"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
@@ -211,6 +212,8 @@ func (p *Plugin) formatEnabled(typ string, params url.Values) bool {
 			return formats.IATA
 		}
 		return formats.Airfield
+	case frequency.Type:
+		return p.frequencyFormats().Frequency
 	case avreport.Type:
 		formats := p.avreportFormats()
 		switch avreport.KindOf(params.Get(avreport.ParamValue), time.Now().UTC()) {
@@ -238,6 +241,8 @@ func parsesWithEveryFormat(typ, token string, ref time.Time) bool {
 		unrestricted = &airport.Decorator{}
 	case avreport.Type:
 		unrestricted = &avreport.Decorator{}
+	case frequency.Type:
+		unrestricted = &frequency.Decorator{}
 	default:
 		return false
 	}
@@ -249,10 +254,11 @@ func parsesWithEveryFormat(typ, token string, ref time.Time) bool {
 func (p *Plugin) bridgeInfo() bridgeclient.InfoResponse {
 	config := p.getConfiguration()
 	enabled := map[string]bool{
-		dtg.Type:      config.EnableDTG,
-		location.Type: config.EnableLocation,
-		airport.Type:  config.EnableAirport,
-		avreport.Type: config.EnableAvReport,
+		dtg.Type:       config.EnableDTG,
+		location.Type:  config.EnableLocation,
+		airport.Type:   config.EnableAirport,
+		avreport.Type:  config.EnableAvReport,
+		frequency.Type: config.EnableFrequency,
 	}
 
 	info := bridgeclient.InfoResponse{

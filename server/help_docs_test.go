@@ -36,6 +36,7 @@ var helpPages = []string{
 	"cot.html",
 	"geojson.html",
 	"reports.html",
+	"frequencies.html",
 	"formats.html",
 	"panel.html",
 	"admin.html",

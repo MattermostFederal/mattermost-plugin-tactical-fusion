@@ -6,9 +6,9 @@ Mattermost Tactical Fusion enriches conversations with mission-relevant context:
 geospatial data, CoT, time zones, IP intelligence, CVEs, and other operational
 information. The server is Go, the webapp TypeScript/React.
 
-Shipped today: the decorator framework and four decorators, DTG, Location,
-Airfields and Aviation reports, plus the bundled offline map, the Cursor on
-Target renderer and the GeoJSON renderer. The rest is not implemented.
+Shipped today: the decorator framework and five decorators, DTG, Location,
+Airfields, Aviation reports and Frequencies, plus the bundled offline map, the
+Cursor on Target renderer and the GeoJSON renderer. The rest is not implemented.
 
 A decorator finds a token in a posted message, rewrites it in
 `MessageWillBePosted` into a markdown link whose query string carries the
@@ -38,6 +38,7 @@ right-hand sidebar, and a standalone server-rendered page.
 | `decorators/dtg/` | Date-time groups and RFC 3339 timestamps |
 | `decorators/location/` | Coordinate grammars, geodesy, MGRS, rendering, conversion; `mapdata/` holds the generated country polygons |
 | `decorators/airport/` | ICAO and IATA airfields, their runways and frequencies; `data/` holds the three embedded CSVs and their provenance |
+| `decorators/frequency/` | Radio frequencies behind `FREQ:`: the grammar, the band and allocation tables, the page |
 | `avreport/` | Aviation reports: the METAR, TAF and NOTAM decoders, the decorator, the page, the props; `data/` holds the contraction and Q-code tables |
 | `cot/` | Cursor on Target: the bounded XML parse, the type tables, the post props |
 | `geojson/` | GeoJSON: the bounded JSON walk, the parts/rings shape, the post props |
@@ -48,7 +49,7 @@ right-hand sidebar, and a standalone server-rendered page.
 |---|---|
 | `src/index.tsx` | `initialize()`, registration, the disposer list run by `uninitialize()` |
 | `src/decorators/` | Framework: registry, click handler, styles, selection store, theme, `Tooltip` |
-| `src/decorators/{dtg,location,airport}/` | Panels, hovers, and per-decorator clients |
+| `src/decorators/{dtg,location,airport,frequency}/` | Panels, hovers, and per-decorator clients; `frequency/bands.ts` is the band table the Go side is held to |
 | `src/cot/` | The Cursor on Target post body, its card and its map |
 | `src/geojson/` | The GeoJSON post body, its card, its map, its panel and its reader |
 | `src/avreport/` | The aviation report reader, client, card, post body, panel, hover and map; `src/decorators/avreport/` is the link's decorator entry |
@@ -81,11 +82,12 @@ there rather than here or in a comment.
 | [`docs/design/airfields.md`](docs/design/airfields.md) | The label-only ICAO and IATA grammars, the three embedded files, the military designator, runways and frequencies, `/api/v1/airport`, `/map?airport=`, the page and panel |
 | [`docs/design/cot.md`](docs/design/cot.md) | Cursor on Target: why it is not a decorator, the exclusivity rule, the props budget, `edit_at` over a digest, the parser's refusals, the CE circle |
 | [`docs/design/avreports.md`](docs/design/avreports.md) | Aviation reports: link or card by shape, one report per message, the bare METAR boundary, the inferred instant, `runStamper`, the attachment gate, the blob, the vocabulary's provenance |
+| [`docs/design/frequencies.md`](docs/design/frequencies.md) | Frequencies: why label-only, megahertz or kilohertz by shape, the consumed unit group, the four-digit width, why the band table lives on both sides |
 | [`docs/design/geojson.md`](docs/design/geojson.md) | GeoJSON: why recognition is narrow, why format order stayed format-major, what the two stampers share and what they must not, the parts/rings shape, why `decimalShape` is not reused, the ringed map prop, extent-only, the cross-shape antimeridian unwrap |
 | [`docs/design/mapping.md`](docs/design/mapping.md) | The vector basemap, the OpenStreetMap detail tier and its seam, detail map packages, `PageStatic` vs `PageMapping`, the page bundle, zoom numbers, the country lookup, `Conversion`, the map page, the panel map, turning maps off, the map under a post |
 | [`docs/design/bridge.md`](docs/design/bridge.md) | The plugin bridge: why `PluginHTTP`, why `Mattermost-Plugin-ID` is trusted, the two transports, why `link` takes no label and still honors switches, the window global and its ready event, where the wire types live |
 | [`docs/design/preferences.md`](docs/design/preferences.md) | The KV store, both caches, the location hover, the location rows, the zone picker and ordering |
-| [`docs/design/admin-settings.md`](docs/design/admin-settings.md) | The thirty-two switches, the two map-package settings, the seven sections, why `EnableLocationUTM` and `EnableGeoJSONUnlabeled` ship off |
+| [`docs/design/admin-settings.md`](docs/design/admin-settings.md) | The thirty-three switches, the two map-package settings, the eight sections, why `EnableLocationUTM` and `EnableGeoJSONUnlabeled` ship off |
 | [`docs/design/help-and-errors.md`](docs/design/help-and-errors.md) | `public/help/` and the `TF-NNNN` catalog |
 | [`docs/design/unverified.md`](docs/design/unverified.md) | Claims that need a running server or a phone and have never been checked |
 
@@ -271,6 +273,7 @@ side moves alone. Change both halves together.
 | The aviation report post type, props key, version, source kinds, caps and decorator type | `TestWebappAvReportPostTypeMatches` |
 | The aviation report kinds and their order | `TestWebappAvReportKindsMatch` |
 | The aviation report props shape, walked rather than scraped | `TestWebappAvReportShapeMatches` |
+| The frequency token shape, range and the band and allocation tables | `TestWebappFrequencyTokenShapeMatches`, `TestWebappFrequencyBandsMatch` |
 | The GeoJSON `kind` vocabulary and its order | `TestWebappGeoJSONKindsMatch` |
 | The GeoJSON panel's hideable sections: ids, labels, order | `TestWebappGeoJSONSectionCatalogMatches` |
 | The GeoJSON props shape, walked rather than scraped | `TestWebappGeoJSONShapeMatches` |
