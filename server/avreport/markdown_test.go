@@ -61,7 +61,7 @@ func TestReportTableKeepsAHostileReportInsideOneCodeSpan(t *testing.T) {
 
 func TestReportTableNamesTheStationAndItsAirfield(t *testing.T) {
 	table := expandFixture(t, metarLine, "")
-	if !strings.HasPrefix(table, "| METAR | KJFK - John F. Kennedy International Airport |\n|:--|:--|\n") {
+	if !strings.HasPrefix(table, "| METAR | [KJFK - John F. Kennedy International Airport](/plugins/tf/decorate/airport?v=KJFK) |\n|:--|:--|\n") {
 		t.Errorf("header:\n%s", table)
 	}
 
@@ -148,7 +148,7 @@ func TestExpandedWritesAMultiLineReportAsAFenceAboveTheTable(t *testing.T) {
 			t.Fatalf("no expansion for %q", text)
 		}
 
-		if !strings.HasPrefix(message, "```\n"+report.Raw+"\n```\n| "+report.Kind+" | "+report.Station+" - ") {
+		if !strings.HasPrefix(message, "```\n"+report.Raw+"\n```\n| "+report.Kind+" | ["+report.Station+" - ") {
 			t.Errorf("the fence does not lead:\n%s", message)
 		}
 		if strings.Contains(message, "| Report |") {

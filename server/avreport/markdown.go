@@ -1,6 +1,7 @@
 package avreport
 
 import (
+	"net/url"
 	"strings"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
@@ -24,7 +25,7 @@ func issuedLabel(kind string) string {
 func reportTable(href, trail string, report Report, withReportRow bool) string {
 	var b strings.Builder
 
-	b.WriteString("| " + decorators.TableCell(report.Kind) + " | " + decorators.TableCell(tableHeadingDetail(report)) + " |\n")
+	b.WriteString("| " + decorators.TableCell(report.Kind) + " | " + tableHeadingDetail(href, report) + " |\n")
 	b.WriteString("|:--|:--|\n")
 
 	if withReportRow {
@@ -62,14 +63,20 @@ func reportTable(href, trail string, report Report, withReportRow bool) string {
 	return b.String()
 }
 
-func tableHeadingDetail(report Report) string {
+func tableHeadingDetail(href string, report Report) string {
 	switch {
 	case report.Station != "" && report.StationName != "":
-		return report.Station + " - " + report.StationName
+		label := decorators.TableCell(report.Station + " - " + report.StationName)
+		return "[" + label + "](" + airfieldHref(href, report.Station) + ")"
 	case report.Station != "":
-		return report.Station
+		return decorators.TableCell(report.Station)
 	}
 	return tableFallbackHeading
+}
+
+func airfieldHref(reportHref, station string) string {
+	prefix := reportHref[:strings.LastIndex(reportHref, "/"+Type+"?")]
+	return prefix + "/" + airfieldPath + "?" + url.Values{"v": {station}}.Encode()
 }
 
 func reportCell(raw string) string {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"math"
+	"net/url"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -13,6 +14,7 @@ import (
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/avreport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/cot"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/geojson"
 )
@@ -128,6 +130,19 @@ func TestASoleSingleLineReportIsExpandedNotStamped(t *testing.T) {
 		}
 		if n := strings.Count(updated.Message, "/decorate/avreport?"); n != 1 {
 			t.Fatalf("%q links its destination %d times, want once:\n%s", message, n, updated.Message)
+		}
+	}
+}
+
+func TestTheReportTableLinksTheStationTheWayTheTaggerWould(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	tagger := &decorators.Tagger{Registry: p.decorators, URLPrefix: p.decorateURLPrefix()}
+	want := "| METAR | [PHNL - Daniel K. Inouye International Airport](" + tagger.URLFor(airport.Type, url.Values{"v": {"PHNL"}}) + ") |"
+
+	for _, message := range []string{reportMETAR, reportTAF} {
+		updated := p.decoratePost(&model.Post{Message: message, UserId: testUserID}, hookRef)
+		if updated == nil || !strings.Contains(updated.Message, strings.Replace(want, "METAR", strings.Fields(message)[0], 1)) {
+			t.Errorf("the station is not linked to its airfield:\n%s", updated.Message)
 		}
 	}
 }

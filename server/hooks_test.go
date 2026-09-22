@@ -1185,7 +1185,7 @@ func TestDecoratePostExpandsAnAirfieldOnlyMessage(t *testing.T) {
 	}
 
 	for _, want := range []string{
-		"| Airfield | Indianapolis International Airport |",
+		"| Airfield | [Indianapolis International Airport](/plugins/",
 		"| Details | [Open details](/plugins/",
 		"/decorate/airport?v=KIND) |",
 		"|:--|:--|",
@@ -1223,10 +1223,8 @@ func TestDecoratePostKeepsTheSetTerminatorInTheCodeRow(t *testing.T) {
 		t.Errorf("the set terminator was lost:\n%s", got.Message)
 	}
 
-	// One destination in the message, on the name. The old shape repeated it on
-	// a line above the table.
-	if n := strings.Count(got.Message, "/decorate/airport?v=KIND"); n != 1 {
-		t.Errorf("the destination appears %d times, want once:\n%s", n, got.Message)
+	if n := strings.Count(got.Message, "/decorate/airport?v=KIND"); n != 2 {
+		t.Errorf("the destination appears %d times, want the name and the Details row:\n%s", n, got.Message)
 	}
 }
 

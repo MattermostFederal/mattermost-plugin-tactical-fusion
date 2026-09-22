@@ -19,7 +19,7 @@ func airfieldTable(href, trail string, d Details) string {
 	}
 
 	var b strings.Builder
-	b.WriteString("| " + tableHeaderLabel + " | " + mdCell(name) + " |\n")
+	b.WriteString("| " + tableHeaderLabel + " | [" + mdCell(name) + "](" + href + ") |\n")
 	b.WriteString("|:--|:--|\n")
 
 	for _, row := range []struct{ label, value string }{
