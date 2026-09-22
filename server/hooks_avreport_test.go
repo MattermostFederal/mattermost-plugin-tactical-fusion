@@ -123,7 +123,7 @@ func TestASoleSingleLineReportIsExpandedNotStamped(t *testing.T) {
 		if props := standaloneProps(t, updated); props != nil {
 			t.Fatalf("%q was given props: %v", message, props)
 		}
-		for _, want := range []string{"|:--|:--|\n| Summary | ", "| Details | [Open details](/plugins/", "/decorate/avreport?"} {
+		for _, want := range []string{"|:--|:--|\n| ", "| Details | [Open details](/plugins/", "/decorate/avreport?"} {
 			if !strings.Contains(updated.Message, want) {
 				t.Fatalf("%q was not expanded; missing %q in:\n%s", message, want, updated.Message)
 			}

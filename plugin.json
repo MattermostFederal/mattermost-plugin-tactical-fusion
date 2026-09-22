@@ -257,7 +257,7 @@
                         "display_name": "Show the decode under a report posted on its own",
                         "type": "bool",
                         "default": true,
-                        "help_text": "When a message is nothing but one report, on one line or several, replace it with a table of the decode: a one-line summary, each decoded group in plain language with its times as date-time links, and a last row that opens the full details, where the report is shown as written. The table is written into the message itself, so the post stays searchable, the table is in every export, and it keeps what this build decoded at the moment of posting. A report inside a longer message gets the link alone. Turning this off stops new messages being expanded; messages already posted keep their table. Only applies while \"Decode aviation reports\" is on."
+                        "help_text": "When a message is nothing but one report, on one line or several, replace it with a table of the decode: each decoded group in plain language with its times as date-time links, and a last row that opens the full details, where the report is shown as written. The table is written into the message itself, so the post stays searchable, the table is in every export, and it keeps what this build decoded at the moment of posting. A report inside a longer message gets the link alone. Turning this off stops new messages being expanded; messages already posted keep their table. Only applies while \"Decode aviation reports\" is on."
                     },
                     {
                         "key": "EnableAvReportCard",

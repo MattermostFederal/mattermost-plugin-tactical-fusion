@@ -10,7 +10,6 @@ import (
 )
 
 const (
-	summaryRowLabel      = "Summary"
 	tableFallbackHeading = "Aviation report"
 
 	timestampLayout = "2006-01-02T15:04:05Z"
@@ -30,9 +29,6 @@ func reportTable(href string, report Report) string {
 	b.WriteString("| " + decorators.TableCell(report.Kind) + " | " + tableHeadingDetail(links, report) + " |\n")
 	b.WriteString("|:--|:--|\n")
 
-	if report.Summary != "" {
-		writeTableRow(&b, summaryRowLabel, decorators.TableCell(report.Summary))
-	}
 	if !report.IssuedAt.IsZero() {
 		writeTableRow(&b, issuedLabel(report.Kind), timeCell(links, report.IssuedAt))
 	}
