@@ -60,12 +60,12 @@ func TestReportTableEscapesAReportThatACodeSpanCannotHold(t *testing.T) {
 
 func TestReportTableNamesTheStationAndItsAirfield(t *testing.T) {
 	table := expandFixture(t, metarLine, "")
-	if !strings.HasPrefix(table, "| METAR KJFK | John F. Kennedy International Airport |\n|:--|:--|\n") {
+	if !strings.HasPrefix(table, "| METAR | KJFK - John F. Kennedy International Airport |\n|:--|:--|\n") {
 		t.Errorf("header:\n%s", table)
 	}
 
 	unknown := expandFixture(t, "METAR ZZZZ 221651Z 28012KT 10SM FEW250 24/12 A3012", "")
-	if !strings.HasPrefix(unknown, "| METAR ZZZZ | "+tableFallbackHeading+" |\n") {
+	if !strings.HasPrefix(unknown, "| METAR | ZZZZ |\n") {
 		t.Errorf("a station the build does not hold:\n%s", unknown)
 	}
 }
@@ -147,7 +147,7 @@ func TestExpandedWritesAMultiLineReportAsAFenceAboveTheTable(t *testing.T) {
 			t.Fatalf("no expansion for %q", text)
 		}
 
-		if !strings.HasPrefix(message, "```\n"+report.Raw+"\n```\n| "+report.Kind+" "+report.Station+" | ") {
+		if !strings.HasPrefix(message, "```\n"+report.Raw+"\n```\n| "+report.Kind+" | "+report.Station+" - ") {
 			t.Errorf("the fence does not lead:\n%s", message)
 		}
 		if strings.Contains(message, "| Report |") {

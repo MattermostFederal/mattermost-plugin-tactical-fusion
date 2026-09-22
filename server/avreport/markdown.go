@@ -26,11 +26,7 @@ func issuedLabel(kind string) string {
 func reportTable(href, trail string, report Report, withReportRow bool) string {
 	var b strings.Builder
 
-	heading := report.Kind
-	if report.Station != "" {
-		heading += " " + report.Station
-	}
-	b.WriteString("| " + decorators.TableCell(heading) + " | " + decorators.TableCell(tableHeadingDetail(report)) + " |\n")
+	b.WriteString("| " + decorators.TableCell(report.Kind) + " | " + decorators.TableCell(tableHeadingDetail(report)) + " |\n")
 	b.WriteString("|:--|:--|\n")
 
 	if withReportRow {
@@ -69,8 +65,11 @@ func reportTable(href, trail string, report Report, withReportRow bool) string {
 }
 
 func tableHeadingDetail(report Report) string {
-	if report.StationName != "" {
-		return report.StationName
+	switch {
+	case report.Station != "" && report.StationName != "":
+		return report.Station + " - " + report.StationName
+	case report.Station != "":
+		return report.Station
 	}
 	return tableFallbackHeading
 }
