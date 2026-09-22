@@ -87,7 +87,7 @@ var exampleSets = map[string]exampleSet{
 		decorator: avreport.Type,
 		name:      "Aviation reports",
 		rows: []exampleRow{
-			{label: "METAR", text: "METAR PHNL 221651Z 07012G18KT 10SM FEW025 SCT045 27/19 A3010", note: "hover for the plain-language summary; posted on its own it becomes a table"},
+			{label: "METAR", text: "METAR PHNL 221651Z 07012G18KT 10SM FEW025 SCT045 27/19 A3010", note: "hover for the station; posted on its own it becomes a table"},
 			{label: "TAF", text: "TAF PGUA 221720Z 2218/2324 07012KT P6SM SCT025", note: "one line; a multi-line forecast posted on its own gets a table too, and a fenced one a card"},
 			{label: "NOTAM", text: "!HNL 09/123 HNL RWY 08L/26R CLSD 2609221200-2609232359", note: "the FAA domestic form"},
 		},
