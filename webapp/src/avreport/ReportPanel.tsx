@@ -9,9 +9,13 @@ import {headingOf} from './types';
 
 import ErrorBoundary from '../components/ErrorBoundary';
 import LinkButton from '../components/LinkButton';
+import Disclosure from '../cot/Disclosure';
+import CopyButton from '../decorators/location/CopyButton';
 import {docsUrl} from '../plugin_url';
 
 export const PANEL_TITLE = 'Aviation report';
+
+export const SOURCE_LABEL = 'As posted';
 
 export const SECTION_FAILED = 'This report could not be rendered.';
 
@@ -29,6 +33,15 @@ const styles: Record<string, React.CSSProperties> = {
         fontFamily: 'monospace',
         fontSize: '0.85em',
         margin: '0 0 12px',
+        maxHeight: 280,
+        overflow: 'auto',
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-word',
+    },
+    posted: {
+        fontFamily: 'monospace',
+        fontSize: '0.85em',
+        margin: 0,
         maxHeight: 280,
         overflow: 'auto',
         whiteSpace: 'pre-wrap',
@@ -64,20 +77,35 @@ export const ReportView: React.FC<{report: Report; postId?: string}> = ({report,
         )}
 
         <ErrorBoundary fallback={<p style={styles.status}>{SECTION_FAILED}</p>}>
+            <ReportDetail report={report}/>
+        </ErrorBoundary>
+
+        {report.src !== '' && (
+            <Disclosure
+                label={SOURCE_LABEL}
+                trailing={
+                    <CopyButton
+                        label='Copy the report as posted'
+                        value={report.src}
+                    />
+                }
+            >
+                <pre
+                    style={styles.posted}
+                    tabIndex={0}
+                    role='region'
+                    aria-label='The report as it was posted'
+                    data-testid='avreport-source'
+                >{report.src}</pre>
+            </Disclosure>
+        )}
+
+        <ErrorBoundary fallback={<p style={styles.status}>{SECTION_FAILED}</p>}>
             <ReportMap
                 report={report}
                 surface='panel'
                 postId={postId}
             />
-        </ErrorBoundary>
-
-        <pre
-            style={styles.source}
-            data-testid='avreport-source'
-        >{report.src}</pre>
-
-        <ErrorBoundary fallback={<p style={styles.status}>{SECTION_FAILED}</p>}>
-            <ReportDetail report={report}/>
         </ErrorBoundary>
 
         <Footer/>

@@ -234,7 +234,7 @@
         <p>
             The heading is the kind and the station, with the station's name linked to the
             <a href="airfields.html#airfield-panel">airfield panel</a> when the build's database
-            holds it. Under it, the summary line, the map, the report as posted, then one row
+            holds it. Under it, the summary line, then one row
             per decoded group in report order: wind, visibility, runway visual range, present
             weather, sky, temperature and dew point, altimeter, trends and wind shear for an
             observation; the base forecast and each <code>FM</code>, <code>TEMPO</code>,
@@ -242,7 +242,10 @@
             keyword, effective and expiry times and the text with its contractions expanded for
             a NOTAM, plus the <code>Q)</code> line's subject, condition, limits, center and
             radius for the ICAO form. Remarks are decoded where the vocabulary knows them, and
-            anything else is listed under <em>Not decoded</em> exactly as written.
+            anything else is listed under <em>Not decoded</em> exactly as written. Below the
+            rows, <strong>As posted</strong> holds the report exactly as it was written,
+            collapsed, with a button to copy it, as the Cursor on Target and GeoJSON panels do;
+            the map comes last, as it does in the airfield panel.
         </p>
 
         <p>

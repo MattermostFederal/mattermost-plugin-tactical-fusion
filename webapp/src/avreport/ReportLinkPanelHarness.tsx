@@ -15,11 +15,12 @@ export type Reply = 'found' | 'unplaced' | 'rejected' | 'failed' | 'hold';
 interface Props {
     surface: 'panel' | 'hover';
     reply: Reply;
+    maps?: boolean;
 }
 
 const WIRE = propsFor(HONOLULU_METAR)[AVREPORT_PROPS_KEY] as Record<string, unknown>;
 
-const ReportLinkPanelHarness: React.FC<Props> = ({surface, reply}) => {
+const ReportLinkPanelHarness: React.FC<Props> = ({surface, reply, maps = false}) => {
     const [ready] = React.useState(() => {
         resetReports();
         resetSelection();
@@ -50,7 +51,7 @@ const ReportLinkPanelHarness: React.FC<Props> = ({surface, reply}) => {
         return true;
     });
 
-    setStubbedFeatures({mapPanel: false, mapInline: false, mapPage: false});
+    setStubbedFeatures({mapPanel: maps, mapInline: false, mapPage: false});
 
     if (!ready) {
         return null;

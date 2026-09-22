@@ -2,7 +2,7 @@ import React from 'react';
 
 import {HONOLULU_METAR} from './report_fixtures';
 import ReportLinkPanelHarness from './ReportLinkPanelHarness';
-import {STATUS_TEXT} from './ReportPanel';
+import {SOURCE_LABEL, STATUS_TEXT} from './ReportPanel';
 
 import {expect, test} from '../../playwright/ct-coverage';
 
@@ -16,9 +16,27 @@ test.describe('the link panel', () => {
 
         await expect(panel.getByTestId('avreport-heading')).toHaveText('METAR PHNL');
         await expect(panel.getByTestId('avreport-summary')).toContainText('Wind 070°');
-        await expect(panel.getByTestId('avreport-source')).toHaveText(HONOLULU_METAR.src);
         await expect(panel.getByTestId('avreport-rows')).toContainText('30.10 inHg');
         await expect(panel.getByRole('button', {name: 'Daniel K. Inouye International Airport'})).toBeVisible();
+    });
+
+    test('keeps the report as posted collapsed under the rows, with the map last', async ({mount}) => {
+        const panel = await mount(
+            <ReportLinkPanelHarness
+                surface='panel'
+                reply='found'
+                maps={true}
+            />);
+
+        await expect(panel.getByTestId('avreport-source')).toBeHidden();
+        await panel.getByText(SOURCE_LABEL).click();
+        await expect(panel.getByTestId('avreport-source')).toHaveText(HONOLULU_METAR.src);
+        await expect(panel.getByRole('button', {name: 'Copy the report as posted'})).toBeVisible();
+
+        const order = await panel.locator('[data-testid="avreport-rows"], [data-testid="avreport-source"], [data-testid="avreport-map"]').evaluateAll(
+            (nodes) => nodes.map((node) => node.getAttribute('data-testid')),
+        );
+        expect(order).toEqual(['avreport-rows', 'avreport-source', 'avreport-map']);
     });
 
     test('a station outside the database gets no name line', async ({mount}) => {
