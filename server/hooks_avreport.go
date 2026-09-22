@@ -103,13 +103,12 @@ func (p *Plugin) messageShowsAvReport(post *model.Post) bool {
 		return false
 	}
 
-	if labeledAvReportFence(post.Message) {
-		return true
+	report, err := avreport.Decode(source.Text, referenceTime(post))
+	if err != nil {
+		return labeledAvReportFence(post.Message)
 	}
 
-	report, err := avreport.Decode(source.Text, referenceTime(post))
-
-	return err == nil && avreport.KindEnabled(p.avreportFormats(), report.Kind)
+	return avreport.KindEnabled(p.avreportFormats(), report.Kind)
 }
 
 func (p *Plugin) reportAvReportRefusal(post *model.Post, source avreport.Source, code int, message string) {

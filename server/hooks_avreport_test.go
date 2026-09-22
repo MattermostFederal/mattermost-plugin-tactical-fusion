@@ -233,10 +233,17 @@ func TestAKindThatIsOffDoesNotSuppressAnAttachment(t *testing.T) {
 	}
 	api.fileContent = map[string][]byte{testFileID: []byte(cotEventXML)}
 
-	post := &model.Post{Message: reportTAF, FileIds: []string{testFileID}, UserId: testUserID}
-	updated := p.decoratePost(post, hookRef)
-	if updated == nil || updated.Type != cot.PostType {
-		t.Fatalf("a TAF whose kind is off still suppressed the attachment: %+v", updated)
+	for name, message := range map[string]string{
+		"bare":   reportTAF,
+		"fenced": reportFence("taf", reportTAF),
+	} {
+		t.Run(name, func(t *testing.T) {
+			post := &model.Post{Message: message, FileIds: []string{testFileID}, UserId: testUserID}
+			updated := p.decoratePost(post, hookRef)
+			if updated == nil || updated.Type != cot.PostType {
+				t.Fatalf("a TAF whose kind is off still suppressed the attachment: %+v", updated)
+			}
+		})
 	}
 }
 
