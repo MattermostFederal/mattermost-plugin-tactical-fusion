@@ -2,8 +2,7 @@
 
 Builds one `.pmtiles` archive per region, which every map surface draws **above
 the seam**. Below the seam the Natural Earth archive from `build/maptiles/` is
-what draws; see [`docs/design/mapping.md`](../../docs/design/mapping.md) for the
-seam itself.
+what draws.
 
 ## Running it
 

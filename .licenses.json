@@ -1,10 +1,9 @@
 {
   "_comment": [
     "Dependency license policy for everything that SHIPS in the plugin bundle.",
-    "The policy itself is argued in CLAUDE.md 'Dependency Licensing' and in",
-    "docs/SECURITY.md. This file is what enforces it: build/licensecheck reads",
-    "it against the SBOMs make sbom writes, and make license-check fails the",
-    "build on a violation.",
+    "The policy itself is argued in CLAUDE.md 'Dependency Licensing'. This",
+    "file is what enforces it: build/licensecheck reads it against the SBOMs",
+    "make sbom writes, and make license-check fails the build on a violation.",
     "",
     "Build-only dependencies are not judged here. The Go side is narrowed to",
     "what go list -deps says is linked into the server binary, and the npm side",

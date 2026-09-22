@@ -28,8 +28,7 @@ func (b *budget) position() error {
 	return nil
 }
 
-// buildGeometry reads one geometry into parts, at the cardinality
-// docs/design/geojson.md tables.
+// buildGeometry reads one geometry into parts.
 //
 // Every geometry becomes a list of parts, every part a list of rings, every
 // ring a list of positions. MultiPoint and MultiLineString are N parts rather

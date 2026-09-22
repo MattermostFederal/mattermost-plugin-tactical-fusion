@@ -16,20 +16,18 @@ registration retries.
 
 MCP is a **third transport onto operations this plugin already has**, alongside
 `/bridge/v1` (another plugin's server) and `/api/v1` (a session-bearing browser).
-Treat it the way `docs/design/bridge.md` treats those two: the transport decides
+Treat it the way the plugin bridge treats those two: the transport decides
 who may ask, never what the answer is built from.
 
 ## Read first
 
-- [`docs/design/bridge.md`](../../docs/design/bridge.md): the existing
-  cross-plugin surface, why `PluginHTTP`, why `Mattermost-Plugin-ID` is trusted,
-  and the rule that neither transport owns a decoration rule of its own.
-- [`docs/design/help-and-errors.md`](../../docs/design/help-and-errors.md): the
-  `TF-NNNN` catalog and the four edits that add a code.
-- [`docs/design/admin-settings.md`](../../docs/design/admin-settings.md): the
-  switch pattern, if this ships behind one.
 - Root [`CLAUDE.md`](../../CLAUDE.md): the invariants, the no-comment rule, and
   the worktree workflow.
+- `server/bridge.go`: the existing cross-plugin surface, why
+  `Mattermost-Plugin-ID` is trusted, and the rule that neither transport owns a
+  decoration rule of its own.
+- `server/errcode/codes.go`: the `TF-NNNN` catalog and the edits that add a code.
+- `server/configuration.go`: the switch pattern, if this ships behind one.
 
 ## Prerequisites
 
@@ -121,7 +119,7 @@ them without a live Agents plugin.
 Follow this repo's error handling: `errors.Wrap` from `github.com/pkg/errors`,
 every message through `errcode.WithCode`, and every `p.API.Log*` call carrying
 its code as an `error_code` field. **Write no prose comments** (root
-`CLAUDE.md`); rationale goes in `docs/design/mcp.md` per Phase 9.
+`CLAUDE.md`).
 
 ```go
 package main
@@ -390,8 +388,8 @@ If it gets one, follow the established pattern exactly: a field on
 `configuration` in `server/configuration.go` that is **false at zero**, a new
 section in `plugin.json`'s `settings_schema.sections`, and an accessor on
 `Plugin` that reads fresh rather than capturing at activation. Then update the
-counts in root `CLAUDE.md` ("twenty-five switches", six sections),
-`docs/design/admin-settings.md`, and `public/help/`.
+counts in root `CLAUDE.md` ("twenty-five switches", six sections) and
+`public/help/`.
 
 Note that a switch read at registration time behaves unlike the format switches:
 turning it off will not retract a registration the Agents plugin already holds
@@ -400,23 +398,23 @@ until this plugin re-activates. Say so wherever the switch is documented.
 Do not hand-edit `plugin.json`'s `version`; release-please owns it. And
 `plugin.json` may not contain a backtick.
 
-### Phase 9: Write the design note
+### Phase 9: Record the invariants
 
-Create `docs/design/mcp.md` and add a row to the table in root `CLAUDE.md`.
-Nothing in this feature may be explained by a code comment. At minimum record:
+Nothing in this feature may be explained by a code comment. Add what a later
+change would otherwise break to the invariants list in root `CLAUDE.md`, next
+to the existing bridge invariant this one qualifies:
 
-- Why MCP is a third transport rather than a route under `/bridge/v1`.
 - **The user-scoping rule.** The bridge invariant is that `/bridge/v1` may never
   answer with per-user or per-channel data, because a plugin request proves no
   reader. MCP is the deliberate exception: Agents propagates a user id, and
   `pluginmcp.GetUserID(ctx)` is the only trustworthy way to read it. A tool that
   wants a reader must go through that function and must refuse when it returns
-  `""`. Never read `X-Mattermost-UserID` from the headers directly. Consider
-  adding this to the invariants list in root `CLAUDE.md`, next to the existing
-  bridge invariant it qualifies.
-- Why tools call `decorateText`/`buildLink` rather than their own logic.
-- Why registration failure is a warn rather than a failed activation.
-- The tool budget, and what "about ten" is protecting.
+  `""`. Never read `X-Mattermost-UserID` from the headers directly.
+- **The two routing orderings.** The match sits above the method check and above
+  the session gate, and each is a separate defect if moved.
+- **The tool budget**, and what "about ten" is protecting.
+
+Carry the rest in the code and in test names rather than in prose.
 
 ### Phase 10: Tests
 
