@@ -232,12 +232,25 @@ looked at rather than what was used.
 
 **A set is never closed while it is in use.** `Close` munmaps the vendor
 databases, and a lookup already running against one segfaults rather than
-returning an error. So the cached set is dropped rather than closed when it
-goes stale: `runtime.AddCleanup` in `maxminddb` and the finalizer on `os.File`
-release both once nothing can reach them. `Close` remains for the one caller
-that owns a set outright, which is a test. `OnConfigurationChange` drops the
-cache so a change to `CyberDatasetsDir` takes effect at once rather than
-within the TTL.
+returning an error: `cyberIntel` hands the pointer out and releases the lock,
+so a reader can still be inside a set the next rebuild replaces. The cached set
+is therefore dropped rather than closed when it goes stale, and the runtime
+releases what it held:
+
+- a vendor database holds **no descriptor at all**. `maxminddb.Open` closes the
+  file as soon as it has mapped it, and frees the mapping through
+  `runtime.AddCleanup` on the reader.
+- a tabular dataset holds one `*os.File`, which `os.newFile` gives a finalizer
+  that closes it once it is unreachable.
+
+`TestADroppedSetReleasesItsHandles` opens and drops fifty sets and asserts the
+process's own descriptor count returns to where it started. It was checked in
+both directions: holding the fifty sets alive with `runtime.KeepAlive` fails it
+at 111 descriptors against 11.
+
+`Close` remains for the one caller that owns a set outright, which is a test.
+`OnConfigurationChange` drops the cache so a change to `CyberDatasetsDir` takes
+effect at once rather than within the TTL.
 
 Vendor `.mmdb` databases are read through `maxminddb-golang/v2`, which is ISC
 licensed. A vendor database wins over the range file **field by field**, since

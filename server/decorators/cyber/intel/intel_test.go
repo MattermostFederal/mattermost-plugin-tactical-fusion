@@ -6,8 +6,10 @@ import (
 	"net/netip"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 func stamp(name string) string {
@@ -584,5 +586,84 @@ func TestAMissingDatasetAndAMissingRowAreDifferentErrors(t *testing.T) {
 	}
 	if _, err := set.IP(netip.MustParseAddr("203.0.113.7")); !errors.Is(err, ErrNoDataset) {
 		t.Fatalf("an address with no dataset at all gave %v", err)
+	}
+}
+
+func openDescriptors(t *testing.T) int {
+	t.Helper()
+
+	entries, err := os.ReadDir("/proc/self/fd")
+	if err != nil {
+		t.Skipf("no /proc/self/fd on this platform: %v", err)
+	}
+
+	return len(entries)
+}
+
+func settleBelow(t *testing.T, target int) bool {
+	t.Helper()
+
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		runtime.GC()
+
+		if openDescriptors(t) <= target {
+			return true
+		}
+		if !time.Now().Before(deadline) {
+			return false
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+// A stale set is dropped rather than closed, because Close munmaps the vendor
+// databases and a request already reading through one would not survive it.
+// Dropping is only correct if the runtime then releases the handles.
+func TestADroppedSetReleasesItsHandles(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("the descriptor count is read from /proc")
+	}
+
+	dir := t.TempDir()
+	writeDataset(t, dir, NameCVE, strings.Join([]string{
+		"CVE-2021-44228", "2021-12-10", "2021-12-14", "10.0", "Critical", "AV:N", "CWE-502", "Log4Shell",
+	}, "\t"))
+	writeDataset(t, dir, NameKEV, strings.Join([]string{
+		"CVE-2021-44228", "2021-12-10", "2021-12-24", "Known", "Apache Log4j2", "Apply updates.",
+	}, "\t"))
+	writeMMDB(t, filepath.Join(dir, "GeoLite2-ASN"+MMDBSuffix), "GeoLite2-ASN", asnRecord(t, 15169, "Google LLC"))
+
+	const (
+		rounds    = 50
+		perSetFDs = 2
+	)
+
+	dropOne := func() {
+		set, problems := Open([]string{dir})
+		if len(problems) != 0 {
+			t.Fatalf("opening: %v", problems)
+		}
+		if _, err := set.CVE("CVE-2021-44228"); err != nil {
+			t.Fatalf("reading the dataset: %v", err)
+		}
+		if _, err := set.IP(netip.MustParseAddr("8.8.8.8")); err != nil {
+			t.Fatalf("reading the vendor database: %v", err)
+		}
+	}
+
+	dropOne()
+	runtime.GC()
+	runtime.GC()
+	before := openDescriptors(t)
+
+	for range rounds {
+		dropOne()
+	}
+
+	if !settleBelow(t, before+perSetFDs) {
+		t.Fatalf("%d descriptors are still open after %d dropped sets, against %d before; "+
+			"a dropped set is meant to release its handles once the runtime collects it",
+			openDescriptors(t), rounds, before)
 	}
 }
