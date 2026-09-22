@@ -8,8 +8,8 @@ import {DecoratorHoverCard} from './Tooltip';
  * `registerLinkTooltipComponent` is wired into Mattermost's own markdown link
  * rendering, so it only ever offers a link that renderer drew. A plugin that
  * owns a post body draws its own anchors, and nothing offers those, so a reader
- * pointing at one got no card at all. `docs/design/mapping.md` recorded that as
- * expected but unverified when the inline map shipped; it is verified now, and
+ * pointing at one got no card at all. That was expected but unverified when
+ * the inline map shipped; it is verified now, and
  * this is the answer for a surface that needs the hover rather than merely
  * liking it.
  *

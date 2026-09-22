@@ -6,7 +6,7 @@ import type React from 'react';
  * The RHS used to dispatch through the decorator registry directly, which was
  * right while every panel belonged to a decorator. Cursor on Target is not a
  * decorator: it has no token, no link and no page, so it could never be in that
- * registry, and `docs/design/cot.md` costed this out before the card was built.
+ * registry, and this was costed out before the card was built.
  *
  * The alternative was registering a sham decorator for it, which would have
  * emitted a stylesheet chip rule and a click route for a `/decorate/cot` the
