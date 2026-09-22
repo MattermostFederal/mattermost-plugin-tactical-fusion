@@ -163,26 +163,30 @@ const Position: React.FC<{
 
     if (!position) {
         return (
-            <LocationMap
-                lat={null}
-                lon={null}
-                cellDegLat={0}
-                cellDegLon={0}
-                region=''
-                pending={pending}
-            />
+            <div style={styles.mapWrap}>
+                <LocationMap
+                    lat={null}
+                    lon={null}
+                    cellDegLat={0}
+                    cellDegLon={0}
+                    region=''
+                    pending={pending}
+                />
+            </div>
         );
     }
 
     return (
-        <LocationMap
-            {...viewFor(position.payload, {status: 'loading', data: null})}
-            region={position.region}
-            geometries={position.shapes}
-            markerLabel={runwayLabel(position.shapes.length)}
-            pageHref={features.mapPage ? airportMapPageHref(position.ident) : undefined}
-            pending={false}
-        />
+        <div style={styles.mapWrap}>
+            <LocationMap
+                {...viewFor(position.payload, {status: 'loading', data: null})}
+                region={position.region}
+                geometries={position.shapes}
+                markerLabel={runwayLabel(position.shapes.length)}
+                pageHref={features.mapPage ? airportMapPageHref(position.ident) : undefined}
+                pending={false}
+            />
+        </div>
     );
 };
 

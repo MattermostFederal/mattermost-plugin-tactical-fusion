@@ -18,6 +18,7 @@ export {REPORT_COLOR, drawsNothing, mapLabel} from './map';
 export const REPORT_MAP_MAX_WIDTH_PX = 640;
 
 const styles: Record<string, React.CSSProperties> = {
+    panel: {marginTop: 16},
     frame: {maxWidth: REPORT_MAP_MAX_WIDTH_PX, padding: '0 12px 8px'},
     reserved: {height: MAP_HEIGHT},
     reservedInline: {height: INLINE_MAP_HEIGHT},
@@ -86,7 +87,7 @@ const ReportMap: React.FC<{
     return (
         <div
             ref={setBox}
-            style={surface === 'card' ? styles.frame : undefined}
+            style={surface === 'card' ? styles.frame : styles.panel}
             data-testid='avreport-map'
         >
             {near ? (
