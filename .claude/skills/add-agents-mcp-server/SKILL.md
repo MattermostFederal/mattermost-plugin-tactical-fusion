@@ -10,7 +10,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, WebFetch
 Add a cross-plugin MCP (Model Context Protocol) server to this plugin so the
 [Mattermost Agents plugin](https://github.com/mattermost/mattermost-plugin-agents)
 can discover and call its tools. Uses the
-`github.com/mattermost/mattermost-plugin-agents/external/pluginmcp` helper, which
+`github.com/mattermost/mattermost-plugin-agents/v2/external/pluginmcp` helper, which
 handles tool-name namespacing, inter-plugin auth, user-ID propagation, and async
 registration retries.
 
@@ -85,16 +85,25 @@ Edit the root `go.mod`:
 
 ```
 require (
-    github.com/mattermost/mattermost-plugin-agents v0.0.0-<commit-from-main>
-    github.com/modelcontextprotocol/go-sdk v1.4.1
+    github.com/mattermost/mattermost-plugin-agents/v2 v2.7.0
+    github.com/modelcontextprotocol/go-sdk v1.7.0
 )
 ```
 
 Then `go mod tidy` from the repo root, and `make license-check`.
 
-If no tagged release exports `external/pluginmcp/`, ask the maintainer before
-pinning a pseudo-version or adding a `replace` against a local checkout. A
-`replace` must not reach a release build.
+**The module path carries `/v2`.** The unversioned path still resolves on the
+module proxy, but its latest tag (`v1.14.2`) declares
+`module github.com/mattermost/mattermost-plugin-ai` and ships no `external/`
+directory at all, so it cannot satisfy this import.
+
+Pin the go-sdk to whatever the agents release requires rather than its own
+latest tag, so the two halves of the MCP stack agree; `v2.7.0` requires
+`v1.7.0`. Check a newer agents release's `go.mod` before bumping either.
+
+If the release you want does not export `external/pluginmcp/`, ask the
+maintainer before pinning a pseudo-version or adding a `replace` against a local
+checkout. A `replace` must not reach a release build.
 
 ### Phase 2: Add MCP server fields to the Plugin struct
 
@@ -128,7 +137,7 @@ import (
     "net/http"
     "strings"
 
-    "github.com/mattermost/mattermost-plugin-agents/external/pluginmcp"
+    "github.com/mattermost/mattermost-plugin-agents/v2/external/pluginmcp"
     "github.com/pkg/errors"
 
     "github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
@@ -258,7 +267,7 @@ package main
 import (
     "context"
 
-    "github.com/mattermost/mattermost-plugin-agents/external/pluginmcp"
+    "github.com/mattermost/mattermost-plugin-agents/v2/external/pluginmcp"
     "github.com/modelcontextprotocol/go-sdk/mcp"
 
     "github.com/MattermostFederal/mattermost-plugin-tactical-fusion/bridgeclient"
@@ -537,7 +546,7 @@ type Config struct {
 
 ## References
 
-- Helper package: `mattermost-plugin-agents/external/pluginmcp/` (`README.md`,
+- Helper package: `mattermost-plugin-agents/v2/external/pluginmcp/` (`README.md`,
   `pluginmcp.go`, `server.go`, `tools.go`, `context.go`, `registration.go`).
 - Reference implementation: `mattermost-plugin-demo` branch
   `IDEA-006-cross-plugin-mcp`, specifically `server/mcp.go`,
