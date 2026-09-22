@@ -143,7 +143,7 @@ func TestAirfieldTableNamesTheFieldAndEndsWithTheDetailsLink(t *testing.T) {
 	if !strings.HasPrefix(table, "| Airfield | [Indianapolis International Airport]("+HREF+") |\n|:--|:--|\n") {
 		t.Errorf("the header is not the linked name:\n%s", table)
 	}
-	if !strings.HasSuffix(table, "\n| Details | [Open details]("+HREF+") |") {
+	if !strings.HasSuffix(table, "\n| Details | [Open details]("+HREF+` "Open details") |`) {
 		t.Errorf("the details link is not the last row:\n%s", table)
 	}
 	if !strings.Contains(table, "| Code | KIND |") {

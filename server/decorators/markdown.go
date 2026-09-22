@@ -27,5 +27,5 @@ const (
 )
 
 func TableDetailsRow(href string) string {
-	return "| " + DetailsRowLabel + " | [" + DetailsLinkLabel + "](" + href + ") |"
+	return "| " + DetailsRowLabel + " | [" + DetailsLinkLabel + "](" + href + ` "` + DetailsLinkLabel + `") |`
 }

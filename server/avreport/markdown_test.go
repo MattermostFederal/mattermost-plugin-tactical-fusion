@@ -32,7 +32,7 @@ func TestReportTableEndsWithTheDetailsLink(t *testing.T) {
 		"!HNL 09/123 HNL RWY 08L/26R CLSD 2609221200-2609232359",
 	} {
 		lines := strings.Split(expandFixture(t, text, ""), "\n")
-		if last := lines[len(lines)-1]; last != "| Details | [Open details]("+tableHREF+") |" {
+		if last := lines[len(lines)-1]; last != "| Details | [Open details]("+tableHREF+` "Open details") |` {
 			t.Errorf("%q ends with %q", text, last)
 		}
 	}
@@ -133,7 +133,7 @@ func TestExpandedWritesAMultiLineReportAsTheTableAlone(t *testing.T) {
 		if strings.Contains(message, report.Raw) || strings.Contains(message, "```") {
 			t.Errorf("the report text reached the table:\n%s", message)
 		}
-		if !strings.HasSuffix(message, "| Details | [Open details]("+tableHREF+") |") {
+		if !strings.HasSuffix(message, "| Details | [Open details]("+tableHREF+` "Open details") |`) {
 			t.Errorf("the details link is not last:\n%s", message)
 		}
 	}
