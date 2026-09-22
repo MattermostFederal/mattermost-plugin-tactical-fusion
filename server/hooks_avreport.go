@@ -1,9 +1,12 @@
 package main
 
 import (
+	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/mattermost/mattermost/server/public/model"
 
@@ -15,7 +18,7 @@ import (
 var avreportFenceLabels = []string{"metar", "speci", "taf", "notam"}
 
 func (p *Plugin) avreportStamp(post *model.Post, ref time.Time) (*model.Post, bool) {
-	return p.runStamper(post, p.avreportCardEnabled, errcode.HooksAvReportPanic,
+	return p.runStamper(post, p.avreportRendersEnabled, errcode.HooksAvReportPanic,
 		"tactical-fusion: recovered from panic while reading an aviation report; post left unmodified",
 		func(post *model.Post) (*model.Post, bool) { return p.recognizeAvReport(post, ref) })
 }
@@ -42,6 +45,15 @@ func (p *Plugin) recognizeAvReport(post *model.Post, ref time.Time) (*model.Post
 		return nil, false
 	}
 
+	if source.Kind == avreport.SourceMessage && p.avreportFormats().Table {
+		if expanded, ok := p.expandAvReport(post, report); ok {
+			return expanded, true
+		}
+	}
+	if !p.avreportCardEnabled() {
+		return nil, false
+	}
+
 	rungs := []stampRung{
 		{avreport.Props(report, source), false},
 		{avreport.PropsWithoutRows(report, source), true},
@@ -58,6 +70,27 @@ func (p *Plugin) recognizeAvReport(post *model.Post, ref time.Time) (*model.Post
 		return nil, false
 	}
 
+	return updated, true
+}
+
+func (p *Plugin) expandAvReport(post *model.Post, report avreport.Report) (*model.Post, bool) {
+	if p.decorators == nil {
+		return nil, false
+	}
+
+	tagger := &decorators.Tagger{Registry: p.decorators, URLPrefix: p.decorateURLPrefix()}
+	href := tagger.URLFor(avreport.Type, url.Values{
+		avreport.ParamValue:   {report.Raw},
+		avreport.ParamInstant: {strconv.FormatInt(report.Instant(), 10)},
+	})
+
+	message, ok := avreport.Expanded(href, report)
+	if !ok || utf8.RuneCountInString(message) > safePostRunes {
+		return nil, false
+	}
+
+	updated := post.Clone()
+	updated.Message = message
 	return updated, true
 }
 
@@ -94,12 +127,8 @@ func (p *Plugin) avreportSource(post *model.Post) (avreport.Source, bool) {
 }
 
 func (p *Plugin) messageShowsAvReport(post *model.Post) bool {
-	if !p.avreportCardEnabled() {
-		return false
-	}
-
 	source, ok := p.avreportSource(post)
-	if !ok {
+	if !ok || !p.avreportSurfaceEnabled(source) {
 		return false
 	}
 

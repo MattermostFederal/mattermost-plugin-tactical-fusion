@@ -124,7 +124,18 @@ func (d *Decorator) ExpandMessage(href, trail string, params url.Values) string 
 		return ""
 	}
 
-	return reportTable(href, trail, report)
+	return reportTable(href, trail, report, true)
+}
+
+func Expanded(href string, report Report) (string, bool) {
+	if href == "" || strings.Contains(report.Raw, "```") {
+		return "", false
+	}
+	if !strings.Contains(report.Raw, "\n") {
+		return reportTable(href, "", report, true), true
+	}
+
+	return "```\n" + report.Raw + "\n```\n" + reportTable(href, "", report, false), true
 }
 
 func (d *Decorator) kindEnabled(kind string) bool {
@@ -145,7 +156,7 @@ func KindEnabled(formats Formats, kind string) bool {
 
 func Validate(params url.Values) (Report, bool) {
 	value := params.Get(ParamValue)
-	if value == "" || strings.ContainsAny(value, "\r\n") || utf8Runes(value) > MaxSourceRunes {
+	if value == "" || utf8Runes(value) > MaxSourceRunes {
 		return Report{}, false
 	}
 

@@ -137,6 +137,17 @@ func (p *Plugin) avreportCardEnabled() bool {
 	return config.EnableAvReport && config.EnableAvReportCard
 }
 
+func (p *Plugin) avreportRendersEnabled() bool {
+	return p.avreportCardEnabled() || p.avreportFormats().Table
+}
+
+func (p *Plugin) avreportSurfaceEnabled(source avreport.Source) bool {
+	if source.Kind == avreport.SourceMessage {
+		return p.avreportRendersEnabled()
+	}
+	return p.avreportCardEnabled()
+}
+
 // locationMaps reports which surfaces the admin has left drawing a map.
 //
 // Two parents rather than one, because a map only ever appears behind a

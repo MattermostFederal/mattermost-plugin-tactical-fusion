@@ -14,7 +14,7 @@ export function fromParams(params: URLSearchParams): ReportLinkPayload | null {
     if (v === null || t === null || v === '' || !INSTANT.test(t)) {
         return null;
     }
-    if ((/[\r\n]/).test(v) || [...v].length > MAX_SOURCE_RUNES) {
+    if ([...v].length > MAX_SOURCE_RUNES) {
         return null;
     }
 

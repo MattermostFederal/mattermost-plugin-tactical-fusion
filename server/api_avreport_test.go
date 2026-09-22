@@ -94,3 +94,25 @@ func TestAvReportRefusesAHandEditedLink(t *testing.T) {
 		})
 	}
 }
+
+func TestAvReportAnswersTheMultiLineLinkTheTableWrites(t *testing.T) {
+	p, _ := newAPIPlugin(t)
+
+	report, err := avreport.Decode(reportTAF, hookRef)
+	if err != nil {
+		t.Fatal(err)
+	}
+	params := url.Values{avreport.ParamValue: {report.Raw}, avreport.ParamInstant: {"1787419200000"}}
+
+	rec := call(p, http.MethodGet, avreportPath+"?"+params.Encode(), testUserID, "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (%s)", rec.Code, rec.Body.String())
+	}
+	var got map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("not a report: %v", err)
+	}
+	if got["kind"] != avreport.KindTAF || got["src"] != reportTAF {
+		t.Errorf("body = %v", got)
+	}
+}
