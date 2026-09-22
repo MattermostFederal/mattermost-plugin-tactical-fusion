@@ -170,11 +170,11 @@ func TestSoleElementSpanCoversSiblings(t *testing.T) {
 // protected ranges exist to stop.
 func TestSoleElementSpanRefusesWhatIsProtected(t *testing.T) {
 	cases := map[string]string{
-		"unlabelled fence": "```\n<event uid=\"u\"/>\n```",
-		"labeled fence":    "```xml\n<event uid=\"u\"/>\n```",
-		"tilde fence":      "~~~\n<event uid=\"u\"/>\n~~~",
-		"inline code":      "`<event uid=\"u\"/>`",
-		"indented code":    "    <event uid=\"u\"/>",
+		"unlabeled fence": "```\n<event uid=\"u\"/>\n```",
+		"labeled fence":   "```xml\n<event uid=\"u\"/>\n```",
+		"tilde fence":     "~~~\n<event uid=\"u\"/>\n~~~",
+		"inline code":     "`<event uid=\"u\"/>`",
+		"indented code":   "    <event uid=\"u\"/>",
 	}
 
 	for name, message := range cases {

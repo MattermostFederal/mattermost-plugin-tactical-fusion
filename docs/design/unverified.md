@@ -148,3 +148,12 @@ timed.
 `public/` directory without a session. That is its behavior rather than
 something this repository can assert, and no test here can reach a running
 server to confirm it.
+
+**Which runs Mattermost autolinks.** `findProtectedRanges` now leaves an email
+address, an `@mention`, a `~channel` link and a `#hashtag` alone on the grounds
+that the server turns each into a link of its own, so rewriting inside one
+destroys it. The expressions were written from the documented shapes rather
+than from Mattermost's own parser, and whether `root@203.0.113.7` in particular
+becomes a `mailto:` has not been observed in a running server. The finding does
+not rest on it: rewriting the middle of a token the author typed as one thing is
+permanent whether or not anything else would have linked it.

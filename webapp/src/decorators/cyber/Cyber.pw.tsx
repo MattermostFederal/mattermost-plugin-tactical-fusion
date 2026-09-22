@@ -186,6 +186,25 @@ test.describe('earlier mentions', () => {
         await expect(panel.getByText('Earlier mentions could not be searched for.')).toBeVisible();
     });
 
+    test('follow the reader to another team without a remount', async ({mount}) => {
+        const panel = await mount(
+            <CyberHarness
+                surface='panel'
+                payload={CVE}
+                mentions='some'
+                nextTeam={TEAM}
+            />,
+        );
+
+        await expect(panel.getByTestId('mention-requests')).toHaveText('0');
+        await expect(panel.getByText('Earlier mentions', {exact: true})).toHaveCount(0);
+
+        await panel.getByRole('button', {name: 'Switch team'}).click();
+
+        await expect(panel.getByText('Earlier mentions', {exact: true})).toBeVisible();
+        await expect(panel.getByText('We are patching CVE-2021-44228 on the edge tonight.')).toBeVisible();
+    });
+
     test('are never asked for by the hover', async ({mount}) => {
         const card = await mount(
             <CyberHarness

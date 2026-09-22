@@ -66,6 +66,8 @@ func TestNothingElseDecorates(t *testing.T) {
 		"0.0.0.0 is unspecified",
 		"127.0.0.1 is loopback",
 		"::1 is loopback",
+		"::ffff:0102:0304 is a mapped address",
+		"::ffff:1.2.3.4 is the same one written out",
 		"deploy at 12:30:45 sharp",
 		"the mac 00:1A:2B:3C:4D:5E responded",
 		"use std::vector here",
@@ -149,18 +151,28 @@ func TestProtectedSpansAreNotDecorated(t *testing.T) {
 	}
 }
 
-func TestAConsumedTailOverlappingAMentionDeclines(t *testing.T) {
-	if decorated(t, "203.0.113.7,@bob") {
-		t.Fatalf("decorated across a mention: %q", decorate(t, "203.0.113.7,@bob"))
-	}
-	if !decorated(t, "203.0.113.7 @bob") {
-		t.Fatalf("a space before a mention should still decorate")
+func TestATokenEndingOnTheRuneBeforeAMentionStillDecorates(t *testing.T) {
+	for _, message := range []string{"203.0.113.7,@bob", "203.0.113.7 @bob", "CVE-2021-44228,#log4shell"} {
+		t.Run(message, func(t *testing.T) {
+			if !decorated(t, message) {
+				t.Fatalf("was not decorated")
+			}
+		})
 	}
 }
 
-func TestAnAddressAfterAnAtSignBoundToAWordDecorates(t *testing.T) {
-	if !decorated(t, "root@203.0.113.7") {
-		t.Fatalf("was not decorated")
+func TestATokenInsideAnEmailAddressIsNeverRewritten(t *testing.T) {
+	for _, message := range []string{
+		"root@203.0.113.7",
+		"Bounce from d41d8cd98f00b204e9800998ecf8427e@lists.example.mil",
+		"soc@203.0.113.7 is the relay",
+		"reply-to: cve-2021-44228@vendor.example.com",
+	} {
+		t.Run(message, func(t *testing.T) {
+			if decorated(t, message) {
+				t.Fatalf("decorated inside an address: %q", decorate(t, message))
+			}
+		})
 	}
 }
 
@@ -226,6 +238,7 @@ func TestRecognizeAsRequiresTheLinkToAgreeWithItself(t *testing.T) {
 		{KindAttack, "T9999", false},
 		{"nonsense", "CVE-2021-44228", false},
 		{KindIP, "1.2.3.4.5", false},
+		{KindIP, "::ffff:1.2.3.4", false},
 	}
 
 	for _, tc := range cases {
@@ -298,5 +311,41 @@ func TestThePageCachesPrivatelyAndBriefly(t *testing.T) {
 
 	if got := recorder.Header().Get("Cache-Control"); got != "private, max-age=60" {
 		t.Fatalf("Cache-Control %q", got)
+	}
+}
+
+func TestEveryRecognizedTokenReproducesItself(t *testing.T) {
+	tokens := []string{
+		"CVE-2021-44228", "cve-2021-44228", "CVE-1999-0001",
+		"CWE-79", "cwe-79", "CWE-502",
+		"T1059", "T1059.001", "TA0002",
+		"203.0.113.7", "8.8.8.8", "2001:db8::1", "2606:4700::1",
+		"44d88612fea8a8f36de82e1278abb02f",
+		"da39a3ee5e6b4b0d3255bfef95601890afd80709",
+		strings.Repeat("a", 64),
+		strings.ToUpper("da39a3ee5e6b4b0d3255bfef95601890afd80709"),
+	}
+
+	for _, token := range tokens {
+		t.Run(token, func(t *testing.T) {
+			kind, canonical, ok := Recognize(token)
+			if !ok {
+				t.Fatalf("%q is not recognized", token)
+			}
+			if !RecognizeAs(kind, canonical) {
+				t.Fatalf("%q canonicalizes to %q, which does not reproduce itself", token, canonical)
+			}
+			if !MatchesShape(kind, canonical) {
+				t.Fatalf("%q canonicalizes to %q, which its own shape refuses", token, canonical)
+			}
+		})
+	}
+}
+
+func TestEveryScannedKindHasAShapeThatAdmitsIt(t *testing.T) {
+	for _, kind := range Kinds {
+		if ShapeExpr(kind) == "" {
+			t.Errorf("%s has no shape expression", kind)
+		}
 	}
 }

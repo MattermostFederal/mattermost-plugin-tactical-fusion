@@ -585,9 +585,9 @@ func TestCotStampsABareEvent(t *testing.T) {
 // stop, and it is the one thing the bare scan must not do.
 func TestABareScanNeverReachesIntoCode(t *testing.T) {
 	cases := map[string]string{
-		"unlabelled fence": "```\n" + cotEventXML + "\n```",
-		"inline code":      "`" + cotEventXML + "`",
-		"indented code":    "    " + cotEventXML,
+		"unlabeled fence": "```\n" + cotEventXML + "\n```",
+		"inline code":     "`" + cotEventXML + "`",
+		"indented code":   "    " + cotEventXML,
 	}
 
 	for name, message := range cases {

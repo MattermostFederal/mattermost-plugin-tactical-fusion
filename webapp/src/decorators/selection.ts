@@ -1,3 +1,4 @@
+import {useSyncExternalStore} from 'react';
 import type {Store} from 'redux';
 
 /** What the RHS is currently showing. */
@@ -67,6 +68,22 @@ export function currentTeamId(): string {
     const id = state?.entities?.teams?.currentTeamId;
 
     return typeof id === 'string' ? id : '';
+}
+
+function subscribeToStore(onStoreChange: () => void): () => void {
+    if (!store) {
+        return () => undefined;
+    }
+
+    return store.subscribe(onStoreChange);
+}
+
+/**
+ * currentTeamId as a hook, so a panel that reads it re-renders when the reader
+ * switches team rather than holding the team it mounted under.
+ */
+export function useCurrentTeamId(): string {
+    return useSyncExternalStore(subscribeToStore, currentTeamId, currentTeamId);
 }
 
 export function openRhs(): void {

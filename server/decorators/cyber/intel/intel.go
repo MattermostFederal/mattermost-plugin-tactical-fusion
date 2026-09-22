@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 )
 
 type CVERecord struct {
@@ -81,14 +82,56 @@ func (e *FileError) Error() string { return e.Path + ": " + e.Err.Error() }
 
 func (e *FileError) Unwrap() error { return e.Err }
 
+var ErrNoDataset = errors.New("cyber: no such dataset is installed")
+
 type Set struct {
-	dirs     []string
-	datasets map[string]*Dataset
-	mmdbs    []*mmdbReader
+	dirs       []string
+	datasets   map[string]*Dataset
+	mmdbs      []*mmdbReader
+	candidates map[string]fingerprint
+}
+
+type fingerprint struct {
+	size    int64
+	modTime time.Time
+}
+
+func scanCandidates(dirs []string) map[string]fingerprint {
+	found := map[string]fingerprint{}
+
+	for _, dir := range dirs {
+		if strings.TrimSpace(dir) == "" {
+			continue
+		}
+
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			continue
+		}
+
+		for _, entry := range entries {
+			name := entry.Name()
+			if entry.IsDir() || !(strings.HasSuffix(name, Suffix) || strings.HasSuffix(name, MMDBSuffix)) {
+				continue
+			}
+
+			info, err := entry.Info()
+			if err != nil {
+				continue
+			}
+			found[filepath.Join(dir, name)] = fingerprint{size: info.Size(), modTime: info.ModTime()}
+		}
+	}
+
+	return found
 }
 
 func Open(dirs []string) (*Set, []*FileError) {
-	set := &Set{dirs: append([]string(nil), dirs...), datasets: map[string]*Dataset{}}
+	set := &Set{
+		dirs:       append([]string(nil), dirs...),
+		datasets:   map[string]*Dataset{},
+		candidates: scanCandidates(dirs),
+	}
 
 	var problems []*FileError
 
@@ -194,31 +237,13 @@ func (s *Set) Changed(dirs []string) bool {
 		return true
 	}
 
-	found := 0
-	for _, dir := range dirs {
-		if strings.TrimSpace(dir) == "" {
-			continue
-		}
-		entries, err := os.ReadDir(dir)
-		if err != nil {
-			continue
-		}
-		for _, entry := range entries {
-			name := entry.Name()
-			if entry.IsDir() {
-				continue
-			}
-			if strings.HasSuffix(name, Suffix) || strings.HasSuffix(name, MMDBSuffix) {
-				found++
-			}
-		}
-	}
-	if found != len(s.datasets)+len(s.mmdbs) {
+	current := scanCandidates(dirs)
+	if len(current) != len(s.candidates) {
 		return true
 	}
-
-	for _, dataset := range s.datasets {
-		if dataset.changed() {
+	for path, now := range current {
+		was, known := s.candidates[path]
+		if !known || now.size != was.size || !now.modTime.Equal(was.modTime) {
 			return true
 		}
 	}
@@ -271,27 +296,22 @@ func (s *Set) Generated(name string) string {
 	return ""
 }
 
-func (s *Set) lookup(name, key string) ([]string, bool) {
+func (s *Set) lookup(name, key string) ([]string, error) {
 	if s == nil {
-		return nil, false
+		return nil, ErrNoDataset
 	}
 	dataset, ok := s.datasets[name]
 	if !ok {
-		return nil, false
+		return nil, ErrNoDataset
 	}
 
-	row, err := dataset.file.Lookup(key)
-	if err != nil {
-		return nil, false
-	}
-
-	return row, true
+	return dataset.file.Lookup(key)
 }
 
-func (s *Set) CVE(id string) (CVERecord, bool) {
-	row, ok := s.lookup(NameCVE, id)
-	if !ok {
-		return CVERecord{}, false
+func (s *Set) CVE(id string) (CVERecord, error) {
+	row, err := s.lookup(NameCVE, id)
+	if err != nil {
+		return CVERecord{}, err
 	}
 
 	return CVERecord{
@@ -303,22 +323,22 @@ func (s *Set) CVE(id string) (CVERecord, bool) {
 		Vector:     row[5],
 		Weaknesses: splitList(row[6]),
 		Summary:    row[7],
-	}, true
+	}, nil
 }
 
-func (s *Set) EPSS(id string) (EPSSRecord, bool) {
-	row, ok := s.lookup(NameEPSS, id)
-	if !ok {
-		return EPSSRecord{}, false
+func (s *Set) EPSS(id string) (EPSSRecord, error) {
+	row, err := s.lookup(NameEPSS, id)
+	if err != nil {
+		return EPSSRecord{}, err
 	}
 
-	return EPSSRecord{ID: row[0], Score: row[1], Percentile: row[2], ModelDate: row[3]}, true
+	return EPSSRecord{ID: row[0], Score: row[1], Percentile: row[2], ModelDate: row[3]}, nil
 }
 
-func (s *Set) KEV(id string) (KEVRecord, bool) {
-	row, ok := s.lookup(NameKEV, id)
-	if !ok {
-		return KEVRecord{}, false
+func (s *Set) KEV(id string) (KEVRecord, error) {
+	row, err := s.lookup(NameKEV, id)
+	if err != nil {
+		return KEVRecord{}, err
 	}
 
 	return KEVRecord{
@@ -328,7 +348,7 @@ func (s *Set) KEV(id string) (KEVRecord, bool) {
 		Ransomware: row[3],
 		Product:    row[4],
 		Action:     row[5],
-	}, true
+	}, nil
 }
 
 func splitList(field string) []string {
@@ -343,10 +363,10 @@ func IPKey(addr netip.Addr) string {
 	return hex.EncodeToString(as16[:])
 }
 
-func (s *Set) IP(addr netip.Addr) IPRecord {
+func (s *Set) IP(addr netip.Addr) (IPRecord, error) {
 	var record IPRecord
 	if s == nil || !addr.IsValid() {
-		return record
+		return record, ErrNoDataset
 	}
 
 	for _, reader := range s.mmdbs {
@@ -357,19 +377,37 @@ func (s *Set) IP(addr netip.Addr) IPRecord {
 		}
 	}
 
-	if dataset, ok := s.datasets[NameIP]; ok {
-		key := IPKey(addr)
-		if row, err := dataset.file.LookupRange(key); err == nil && len(row) == 7 && row[0] <= key && key <= row[1] {
-			fill(&record.ASN, row[2])
-			fill(&record.ASName, row[3])
-			fill(&record.Country, row[4])
-			fill(&record.Region, row[5])
-			fill(&record.City, row[6])
-			record.Sources = appendOnce(record.Sources, NameIP)
-		}
+	err := s.fillFromRanges(addr, &record)
+	if !record.Empty() {
+		return record, nil
 	}
 
-	return record
+	return record, err
+}
+
+func (s *Set) fillFromRanges(addr netip.Addr, record *IPRecord) error {
+	dataset, ok := s.datasets[NameIP]
+	if !ok {
+		return ErrNoDataset
+	}
+
+	key := IPKey(addr)
+	row, err := dataset.file.LookupRange(key)
+	switch {
+	case err != nil:
+		return err
+	case len(row) != 7 || row[0] > key || key > row[1]:
+		return ErrNotFound
+	}
+
+	fill(&record.ASN, row[2])
+	fill(&record.ASName, row[3])
+	fill(&record.Country, row[4])
+	fill(&record.Region, row[5])
+	fill(&record.City, row[6])
+	record.Sources = appendOnce(record.Sources, NameIP)
+
+	return nil
 }
 
 func fill(into *string, value string) {

@@ -38,6 +38,19 @@ var britishSpellings = []string{
 // is an HTML attribute and `greyscale` is not a word this list is about.
 var britishPattern = regexp.MustCompile(`(?i)\b(` + strings.Join(britishSpellings, "|") + `)\b`)
 
+// The doubled-l family again, this time with whatever prefix a writer reached
+// for. A leading boundary let `mislabelled` through the list above for as long
+// as `labelled` was on it, which is the whole point of a guard that is supposed
+// to stop the spelling drifting back.
+var britishSuffixes = []string{
+	"labelled", "labelling", "labeller", "labellers",
+	"cancelled", "cancelling", "travelled", "travelling",
+	"modelled", "modelling", "signalled", "signalling",
+	"fuelled", "fuelling", "levelled", "levelling",
+}
+
+var britishSuffixPattern = regexp.MustCompile(`(?i)\w*(` + strings.Join(britishSuffixes, "|") + `)\b`)
+
 // Roots that are this project's own source. Everything outside them is either a
 // build artifact or somebody else's.
 var spellingRoots = []string{"../server", "../webapp/src", "../docs", "../public/help", "../build"}
@@ -121,12 +134,15 @@ func checkSpellingIn(t *testing.T, path string) {
 	}
 
 	for number, line := range strings.Split(string(raw), "\n") {
-		for _, found := range britishPattern.FindAllString(line, -1) {
-			if exempt[strings.ToLower(found)] {
+		found := britishPattern.FindAllString(line, -1)
+		found = append(found, britishSuffixPattern.FindAllString(line, -1)...)
+
+		for _, word := range found {
+			if exempt[strings.ToLower(word)] {
 				continue
 			}
 			t.Errorf("%s:%d uses the British spelling %q; this project is US English",
-				path, number+1, found)
+				path, number+1, word)
 		}
 	}
 }

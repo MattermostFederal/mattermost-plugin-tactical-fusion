@@ -134,7 +134,7 @@ func TestAirfieldTableShowsSeaLevel(t *testing.T) {
 // The link is the airfield's NAME, and the author's own token survives as the
 // Code row.
 //
-// Both halves matter. Relabelling the link is what this decorator refused while
+// Both halves matter. Relabeling the link is what this decorator refused while
 // the stored message was only a link, and the table concedes it because the name
 // is in the message either way. The Code row is what is not conceded: without
 // it the string the author typed appears nowhere, and searching for the code

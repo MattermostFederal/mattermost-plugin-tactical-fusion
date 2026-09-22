@@ -220,9 +220,6 @@ func TestTokensOutsideProtectedSpansAreDecorated(t *testing.T) {
 			"`AAA` and [AAA](" + testPrefix + "/tok?v=AAA)",
 		},
 		{
-			// The mention expression requires a non-word rune before the "@",
-			// so an address inside an email-shaped run is not a mention and is
-			// still decorated.
 			"after an at sign bound to a word",
 			"mail ops@AAA today",
 			"mail ops@[AAA](" + testPrefix + "/tok?v=AAA) today",
@@ -247,13 +244,29 @@ func TestTokensOutsideProtectedSpansAreDecorated(t *testing.T) {
 			"@bob please check [AAA](" + testPrefix + "/tok?v=AAA)",
 		},
 		{
-			// The mention's leading context rune joins the protected range, so
-			// the span starts at the comma. A token that stops before it does
-			// not overlap and is still decorated; one whose own pattern
-			// consumes that comma does overlap, and is not.
 			"token immediately before a mention",
 			"AAA,@bob",
 			"[AAA](" + testPrefix + "/tok?v=AAA),@bob",
+		},
+		{
+			"a second hashtag joined to the first",
+			"#recon.#AAA",
+			"#recon.#AAA",
+		},
+		{
+			"a hashtag outside the ASCII alphabet",
+			"#\u00dcbung-AAA",
+			"#\u00dcbung-AAA",
+		},
+		{
+			"inside an email address",
+			"bounce from ops.AAA@lists.example.mil",
+			"bounce from ops.AAA@lists.example.mil",
+		},
+		{
+			"an email address whose host carries the token",
+			"mail root@AAA.example.mil",
+			"mail root@AAA.example.mil",
 		},
 	}
 

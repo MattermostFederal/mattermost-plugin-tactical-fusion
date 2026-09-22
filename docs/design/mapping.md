@@ -951,7 +951,7 @@ Derived server-side by point-in-polygon against `mapdata.Countries`, with a
 per-feature bounding box as a prefilter, and served as a **string** over the
 wire, which is what `/api/v1/convert` is for.
 
-**It is no longer a row.** It was one, on the grounds that an unlabelled 110m
+**It is no longer a row.** It was one, on the grounds that an unlabeled 110m
 coastline at 300 px identifies Italy and does not identify Chad from Niger, and
 that a row answers that with the map hidden, with no WebGL, and with the basemap
 unavailable. Retiring it gives up exactly that: the country now reaches a reader

@@ -134,7 +134,7 @@ func TestEveryConfigurationFieldHasASetting(t *testing.T) {
 //
 // A section with no key is refused by the server outright (PluginSettingsSection
 // .IsValid), which makes the whole plugin fail to load rather than merely look
-// wrong. A section with no title renders as an unlabelled group, which is worse
+// wrong. A section with no title renders as an unlabeled group, which is worse
 // than no grouping at all.
 func TestEverySettingBelongsToANamedSection(t *testing.T) {
 	schema := loadSettings(t).SettingsSchema

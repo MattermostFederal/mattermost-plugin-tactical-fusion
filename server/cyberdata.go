@@ -18,7 +18,6 @@ type cyberDatasets struct {
 	lock sync.Mutex
 
 	set     *intel.Set
-	dirs    []string
 	checked time.Time
 }
 
@@ -43,12 +42,7 @@ func (p *Plugin) cyberIntel() *intel.Set {
 			"error_code", cyberProblemCode(problem), "path", problem.Path, "error", problem.Err.Error())
 	}
 
-	if p.cyber.set != nil {
-		p.cyber.set.Close()
-	}
-
 	p.cyber.set = set
-	p.cyber.dirs = dirs
 	p.cyber.checked = time.Now()
 
 	return set
@@ -110,10 +104,6 @@ func (p *Plugin) forgetCyberDatasets() {
 	p.cyber.lock.Lock()
 	defer p.cyber.lock.Unlock()
 
-	if p.cyber.set != nil {
-		p.cyber.set.Close()
-	}
 	p.cyber.set = nil
-	p.cyber.dirs = nil
 	p.cyber.checked = time.Time{}
 }

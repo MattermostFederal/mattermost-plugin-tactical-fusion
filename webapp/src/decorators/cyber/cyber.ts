@@ -13,7 +13,13 @@ import {CACHE_TTL_MS} from '../../preferences/store';
 
 export const KINDS = ['cve', 'cwe', 'attack', 'ip', 'hash'] as const;
 
-export const SHAPES: Record<string, RegExp> = {
+export type CyberKind = typeof KINDS[number];
+
+export function isKind(value: string): value is CyberKind {
+    return (KINDS as readonly string[]).includes(value);
+}
+
+export const SHAPES: Record<CyberKind, RegExp> = {
     cve: /^(?:CVE-\d{4}-\d{4,7})$/,
     cwe: /^(?:CWE-[1-9]\d{0,4})$/,
     attack: /^(?:TA\d{4}|T\d{4}(?:\.\d{3})?)$/,
@@ -21,7 +27,7 @@ export const SHAPES: Record<string, RegExp> = {
     hash: /^(?:[0-9a-f]{32}|[0-9a-f]{40}|[0-9a-f]{64})$/,
 };
 
-export const KIND_LABELS: Record<string, string> = {
+export const KIND_LABELS: Record<CyberKind, string> = {
     cve: 'Vulnerability',
     cwe: 'Weakness',
     attack: 'ATT&CK',
@@ -30,8 +36,7 @@ export const KIND_LABELS: Record<string, string> = {
 };
 
 export function matchesShape(kind: string, value: string): boolean {
-    const shape = SHAPES[kind];
-    return Boolean(shape) && shape.test(value);
+    return isKind(kind) && SHAPES[kind].test(value);
 }
 
 export type CyberStatus = 'loading' | 'ready' | 'failed' | 'rejected';
@@ -82,8 +87,13 @@ function asRows(value: unknown[]): CyberRow[] {
 function asLinks(value: unknown[]): CyberLink[] {
     return value.map((entry) => {
         const link = asObject(entry, 'a related link');
+        const kind = asString(link, 'kind');
+        if (!isKind(kind)) {
+            throw new Error('The server returned a related link of an unknown kind.');
+        }
+
         return {
-            kind: asString(link, 'kind'),
+            kind,
             value: asString(link, 'value'),
             label: asString(link, 'label'),
         };

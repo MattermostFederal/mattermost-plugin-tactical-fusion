@@ -92,7 +92,7 @@ func whyNothingMatched() string {
 		"left alone, because nothing can be said about them.\n" +
 		"- **A hexadecimal run that is not 32, 40 or 64 digits.** Those three are MD5, SHA-1 " +
 		"and SHA-256; anything else is left alone. A label has to agree with the length, so " +
-		"`md5:` in front of 64 digits is declined rather than mislabelled.\n" +
+		"`md5:` in front of 64 digits is declined rather than mislabeled.\n" +
 		"- **Inside a mention, a channel link or a hashtag.** Mattermost turns those into links " +
 		"of its own, so they are never rewritten.\n\n" +
 		"See the [documentation](" + docsPath() + ") for every recognized format and the full declined list."

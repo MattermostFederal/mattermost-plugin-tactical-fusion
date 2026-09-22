@@ -6,10 +6,12 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/cyber"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/cyber/intel"
 )
 
 func cyberWebappSource(t *testing.T, name string) string {
@@ -224,6 +226,91 @@ func TestWebappCyberShapeExpressionsMatch(t *testing.T) {
 		}
 		if found[1] != cyber.ShapeExpr(kind) {
 			t.Errorf("%s shape: Go has %q and the webapp %q", kind, cyber.ShapeExpr(kind), found[1])
+		}
+	}
+}
+
+func cyberGeneratorSource(t *testing.T) string {
+	t.Helper()
+
+	path := filepath.Join("..", "build", "cyberdata", "main.go")
+	source, err := os.ReadFile(path) // #nosec G304 -- a fixed, repo-relative path
+	if err != nil {
+		t.Fatalf("reading %s: %v", path, err)
+	}
+
+	return string(source)
+}
+
+func cyberReaderSource(t *testing.T, name string) string {
+	t.Helper()
+
+	path := filepath.Join("decorators", "cyber", "intel", name)
+	source, err := os.ReadFile(path) // #nosec G304 -- a fixed, repo-relative path
+	if err != nil {
+		t.Fatalf("reading %s: %v", path, err)
+	}
+
+	return string(source)
+}
+
+func goFuncBody(t *testing.T, source, signature string) string {
+	t.Helper()
+
+	found := regexp.MustCompile(`(?s)\nfunc ` + regexp.QuoteMeta(signature) + ` \{\n(.*?)\n\}\n`).FindStringSubmatch(source)
+	if found == nil {
+		t.Fatalf("no func %s; if it was renamed, point this test at the new name rather than deleting it", signature)
+	}
+
+	return strings.TrimSpace(found[1])
+}
+
+func TestTheCyberGeneratorStampsWhatTheReaderReads(t *testing.T) {
+	generator := cyberGeneratorSource(t)
+
+	prefix := regexp.MustCompile(`schemaPrefix\s+= "([^"]+)"`).FindStringSubmatch(generator)
+	if prefix == nil {
+		t.Fatal("no schemaPrefix in build/cyberdata/main.go; if it was renamed, point this test " +
+			"at the new name rather than deleting it")
+	}
+	if prefix[1] != intel.SchemaPrefix {
+		t.Errorf("the generator stamps %q and the reader requires %q", prefix[1], intel.SchemaPrefix)
+	}
+
+	version := regexp.MustCompile(`schemaVersion\s+= (\d+)`).FindStringSubmatch(generator)
+	if version == nil {
+		t.Fatal("no schemaVersion in build/cyberdata/main.go; if it was renamed, point this test " +
+			"at the new name rather than deleting it")
+	}
+
+	stamped, err := strconv.Atoi(version[1])
+	if err != nil {
+		t.Fatalf("unparsable schemaVersion %q: %v", version[1], err)
+	}
+	if stamped != intel.SchemaVersion {
+		t.Errorf("the generator stamps schema %d and the reader reads %d", stamped, intel.SchemaVersion)
+	}
+}
+
+func TestTheCyberGeneratorKeysAddressesTheWayTheReaderDoes(t *testing.T) {
+	built := goFuncBody(t, cyberGeneratorSource(t), "ipKey(addr netip.Addr) string")
+	read := goFuncBody(t, cyberReaderSource(t, "intel.go"), "IPKey(addr netip.Addr) string")
+
+	if built != read {
+		t.Errorf("the generator keys an address as\n\t%s\nand the reader as\n\t%s",
+			strings.ReplaceAll(built, "\n", "\n\t"), strings.ReplaceAll(read, "\n", "\n\t"))
+	}
+}
+
+func TestTheCyberGeneratorWritesEveryDatasetTheReaderReads(t *testing.T) {
+	generator := cyberGeneratorSource(t)
+
+	for _, name := range intel.Names {
+		if name == intel.NameWatchlist {
+			continue
+		}
+		if !strings.Contains(generator, `"`+name+`"`) {
+			t.Errorf("the reader reads %q and the generator never names it", name)
 		}
 	}
 }

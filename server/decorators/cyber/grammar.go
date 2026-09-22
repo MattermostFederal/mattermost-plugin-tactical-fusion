@@ -157,7 +157,7 @@ func canonicalIP(value string) (string, bool) {
 	if err != nil {
 		return "", false
 	}
-	if addr.Zone() != "" || addr.IsUnspecified() || addr.IsLoopback() {
+	if addr.Zone() != "" || addr.Is4In6() || addr.IsUnspecified() || addr.IsLoopback() {
 		return "", false
 	}
 

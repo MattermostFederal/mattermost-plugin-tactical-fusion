@@ -1,13 +1,13 @@
 import React from 'react';
 
-import {KIND_LABELS, useCyber} from './cyber';
+import {KIND_LABELS, isKind, useCyber} from './cyber';
 import type {CyberState} from './cyber';
 import {useMentions} from './mentions';
 import type {CyberLink, CyberMention} from './types';
 
 import LinkButton from '../../components/LinkButton';
 import CopyButton from '../location/CopyButton';
-import {currentTeamId, setSelection} from '../selection';
+import {setSelection, useCurrentTeamId} from '../selection';
 
 import type {CyberPayload} from './index';
 
@@ -159,7 +159,7 @@ const Mention: React.FC<{mention: CyberMention}> = ({mention}) => {
 };
 
 const Mentions: React.FC<{payload: CyberPayload}> = ({payload}) => {
-    const team = currentTeamId();
+    const team = useCurrentTeamId();
     const state = useMentions(team, payload.kind, payload.value);
 
     if (state.status === 'idle') {
@@ -274,7 +274,7 @@ const CyberPanel: React.FC<{payload: CyberPayload}> = ({payload}) => {
     const state = useCyber(payload.kind, payload.value);
 
     return (
-        <div aria-label={KIND_LABELS[payload.kind] ?? 'Cyber context'}>
+        <div aria-label={isKind(payload.kind) ? KIND_LABELS[payload.kind] : 'Cyber context'}>
             {renderBody(state, payload)}
         </div>
     );

@@ -98,12 +98,25 @@ let onRequest: (() => void) | null = null;
 let onMentionsRequest: (() => void) | null = null;
 let setups = 0;
 
-const noopStore = {
-    getState: () => ({entities: {teams: {currentTeamId: ''}}}),
+const teamListeners = new Set<() => void>();
+let currentTeam = '';
+
+const testStore = {
+    getState: () => ({entities: {teams: {currentTeamId: currentTeam}}}),
     dispatch: () => undefined,
-    subscribe: () => () => undefined,
+    subscribe: (listener: () => void) => {
+        teamListeners.add(listener);
+        return () => {
+            teamListeners.delete(listener);
+        };
+    },
     replaceReducer: () => undefined,
 };
+
+function switchTeam(id: string): void {
+    currentTeam = id;
+    teamListeners.forEach((listener) => listener());
+}
 
 const CyberHarness: React.FC<{
     surface: 'panel' | 'hover';
@@ -112,7 +125,8 @@ const CyberHarness: React.FC<{
     reply?: Reply;
     mentions?: MentionsReply;
     team?: string;
-}> = ({surface, payload, second, reply = 'found', mentions = 'none', team = ''}) => {
+    nextTeam?: string;
+}> = ({surface, payload, second, reply = 'found', mentions = 'none', team = '', nextTeam}) => {
     const [requests, setRequests] = React.useState(0);
     const [mentionRequests, setMentionRequests] = React.useState(0);
     const [shown, setShown] = React.useState(payload);
@@ -123,10 +137,9 @@ const CyberHarness: React.FC<{
         resetMentions();
         resetSelection();
 
-        initRhs({
-            ...noopStore,
-            getState: () => ({entities: {teams: {currentTeamId: team}}}),
-        } as never, null, null);
+        teamListeners.clear();
+        currentTeam = team;
+        initRhs(testStore as never, null, null);
 
         onRequest = () => setRequests((n) => n + 1);
         onMentionsRequest = () => setMentionRequests((n) => n + 1);
@@ -194,6 +207,12 @@ const CyberHarness: React.FC<{
                     type='button'
                     onClick={() => setShown(second)}
                 >{'Show the second'}</button>
+            )}
+            {nextTeam !== undefined && (
+                <button
+                    type='button'
+                    onClick={() => switchTeam(nextTeam)}
+                >{'Switch team'}</button>
             )}
         </div>
     );

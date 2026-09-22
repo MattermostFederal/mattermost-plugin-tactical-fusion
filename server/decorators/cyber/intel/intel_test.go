@@ -1,6 +1,7 @@
 package intel
 
 import (
+	"errors"
 	"fmt"
 	"net/netip"
 	"os"
@@ -58,8 +59,8 @@ func TestLookupFindsEveryRowIncludingTheEdges(t *testing.T) {
 
 	for i := 1; i <= 200; i++ {
 		id := fmt.Sprintf("CVE-2021-%04d", i)
-		record, ok := set.CVE(id)
-		if !ok {
+		record, err := set.CVE(id)
+		if err != nil {
 			t.Fatalf("%s was not found", id)
 		}
 		if record.Summary != fmt.Sprintf("row %d", i) {
@@ -86,7 +87,7 @@ func TestLookupDeclinesAKeyThatIsNotThere(t *testing.T) {
 		"CVE-1999-0001",
 		"CVE-2099-9999",
 	} {
-		if _, ok := set.CVE(id); ok {
+		if _, err := set.CVE(id); err == nil {
 			t.Errorf("%s was found and is not in the file", id)
 		}
 	}
@@ -98,7 +99,7 @@ func TestAnEmptyBodyFindsNothing(t *testing.T) {
 
 	set := openIn(t, dir)
 
-	if _, ok := set.CVE("CVE-2021-0001"); ok {
+	if _, err := set.CVE("CVE-2021-0001"); err == nil {
 		t.Fatalf("an empty dataset answered")
 	}
 	if !set.Has(NameCVE) {
@@ -112,17 +113,17 @@ func TestASingleRowIsFound(t *testing.T) {
 
 	set := openIn(t, dir)
 
-	record, ok := set.CVE("CVE-2021-44228")
-	if !ok {
+	record, err := set.CVE("CVE-2021-44228")
+	if err != nil {
 		t.Fatalf("the only row was not found")
 	}
 	if record.Severity != "Critical" || len(record.Weaknesses) != 1 || record.Weaknesses[0] != "CWE-502" {
 		t.Fatalf("row read back as %+v", record)
 	}
-	if _, ok := set.CVE("CVE-2021-44227"); ok {
+	if _, err := set.CVE("CVE-2021-44227"); err == nil {
 		t.Fatalf("a key below the only row was found")
 	}
-	if _, ok := set.CVE("CVE-2021-44229"); ok {
+	if _, err := set.CVE("CVE-2021-44229"); err == nil {
 		t.Fatalf("a key above the only row was found")
 	}
 }
@@ -194,8 +195,8 @@ func TestALaterDirectoryOverridesAnEarlierOneByName(t *testing.T) {
 
 	set := openIn(t, bundled, dropIn)
 
-	record, ok := set.CVE("CVE-2021-44228")
-	if !ok {
+	record, err := set.CVE("CVE-2021-44228")
+	if err != nil {
 		t.Fatalf("not found")
 	}
 	if record.Summary != "from the directory" {
@@ -227,7 +228,7 @@ func TestStatusesNameEveryDatasetPresentOrNot(t *testing.T) {
 func TestANilSetAnswersNothingAndStillReports(t *testing.T) {
 	var set *Set
 
-	if _, ok := set.CVE("CVE-2021-44228"); ok {
+	if _, err := set.CVE("CVE-2021-44228"); err == nil {
 		t.Fatalf("a nil set answered")
 	}
 	if set.Has(NameCVE) || set.Generated(NameCVE) != "" || set.Watchlist("x") != nil {
@@ -236,7 +237,7 @@ func TestANilSetAnswersNothingAndStillReports(t *testing.T) {
 	if len(set.Statuses()) != len(Names) {
 		t.Fatalf("a nil set did not report every dataset as absent")
 	}
-	if !set.IP(netip.MustParseAddr("203.0.113.7")).Empty() {
+	if record, _ := set.IP(netip.MustParseAddr("203.0.113.7")); !record.Empty() {
 		t.Fatalf("a nil set described an address")
 	}
 }
@@ -272,7 +273,10 @@ func TestIPRangesAreFoundForBothFamilies(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.addr, func(t *testing.T) {
-			record := set.IP(netip.MustParseAddr(tc.addr))
+			record, err := set.IP(netip.MustParseAddr(tc.addr))
+			if err != nil {
+				t.Fatalf("%s was not found: %v", tc.addr, err)
+			}
 			if record.ASN != tc.asn {
 				t.Fatalf("%s gave %q, want %q", tc.addr, record.ASN, tc.asn)
 			}
@@ -294,7 +298,7 @@ func TestAnAddressOutsideEveryRangeDescribesNothing(t *testing.T) {
 	set := openIn(t, dir)
 
 	for _, addr := range []string{"8.8.7.255", "8.8.9.0", "1.1.1.1", "2001:db8::1"} {
-		if record := set.IP(netip.MustParseAddr(addr)); !record.Empty() {
+		if record, _ := set.IP(netip.MustParseAddr(addr)); !record.Empty() {
 			t.Errorf("%s was described as %+v", addr, record)
 		}
 	}
@@ -405,5 +409,180 @@ func TestAMissingDirectoryIsNotAProblem(t *testing.T) {
 	}
 	if len(set.Statuses()) != len(Names) {
 		t.Fatalf("statuses were not reported")
+	}
+}
+
+func TestTrailingBlankLinesDoNotHideRows(t *testing.T) {
+	long := strings.Repeat("z", 10000)
+
+	cases := map[string]struct {
+		rows    []string
+		trailer string
+	}{
+		"one blank after one row":    {[]string{"CVE-2021-0001"}, "\n"},
+		"one blank after two rows":   {[]string{"CVE-2021-0001", "CVE-2021-0002"}, "\n"},
+		"two blanks":                 {[]string{"CVE-2021-0001", "CVE-2021-0002"}, "\n\n"},
+		"a blank after a long row":   {[]string{"CVE-2021-0001", "CVE-2021-0002", "CVE-2021-0003"}, "\n"},
+		"no trailing newline at all": {[]string{"CVE-2021-0001", "CVE-2021-0002"}, ""},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+
+			body := stamp(NameCVE)
+			for i, id := range tc.rows {
+				tail := "summary"
+				if name == "a blank after a long row" && i == len(tc.rows)-1 {
+					tail = long
+				}
+				body += cveRow(id, tail) + "\n"
+			}
+			if tc.trailer == "" {
+				body = strings.TrimSuffix(body, "\n")
+			} else {
+				body += strings.TrimPrefix(tc.trailer, "\n")
+			}
+
+			path := filepath.Join(dir, NameCVE+Suffix)
+			if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+				t.Fatalf("writing: %v", err)
+			}
+
+			set := openIn(t, dir)
+
+			for _, id := range tc.rows {
+				if _, err := set.CVE(id); err != nil {
+					t.Errorf("%s is in the file and reports as absent", id)
+				}
+			}
+		})
+	}
+}
+
+func TestABodyOfBlankLinesFindsNothing(t *testing.T) {
+	dir := t.TempDir()
+
+	path := filepath.Join(dir, NameCVE+Suffix)
+	if err := os.WriteFile(path, []byte(stamp(NameCVE)+"\n\n\n"), 0o600); err != nil {
+		t.Fatalf("writing: %v", err)
+	}
+
+	set := openIn(t, dir)
+
+	if _, err := set.CVE("CVE-2021-0001"); err == nil {
+		t.Fatalf("a body of blank lines answered")
+	}
+}
+
+func TestASkippedFileDoesNotForceAPermanentReopen(t *testing.T) {
+	cases := map[string]func(dir string){
+		"a file with no stamp": func(dir string) {
+			os.WriteFile(filepath.Join(dir, NameCVE+Suffix), []byte("CVE-2021-0001\ta\n"), 0o600)
+		},
+		"a name this build does not read": func(dir string) {
+			writeDataset(t, dir, "notes")
+		},
+		"a vendor database this build cannot classify": func(dir string) {
+			os.WriteFile(filepath.Join(dir, "something"+MMDBSuffix), []byte("not a database"), 0o600)
+		},
+	}
+
+	for name, write := range cases {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			writeDataset(t, dir, NameKEV)
+			write(dir)
+
+			set, _ := Open([]string{dir})
+			t.Cleanup(set.Close)
+
+			if set.Changed([]string{dir}) {
+				t.Fatalf("an untouched directory reports as changed, so every request reopens")
+			}
+		})
+	}
+}
+
+func TestTheDocumentedOverrideIsNotAPermanentChange(t *testing.T) {
+	bundled, dropIn := t.TempDir(), t.TempDir()
+
+	writeDataset(t, bundled, NameKEV)
+	writeDataset(t, dropIn, NameKEV)
+
+	set := openIn(t, bundled, dropIn)
+
+	if set.Changed([]string{bundled, dropIn}) {
+		t.Fatalf("the documented override reports as changed on an untouched directory")
+	}
+}
+
+func TestAReplacedVendorDatabaseIsNoticed(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "GeoLite2-ASN"+MMDBSuffix)
+
+	if err := os.WriteFile(path, []byte("not a database"), 0o600); err != nil {
+		t.Fatalf("writing: %v", err)
+	}
+
+	set, _ := Open([]string{dir})
+	t.Cleanup(set.Close)
+
+	if set.Changed([]string{dir}) {
+		t.Fatalf("an untouched vendor database reports as changed")
+	}
+
+	if err := os.WriteFile(path, []byte("not a database, and longer than before"), 0o600); err != nil {
+		t.Fatalf("rewriting: %v", err)
+	}
+
+	if !set.Changed([]string{dir}) {
+		t.Fatalf("a replaced vendor database was not noticed")
+	}
+}
+
+func TestAReadFailureIsNotAMissingRow(t *testing.T) {
+	dir := t.TempDir()
+	writeDataset(t, dir, NameCVE, strings.Join([]string{
+		"CVE-2021-44228", "2021-12-10", "2021-12-14", "10.0", "Critical", "AV:N", "CWE-502", "Log4Shell",
+	}, "\t"))
+
+	set := openIn(t, dir)
+
+	if _, err := set.CVE("CVE-2021-44228"); err != nil {
+		t.Fatalf("the row was not readable to begin with: %v", err)
+	}
+
+	if err := set.datasets[NameCVE].handle.Close(); err != nil {
+		t.Fatalf("closing: %v", err)
+	}
+
+	_, err := set.CVE("CVE-2021-44228")
+	switch {
+	case err == nil:
+		t.Fatalf("a closed file answered")
+	case errors.Is(err, ErrNotFound):
+		t.Fatalf("a read failure was reported as a missing row")
+	case errors.Is(err, ErrNoDataset):
+		t.Fatalf("a read failure was reported as a missing dataset")
+	}
+}
+
+func TestAMissingDatasetAndAMissingRowAreDifferentErrors(t *testing.T) {
+	dir := t.TempDir()
+	writeDataset(t, dir, NameCVE, strings.Join([]string{
+		"CVE-2021-44228", "2021-12-10", "2021-12-14", "10.0", "Critical", "AV:N", "CWE-502", "Log4Shell",
+	}, "\t"))
+
+	set := openIn(t, dir)
+
+	if _, err := set.CVE("CVE-2021-44227"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("a key the file does not hold gave %v", err)
+	}
+	if _, err := set.KEV("CVE-2021-44228"); !errors.Is(err, ErrNoDataset) {
+		t.Fatalf("a dataset that is not installed gave %v", err)
+	}
+	if _, err := set.IP(netip.MustParseAddr("203.0.113.7")); !errors.Is(err, ErrNoDataset) {
+		t.Fatalf("an address with no dataset at all gave %v", err)
 	}
 }

@@ -1,11 +1,13 @@
 package cyber
 
 import (
+	"errors"
 	"net/netip"
 	"strconv"
 	"strings"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/cyber/intel"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
 type Row struct {
@@ -105,10 +107,16 @@ func datasetStatuses(set *intel.Set) []DatasetStatus {
 	return all
 }
 
-func missingDatasetSentence(set *intel.Set, name string) string {
+func datasetSentence(set *intel.Set, name string, err error) string {
 	label := datasetLabels[name]
-	if !set.Has(name) {
+
+	switch {
+	case errors.Is(err, intel.ErrNoDataset) || !set.Has(name):
 		return "No " + label + " dataset is installed."
+
+	case !errors.Is(err, intel.ErrNotFound):
+		return errcode.WithCode(errcode.CyberDataLookupFailed,
+			"The "+label+" dataset is installed and could not be read.")
 	}
 
 	generated := set.Generated(name)
@@ -137,9 +145,9 @@ func joinSentence(first, second string) string {
 }
 
 func describeCVE(d *Details, set *intel.Set) {
-	record, found := set.CVE(d.Value)
-	if !found {
-		d.Status = missingDatasetSentence(set, intel.NameCVE)
+	record, err := set.CVE(d.Value)
+	if err != nil {
+		d.Status = datasetSentence(set, intel.NameCVE, err)
 	} else {
 		d.Summary = record.Summary
 		addRow(d, "Published", record.Published)
@@ -156,11 +164,11 @@ func describeCVE(d *Details, set *intel.Set) {
 		d.Headline = severityText(record.Score, record.Severity)
 	}
 
-	if epss, ok := set.EPSS(d.Value); ok {
+	if epss, err := set.EPSS(d.Value); err == nil {
 		addRow(d, "EPSS", epssText(epss))
 	}
 
-	if kev, ok := set.KEV(d.Value); ok {
+	if kev, err := set.KEV(d.Value); err == nil {
 		addRow(d, "Known exploited", kevText(kev))
 		addRow(d, "Action due", kev.DueDate)
 		addRow(d, "Affected product", kev.Product)
@@ -324,7 +332,7 @@ func describeIP(d *Details, set *intel.Set) {
 	addRow(d, "Version", addressVersion(addr))
 	addRow(d, "Scope", AddressScope(addr))
 
-	record := set.IP(addr)
+	record, lookupErr := set.IP(addr)
 	addRow(d, "Autonomous system", joinFields(record.ASN, record.ASName))
 	addRow(d, "Country", record.Country)
 	addRow(d, "Region", record.Region)
@@ -337,7 +345,7 @@ func describeIP(d *Details, set *intel.Set) {
 			d.Headline = scope
 			return
 		}
-		d.Status = missingDatasetSentence(set, intel.NameIP)
+		d.Status = datasetSentence(set, intel.NameIP, lookupErr)
 		return
 	}
 

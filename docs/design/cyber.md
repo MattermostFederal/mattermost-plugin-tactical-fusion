@@ -99,6 +99,11 @@ the `:` and refuses. The check falls out of the grammar rather than needing
   `netip.ParseAddr` refuses. `std::vector` and a timestamp's `T12:30:45` are
   refused earlier still, by the guard's letter test.
 - A 33 digit hexadecimal run matches its first 32 and the guard sees a hex digit.
+- An IPv4-mapped address (`::ffff:203.0.113.7`) is refused. `Addr.String()`
+  renders it in the mapped spelling, `MatchesShape` holds a value to the
+  grammar it was recognized by, and the IPv6 grammar admits no dots: the
+  canonical form would therefore fail its own round-trip and the link would
+  never resolve, which is worse than not writing one.
 
 Two residual IPv6 shapes survive and are accepted rather than chased: an
 eight-group EUI-64 written with colons, and prose such as `cafe::babe`. Both
@@ -112,35 +117,59 @@ switch carries, it is noisy rather than confidently wrong, and
 `EnableCyberIP` turns it off. It is not the `EnableLocationUTM` class, which
 puts a real coordinate in the wrong place.
 
-### Mentions, channel links and hashtags are protected spans now
+### Mentions, channel links, hashtags and email addresses are protected spans now
 
 `findProtectedRanges` protected bare URLs and `www.` hosts because Mattermost
 autolinks them and rewriting inside one destroys the reader's link. `@user`,
-`~channel` and `#hashtag` are the same class and were not protected.
-`#CVE-2021-44228` would have been rewritten inside the hashtag.
+`~channel`, `#hashtag` and an email address are the same class and were not
+protected. `#CVE-2021-44228` would have been rewritten inside the hashtag.
 
-Three expressions were added, each with a consumed leading context rune so
-`~~strike~~` and a `##` heading stay out:
+The three sigil constructs are found by `sigilRanges`, which matches the run
+and then reads the rune before it, rather than by an expression that consumes
+that rune:
 
 ```
-(?:^|[^\w@])@[\w.\-]+
-(?:^|[^\w~])~[\w.\-]+
-(?:^|[^\w#])#[A-Za-z][\w.\-]*
+@[\w.\-]+       preceded by neither a word character nor "@"
+~[\w.\-]+       preceded by neither a word character nor "~"
+#[\p{L}][\p{L}\p{N}_.\-]*   preceded by neither a word character nor "#"
 ```
+
+The guard is checked rather than matched for the reason `Pattern.Boundary`
+exists at all: a pattern that consumes its own guard breaks the next match on
+the same line. The first spelling of these expressions did consume it, and
+`#recon.#CVE-2021-44228` was the result. `[\w.\-]+` swallows the dot, the scan
+resumed past it, the second hashtag got no range, and the CVE inside it was
+rewritten. The same shape held for `@a.@b` and `~a.~b`.
+
+Not consuming it also means a protected range starts at the sigil, so a token
+that ends on the rune immediately before one still decorates:
+`203.0.113.7,@bob` and `CVE-2021-44228,#log4shell` both decorate, where the
+consuming spelling declined them.
+
+The preceding-rune test is ASCII, matching RE2's `\w`, but the hashtag's own
+body is not: Mattermost hashtags take Unicode letters, and an ASCII-only
+expression left `#Übung-CVE-2021-44228` unprotected, which is the bug the
+expression was added to prevent one alphabet over.
+
+Email addresses are an ordinary expression in `inlineProtectedRes`, since they
+carry no sigil to guard:
+
+```
+[\w.+\-]+@[\w\-]+(?:\.[\w\-]+)+
+```
+
+The cyber grammars are the first patterns in this repository that can match
+inside one: no date-time group, coordinate or ICAO token occurs in an
+email-shaped run, but `root@203.0.113.7` and
+`d41d8cd98f00b204e9800998ecf8427e@lists.example.mil` both do. Rewriting half of
+one is a corruption by this repository's own definition, and it is permanent.
+The domain must carry a dot, which is what keeps the expression from claiming
+every `word@word` in prose; a bare `ops@AAA` is therefore not protected, and a
+test records that.
 
 **This is a framework change and it reaches every decorator.** A DTG written as
 `#091630Z` stops decorating, which is the safe direction. A sweep of every
 decorate-path fixture in the repository found nothing that flips.
-
-The consumed context rune joins the protected range, which produces two edges
-that are tested so they are deliberate rather than discovered later:
-
-- `203.0.113.7,@bob` does **not** decorate. The address pattern consumes the
-  comma, so its match overlaps the range the mention opens on that same comma.
-  `203.0.113.7 @bob` decorates, because a space is not consumed by either.
-- `root@203.0.113.7` **does** decorate. The mention expression needs a non-word
-  rune before the sigil, and `t` is a word character, so an email-shaped run is
-  not a mention.
 
 ### The datasets are files, searched in place
 
@@ -178,12 +207,37 @@ would hide. Its verdict vocabulary is free text, with `malicious`, `suspicious`
 and `benign` recognized for styling only, so a third-party export loads without
 being edited first.
 
+**The searchable body stops before any trailing blank line.** A blank line
+sorts below every real key while sitting at the end of the file, so the binary
+search narrows onto it and every row before it becomes unreachable. One
+trailing newline too many in a hand-edited watchlist, or a generator that
+writes a final separator, and the whole dataset answers "not listed" for
+everything in it. `searchableEnd` walks back over them at open, and
+`TestTrailingBlankLinesDoNotHideRows` pins it on the shapes that reproduce it:
+a single row, a long final row, and two blank lines.
+
 Handles live across lookups and are reopened when a file's size or modification
 time moves, or when the directory list changes, checked on a 5 second TTL. That
 is what makes a dataset dropped in visible within a few seconds with no
-restart, and it is why `Set.Changed` counts the files it finds as well as
-stating each one: a newly added dataset changes the count without changing any
-open file.
+restart.
+
+**`Set.Changed` fingerprints every file the scan considered, not every file it
+opened.** Fingerprinting only the datasets that opened means a file that was
+skipped (a wrong stamp, a name this build does not read, a vendor database that
+would not open) is invisible to the comparison, the count never matches, and
+the set is rebuilt on every request for as long as that file sits in the
+directory. Reopening a 70 MB CVE file every five seconds because somebody left
+a README in there is not a cost worth paying, and the fix is to count what was
+looked at rather than what was used.
+
+**A set is never closed while it is in use.** `Close` munmaps the vendor
+databases, and a lookup already running against one segfaults rather than
+returning an error. So the cached set is dropped rather than closed when it
+goes stale: `runtime.AddCleanup` in `maxminddb` and the finalizer on `os.File`
+release both once nothing can reach them. `Close` remains for the one caller
+that owns a set outright, which is a test. `OnConfigurationChange` drops the
+cache so a change to `CyberDatasetsDir` takes effect at once rather than
+within the TTL.
 
 Vendor `.mmdb` databases are read through `maxminddb-golang/v2`, which is ISC
 licensed. A vendor database wins over the range file **field by field**, since
@@ -211,16 +265,26 @@ panel. There is no `format.ts` and no paired fixture table, which is the
 in Go, and a second implementation in TypeScript would be a second thing to get
 wrong.
 
-The three status sentences are built in one place for the same reason:
+The status sentences are built in one place for the same reason:
 
 - `No vulnerability dataset is installed.`
 - `Not in the vulnerability dataset generated 2026-09-01T00:00:00Z.`
+- `The vulnerability dataset is installed and could not be read. (TF-20005)`
 - `A private address, which no dataset describes.`
 
-**The distinction between the first two is load-bearing.** "Not listed in KEV"
-and "no KEV dataset here" mean opposite things to a responder, and a panel that
-collapsed them would tell somebody a vulnerability is not being exploited on
-the strength of a missing file.
+**The distinction between the first three is load-bearing.** "Not listed in
+KEV", "no KEV dataset here" and "the KEV dataset would not answer" mean three
+different things to a responder, and a panel that collapsed them would tell
+somebody a vulnerability is not being exploited on the strength of a missing or
+broken file.
+
+The third is why every dataset accessor returns an error rather than a bool.
+The first spelling returned `(record, ok)` and `ok` was false for all three, so
+a file replaced underneath the server, a handle closed under a live lookup, or
+a short read halfway through a binary search all rendered as a confident
+negative. `intel.ErrNoDataset` and `intel.ErrNotFound` are the two answers that
+are not failures; anything else carries `TF-20005` so an operator can find the
+file in the log rather than only in a sentence.
 
 ### The page, and the one thing it does not show
 
@@ -275,10 +339,25 @@ Mentions are a second client with its own key, fetched by the **panel only**.
 The hover never asks: a hover is a glance and a search is not, and a test pins
 that no mentions request leaves the hover.
 
-The current team comes from `currentTeamId()` in `selection.ts`, which reads
+The current team comes from `useCurrentTeamId()` in `selection.ts`, which reads
 the Redux store `initRhs` already holds, through a narrow local type. No
 `mattermost-redux` dependency for one string. An empty id skips the fetch
 entirely rather than asking the server to decide.
+
+It is a hook over `useSyncExternalStore` rather than a plain read, because the
+sidebar is not remounted when the reader switches team. A plain read captured
+the team the panel first rendered under, so an indicator opened before the
+switch kept searching the old team, or kept showing nothing at all when the
+panel had opened outside a team. The store subscription is the same one Redux
+already offers; the snapshot is a string, so nothing re-renders unless the team
+actually moved.
+
+The kind vocabulary is a TypeScript union rather than a `string`, and `isKind`
+is the only way into `SHAPES` and `KIND_LABELS`. Indexing those objects by an
+arbitrary string reaches `Object.prototype` for `__proto__` and returns
+something truthy that is not a regular expression, which threw where a refusal
+was wanted. A related link naming a kind this build does not know is refused by
+the reader for the same reason every other wire mismatch is.
 
 ### Switches
 
@@ -323,7 +402,22 @@ with no datasets, and says so in those words.
 | The decorator type | `TestWebappCyberTypeMatches` |
 | The kind vocabulary and its order | `TestWebappCyberKindsMatch` |
 | Each kind's canonical shape expression | `TestWebappCyberShapeExpressionsMatch` |
+| The schema stamp the generator writes and the reader requires | `TestTheCyberGeneratorStampsWhatTheReaderReads` |
+| The address key both sides sort and search on | `TestTheCyberGeneratorKeysAddressesTheWayTheReaderDoes` |
+| Every dataset the reader opens is one the generator writes | `TestTheCyberGeneratorWritesEveryDatasetTheReaderReads` |
 
 The token grammar itself is Go-only, so the two sides cannot drift on what a
 token is. The webapp carries only the **canonical** shapes, which is what it
 needs to refuse a hand-edited link before asking the server about it.
+
+The shape expressions are a second grammar, written by hand, so a test walks
+every scanner and asserts that the canonical value it produces is admitted by
+its own shape and reproduces itself through `Recognize`. A canonical form that
+fails its own round-trip is a permanent link every route refuses, which is how
+the mapped-address case above was found.
+
+`build/cyberdata` is stdlib-only by design, so it cannot import the reader and
+the two hold their own copies of the stamp and the key. Either one moving alone
+writes a file the reader opens and silently cannot search, which is why those
+three guards compare the generator's source against the reader's constants
+rather than trusting them to be edited together.

@@ -632,6 +632,11 @@
                     <td><code>CyberDataMMDBUnreadable</code> <span class="level">log</span></td>
                     <td>A vendor <code>.mmdb</code> database could not be opened, or its declared type is not one this build reads. The tabular datasets are unaffected.</td>
                 </tr>
+                <tr>
+                    <td><code>TF-20005</code></td>
+                    <td><code>CyberDataLookupFailed</code> <span class="level">panel</span></td>
+                    <td>A dataset opened and then could not be read when somebody looked an indicator up, usually because the file was replaced or removed underneath the server. The panel says the dataset could not be read rather than that the indicator is not listed, because those are opposite answers. Put the file back, or re-copy it, and the next lookup picks it up.</td>
+                </tr>
             </tbody>
         </table>
 

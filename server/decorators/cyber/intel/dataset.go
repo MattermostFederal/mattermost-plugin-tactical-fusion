@@ -3,11 +3,11 @@ package intel
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 )
 
 const (
@@ -56,8 +56,7 @@ type Dataset struct {
 	handle *os.File
 	file   *sortedFile
 
-	size    int64
-	modTime time.Time
+	size int64
 
 	watchlist map[string][]WatchEntry
 }
@@ -88,11 +87,10 @@ func openDataset(path string) (*Dataset, error) {
 	}
 
 	d := &Dataset{
-		Name:    name,
-		Path:    path,
-		handle:  handle,
-		size:    info.Size(),
-		modTime: info.ModTime(),
+		Name:   name,
+		Path:   path,
+		handle: handle,
+		size:   info.Size(),
 	}
 
 	bodyStart, err := d.readStamp()
@@ -101,10 +99,16 @@ func openDataset(path string) (*Dataset, error) {
 		return nil, err
 	}
 
+	body, err := searchableEnd(handle, bodyStart, d.size)
+	if err != nil {
+		handle.Close()
+		return nil, err
+	}
+
 	d.file = &sortedFile{
 		source:    handle,
 		bodyStart: bodyStart,
-		size:      d.size,
+		size:      body,
 		fields:    spec.fields,
 	}
 
@@ -153,19 +157,31 @@ func (d *Dataset) readStamp() (int64, error) {
 	return int64(end) + 1, nil
 }
 
+func searchableEnd(source readerAt, bodyStart, size int64) (int64, error) {
+	end := size
+
+	for end-1 > bodyStart {
+		var pair [2]byte
+		if _, err := source.ReadAt(pair[:], end-2); err != nil && !errors.Is(err, io.EOF) {
+			return 0, err
+		}
+		if pair[0] != '\n' || pair[1] != '\n' {
+			break
+		}
+		end--
+	}
+
+	if end <= bodyStart {
+		return bodyStart, nil
+	}
+
+	return end, nil
+}
+
 func (d *Dataset) close() {
 	if d.handle != nil {
 		d.handle.Close()
 	}
-}
-
-func (d *Dataset) changed() bool {
-	info, err := os.Stat(d.Path)
-	if err != nil {
-		return true
-	}
-
-	return info.Size() != d.size || !info.ModTime().Equal(d.modTime)
 }
 
 func (d *Dataset) status() Status {

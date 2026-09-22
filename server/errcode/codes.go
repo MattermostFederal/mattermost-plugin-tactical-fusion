@@ -389,6 +389,13 @@ const (
 	// CyberDataMMDBUnreadable reports a vendor database that could not be
 	// opened, or whose declared type this build does not read.
 	CyberDataMMDBUnreadable = 20004
+
+	// CyberDataLookupFailed reports a dataset that opened and then could not
+	// be read at the moment a reader asked it something. It is deliberately
+	// not the sentence for a row that is absent: reporting a read failure as
+	// "not listed" would tell a responder that an indicator is not being
+	// exploited on the strength of a broken file.
+	CyberDataLookupFailed = 20005
 )
 
 // AllCodes lists every code declared above. TestAllCodesComplete enforces that
@@ -490,4 +497,5 @@ var AllCodes = []int{
 	CyberDataSchemaMismatch,
 	CyberDataBadName,
 	CyberDataMMDBUnreadable,
+	CyberDataLookupFailed,
 }

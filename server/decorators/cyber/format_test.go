@@ -1,6 +1,7 @@
 package cyber
 
 import (
+	"errors"
 	"fmt"
 	"net/netip"
 	"os"
@@ -312,5 +313,33 @@ func TestRelatedLinksOnThePagePointAtSiblingPages(t *testing.T) {
 	}
 	if strings.Contains(body, `href="/`) {
 		t.Fatalf("a page link is rooted, which breaks a subpath install")
+	}
+}
+
+func TestTheStatusSentenceTellsTheThreeFailuresApart(t *testing.T) {
+	set := datasets(t, map[string][]string{
+		intel.NameCVE: {strings.Join([]string{
+			"CVE-2021-44228", "2021-12-10", "2021-12-14", "10.0", "Critical", "AV:N", "CWE-502", "Log4Shell",
+		}, "\t")},
+	})
+
+	cases := []struct {
+		name string
+		set  *intel.Set
+		key  string
+		err  error
+		want string
+	}{
+		{"no dataset", set, intel.NameKEV, intel.ErrNoDataset, "No known exploited vulnerabilities dataset is installed."},
+		{"no row", set, intel.NameCVE, intel.ErrNotFound, "Not in the vulnerability dataset generated 2026-09-01T00:00:00Z."},
+		{"unreadable", set, intel.NameCVE, errors.New("input/output error"), "The vulnerability dataset is installed and could not be read. (TF-20005)"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := datasetSentence(tc.set, tc.key, tc.err); got != tc.want {
+				t.Fatalf("got %q, want %q", got, tc.want)
+			}
+		})
 	}
 }

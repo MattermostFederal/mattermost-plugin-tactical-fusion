@@ -1666,7 +1666,7 @@ value that looks like a hash and is not. That is the failure `_flow-tags_`
 already answers by dropping rather than truncating. The count is the part a
 reader can act on, and the list itself is still under "As posted".
 
-**A radio signal carries its unit.** An unlabelled `-71` is the derived-claim
+**A radio signal carries its unit.** An unlabeled `-71` is the derived-claim
 failure running the other way: the reader supplies the wrong unit instead of the
 plugin supplying it.
 

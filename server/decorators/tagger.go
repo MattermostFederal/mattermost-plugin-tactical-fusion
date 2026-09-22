@@ -118,17 +118,51 @@ var inlineProtectedRes = []*regexp.Regexp{
 	regexp.MustCompile(`[a-zA-Z][a-zA-Z0-9+.\-]*://[^\s<>]+`),
 	regexp.MustCompile(`\bwww\.[^\s<>]+`),
 
-	// Mentions, channel links and hashtags, which Mattermost also autolinks.
-	// Same class as a bare URL: the server turns the run into a link of its
-	// own, so rewriting inside one destroys it.
-	//
-	// The leading context is what keeps "~~strike~~" and a "##" heading out,
-	// and it is consumed, so the rune before the sigil joins the protected
-	// range. That costs the decoration of a token that ends immediately before
-	// one, which is the safe direction.
-	regexp.MustCompile(`(?:^|[^\w@])@[\w.\-]+`),
-	regexp.MustCompile(`(?:^|[^\w~])~[\w.\-]+`),
-	regexp.MustCompile(`(?:^|[^\w#])#[A-Za-z][\w.\-]*`),
+	emailAddressRe,
+}
+
+var emailAddressRe = regexp.MustCompile(`[\w.+\-]+@[\w\-]+(?:\.[\w\-]+)+`)
+
+type sigilProtected struct {
+	expr  *regexp.Regexp
+	sigil rune
+}
+
+var sigilProtectedRes = []sigilProtected{
+	{regexp.MustCompile(`@[\w.\-]+`), '@'},
+	{regexp.MustCompile(`~[\w.\-]+`), '~'},
+	{regexp.MustCompile(`#[\p{L}][\p{L}\p{N}_.\-]*`), '#'},
+}
+
+func sigilRanges(message string) []byteRange {
+	var ranges []byteRange
+
+	for _, protected := range sigilProtectedRes {
+		for _, m := range protected.expr.FindAllStringIndex(message, -1) {
+			before, _ := utf8.DecodeLastRuneInString(message[:m[0]])
+			if before == protected.sigil || isASCIIWord(before) {
+				continue
+			}
+			ranges = append(ranges, byteRange{m[0], m[1]})
+		}
+	}
+
+	return ranges
+}
+
+func isASCIIWord(r rune) bool {
+	switch {
+	case r == '_':
+		return true
+	case r >= '0' && r <= '9':
+		return true
+	case r >= 'a' && r <= 'z':
+		return true
+	case r >= 'A' && r <= 'Z':
+		return true
+	default:
+		return false
+	}
 }
 
 // Characters that would otherwise be re-parsed as markdown inside a link
@@ -277,6 +311,7 @@ func findProtectedRanges(message string) []byteRange {
 	ranges := blockRanges(message)
 	ranges = append(ranges, codeSpanRanges(message)...)
 	ranges = append(ranges, usmtfRanges(message)...)
+	ranges = append(ranges, sigilRanges(message)...)
 
 	for _, re := range inlineProtectedRes {
 		for _, m := range re.FindAllStringIndex(message, -1) {

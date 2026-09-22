@@ -220,5 +220,7 @@ func (p *Plugin) OnConfigurationChange() error {
 
 	p.setConfiguration(configuration)
 
+	p.forgetCyberDatasets()
+
 	return nil
 }

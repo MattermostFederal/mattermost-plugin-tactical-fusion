@@ -1,4 +1,4 @@
-import {KINDS, KIND_LABELS, matchesShape} from './cyber';
+import {KINDS, KIND_LABELS, isKind, matchesShape} from './cyber';
 import CyberHover from './CyberHover';
 import CyberPanel from './CyberPanel';
 
@@ -29,7 +29,7 @@ const decorator: Decorator<CyberPayload> = {
     type: 'cyber',
     fromParams,
 
-    summary: (payload) => KIND_LABELS[payload.kind] ?? PANEL_TITLE,
+    summary: (payload) => (isKind(payload.kind) ? KIND_LABELS[payload.kind] : PANEL_TITLE),
 
     style: {color: '#1d7a7a', background: 'rgba(29, 122, 122, 0.12)'},
 

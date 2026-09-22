@@ -178,11 +178,23 @@ link alone.
 
 Protected spans are fenced code (including unterminated and `~~~` fences),
 indented code, inline code of any backtick width, links, images, reference
-definitions, any bracketed span, angle autolinks, inline HTML tags, and bare
-`scheme://` and `www.` URLs. Overlapping spans are **merged, never discarded**:
+definitions, any bracketed span, angle autolinks, inline HTML tags, bare
+`scheme://` and `www.` URLs, email addresses, and the three sigil constructs
+Mattermost autolinks: `@user`, `~channel` and `#hashtag`. Overlapping spans are
+**merged, never discarded**:
 dropping one because it overlapped an earlier one let a construct lose its
 protection entirely and have a link written into its interior, which is the
 opposite of what a protected range is for.
+
+**A sigil construct's guard is read, never consumed.** `sigilRanges` matches
+the run after the sigil and then looks at the rune before it, because an
+expression that consumes its guard breaks the next construct on the same line:
+the first spelling of these left the second hashtag in `#recon.#CVE-2021-44228`
+unprotected. It also means the protected range starts at the sigil, so a token
+ending on the rune before one still decorates. The hashtag body takes Unicode
+letters, because Mattermost hashtags do and an ASCII-only body left
+`#Übung-CVE-2021-44228` open. `docs/design/cyber.md` has the whole argument,
+since the cyber grammars are what made these constructs reachable.
 
 **A USMTF message is protected as a whole.** A run of consecutive lines that
 each start with `/`, start with a set identifier and `/`, or are a set

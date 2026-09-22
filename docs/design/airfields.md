@@ -181,7 +181,7 @@ Location's**, with no asymmetry anywhere.
 would be a third thing to get wrong, and the two defects it records (the
 consumed-guard break, the missing `_`) travel with it.
 
-### The link is never relabelled
+### The link is never relabeled
 
 The link's stored text is the author's own token, with the field label consumed
 in front of it, exactly as a coordinate moniker and `DTG:` are. The sibling plugin renders
