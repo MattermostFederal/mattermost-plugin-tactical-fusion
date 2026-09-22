@@ -241,7 +241,6 @@ func TestRenderPageShowsTheDecodeAndEscapes(t *testing.T) {
 		"30.12 inHg",
 		"<pre>" + metarLine + "</pre>",
 		`href="location?f=dd&amp;v=`,
-		"month and year taken from the post date",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the page does not carry %q", want)

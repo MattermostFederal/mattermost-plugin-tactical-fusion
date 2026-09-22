@@ -1,7 +1,7 @@
 import React from 'react';
 
 import type {Report, ReportRow} from './types';
-import {INFERRED_NOTE, issuedLabel} from './types';
+import {issuedLabel} from './types';
 
 import LinkButton from '../components/LinkButton';
 import {openRhs, setSelection} from '../decorators/selection';
@@ -60,10 +60,7 @@ export const StationLine: React.FC<{report: Report}> = ({report}) => {
 export function issuedRows(report: Report): ReportRow[] {
     const rows: ReportRow[] = [];
     if (report.issued !== '') {
-        rows.push({
-            label: issuedLabel(report),
-            value: report.inferred ? `${report.issued} (${INFERRED_NOTE})` : report.issued,
-        });
+        rows.push({label: issuedLabel(report), value: report.issued});
     }
     if (report.flags.length > 0) {
         rows.push({label: 'Flags', value: report.flags.join(', ')});

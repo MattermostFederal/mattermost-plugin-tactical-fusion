@@ -19,7 +19,6 @@ test('renders the report as posted, its summary and its decoded rows', async ({m
     await expect(body.getByTestId('avreport-source')).toHaveText(HONOLULU_METAR.src);
     await expect(body.getByTestId('avreport-summary')).toContainText('Wind 070°');
     await expect(body.getByTestId('avreport-rows')).toContainText('Issued');
-    await expect(body.getByTestId('avreport-rows')).toContainText('month and year taken from the post date');
     await expect(body.getByTestId('avreport-rows')).toContainText('30.10 inHg');
     await expect(body.getByTestId('avreport-remarks')).toContainText('automated station');
     await expect(body.getByTestId('avreport-unknown')).toHaveText('Q9999');

@@ -13,8 +13,6 @@ const (
 	summaryRowLabel      = "Summary"
 	tableFallbackHeading = "Aviation report"
 
-	inferredDateNote = " (month and year taken from the post date)"
-
 	timestampLayout = "2006-01-02T15:04:05Z"
 )
 
@@ -36,11 +34,7 @@ func reportTable(href string, report Report) string {
 		writeTableRow(&b, summaryRowLabel, decorators.TableCell(report.Summary))
 	}
 	if !report.IssuedAt.IsZero() {
-		value := timeCell(links, report.IssuedAt)
-		if report.Inferred {
-			value += decorators.TableCell(inferredDateNote)
-		}
-		writeTableRow(&b, issuedLabel(report.Kind), value)
+		writeTableRow(&b, issuedLabel(report.Kind), timeCell(links, report.IssuedAt))
 	}
 	if len(report.Flags) > 0 {
 		writeTableRow(&b, "Flags", decorators.TableCell(strings.Join(report.Flags, ", ")))

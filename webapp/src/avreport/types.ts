@@ -265,4 +265,3 @@ export function issuedLabel(report: Report): string {
     return report.kind === 'NOTAM' ? 'Effective' : 'Issued';
 }
 
-export const INFERRED_NOTE = 'month and year taken from the post date';

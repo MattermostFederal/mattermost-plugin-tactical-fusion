@@ -46,9 +46,6 @@ func renderBody(report Report) string {
 
 	b.WriteString(`<table><tbody>`)
 	if issued := zuluText(report.IssuedAt); issued != "" {
-		if report.Inferred {
-			issued += inferredDateNote
-		}
 		writeRow(&b, issuedLabel(report.Kind), issued, "")
 	}
 	if len(report.Flags) > 0 {

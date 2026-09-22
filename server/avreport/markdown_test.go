@@ -50,14 +50,14 @@ func TestReportTableNamesTheStationAndItsAirfield(t *testing.T) {
 	}
 }
 
-func TestReportTableSaysWhenTheDateWasInferred(t *testing.T) {
+func TestReportTableLinksTheIssuedTimeWithoutAnInferenceNote(t *testing.T) {
 	table := expandFixture(t, metarLine, "")
-	if !strings.Contains(table, "| Issued | [22 Sep 2026 16:51Z](/plugins/tf/decorate/dtg?") || !strings.Contains(table, ")"+inferredDateNote+" |") {
+	if !strings.Contains(table, "| Issued | [22 Sep 2026 16:51Z](/plugins/tf/decorate/dtg?") || strings.Contains(table, "post date") {
 		t.Errorf("the inferred instant is not flagged:\n%s", table)
 	}
 
 	notam := expandFixture(t, "!HNL 09/123 HNL RWY 08L/26R CLSD 2609221200-2609232359", "")
-	if !strings.Contains(notam, "| Effective | [22 Sep 2026 12:00Z](/plugins/tf/decorate/dtg?") || strings.Contains(notam, inferredDateNote) {
+	if !strings.Contains(notam, "| Effective | [22 Sep 2026 12:00Z](/plugins/tf/decorate/dtg?") {
 		t.Errorf("a NOTAM carries its own date and is labeled Effective:\n%s", notam)
 	}
 }
