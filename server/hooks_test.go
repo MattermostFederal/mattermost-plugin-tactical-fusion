@@ -18,6 +18,7 @@ import (
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/cyber"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 )
@@ -107,6 +108,19 @@ type fakeAPI struct {
 	// that never opens an overlay page still panics on an unexpected lookup
 	// rather than reading a post that is not there.
 	posts map[string]*model.Post
+
+	// searchResults is what SearchPostsInTeamForUser answers, searchErr forces
+	// it to fail, and searchAsked records every search that reached it, so a
+	// test can prove the prior-mentions route scoped the search to the reader
+	// rather than trusting it to have done so.
+	searchResults *model.PostSearchResults
+	searchErr     *model.AppError
+	searchAsked   []searchCall
+
+	// teams and channels back the permalink and the channel name. Nil until a
+	// test needs one.
+	teams    map[string]*model.Team
+	channels map[string]*model.Channel
 
 	// channelsPermitted is the set of channels HasPermissionToChannel says yes
 	// to, and channelsAsked records every one it was asked about, so a test can
@@ -222,6 +236,42 @@ func (a *fakeAPI) HasPermissionToChannel(_, channelID string, permission *model.
 	a.permissionsAsked = append(a.permissionsAsked, permission)
 
 	return a.channelsPermitted[channelID] && !a.channelDenied[permission.Id]
+}
+
+type searchCall struct {
+	teamID string
+	userID string
+	terms  string
+}
+
+func (a *fakeAPI) SearchPostsInTeamForUser(teamID, userID string, params model.SearchParameter) (*model.PostSearchResults, *model.AppError) {
+	terms := ""
+	if params.Terms != nil {
+		terms = *params.Terms
+	}
+	a.searchAsked = append(a.searchAsked, searchCall{teamID: teamID, userID: userID, terms: terms})
+
+	if a.searchErr != nil {
+		return nil, a.searchErr
+	}
+
+	return a.searchResults, nil
+}
+
+func (a *fakeAPI) GetTeam(teamID string) (*model.Team, *model.AppError) {
+	if team, ok := a.teams[teamID]; ok {
+		return team, nil
+	}
+
+	return nil, model.NewAppError("GetTeam", "not_found", nil, "", 404)
+}
+
+func (a *fakeAPI) GetChannel(channelID string) (*model.Channel, *model.AppError) {
+	if channel, ok := a.channels[channelID]; ok {
+		return channel, nil
+	}
+
+	return nil, model.NewAppError("GetChannel", "not_found", nil, "", 404)
 }
 
 func (a *fakeAPI) GetBundlePath() (string, error) {
@@ -389,6 +439,13 @@ func newTestPlugin(t *testing.T, siteURL string, enabled bool) *Plugin {
 		EnableGeoJSON:     enabled,
 		EnableGeoJSONFile: enabled,
 
+		EnableCyber:       enabled,
+		EnableCyberCVE:    true,
+		EnableCyberCWE:    true,
+		EnableCyberAttack: true,
+		EnableCyberIP:     true,
+		EnableCyberHash:   true,
+
 		// Off, like the shipped default: the ambiguous spellings are opt-in, so
 		// a test that wants them says so.
 		EnableGeoJSONUnlabeled: false,
@@ -407,6 +464,7 @@ func registerDecoratorsForTest(t *testing.T, p *Plugin) {
 		&dtg.Decorator{Enabled: p.dtgFormats},
 		&location.Decorator{Enabled: p.locationFormats, Maps: p.locationMaps},
 		&airport.Decorator{Enabled: p.airportFormats},
+		&cyber.Decorator{Enabled: p.cyberFormats, Intel: p.cyberIntel},
 	)
 	if err != nil {
 		t.Fatalf("failed to build the decorator registry: %v", err)

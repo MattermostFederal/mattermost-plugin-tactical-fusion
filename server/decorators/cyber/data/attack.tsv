@@ -1,0 +1,124 @@
+id	name	kind	tactics	parent	platforms	summary	status
+T1003	OS Credential Dumping	technique	TA0006		Linux,macOS,Windows	Adversaries take credential material out of the operating system.	active
+T1003.001	LSASS Memory	subtechnique	TA0006	T1003	Linux,macOS,Windows	Adversaries read credential material out of the LSASS process.	active
+T1003.002	Security Account Manager	subtechnique	TA0006	T1003	Linux,macOS,Windows	Adversaries read credential material out of the SAM database.	active
+T1003.003	NTDS	subtechnique	TA0006	T1003	Linux,macOS,Windows	Adversaries take the domain database holding every account's hashes.	active
+T1005	Data from Local System	technique	TA0009		Linux,macOS,Windows	Adversaries gather data from the system they are on.	active
+T1016	System Network Configuration Discovery	technique	TA0007		Linux,macOS,Windows	Adversaries gather network configuration such as addresses and routes.	active
+T1018	Remote System Discovery	technique	TA0007		Linux,macOS,Windows	Adversaries list other hosts on the network by address, name or service.	active
+T1021	Remote Services	technique	TA0008		Linux,macOS,Windows	Adversaries use valid accounts with remote services to move between hosts.	active
+T1021.001	Remote Desktop Protocol	subtechnique	TA0008	T1021	Linux,macOS,Windows	Adversaries move between hosts over RDP.	active
+T1021.002	SMB/Windows Admin Shares	subtechnique	TA0008	T1021	Linux,macOS,Windows	Adversaries move between hosts over SMB administrative shares.	active
+T1021.004	SSH	subtechnique	TA0008	T1021	Linux,macOS,Windows	Adversaries move between hosts over SSH.	active
+T1027	Obfuscated Files or Information	technique	TA0005		Linux,macOS,Windows	Adversaries make a file or its contents hard to discover or to analyze.	active
+T1033	System Owner/User Discovery	technique	TA0007		Linux,macOS,Windows	Adversaries identify the user logged in to a system.	active
+T1036	Masquerading	technique	TA0005		Linux,macOS,Windows	Adversaries make an artifact look legitimate or benign to a user or a tool.	active
+T1041	Exfiltration Over C2 Channel	technique	TA0010		Linux,macOS,Windows	Adversaries take data out over the same channel they command the host with.	active
+T1047	Windows Management Instrumentation	technique	TA0002		Windows	Adversaries abuse WMI to run commands and payloads, locally and remotely.	active
+T1049	System Network Connections Discovery	technique	TA0007		Linux,macOS,Windows	Adversaries list the network connections a system currently holds.	active
+T1053	Scheduled Task/Job	technique	TA0002,TA0003,TA0004		Linux,macOS,Windows	Adversaries abuse task scheduling to run code at a set time or on a set event.	active
+T1053.003	Cron	subtechnique	TA0002,TA0003,TA0004	T1053	Linux,macOS,Windows	Adversaries schedule work with cron.	active
+T1053.005	Scheduled Task	subtechnique	TA0002,TA0003,TA0004	T1053	Linux,macOS,Windows	Adversaries schedule work with the Windows Task Scheduler.	active
+T1056	Input Capture	technique	TA0006,TA0009		Linux,macOS,Windows	Adversaries capture user input to obtain credentials or other information.	active
+T1056.001	Keylogging	subtechnique	TA0006,TA0009	T1056	Linux,macOS,Windows	Adversaries record keystrokes to capture credentials.	active
+T1057	Process Discovery	technique	TA0007		Linux,macOS,Windows	Adversaries list the running processes on a system.	active
+T1059	Command and Scripting Interpreter	technique	TA0002		Linux,macOS,Windows	Adversaries abuse command and script interpreters to run commands or binaries.	active
+T1059.001	PowerShell	subtechnique	TA0002	T1059	Linux,macOS,Windows	Adversaries run commands and scripts through PowerShell.	active
+T1059.003	Windows Command Shell	subtechnique	TA0002	T1059	Linux,macOS,Windows	Adversaries run commands through cmd.exe.	active
+T1059.004	Unix Shell	subtechnique	TA0002	T1059	Linux,macOS,Windows	Adversaries run commands through a Unix shell.	active
+T1059.005	Visual Basic	subtechnique	TA0002	T1059	Linux,macOS,Windows	Adversaries run code written in Visual Basic, including VBA macros.	active
+T1059.006	Python	subtechnique	TA0002	T1059	Linux,macOS,Windows	Adversaries run code through a Python interpreter.	active
+T1059.007	JavaScript	subtechnique	TA0002	T1059	Linux,macOS,Windows	Adversaries run code written in JavaScript or JScript.	active
+T1068	Exploitation for Privilege Escalation	technique	TA0004		Linux,macOS,Windows	Adversaries exploit a software weakness to gain higher-level permissions.	active
+T1070	Indicator Removal	technique	TA0005		Linux,macOS,Windows	Adversaries delete or alter artifacts on a system to remove evidence.	active
+T1070.004	File Deletion	subtechnique	TA0005	T1070	Linux,macOS,Windows	Adversaries delete files they created or used.	active
+T1071	Application Layer Protocol	technique	TA0011		Linux,macOS,Windows	Adversaries hide command and control traffic inside an ordinary protocol.	active
+T1071.001	Web Protocols	subtechnique	TA0011	T1071	Linux,macOS,Windows	Command and control traffic is carried over HTTP or HTTPS.	active
+T1071.004	DNS	subtechnique	TA0011	T1071	Linux,macOS,Windows	Command and control traffic is carried over DNS.	active
+T1072	Software Deployment Tools	technique	TA0002,TA0008		Linux,macOS,Windows	Adversaries abuse deployment or management software to run commands widely.	active
+T1078	Valid Accounts	technique	TA0001,TA0003,TA0004,TA0005		Linux,macOS,Windows	Adversaries obtain and abuse the credentials of an existing account.	active
+T1078.001	Default Accounts	subtechnique	TA0001,TA0003,TA0004,TA0005	T1078	Linux,macOS,Windows	Adversaries use accounts that ship with an operating system or a product.	active
+T1078.002	Domain Accounts	subtechnique	TA0001,TA0003,TA0004,TA0005	T1078	Linux,macOS,Windows	Adversaries use domain accounts to reach hosts across a network.	active
+T1078.003	Local Accounts	subtechnique	TA0001,TA0003,TA0004,TA0005	T1078	Linux,macOS,Windows	Adversaries use accounts local to one host.	active
+T1078.004	Cloud Accounts	subtechnique	TA0001,TA0003,TA0004,TA0005	T1078	Linux,macOS,Windows	Adversaries use accounts in a cloud tenant.	active
+T1082	System Information Discovery	technique	TA0007		Linux,macOS,Windows	Adversaries gather details about the operating system and hardware.	active
+T1083	File and Directory Discovery	technique	TA0007		Linux,macOS,Windows	Adversaries enumerate files and directories to decide what to take next.	active
+T1087	Account Discovery	technique	TA0007		Linux,macOS,Windows	Adversaries list the accounts on a system or in a domain.	active
+T1090	Proxy	technique	TA0011		Linux,macOS,Windows	Adversaries relay traffic through an intermediate host to hide its origin.	active
+T1091	Replication Through Removable Media	technique	TA0001,TA0008		Windows	Adversaries move onto a system by copying malware to removable media.	active
+T1098	Account Manipulation	technique	TA0003,TA0004		Linux,macOS,Windows	Adversaries change an account's settings or credentials to keep access to it.	active
+T1105	Ingress Tool Transfer	technique	TA0011		Linux,macOS,Windows	Adversaries bring tools or other files onto a compromised system.	active
+T1110	Brute Force	technique	TA0006		Linux,macOS,Windows,Network	Adversaries guess passwords or keys when they do not know the credentials.	active
+T1110.001	Password Guessing	subtechnique	TA0006	T1110	Linux,macOS,Windows,Network	Adversaries guess passwords for a known account.	active
+T1110.003	Password Spraying	subtechnique	TA0006	T1110	Linux,macOS,Windows,Network	Adversaries try one password against many accounts.	active
+T1112	Modify Registry	technique	TA0005		Windows	Adversaries change the registry to hide configuration or to evade defenses.	active
+T1113	Screen Capture	technique	TA0009		Linux,macOS,Windows	Adversaries take screenshots of the victim's desktop.	active
+T1133	External Remote Services	technique	TA0001,TA0003		Linux,macOS,Windows	Adversaries use remote access services such as VPNs to enter or stay in a network.	active
+T1136	Create Account	technique	TA0003		Linux,macOS,Windows	Adversaries create an account to keep access to the victim environment.	active
+T1140	Deobfuscate/Decode Files or Information	technique	TA0005		Linux,macOS,Windows	Adversaries decode or decrypt their own payloads on the victim system.	active
+T1189	Drive-by Compromise	technique	TA0001		Linux,macOS,Windows	A user is compromised by visiting a website in the ordinary course of browsing.	active
+T1190	Exploit Public-Facing Application	technique	TA0001		Linux,macOS,Windows,Network	Adversaries exploit a weakness in an internet-facing host or service to gain access.	active
+T1195	Supply Chain Compromise	technique	TA0001		Linux,macOS,Windows	Adversaries manipulate a product or a delivery mechanism before it reaches the victim.	active
+T1195.002	Compromise Software Supply Chain	subtechnique	TA0001	T1195	Linux,macOS,Windows	Adversaries change software before the victim receives it.	active
+T1199	Trusted Relationship	technique	TA0001		Linux,macOS,Windows	Adversaries use a third party with existing access to reach the intended victim.	active
+T1200	Hardware Additions	technique	TA0001		Linux,macOS,Windows	Adversaries introduce computer accessories or networking hardware to gain access.	active
+T1203	Exploitation for Client Execution	technique	TA0002		Linux,macOS,Windows	Adversaries exploit a weakness in client software to run their own code.	active
+T1204	User Execution	technique	TA0002		Linux,macOS,Windows	An adversary relies on a user opening a file or following a link for code to run.	active
+T1204.001	Malicious Link	subtechnique	TA0002	T1204	Linux,macOS,Windows	A user is relied on to follow a link.	active
+T1204.002	Malicious File	subtechnique	TA0002	T1204	Linux,macOS,Windows	A user is relied on to open a file.	active
+T1210	Exploitation of Remote Services	technique	TA0008		Linux,macOS,Windows	Adversaries exploit a service on a remote host to move to it.	active
+T1218	System Binary Proxy Execution	technique	TA0005		Windows	Adversaries run code through a signed system binary to bypass controls.	active
+T1485	Data Destruction	technique	TA0040		Linux,macOS,Windows	Adversaries destroy data and files to interrupt availability.	active
+T1486	Data Encrypted for Impact	technique	TA0040		Linux,macOS,Windows	Adversaries encrypt data in place to interrupt availability, as ransomware does.	active
+T1489	Service Stop	technique	TA0040		Linux,macOS,Windows	Adversaries stop services to deny them to users or to enable other damage.	active
+T1490	Inhibit System Recovery	technique	TA0040		Windows	Adversaries remove backups and recovery points so a system cannot be restored.	active
+T1491	Defacement	technique	TA0040		Linux,macOS,Windows	Adversaries change visible content to intimidate or to make a statement.	active
+T1496	Resource Hijacking	technique	TA0040		Linux,macOS,Windows	Adversaries use a victim's compute resources for their own ends.	active
+T1497	Virtualization/Sandbox Evasion	technique	TA0005,TA0007		Linux,macOS,Windows	Adversaries check for an analysis environment and change behavior when they find one.	active
+T1498	Network Denial of Service	technique	TA0040		Linux,macOS,Windows,Network	Adversaries exhaust network bandwidth to deny service to users.	active
+T1499	Endpoint Denial of Service	technique	TA0040		Linux,macOS,Windows	Adversaries exhaust a host's resources to deny service from it.	active
+T1505	Server Software Component	technique	TA0003		Linux,macOS,Windows	Adversaries abuse a server's extensibility to keep access to it.	active
+T1505.003	Web Shell	subtechnique	TA0003	T1505	Linux,macOS,Windows	Adversaries install a script on a web server to keep access.	active
+T1518	Software Discovery	technique	TA0007		Linux,macOS,Windows	Adversaries list the software and versions installed on a system.	active
+T1531	Account Access Removal	technique	TA0040		Linux,macOS,Windows	Adversaries delete or lock accounts to deny access to legitimate users.	active
+T1543	Create or Modify System Process	technique	TA0003,TA0004		Linux,macOS,Windows	Adversaries create or change a system-level process to run malicious payloads.	active
+T1543.003	Windows Service	subtechnique	TA0003,TA0004	T1543	Linux,macOS,Windows	Adversaries create or change a Windows service to run a payload.	active
+T1547	Boot or Logon Autostart Execution	technique	TA0003,TA0004		Linux,macOS,Windows	Adversaries configure the system to run code automatically at boot or logon.	active
+T1547.001	Registry Run Keys / Startup Folder	subtechnique	TA0003,TA0004	T1547	Linux,macOS,Windows	Adversaries add an entry that runs at user logon.	active
+T1548	Abuse Elevation Control Mechanism	technique	TA0004,TA0005		Linux,macOS,Windows	Adversaries bypass a mechanism that controls elevation to higher privileges.	active
+T1552	Unsecured Credentials	technique	TA0006		Linux,macOS,Windows	Adversaries find credentials left in files, registry keys or process memory.	active
+T1555	Credentials from Password Stores	technique	TA0006		Linux,macOS,Windows	Adversaries take credentials out of stores such as browsers and keychains.	active
+T1560	Archive Collected Data	technique	TA0009		Linux,macOS,Windows	Adversaries compress or encrypt what they have gathered before taking it.	active
+T1562	Impair Defenses	technique	TA0005		Linux,macOS,Windows	Adversaries disable or damage security tooling, logging or alerting.	active
+T1562.001	Disable or Modify Tools	subtechnique	TA0005	T1562	Linux,macOS,Windows	Adversaries turn off or reconfigure security tooling.	active
+T1565	Data Manipulation	technique	TA0040		Linux,macOS,Windows	Adversaries change data to influence a decision or to hide activity.	active
+T1566	Phishing	technique	TA0001		Linux,macOS,Windows	Adversaries send messages carrying a malicious attachment or link to gain access.	active
+T1566.001	Spearphishing Attachment	subtechnique	TA0001	T1566	Linux,macOS,Windows	A targeted message carries a malicious attachment.	active
+T1566.002	Spearphishing Link	subtechnique	TA0001	T1566	Linux,macOS,Windows	A targeted message carries a link to malicious content.	active
+T1566.003	Spearphishing via Service	subtechnique	TA0001	T1566	Linux,macOS,Windows	A targeted message arrives through a third-party service.	active
+T1567	Exfiltration Over Web Service	technique	TA0010		Linux,macOS,Windows	Adversaries take data out through a legitimate external web service.	active
+T1569	System Services	technique	TA0002		Linux,macOS,Windows	Adversaries abuse system services or daemons to run commands or binaries.	active
+T1569.002	Service Execution	subtechnique	TA0002	T1569	Linux,macOS,Windows	Adversaries run a payload through the Windows service control manager.	active
+T1573	Encrypted Channel	technique	TA0011		Linux,macOS,Windows	Adversaries encrypt command and control traffic to hide its content.	active
+T1583	Acquire Infrastructure	technique	TA0042		Linux,macOS,Windows,Network	Adversaries buy, lease or rent infrastructure to use during targeting.	active
+T1584	Compromise Infrastructure	technique	TA0042		Linux,macOS,Windows,Network	Adversaries take over third-party infrastructure to use during targeting.	active
+T1587	Develop Capabilities	technique	TA0042		Linux,macOS,Windows,Network	Adversaries build capabilities such as malware, exploits and certificates.	active
+T1588	Obtain Capabilities	technique	TA0042		Linux,macOS,Windows,Network	Adversaries buy or steal capabilities rather than developing them.	active
+T1589	Gather Victim Identity Information	technique	TA0043		Linux,macOS,Windows,Network	Adversaries gather identity information such as names, email addresses and credentials.	active
+T1590	Gather Victim Network Information	technique	TA0043		Linux,macOS,Windows,Network	Adversaries gather network information such as ranges, domains and topology.	active
+T1595	Active Scanning	technique	TA0043		Linux,macOS,Windows,Network	Adversaries probe victim infrastructure over the network before compromising it.	active
+T1608	Stage Capabilities	technique	TA0042		Linux,macOS,Windows,Network	Adversaries prepare capabilities on infrastructure so they are ready to use.	active
+TA0001	Initial Access	tactic				The adversary is trying to get into your network.	active
+TA0002	Execution	tactic				The adversary is trying to run malicious code.	active
+TA0003	Persistence	tactic				The adversary is trying to maintain their foothold.	active
+TA0004	Privilege Escalation	tactic				The adversary is trying to gain higher-level permissions.	active
+TA0005	Defense Evasion	tactic				The adversary is trying to avoid being detected.	active
+TA0006	Credential Access	tactic				The adversary is trying to steal account names and passwords.	active
+TA0007	Discovery	tactic				The adversary is trying to figure out your environment.	active
+TA0008	Lateral Movement	tactic				The adversary is trying to move through your environment.	active
+TA0009	Collection	tactic				The adversary is trying to gather data of interest to their goal.	active
+TA0010	Exfiltration	tactic				The adversary is trying to steal data.	active
+TA0011	Command and Control	tactic				The adversary is trying to communicate with compromised systems to control them.	active
+TA0040	Impact	tactic				The adversary is trying to manipulate, interrupt or destroy your systems and data.	active
+TA0042	Resource Development	tactic				The adversary is trying to establish resources they can use to support operations.	active
+TA0043	Reconnaissance	tactic				The adversary is trying to gather information they can use to plan future operations.	active

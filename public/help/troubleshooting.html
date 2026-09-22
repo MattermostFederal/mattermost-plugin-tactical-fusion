@@ -21,6 +21,7 @@
             <a href="dtg.html">Date-Time Groups</a>
             <a href="location.html">Coordinates</a>
             <a href="airfields.html">Airfields</a>
+            <a href="cyber.html">Cyber Context</a>
             <a href="cot.html">Cursor on Target</a>
             <a href="geojson.html">GeoJSON</a>
             <span class="nav-section">Guides</span>
@@ -306,6 +307,159 @@
                     <td><code>This airfield has no position in the database, so there is nothing to draw and no coordinate readings for it.</code></td>
                     <td>The field is in the database and has no usable coordinate. The details still render; only the map and the link to the readings are absent.</td>
                     <td>Nothing to do. Offering a map, or a link to a view that would refuse it, would be worse than offering neither.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="cyber-not-linked">A security indicator was not turned into a link</h2>
+
+        <p>
+            Run
+            <a href="commands.html#check"><code>/tactical-fusion check &lt;your text&gt;</code></a>.
+            It runs the real matcher against exactly that text and reports what it did,
+            without posting anything.
+        </p>
+
+        <p>
+            Two things decline an indicator: it is one of the shapes
+            <a href="cyber.html#cyber-declined">deliberately declined</a>, or the switch for its
+            kind is off.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>CWE-99999</code> or <code>T9999</code> did nothing</td>
+                    <td>Weakness and ATT&amp;CK identifiers are checked against the catalogs built into the plugin, not against a shape. One the catalog does not hold is left as written rather than linked to a panel with nothing in it.</td>
+                    <td>Check the identifier. If it is right and simply new, a later plugin build may carry it: both catalogs ship with the plugin.</td>
+                </tr>
+                <tr>
+                    <td><code>t1059</code> did nothing, but <code>T1059</code> works</td>
+                    <td>ATT&amp;CK identifiers are read in upper case only. A lower-case <code>t</code> and four digits is a part number or a ticket far more often than a technique.</td>
+                    <td>Write it in upper case, which is how MITRE writes it. CVE and CWE are read in any case.</td>
+                </tr>
+                <tr>
+                    <td><code>CVE-1998-0001</code> did nothing</td>
+                    <td>The scheme starts at 1999, so an earlier year is not a vulnerability identifier.</td>
+                    <td>Nothing to do. Check the year.</td>
+                </tr>
+                <tr>
+                    <td><code>1.2.3.4/24</code> or <code>1.2.3.0-1.2.3.255</code> did nothing</td>
+                    <td>Both are ranges. A link over one half of a range says something about a single address that the author did not write, so the whole thing is declined.</td>
+                    <td>Write the one address you mean, if there is one.</td>
+                </tr>
+                <tr>
+                    <td><code>127.0.0.1</code>, <code>::1</code>, <code>0.0.0.0</code> or <code>::</code> did nothing</td>
+                    <td>Loopback and unspecified addresses name no host anywhere, so there is nothing that could be said about them.</td>
+                    <td>Nothing to do.</td>
+                </tr>
+                <tr>
+                    <td><code>01.2.3.4</code>, <code>999.1.1.1</code> or <code>1.2.3.4.5</code> did nothing</td>
+                    <td>None of them parses as an address: a leading zero, a part out of range, and five parts.</td>
+                    <td>Check the address.</td>
+                </tr>
+                <tr>
+                    <td><code>12:30:45</code>, <code>00:1A:2B:3C:4D:5E</code> or <code>std::vector</code> became a link, or did not</td>
+                    <td>None of the three is an address, and none of them is linked. A time of day, a MAC address and C++ scope resolution are all declined on purpose.</td>
+                    <td>Nothing to do.</td>
+                </tr>
+                <tr>
+                    <td>A long hexadecimal run did nothing</td>
+                    <td>A digest is exactly 32, 40 or 64 digits. A 33 digit run is none of the three.</td>
+                    <td>Check the digest. If it is behind an <code>md5:</code>, <code>sha1:</code> or <code>sha256:</code> label, the label has to agree with the length: <code>md5:</code> in front of 64 digits is declined because one of the two is wrong.</td>
+                </tr>
+                <tr>
+                    <td>An indicator inside a code span, a link, an <code>@mention</code>, a <code>~channel-link</code> or a <code>#hashtag</code> did nothing</td>
+                    <td>All of those are <a href="formats.html#protected">protected spans</a>. Mattermost turns each into a link of its own, and writing inside one would destroy it.</td>
+                    <td>Write the indicator in ordinary prose.</td>
+                </tr>
+                <tr>
+                    <td>No indicator of one kind links, and the others do</td>
+                    <td>That kind's switch is off.</td>
+                    <td>Check <a href="admin.html#cyber">the admin settings</a>. There are five kind switches under one parent.</td>
+                </tr>
+                <tr>
+                    <td>No indicator of any kind links</td>
+                    <td><a href="admin.html#enable-cyber"><code>EnableCyber</code></a> is off, which stops all five whatever they are set to.</td>
+                    <td>Turn the parent on. Links already written keep working either way.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="cyber-not-installed">The cyber panel says a dataset is "not installed"</h2>
+
+        <p>
+            The panel lists every dataset it knows, and says of each whether it is installed and
+            when it was generated. That is deliberate: an indicator nothing is known about and an
+            indicator whose dataset is missing look identical otherwise.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Every dataset but the known-exploited one says "not installed"</td>
+                    <td>Nothing has been synced onto this server. Only <code>kev.tsv</code> ships inside the bundle; the rest are files an operator supplies.</td>
+                    <td>Put <code>cve.tsv</code>, <code>epss.tsv</code>, <code>ip.tsv</code> and <code>watchlist.tsv</code> in a directory on the server and name it in <a href="admin.html#cyber-datasets-dir"><code>CyberDatasetsDir</code></a>. They are read within a few seconds, with no restart.</td>
+                </tr>
+                <tr>
+                    <td>The files are on the server and the panel still says "not installed"</td>
+                    <td><a href="admin.html#cyber-datasets-dir"><code>CyberDatasetsDir</code></a> is empty, or names a directory other than the one they are in. With it empty only the bundled datasets are read.</td>
+                    <td>Set it to the directory holding the files, and check the plugin's own process can read that path.</td>
+                </tr>
+                <tr>
+                    <td>Some readers get enrichment and others do not</td>
+                    <td>In a cluster each node answers from the files <em>it</em> can read, so a dataset present on one node alone enriches only the readers that node serves.</td>
+                    <td>Put the directory on shared storage, or sync the same files to every node. The panel's dataset list, read on two accounts, is the fastest way to confirm it.</td>
+                </tr>
+                <tr>
+                    <td>A dataset is installed and the indicator still says nothing is known</td>
+                    <td>Not a failure. The dataset simply has no row for it, and the panel names the dataset and the date it was generated so you can judge how current that is.</td>
+                    <td>Sync a newer dataset if the indicator is recent. Nothing is fetched from the internet, so the enrichment is only as current as the last sync.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="cyber-dataset-ignored">A cyber dataset is in the directory and is ignored</h2>
+
+        <p>
+            Every dataset carries a stamp naming the schema it was built for. A file whose stamp is
+            absent, or names another schema, is <strong>skipped rather than misread</strong>, and
+            the reason is logged once as
+            <a href="error-codes.html#cyberdata"><code>TF-20002</code></a>. The panel goes on
+            saying that one dataset is not installed while every other dataset answers normally,
+            which is why the log line is the only thing that will ever explain it.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>In the log</th><th>Cause</th><th>Fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><a href="error-codes.html#cyberdata"><code>TF-20002</code></a>, a cyber dataset carries no usable schema stamp and was skipped</td>
+                    <td>The file carries no stamp, or one built for a different reader. Usually a dataset generated for an older or newer plugin build, or a file that was edited or truncated in transit.</td>
+                    <td>Regenerate the dataset with the generator matching this plugin build, and sync it whole. Repairing the stamp by hand on a file whose rows are a different shape only moves the failure.</td>
+                </tr>
+                <tr>
+                    <td><a href="error-codes.html#cyberdata"><code>TF-20001</code></a>, a cyber dataset could not be read and was skipped</td>
+                    <td>The file could not be opened, or its rows are not the shape this build reads. A permissions problem on the directory looks like this too.</td>
+                    <td>Check the plugin process can read the path, then check the file is the dataset it claims to be.</td>
+                </tr>
+                <tr>
+                    <td><a href="error-codes.html#cyberdata"><code>TF-20003</code></a>, a file in the cyber dataset directory is not a dataset this build reads</td>
+                    <td>The name is not one of <code>cve.tsv</code>, <code>epss.tsv</code>, <code>kev.tsv</code>, <code>ip.tsv</code> or <code>watchlist.tsv</code>.</td>
+                    <td>Rename it, or keep unrelated files out of the directory.</td>
+                </tr>
+                <tr>
+                    <td><a href="error-codes.html#cyberdata"><code>TF-20004</code></a>, a vendor IP database could not be read and was skipped</td>
+                    <td>A <code>.mmdb</code> file could not be opened, or its declared type is not one this build reads.</td>
+                    <td>Check the download completed, and that the database is an ASN, city or country one.</td>
                 </tr>
             </tbody>
         </table>

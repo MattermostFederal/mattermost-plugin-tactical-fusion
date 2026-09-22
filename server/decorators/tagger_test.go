@@ -125,6 +125,16 @@ func TestProtectedSpansAreNeverRewritten(t *testing.T) {
 
 		// The interior of a CRLF fence is still protected.
 		{"inside a crlf fence", "```\r\nAAA\r\n```\r\n"},
+
+		// Mattermost autolinks these three the way it autolinks a bare URL, so
+		// a link written inside one destroys it.
+		{"mention", "ask @AAA about it"},
+		{"mention at the start", "@AAA is on it"},
+		{"channel link", "posted in ~AAA today"},
+		{"channel link at the start", "~AAA has it"},
+		{"hashtag", "filed under #AAA today"},
+		{"hashtag at the start", "#AAA is the tag"},
+		{"mention carrying dots and hyphens", "ask @ops.lead-AAA now"},
 	}
 
 	for _, tc := range cases {
@@ -208,6 +218,42 @@ func TestTokensOutsideProtectedSpansAreDecorated(t *testing.T) {
 			"one protected, one not",
 			"`AAA` and AAA",
 			"`AAA` and [AAA](" + testPrefix + "/tok?v=AAA)",
+		},
+		{
+			// The mention expression requires a non-word rune before the "@",
+			// so an address inside an email-shaped run is not a mention and is
+			// still decorated.
+			"after an at sign bound to a word",
+			"mail ops@AAA today",
+			"mail ops@[AAA](" + testPrefix + "/tok?v=AAA) today",
+		},
+		{
+			// Strikethrough is two tildes, and the second is a word-adjacent
+			// tilde rather than the start of a channel link.
+			"inside strikethrough",
+			"~~AAA~~",
+			"~~[AAA](" + testPrefix + "/tok?v=AAA)~~",
+		},
+		{
+			// A heading's second "#" is preceded by a "#", so the hashtag
+			// expression does not start there, and a heading is not a hashtag.
+			"in a heading",
+			"## AAA",
+			"## [AAA](" + testPrefix + "/tok?v=AAA)",
+		},
+		{
+			"alongside a mention",
+			"@bob please check AAA",
+			"@bob please check [AAA](" + testPrefix + "/tok?v=AAA)",
+		},
+		{
+			// The mention's leading context rune joins the protected range, so
+			// the span starts at the comma. A token that stops before it does
+			// not overlap and is still decorated; one whose own pattern
+			// consumes that comma does overlap, and is not.
+			"token immediately before a mention",
+			"AAA,@bob",
+			"[AAA](" + testPrefix + "/tok?v=AAA),@bob",
 		},
 	}
 

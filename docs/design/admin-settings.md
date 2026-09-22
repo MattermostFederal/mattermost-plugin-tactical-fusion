@@ -4,9 +4,10 @@
 
 ## Admin settings
 
-The count is **twenty-five switches across six sections**. Cursor on Target added
-the fifth section and two of the switches, `EnableCot` and `EnableCotFile`, and
-GeoJSON added the sixth and three more. Cursor on Target
+The count is **thirty-one switches across seven sections**. Cursor on Target added
+the fifth section and two of the switches, `EnableCot` and `EnableCotFile`,
+GeoJSON added the sixth and three more, and cyber added the seventh with six
+switches and one directory setting. Cursor on Target
 deliberately added no third: the card's map reads `EnableLocationMapInline`,
 whose parent ANDs with `EnableLocation` and `EnableLocationMap` already live in
 Go. A second "is the map on" answer is the thing `features/types.ts` argues

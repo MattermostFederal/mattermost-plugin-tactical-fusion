@@ -25,6 +25,11 @@ const (
 
 	// TypeAirport is a four-letter ICAO airfield ident, such as "PHIK".
 	TypeAirport = "airport"
+
+	// TypeCyber is a security indicator: a CVE or CWE identifier, a MITRE
+	// ATT&CK technique or tactic, an IP address, or a file hash. Examples are
+	// "CVE-2021-44228", "T1059.001" and "203.0.113.7".
+	TypeCyber = "cyber"
 )
 
 // Reasons a Link request is declined, carried in ErrorResponse.Reason.

@@ -12,6 +12,7 @@ import (
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/bridgeclient"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/cyber"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
@@ -206,6 +207,8 @@ func (p *Plugin) formatEnabled(typ string, params url.Values) bool {
 		return formats.Military
 	case airport.Type:
 		return p.airportFormats().Airfield
+	case cyber.Type:
+		return cyberKindEnabled(p.cyberFormats(), params)
 	}
 
 	return true
@@ -220,6 +223,8 @@ func parsesWithEveryFormat(typ, token string, ref time.Time) bool {
 		unrestricted = &location.Decorator{}
 	case airport.Type:
 		unrestricted = &airport.Decorator{}
+	case cyber.Type:
+		unrestricted = &cyber.Decorator{}
 	default:
 		return false
 	}
@@ -234,6 +239,7 @@ func (p *Plugin) bridgeInfo() bridgeclient.InfoResponse {
 		dtg.Type:      config.EnableDTG,
 		location.Type: config.EnableLocation,
 		airport.Type:  config.EnableAirport,
+		cyber.Type:    config.EnableCyber,
 	}
 
 	info := bridgeclient.InfoResponse{
@@ -278,4 +284,19 @@ func writeBridgeRefusal(w http.ResponseWriter, refusal bridgeRefusal) {
 		Code:    refusal.code,
 		Reason:  refusal.reason,
 	})
+}
+
+// cyberKindEnabled reads the kind out of the link's own parameters, because a
+// cyber link names which grammar recognized it and the switches are per kind.
+func cyberKindEnabled(formats cyber.Formats, params url.Values) bool {
+	kind := cyber.Kind(params.Get(cyber.ParamKind))
+	if !kind.Known() {
+		return false
+	}
+
+	enabled := (&cyber.Decorator{Enabled: func() cyber.Formats { return formats }})
+
+	_, ok := enabled.Parse(params.Get(cyber.ParamValue), time.Now())
+
+	return ok
 }

@@ -121,3 +121,30 @@ anchor in the document. `TacticalFusion.Link` does not depend on this, because i
 renders through `HoverLink`, which is why the help page recommends it when the
 hover matters.
 
+## Cyber context
+
+**Whether a search backend finds an indicator at all.** The prior-mentions
+route sends the indicator as a quoted phrase to `SearchPostsInTeamForUser`.
+Whether Postgres full text search, Elasticsearch and OpenSearch each tokenize a
+dotted quad, a hyphenated `CVE-2021-44228` or a 64 character hexadecimal run
+into something a phrase query matches has never been observed on any of the
+three. The panel says "no earlier mention of this indicator was found in this
+team" rather than implying there was none, which is the wording that stays
+honest either way.
+
+**Whether a permalink navigates rather than reloading.** The mentions list
+renders `/<team>/pl/<post id>` as an ordinary anchor. Whether the webapp's
+router intercepts one rendered inside a plugin's right-hand sidebar component,
+or whether following it costs a full page load, has not been checked in a
+running server.
+
+**The first lookup on a large dataset.** `cve.tsv` is searched in place with
+about twenty 4 KB reads. That was reasoned from the file size and the block
+size, not measured, and the cold-cache case on a slow disk has never been
+timed.
+
+**That Mattermost does not serve `assets/`.** The bundled datasets live under
+`assets/cyber` rather than `public/` because Mattermost serves only a bundle's
+`public/` directory without a session. That is its behavior rather than
+something this repository can assert, and no test here can reach a running
+server to confirm it.

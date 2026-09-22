@@ -145,6 +145,20 @@ type configuration struct {
 	EnableGeoJSON          bool
 	EnableGeoJSONFile      bool
 	EnableGeoJSONUnlabeled bool
+
+	// EnableCyber is the parent of the five grammars below it, ANDed in Go the
+	// way every other section's parent is. All six govern decoration only.
+	EnableCyber       bool
+	EnableCyberCVE    bool
+	EnableCyberCWE    bool
+	EnableCyberAttack bool
+	EnableCyberIP     bool
+	EnableCyberHash   bool
+
+	// CyberDatasetsDir is a directory on this server holding the datasets the
+	// enrichment reads. Read at render rather than at decoration, so a dataset
+	// dropped in or taken away never changes what a message says.
+	CyberDatasetsDir string
 }
 
 func (c *configuration) Clone() *configuration {

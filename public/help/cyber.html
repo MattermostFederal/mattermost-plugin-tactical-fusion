@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Context - Tactical Fusion</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="copy.js" defer></script>
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <h2>Tactical Fusion</h2>
+            <span class="version">Plugin Documentation</span>
+        </div>
+        <nav>
+            <span class="nav-section">Documentation</span>
+            <a href="help.html">Overview</a>
+            <span class="nav-section">Decorators</span>
+            <a href="dtg.html">Date-Time Groups</a>
+            <a href="location.html">Coordinates</a>
+            <a href="airfields.html">Airfields</a>
+            <a href="cyber.html" class="active">Cyber Context</a>
+            <a href="cot.html">Cursor on Target</a>
+            <a href="geojson.html">GeoJSON</a>
+            <span class="nav-section">Guides</span>
+            <a href="formats.html">Recognized Formats</a>
+            <a href="panel.html">The Sidebar Panel</a>
+            <a href="admin.html">Admin Settings</a>
+            <a href="commands.html">Slash Commands</a>
+            <a href="integration.html">Plugin Integration</a>
+            <span class="nav-section">Reference</span>
+            <a href="troubleshooting.html">Troubleshooting</a>
+            <a href="error-codes.html">Error Codes</a>
+        </nav>
+    </aside>
+
+    <main class="content">
+        <div class="breadcrumb">
+            <a href="help.html">Docs</a>
+            <span class="separator">/</span>
+            Cyber Context
+        </div>
+
+        <h1>Cyber Context</h1>
+        <p class="tagline">Five kinds of security indicator, two catalogs built into the plugin, and datasets an operator syncs in. Nothing is ever fetched from the internet.</p>
+
+        <div class="alert alert-info">
+            <p>
+                Settings: <a href="admin.html#enable-cyber"><code>EnableCyber</code></a> and the
+                five kind switches under it, plus
+                <a href="admin.html#cyber-datasets-dir"><code>CyberDatasetsDir</code></a>. To see
+                what your own server does, run
+                <a href="commands.html#examples"><code>/tactical-fusion examples</code></a>.
+                Every example below is one of that command's own rows.
+            </p>
+        </div>
+
+        <h2 id="cyber-kinds">The five kinds</h2>
+
+        <p>
+            Each kind is recognized in ordinary prose, with no label in front of it, and each has
+            its own switch. What is written stays written: the link's text is your own token, and
+            only the address behind it carries the canonical spelling.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Kind</th><th>Example</th><th>Recognized by</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><a href="#cyber-cve">Vulnerability</a></td>
+                    <td><code class="copyable">CVE-2021-44228</code></td>
+                    <td>Shape, in any case, for a year of 1999 or later</td>
+                </tr>
+                <tr>
+                    <td><a href="#cyber-cwe">Weakness</a></td>
+                    <td><code class="copyable">CWE-79</code></td>
+                    <td>The CWE catalog built into the plugin, in any case</td>
+                </tr>
+                <tr>
+                    <td><a href="#cyber-attack">MITRE ATT&amp;CK</a></td>
+                    <td><code class="copyable">T1059.001</code> and <code class="copyable">TA0002</code></td>
+                    <td>The ATT&amp;CK catalog built into the plugin, upper case only</td>
+                </tr>
+                <tr>
+                    <td><a href="#cyber-ip">IP address</a></td>
+                    <td><code class="copyable">203.0.113.7</code></td>
+                    <td>A parsed IPv4 or IPv6 address, minus loopback and unspecified</td>
+                </tr>
+                <tr>
+                    <td><a href="#cyber-hash">File hash</a></td>
+                    <td><code class="copyable">44d88612fea8a8f36de82e1278abb02f</code></td>
+                    <td>A 32, 40 or 64 digit hexadecimal run</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>
+            Post a sentence with an indicator in it and the indicator becomes a link:
+        </p>
+
+        <pre tabindex="0"><code>Patched CVE-2021-44228 across the fleet, beacon was to 203.0.113.7</code></pre>
+
+        <div class="alert alert-info">
+            <p class="alert-title">The stored text is the token you typed.</p>
+            <p>
+                Writing <code>cve-2021-44228</code> in lower case stores a link reading
+                <code>cve-2021-44228</code>. The canonical spelling,
+                <code>CVE-2021-44228</code>, travels in the address only, so the panel and the
+                page agree about which vulnerability it is while your message still reads the way
+                you wrote it.
+            </p>
+        </div>
+
+        <h2 id="cyber-cve">Vulnerability identifiers</h2>
+
+        <p>Setting: <a href="admin.html#enable-cyber-cve"><code>EnableCyberCVE</code></a></p>
+
+        <p>
+            <code class="copyable">CVE-2021-44228</code> is recognized <strong>by shape rather
+            than by lookup</strong>, in any case, with a four digit year of 1999 or later and four
+            to seven digits after it. Identifiers are issued daily and no list of them ships inside
+            the plugin, so requiring a lookup would mean this week's vulnerability never linking.
+            An identifier the installed datasets do not hold still links, and its panel says so
+            rather than refusing.
+        </p>
+
+        <p>
+            What the panel shows about one comes from the
+            <a href="#cyber-datasets">datasets</a>: a summary and a CVSS score from
+            <code>cve.tsv</code>, a probability of exploitation from <code>epss.tsv</code>, and
+            whether it is in the known-exploited catalog from <code>kev.tsv</code>. Weaknesses the
+            vulnerability record names are offered as <a href="#cyber-cwe">CWE</a> links.
+        </p>
+
+        <h2 id="cyber-cwe">Weakness identifiers</h2>
+
+        <p>Setting: <a href="admin.html#enable-cyber-cwe"><code>EnableCyberCWE</code></a></p>
+
+        <p>
+            <code class="copyable">CWE-79</code> is recognized in any case, and
+            <strong>validated against the CWE catalog built into the plugin</strong>. A number the
+            catalog does not hold is left exactly as written, which is why
+            <code>CWE-99999</code> is plain text. The panel gives the weakness its name, its
+            abstraction level, its status, a summary, and links to the parents above it.
+        </p>
+
+        <h2 id="cyber-attack">MITRE ATT&amp;CK identifiers</h2>
+
+        <p>Setting: <a href="admin.html#enable-cyber-attack"><code>EnableCyberAttack</code></a></p>
+
+        <p>
+            Techniques, sub-techniques and tactics are all read:
+            <code>T1059</code> is a technique, <code class="copyable">T1059.001</code> one of its
+            sub-techniques, and <code class="copyable">TA0002</code> a tactic. Like CWE, these are
+            <strong>validated against the catalog built into the plugin</strong>, so an identifier
+            that names nothing is left as written.
+        </p>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">ATT&amp;CK identifiers are upper case only.</p>
+            <p>
+                Unlike CVE and CWE, which are read in any case, <code>t1059</code> is not an
+                ATT&amp;CK identifier here. A lower-case <code>t</code> followed by four digits is
+                a part number, a ticket and a serial number far more often than it is a technique.
+            </p>
+        </div>
+
+        <p>
+            The panel names the technique, says which kind it is, lists its tactics, links to its
+            parent and its sub-techniques, and gives the reference address at
+            <code>attack.mitre.org</code>. That address is derived from the identifier rather than
+            carried in the catalog, so a link that reaches a reader is never one somebody else
+            chose.
+        </p>
+
+        <h2 id="cyber-ip">IP addresses</h2>
+
+        <p>Setting: <a href="admin.html#enable-cyber-ip"><code>EnableCyberIP</code></a></p>
+
+        <p>
+            An IPv4 or IPv6 address is recognized when it genuinely parses as one. The panel gives
+            its version and its scope, which is the one thing no dataset has to supply: global,
+            private, loopback, link-local, multicast, carrier-grade NAT or documentation.
+            <code class="copyable">203.0.113.7</code> is a documentation address, so no dataset
+            describes it and the panel says which it is.
+        </p>
+
+        <p>
+            Where the <a href="#cyber-datasets">datasets</a> have something to add, the autonomous
+            system, the country, the region and the city come from <code>ip.tsv</code> or from a
+            vendor <code>.mmdb</code> database an operator dropped in.
+        </p>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">A four-part version number cannot be told apart from an address.</p>
+            <p>
+                <code>1.2.3.4</code> is a valid address and a common version number, and nothing
+                in the text says which was meant. It is read as an address. An install where that
+                matters more than the enrichment does can turn this one kind off and leave the
+                other four on. A version written the way versions usually are,
+                <code>v1.2.3.4</code>, is left alone.
+            </p>
+        </div>
+
+        <h2 id="cyber-hash">File hashes</h2>
+
+        <p>Setting: <a href="admin.html#enable-cyber-hash"><code>EnableCyberHash</code></a></p>
+
+        <p>
+            A run of exactly 32, 40 or 64 hexadecimal digits is read as an MD5, SHA-1 or SHA-256
+            digest. <code class="copyable">44d88612fea8a8f36de82e1278abb02f</code> is the MD5 of
+            the EICAR test file. The panel names the algorithm and the length, and shows any
+            <a href="#cyber-datasets">watchlist</a> entry for it, because a hash is an identity
+            rather than a record: on its own it says nothing at all.
+        </p>
+
+        <p>
+            A 40 digit digest is also the shape of a Git object identifier. The panel says so
+            rather than guessing between the two.
+        </p>
+
+        <h2 id="cyber-kept">What stays in your message</h2>
+
+        <p>
+            Several runs sit so close to an indicator that the matcher has to look past them. It
+            matches them and then leaves them in the message, outside the link:
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>You write</th><th>What is linked</th><th>What stays</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code class="copyable">Patched CVE-2021-44228.</code></td><td>The identifier</td><td>A trailing <code>.</code> <code>,</code> <code>;</code> <code>:</code> <code>!</code> or <code>?</code></td></tr>
+                <tr><td><code class="copyable">seen at 203.0.113.7:443 twice</code></td><td>The address</td><td>The port, <code>:443</code></td></tr>
+                <tr><td><code class="copyable">fe80::a%eth0 on the wire</code></td><td>The address</td><td>The zone, <code>%eth0</code></td></tr>
+                <tr><td><code class="copyable">md5:44d88612fea8a8f36de82e1278abb02f</code></td><td>The digest</td><td>The label, <code>md5:</code></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            The <code>md5:</code>, <code>sha1:</code> and <code>sha256:</code> labels are read with
+            either a colon or an equals sign, and the <strong>label has to agree with the
+            length</strong>. <code>md5:</code> in front of 64 digits is declined outright rather
+            than linked as a SHA-256, because one of the two is wrong and the plugin cannot tell
+            which.
+        </p>
+
+        <h2 id="cyber-declined">Deliberately declined</h2>
+
+        <p>
+            Decoration rewrites the stored message permanently, so anything ambiguous is left
+            alone. None of these become links:
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Example</th><th>Why</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>T9999</code></td><td>Not in the ATT&amp;CK catalog this build carries</td></tr>
+                <tr><td><code>CWE-99999</code></td><td>Not in the CWE catalog this build carries</td></tr>
+                <tr><td><code>CVE-1998-0001</code></td><td>Predates the scheme, which starts at 1999</td></tr>
+                <tr><td><code>1.2.3.4.5</code></td><td>Five parts is not an address</td></tr>
+                <tr><td><code>01.2.3.4</code></td><td>A leading zero, so it does not parse as an address</td></tr>
+                <tr><td><code>999.1.1.1</code></td><td>A part out of range</td></tr>
+                <tr><td><code>v1.2.3.4</code></td><td>A version number, written the way versions are</td></tr>
+                <tr><td><code>1.2.3.4/24</code></td><td>A range. A link over half of one misrepresents it, so the whole thing is declined</td></tr>
+                <tr><td><code>1.2.3.0-1.2.3.255</code></td><td>A range again, for the same reason</td></tr>
+                <tr><td><code>0.0.0.0</code> and <code>::</code></td><td>Unspecified: there is nothing to be said about them</td></tr>
+                <tr><td><code>127.0.0.1</code> and <code>::1</code></td><td>Loopback, for the same reason</td></tr>
+                <tr><td><code>12:30:45</code></td><td>A time of day, not an address</td></tr>
+                <tr><td><code>00:1A:2B:3C:4D:5E</code></td><td>A MAC address, which this plugin does not read</td></tr>
+                <tr><td><code>std::vector</code></td><td>C++ scope resolution, which is not an address either</td></tr>
+                <tr><td><code>deadbeefdeadbeefdeadbeefdeadbeefd</code></td><td>33 digits, so it is none of the three hash lengths</td></tr>
+                <tr><td><code>md5:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</code></td><td>The label says MD5 and the digest is 64 digits long, so the two disagree</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            An indicator inside a <a href="formats.html#protected">protected span</a> is left alone
+            as well: a code span, a fenced block, an existing link, an <code>@mention</code>, a
+            <code>~channel-link</code> or a <code>#hashtag</code>. Mattermost turns each of those
+            into a link of its own, and writing into one would destroy it.
+        </p>
+
+        <h2 id="cyber-panel">What the panel shows</h2>
+
+        <p>
+            Clicking an indicator opens the right-hand sidebar. See
+            <a href="panel.html#panel">the sidebar panel</a> for the shared mechanics.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Section</th><th>Shows</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Heading</td><td>The name of the thing, where it has one, over the indicator itself.</td></tr>
+                <tr><td>Summary</td><td>The description the catalog or the dataset carries.</td></tr>
+                <tr><td>Readings</td><td>The rows for that kind: scores and dates for a vulnerability, tactics and platforms for a technique, scope and network for an address, the algorithm for a hash.</td></tr>
+                <tr><td>Watchlist</td><td>Any verdict your own watchlist records for this indicator, with its source, note and date.</td></tr>
+                <tr><td>Related</td><td>Links to the weaknesses, parents and sub-techniques around it, each one opening the same panel.</td></tr>
+                <tr><td>Datasets</td><td>Which datasets are installed and when each was generated, so an empty answer can be told from a missing file.</td></tr>
+                <tr><td>Earlier mentions</td><td>Posts in your current team that named this same indicator before.</td></tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-info">
+            <p class="alert-title">Earlier mentions are searched as you.</p>
+            <p>
+                The search runs with your own account's access, in the team you are reading in, so
+                it can never show you a post from a channel you are not in. Two readers opening the
+                same indicator can therefore see different lists, and that is correct.
+            </p>
+        </div>
+
+        <div class="alert alert-note">
+            <p class="alert-title">The standalone page shows no mentions.</p>
+            <p>
+                The page behind an indicator link is rendered from the link alone and is the same
+                for everybody, so it carries the readings, the watchlist, the related links and the
+                dataset list, and nothing that depends on who is reading it.
+            </p>
+        </div>
+
+        <h2 id="cyber-datasets">Where the data comes from</h2>
+
+        <p>
+            Two catalogs are <strong>built into the plugin</strong>: ATT&amp;CK and CWE. They need
+            no configuration, they are the same on every node, and they are what decides whether an
+            identifier of those two kinds is recognized at all.
+        </p>
+
+        <p>
+            Everything else is a file an operator syncs onto the server, into the directory named
+            by <a href="admin.html#cyber-datasets-dir"><code>CyberDatasetsDir</code></a>:
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>File</th><th>Carries</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>cve.tsv</code></td><td>Vulnerability records: summary, dates, CVSS score and vector, and the weaknesses each one names</td></tr>
+                <tr><td><code>epss.tsv</code></td><td>Exploit prediction scores and percentiles</td></tr>
+                <tr><td><code>kev.tsv</code></td><td>The known exploited vulnerabilities catalog, with its due dates and required actions</td></tr>
+                <tr><td><code>ip.tsv</code></td><td>Autonomous system, country, region and city per address range</td></tr>
+                <tr><td><code>watchlist.tsv</code></td><td>Your own verdicts, for any indicator of any kind</td></tr>
+                <tr><td>Any <code>.mmdb</code></td><td>A vendor IP database, read alongside <code>ip.tsv</code>. None ships with the plugin</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            <code>kev.tsv</code> is the one small enough to ship inside the bundle, and a file of
+            the same name in the configured directory replaces the bundled one. This release
+            carries no bundled copy of it: it is built by the same tool that builds the others,
+            and until it is generated a vulnerability's panel says that no known exploited
+            vulnerabilities dataset is installed rather than implying the vulnerability is not
+            listed. That distinction is deliberate, and it is why each sentence names the dataset
+            it is talking about.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">Nothing is ever fetched from the internet.</p>
+            <p>
+                Every answer comes from a file on this server, which is why an air-gapped install
+                behaves exactly as a connected one does. It also means the enrichment is only as
+                current as the last sync, and the panel says when each dataset was generated so a
+                reader can judge that for themselves.
+            </p>
+        </div>
+
+        <p>
+            A file dropped into the directory is picked up <strong>within a few seconds</strong>,
+            with no restart and no configuration change. Removing one is noticed the same way, and
+            the panel goes back to saying that dataset is not installed.
+        </p>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">A dataset whose schema stamp is absent or wrong is skipped.</p>
+            <p>
+                Every file carries a stamp naming the schema it was built for. One that carries
+                none, or names another, is skipped rather than misread, and the reason is logged
+                once as <a href="error-codes.html#cyberdata"><code>TF-20002</code></a>. Skipping is
+                per file: every other dataset still answers.
+            </p>
+        </div>
+
+        <h2 id="cyber-settings">Settings and troubleshooting</h2>
+
+        <table>
+            <thead>
+                <tr><th>Setting</th><th>Governs</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><a href="admin.html#enable-cyber"><code>EnableCyber</code></a></td><td>The whole decorator. The parent of the five below it.</td></tr>
+                <tr><td><a href="admin.html#enable-cyber-cve"><code>EnableCyberCVE</code></a></td><td><a href="#cyber-cve">Vulnerability identifiers</a></td></tr>
+                <tr><td><a href="admin.html#enable-cyber-cwe"><code>EnableCyberCWE</code></a></td><td><a href="#cyber-cwe">Weakness identifiers</a></td></tr>
+                <tr><td><a href="admin.html#enable-cyber-attack"><code>EnableCyberAttack</code></a></td><td><a href="#cyber-attack">ATT&amp;CK identifiers</a></td></tr>
+                <tr><td><a href="admin.html#enable-cyber-ip"><code>EnableCyberIP</code></a></td><td><a href="#cyber-ip">IP addresses</a></td></tr>
+                <tr><td><a href="admin.html#enable-cyber-hash"><code>EnableCyberHash</code></a></td><td><a href="#cyber-hash">File hashes</a></td></tr>
+                <tr><td><a href="admin.html#cyber-datasets-dir"><code>CyberDatasetsDir</code></a></td><td>Where the <a href="#cyber-datasets">datasets</a> are read from</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            A switch governs new decoration only: a link already written keeps working after its
+            kind is switched off. If an indicator you expected to be linked was not, or the panel
+            says a dataset is not installed, see
+            <a href="troubleshooting.html#cyber-not-linked">Troubleshooting</a>.
+        </p>
+
+    </main>
+</div>
+</body>
+</html>

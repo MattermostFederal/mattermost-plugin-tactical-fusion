@@ -19,6 +19,7 @@
 //	17000-17999   server/decorators/            framework and decorator pages
 //	18000-18999   server/packages.go            detail map packages
 //	19000-19999   server/bridge.go              the plugin bridge
+//	20000-20999   server/cyberdata.go           cyber datasets on disk
 //
 // Within a range codes are allocated in source order the first time a file is
 // instrumented; a site added later takes the next free number in its range, so
@@ -195,6 +196,20 @@ const (
 	// naming a retired code into a permanent failure.
 	APIAirportInvalid = 13009
 
+	// APICyberInvalid is returned when the cyber endpoint is given a kind and
+	// value that do not reproduce each other. An indicator no dataset holds is
+	// not this: that answers 200 saying so, exactly as the page does.
+	APICyberInvalid = 13010
+
+	// APICyberTeamInvalid is returned when the prior-mentions endpoint is
+	// given no team, or one that is not a Mattermost id. An empty team never
+	// means every team: the search is scoped to one and says which.
+	APICyberTeamInvalid = 13011
+
+	// APICyberSearchFailed reports that the search a reader's prior-mentions
+	// request ran came back as an error. The rest of the panel still renders.
+	APICyberSearchFailed = 13012
+
 	// server/preferences.go (14000-14999)
 
 	// PreferencesZoneNameTooLong rejects a row label longer than the cap.
@@ -295,6 +310,11 @@ const (
 	// hold renders at 200 with a note instead.
 	AirportPageInvalid = 17002
 
+	// CyberPageInvalid is returned by the cyber page for a link whose kind and
+	// value do not reproduce each other. An indicator no dataset describes
+	// renders at 200 with a note instead.
+	CyberPageInvalid = 17003
+
 	// server/packages.go (18000-18999)
 
 	// PackagesNoBundlePath reports that the plugin cannot locate its own
@@ -344,6 +364,31 @@ const (
 	BridgeTokenNotRecognized = 19006
 	BridgeFormatDisabled     = 19007
 	BridgePanic              = 19008
+
+	// server/cyberdata.go (20000-20999)
+
+	// CyberDataNoBundlePath reports that the plugin cannot locate its own
+	// bundle, so the datasets shipped inside it are not read. Datasets in the
+	// configured directory are unaffected.
+	CyberDataNoBundlePath = 20000
+
+	// CyberDataUnreadable reports a dataset file that could not be opened or
+	// whose rows are not the shape this build reads. The file is skipped and
+	// every other dataset still answers.
+	CyberDataUnreadable = 20001
+
+	// CyberDataSchemaMismatch reports a dataset carrying no stamp, or one
+	// built for a different reader. Distinct from unreadable, because the
+	// remedy is a newer dataset rather than a repaired file.
+	CyberDataSchemaMismatch = 20002
+
+	// CyberDataBadName reports a file in the dataset directory whose name is
+	// not one this build reads.
+	CyberDataBadName = 20003
+
+	// CyberDataMMDBUnreadable reports a vendor database that could not be
+	// opened, or whose declared type this build does not read.
+	CyberDataMMDBUnreadable = 20004
 )
 
 // AllCodes lists every code declared above. TestAllCodesComplete enforces that
@@ -391,6 +436,9 @@ var AllCodes = []int{
 	APIPreferencesClearFailed,
 	APIConvertInvalid,
 	APIAirportInvalid,
+	APICyberInvalid,
+	APICyberTeamInvalid,
+	APICyberSearchFailed,
 
 	PreferencesZoneNameTooLong,
 	PreferencesZoneNameControlCharacters,
@@ -415,6 +463,7 @@ var AllCodes = []int{
 	DTGPageParamsInvalid,
 	LocationPageParamsInvalid,
 	AirportPageInvalid,
+	CyberPageInvalid,
 
 	PackagesNoBundlePath,
 	PackagesBadName,
@@ -435,4 +484,10 @@ var AllCodes = []int{
 	BridgeTokenNotRecognized,
 	BridgeFormatDisabled,
 	BridgePanic,
+
+	CyberDataNoBundlePath,
+	CyberDataUnreadable,
+	CyberDataSchemaMismatch,
+	CyberDataBadName,
+	CyberDataMMDBUnreadable,
 }

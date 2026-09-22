@@ -117,6 +117,18 @@ var inlineProtectedRes = []*regexp.Regexp{
 	// reader's link.
 	regexp.MustCompile(`[a-zA-Z][a-zA-Z0-9+.\-]*://[^\s<>]+`),
 	regexp.MustCompile(`\bwww\.[^\s<>]+`),
+
+	// Mentions, channel links and hashtags, which Mattermost also autolinks.
+	// Same class as a bare URL: the server turns the run into a link of its
+	// own, so rewriting inside one destroys it.
+	//
+	// The leading context is what keeps "~~strike~~" and a "##" heading out,
+	// and it is consumed, so the rune before the sigil joins the protected
+	// range. That costs the decoration of a token that ends immediately before
+	// one, which is the safe direction.
+	regexp.MustCompile(`(?:^|[^\w@])@[\w.\-]+`),
+	regexp.MustCompile(`(?:^|[^\w~])~[\w.\-]+`),
+	regexp.MustCompile(`(?:^|[^\w#])#[A-Za-z][\w.\-]*`),
 }
 
 // Characters that would otherwise be re-parsed as markdown inside a link

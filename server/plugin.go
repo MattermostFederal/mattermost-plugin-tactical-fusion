@@ -9,6 +9,7 @@ import (
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/cyber"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
@@ -23,6 +24,10 @@ type Plugin struct {
 	packageLock  sync.Mutex
 	packageCache *packageCache
 	warned       map[string]bool
+
+	// cyber holds the datasets open across lookups, reopened when the files
+	// under the configured directories move.
+	cyber cyberDatasets
 
 	// decorators is built once in OnActivate and only read afterwards, by the
 	// message hook and by ServeHTTP.
@@ -109,6 +114,26 @@ func (p *Plugin) airportFormats() airport.Formats {
 	}
 }
 
+// cyberFormats reports which indicator grammars the admin has left on.
+//
+// Every kind is ANDed with its parent in Go, the way the sections above are,
+// because a manifest section groups without gating. Read fresh for every
+// message, so a change takes effect without a restart.
+func (p *Plugin) cyberFormats() cyber.Formats {
+	config := p.getConfiguration()
+	if !config.EnableCyber {
+		return cyber.Formats{}
+	}
+
+	return cyber.Formats{
+		CVE:    config.EnableCyberCVE,
+		CWE:    config.EnableCyberCWE,
+		Attack: config.EnableCyberAttack,
+		IP:     config.EnableCyberIP,
+		Hash:   config.EnableCyberHash,
+	}
+}
+
 // locationMaps reports which surfaces the admin has left drawing a map.
 //
 // Two parents rather than one, because a map only ever appears behind a
@@ -180,6 +205,7 @@ func (p *Plugin) OnActivate() error {
 		&dtg.Decorator{Enabled: p.dtgFormats},
 		&location.Decorator{Enabled: p.locationFormats, Maps: p.locationMaps, Packages: p.packageNames},
 		&airport.Decorator{Enabled: p.airportFormats},
+		&cyber.Decorator{Enabled: p.cyberFormats, Intel: p.cyberIntel},
 	)
 	// Expected to stay uncovered: Register only rejects a duplicate or empty
 	// type, and there is one decorator here with a constant one. It is what

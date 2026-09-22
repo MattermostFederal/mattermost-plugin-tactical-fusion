@@ -239,6 +239,35 @@ osm-sources:
 map-sources:
 	./build/maptiles/fetch-sources.sh
 
+## Fetches the upstream security datasets into build/cyberdata/source, which is gitignored,
+## and verifies them against build/cyberdata/sources.lock. Needs network access; nothing in
+## the build, the tests or the plugin at runtime ever reaches the network.
+.PHONY: cyber-sources
+cyber-sources:
+	./build/cyberdata/fetch-sources.sh
+
+## Rebuilds the cyber datasets from the sources above: the two embedded catalogs and the
+## bundled KEV file into the tree, and the large ones into build/cyberdata/out for release
+## assets. Deliberately NOT a prerequisite of test, for the same reason airport-data is not:
+## the transform is filter and sort, and its drift is a missing row, which is visible and
+## benign rather than an invisible failure on an HTTPS install.
+.PHONY: cyber-data
+cyber-data:
+	$(GO) run ./build/cyberdata
+
+## Attaches the release-asset cyber datasets in build/cyberdata/out to an existing release.
+## Operators drop these into the directory named by the CyberDatasetsDir setting.
+.PHONY: cyber-release
+cyber-release:
+	@[ -n "$(TAG)" ] || { echo "error: set TAG=<release tag>"; exit 1; }
+	@ls build/cyberdata/out/*.tsv >/dev/null 2>&1 || { \
+		echo "error: no datasets in build/cyberdata/out; run 'make cyber-data' first."; \
+		exit 1; \
+	}
+	@cd build/cyberdata/out && shasum -a 256 *.tsv > DATASETS.sha256
+	@ls -l build/cyberdata/out/
+	gh release upload "$(TAG)" build/cyberdata/out/*.tsv build/cyberdata/out/DATASETS.sha256 --clobber
+
 ## Regenerates the bundled basemap from the Natural Earth source in build/mapdata/source.
 ## The outputs are committed, so a clean checkout builds and an air-gapped `go test` runs
 ## without this target. Run it only when the source or the generator changes.

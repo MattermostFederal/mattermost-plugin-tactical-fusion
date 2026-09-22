@@ -1,0 +1,452 @@
+package cyber
+
+import (
+	"net/netip"
+	"strconv"
+	"strings"
+
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/cyber/intel"
+)
+
+type Row struct {
+	Label string
+	Value string
+}
+
+type Link struct {
+	Kind  Kind
+	Value string
+	Label string
+}
+
+type WatchEntry struct {
+	Verdict string
+	Source  string
+	Note    string
+	Updated string
+	Known   bool
+}
+
+type DatasetStatus struct {
+	Name      string
+	Label     string
+	Present   bool
+	Generated string
+}
+
+type Details struct {
+	Kind      Kind
+	Value     string
+	Title     string
+	Headline  string
+	Summary   string
+	Rows      []Row
+	Related   []Link
+	Watchlist []WatchEntry
+	Status    string
+	Datasets  []DatasetStatus
+}
+
+var datasetLabels = map[string]string{
+	intel.NameCVE:       "vulnerability",
+	intel.NameEPSS:      "exploit prediction",
+	intel.NameKEV:       "known exploited vulnerabilities",
+	intel.NameIP:        "IP address",
+	intel.NameWatchlist: "watchlist",
+}
+
+const attackBaseURL = "https://attack.mitre.org"
+
+func Describe(kind Kind, value string, set *intel.Set) Details {
+	d := Details{Kind: kind, Value: value, Title: value}
+
+	switch kind {
+	case KindCVE:
+		describeCVE(&d, set)
+	case KindCWE:
+		describeCWE(&d)
+	case KindAttack:
+		describeAttack(&d)
+	case KindIP:
+		describeIP(&d, set)
+	case KindHash:
+		describeHash(&d)
+	}
+
+	d.Watchlist = watchlistFor(value, set)
+	if len(d.Watchlist) > 0 {
+		d.Headline = joinSentence(d.Headline, watchlistHeadline(d.Watchlist))
+	}
+	if d.Headline == "" {
+		d.Headline = d.Status
+	}
+	if d.Headline == "" {
+		d.Headline = kind.Label()
+	}
+
+	d.Datasets = datasetStatuses(set)
+
+	return d
+}
+
+func datasetStatuses(set *intel.Set) []DatasetStatus {
+	statuses := set.Statuses()
+
+	all := make([]DatasetStatus, 0, len(statuses))
+	for _, status := range statuses {
+		all = append(all, DatasetStatus{
+			Name:      status.Name,
+			Label:     datasetLabels[status.Name],
+			Present:   status.Present,
+			Generated: status.Generated,
+		})
+	}
+
+	return all
+}
+
+func missingDatasetSentence(set *intel.Set, name string) string {
+	label := datasetLabels[name]
+	if !set.Has(name) {
+		return "No " + label + " dataset is installed."
+	}
+
+	generated := set.Generated(name)
+	if generated == "" {
+		return "Not in the " + label + " dataset."
+	}
+
+	return "Not in the " + label + " dataset generated " + generated + "."
+}
+
+func addRow(d *Details, label, value string) {
+	if strings.TrimSpace(value) == "" {
+		return
+	}
+	d.Rows = append(d.Rows, Row{Label: label, Value: value})
+}
+
+func joinSentence(first, second string) string {
+	switch {
+	case first == "":
+		return second
+	case second == "":
+		return first
+	}
+	return first + ", " + second
+}
+
+func describeCVE(d *Details, set *intel.Set) {
+	record, found := set.CVE(d.Value)
+	if !found {
+		d.Status = missingDatasetSentence(set, intel.NameCVE)
+	} else {
+		d.Summary = record.Summary
+		addRow(d, "Published", record.Published)
+		addRow(d, "Last modified", record.Modified)
+		addRow(d, "CVSS", severityText(record.Score, record.Severity))
+		addRow(d, "Vector", record.Vector)
+
+		for _, weakness := range record.Weaknesses {
+			if _, known := LookupWeakness(weakness); known {
+				d.Related = append(d.Related, weaknessLink(weakness))
+			}
+		}
+
+		d.Headline = severityText(record.Score, record.Severity)
+	}
+
+	if epss, ok := set.EPSS(d.Value); ok {
+		addRow(d, "EPSS", epssText(epss))
+	}
+
+	if kev, ok := set.KEV(d.Value); ok {
+		addRow(d, "Known exploited", kevText(kev))
+		addRow(d, "Action due", kev.DueDate)
+		addRow(d, "Affected product", kev.Product)
+		addRow(d, "Required action", kev.Action)
+		d.Headline = joinSentence(d.Headline, "in KEV")
+	}
+}
+
+func severityText(score, severity string) string {
+	switch {
+	case score == "" && severity == "":
+		return ""
+	case score == "":
+		return severity
+	case severity == "":
+		return score
+	}
+
+	return score + " " + severity
+}
+
+func epssText(epss intel.EPSSRecord) string {
+	text := epss.Score
+	if epss.Percentile != "" {
+		text += " (" + epss.Percentile + " percentile)"
+	}
+	return text
+}
+
+func kevText(kev intel.KEVRecord) string {
+	text := "Listed"
+	if kev.DateAdded != "" {
+		text += " " + kev.DateAdded
+	}
+	if kev.Ransomware != "" {
+		text += ", ransomware use: " + kev.Ransomware
+	}
+
+	return text
+}
+
+func describeCWE(d *Details) {
+	weakness, known := LookupWeakness(d.Value)
+	if !known {
+		return
+	}
+
+	d.Title = weakness.Name
+	d.Summary = weakness.Summary
+	d.Headline = weakness.Name
+
+	addRow(d, "Identifier", weakness.ID)
+	addRow(d, "Abstraction", weakness.Abstraction)
+	addRow(d, "Status", weakness.Status)
+
+	for _, parent := range weakness.Parents {
+		if _, ok := LookupWeakness(parent); ok {
+			d.Related = append(d.Related, weaknessLink(parent))
+		}
+	}
+}
+
+func weaknessLink(id string) Link {
+	label := id
+	if weakness, ok := LookupWeakness(id); ok {
+		label = id + " " + weakness.Name
+	}
+
+	return Link{Kind: KindCWE, Value: id, Label: label}
+}
+
+func describeAttack(d *Details) {
+	technique, known := LookupTechnique(d.Value)
+	if !known {
+		return
+	}
+
+	d.Title = technique.Name
+	d.Summary = technique.Summary
+	d.Headline = attackHeadline(technique)
+
+	addRow(d, "Identifier", technique.ID)
+	addRow(d, "Kind", attackKindText(technique.Kind))
+
+	var tacticNames []string
+	for _, tactic := range technique.Tactics {
+		if parent, ok := LookupTechnique(tactic); ok {
+			tacticNames = append(tacticNames, parent.Name)
+			d.Related = append(d.Related, techniqueLink(tactic))
+		}
+	}
+	addRow(d, "Tactics", strings.Join(tacticNames, ", "))
+
+	if technique.Parent != "" {
+		if parent, ok := LookupTechnique(technique.Parent); ok {
+			addRow(d, "Parent technique", parent.ID+" "+parent.Name)
+			d.Related = append(d.Related, techniqueLink(technique.Parent))
+		}
+	}
+
+	for _, child := range SubTechniquesOf(technique.ID) {
+		d.Related = append(d.Related, techniqueLink(child.ID))
+	}
+
+	addRow(d, "Platforms", strings.Join(technique.Platforms, ", "))
+	addRow(d, "Status", technique.Status)
+	addRow(d, "Reference", AttackURL(technique))
+}
+
+func attackHeadline(technique Technique) string {
+	if technique.Kind == techniqueKindSubTechnique {
+		if parent, ok := LookupTechnique(technique.Parent); ok {
+			return parent.Name + ": " + technique.Name
+		}
+	}
+
+	return technique.Name
+}
+
+func attackKindText(kind string) string {
+	switch kind {
+	case techniqueKindTactic:
+		return "Tactic"
+	case techniqueKindTechnique:
+		return "Technique"
+	case techniqueKindSubTechnique:
+		return "Sub-technique"
+	}
+
+	return kind
+}
+
+func AttackURL(technique Technique) string {
+	if technique.Kind == techniqueKindTactic {
+		return attackBaseURL + "/tactics/" + technique.ID + "/"
+	}
+
+	base, sub, found := strings.Cut(technique.ID, ".")
+	if !found {
+		return attackBaseURL + "/techniques/" + base + "/"
+	}
+
+	return attackBaseURL + "/techniques/" + base + "/" + sub + "/"
+}
+
+func techniqueLink(id string) Link {
+	label := id
+	if technique, ok := LookupTechnique(id); ok {
+		label = id + " " + technique.Name
+	}
+
+	return Link{Kind: KindAttack, Value: id, Label: label}
+}
+
+func describeIP(d *Details, set *intel.Set) {
+	addr, err := netip.ParseAddr(d.Value)
+	if err != nil {
+		return
+	}
+
+	addRow(d, "Version", addressVersion(addr))
+	addRow(d, "Scope", AddressScope(addr))
+
+	record := set.IP(addr)
+	addRow(d, "Autonomous system", joinFields(record.ASN, record.ASName))
+	addRow(d, "Country", record.Country)
+	addRow(d, "Region", record.Region)
+	addRow(d, "City", record.City)
+	addRow(d, "Source", strings.Join(record.Sources, ", "))
+
+	if record.Empty() {
+		if scope := AddressScope(addr); scope != scopeGlobal {
+			d.Status = "A " + strings.ToLower(scope) + " address, which no dataset describes."
+			d.Headline = scope
+			return
+		}
+		d.Status = missingDatasetSentence(set, intel.NameIP)
+		return
+	}
+
+	d.Headline = joinSentence(joinFields(record.ASN, record.ASName), record.Country)
+}
+
+func joinFields(values ...string) string {
+	kept := make([]string, 0, len(values))
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			kept = append(kept, value)
+		}
+	}
+
+	return strings.Join(kept, " ")
+}
+
+func addressVersion(addr netip.Addr) string {
+	if addr.Is4() {
+		return "IPv4"
+	}
+	return "IPv6"
+}
+
+const scopeGlobal = "Global"
+
+var documentationPrefixes = []netip.Prefix{
+	netip.MustParsePrefix("192.0.2.0/24"),
+	netip.MustParsePrefix("198.51.100.0/24"),
+	netip.MustParsePrefix("203.0.113.0/24"),
+	netip.MustParsePrefix("2001:db8::/32"),
+}
+
+var sharedAddressSpace = netip.MustParsePrefix("100.64.0.0/10")
+
+func AddressScope(addr netip.Addr) string {
+	unmapped := addr.Unmap()
+
+	switch {
+	case unmapped.IsLoopback():
+		return "Loopback"
+	case unmapped.IsUnspecified():
+		return "Unspecified"
+	case unmapped.IsMulticast():
+		return "Multicast"
+	case unmapped.IsLinkLocalUnicast():
+		return "Link-local"
+	case unmapped.IsPrivate():
+		return "Private"
+	case sharedAddressSpace.Contains(unmapped):
+		return "Carrier-grade NAT"
+	}
+
+	for _, prefix := range documentationPrefixes {
+		if prefix.Contains(unmapped) {
+			return "Documentation"
+		}
+	}
+
+	return scopeGlobal
+}
+
+func describeHash(d *Details) {
+	algorithm, bytes := hashAlgorithm(d.Value)
+
+	addRow(d, "Algorithm", algorithm)
+	addRow(d, "Length", strconv.Itoa(bytes)+" bytes")
+
+	d.Headline = algorithm
+	d.Status = "A hash is an identity rather than a record. What is known about one comes from the watchlist."
+}
+
+func hashAlgorithm(value string) (string, int) {
+	switch len(value) {
+	case 32:
+		return "MD5", 16
+	case 40:
+		return "SHA-1, which is also the shape of a Git object id", 20
+	case 64:
+		return "SHA-256", 32
+	}
+
+	return "", 0
+}
+
+func watchlistFor(value string, set *intel.Set) []WatchEntry {
+	rows := set.Watchlist(value)
+	if len(rows) == 0 {
+		return nil
+	}
+
+	entries := make([]WatchEntry, 0, len(rows))
+	for _, row := range rows {
+		entries = append(entries, WatchEntry{
+			Verdict: row.Verdict,
+			Source:  row.Source,
+			Note:    row.Note,
+			Updated: row.Updated,
+			Known:   intel.KnownVerdict(row.Verdict),
+		})
+	}
+
+	return entries
+}
+
+func watchlistHeadline(entries []WatchEntry) string {
+	if len(entries) == 1 {
+		return "watchlist: " + entries[0].Verdict
+	}
+
+	return "watchlist: " + strconv.Itoa(len(entries)) + " entries"
+}

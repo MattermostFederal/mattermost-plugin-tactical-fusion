@@ -37,6 +37,8 @@ right-hand sidebar, and a standalone server-rendered page.
 | `decorators/location/` | Coordinate grammars, geodesy, MGRS, rendering, conversion; `mapdata/` holds the generated country polygons |
 | `decorators/airport/` | ICAO airfields; `data/` holds the embedded CSV and its provenance |
 | `cot/` | Cursor on Target: the bounded XML parse, the type tables, the post props |
+| `decorators/cyber/` | Security indicators: the five grammars, the embedded ATT&CK and CWE catalogs, the enrichment renderer; `intel/` reads the datasets on disk |
+| `cyberdata.go` | Cyber dataset discovery, the reopen-on-change cache, the `TF-200NN` codes |
 | `geojson/` | GeoJSON: the bounded JSON walk, the parts/rings shape, the post props |
 
 ### `webapp/`
@@ -76,11 +78,12 @@ there rather than here or in a comment.
 | [`docs/design/location.md`](docs/design/location.md) | Every coordinate grammar, boundary guards, rendering and resolution, geodesy, `/api/v1/convert`, copy buttons, prior art |
 | [`docs/design/airfields.md`](docs/design/airfields.md) | The label-only ICAO grammar, the embedded database, `/api/v1/airport`, the page and panel |
 | [`docs/design/cot.md`](docs/design/cot.md) | Cursor on Target: why it is not a decorator, the exclusivity rule, the props budget, `edit_at` over a digest, the parser's refusals, the CE circle |
+| [`docs/design/cyber.md`](docs/design/cyber.md) | Security indicators: why decoration reads only the build and enrichment only the install, the consumed tail, the declined list, the stamped datasets and their in-place search, prior mentions, why the shipped catalogs are a seed |
 | [`docs/design/geojson.md`](docs/design/geojson.md) | GeoJSON: why recognition is narrow, why format order stayed format-major, what the two stampers share and what they must not, the parts/rings shape, why `decimalShape` is not reused, the ringed map prop, extent-only, the cross-shape antimeridian unwrap |
 | [`docs/design/mapping.md`](docs/design/mapping.md) | The vector basemap, the OpenStreetMap detail tier and its seam, detail map packages, `PageStatic` vs `PageMapping`, the page bundle, zoom numbers, the country lookup, `Conversion`, the map page, the panel map, turning maps off, the map under a post |
 | [`docs/design/bridge.md`](docs/design/bridge.md) | The plugin bridge: why `PluginHTTP`, why `Mattermost-Plugin-ID` is trusted, the two transports, why `link` takes no label and still honors switches, the window global and its ready event, where the wire types live |
 | [`docs/design/preferences.md`](docs/design/preferences.md) | The KV store, both caches, the location hover, the location rows, the zone picker and ordering |
-| [`docs/design/admin-settings.md`](docs/design/admin-settings.md) | The twenty-five switches, the two map-package settings, the six sections, why `EnableLocationUTM` and `EnableGeoJSONUnlabeled` ship off |
+| [`docs/design/admin-settings.md`](docs/design/admin-settings.md) | The thirty-one switches, the two map-package settings, the seven sections, why `EnableLocationUTM` and `EnableGeoJSONUnlabeled` ship off |
 | [`docs/design/help-and-errors.md`](docs/design/help-and-errors.md) | `public/help/` and the `TF-NNNN` catalog |
 | [`docs/design/unverified.md`](docs/design/unverified.md) | Claims that need a running server or a phone and have never been checked |
 
@@ -226,6 +229,20 @@ floor (`safePostRunes`), and `examples` measures every message against the same
 floor before it writes any of them, refusing the whole run rather than posting
 some of it.
 
+**A cyber indicator is decorated from the build and enriched from the install.**
+`Parse` reads only the embedded ATT&CK and CWE catalogs and `net/netip`, never a
+dataset file, so the same message decorates the same way on every node and every
+day. Enrichment is read at render, the way `Decorator.Maps` is. A CVE is
+recognized by shape rather than by lookup, because identifiers are issued daily
+and a lookup would make decoration depend on which node answered. Nothing on the
+post path opens a file.
+
+**A missing dataset and a missing row say different things.** "Not in the
+vulnerability dataset generated X" and "no vulnerability dataset is installed"
+are opposite answers to a responder, and collapsing them would report that
+something is not being exploited on the strength of an absent file. The status
+sentences are built once in `format.go` so no surface can restate one.
+
 **Every user-facing failure and every `p.API.Log*` call carries a `TF-NNNN`.**
 Adding one is four edits that go together: the constant, the `AllCodes` entry,
 the call site, and a row in `public/help/error-codes.html`.
@@ -251,6 +268,10 @@ side moves alone. Change both halves together.
 | The `/airport` payload | `TestWebappAirportShapeMatches` |
 | The 30 minute cache TTL | `TestWebappCacheLifetimeMatches` |
 | The `data-maps` attribute and its tokens | `TestWebappMapSurfaceAttributeMatches` |
+| The cyber wire shapes: names, types and order | `TestWebappCyber*ShapeMatches` |
+| The cyber decorator type | `TestWebappCyberTypeMatches` |
+| The cyber kind vocabulary and its order | `TestWebappCyberKindsMatch` |
+| Each cyber kind's canonical shape expression | `TestWebappCyberShapeExpressionsMatch` |
 | The seam zoom: `seamZoom` and `SEAM_ZOOM` in `map/span.ts` | `TestSeamZoomMatchesTheWebapp`, `TestDetailPackagesStartAtTheSeam` |
 | The detail layer set: `DETAIL_SOURCE_LAYERS` in `map/maplibre.ts` | `TestArchiveCarriesEveryLayerTheStyleDraws`, and `style.spec.ts` holds the built style to the same list |
 | The package name grammar: `packageNamePattern` and `PACKAGE_NAME` | `TestWebappPackageNameGrammarMatches` |

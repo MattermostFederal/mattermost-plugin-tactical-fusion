@@ -253,6 +253,63 @@
                         "help_text": "Recognize a GeoJSON document in three further places: a fenced code block labeled json, an attachment named .json, and a document pasted with no fence at all. Off by default, and deliberately: rendering a post this way marks it with a custom type, which costs it its Elasticsearch and OpenSearch matches and its embeds permanently, and the author cannot undo it. Ordinary JSON is pasted into chat constantly, so an install that turns this on should be one whose channels carry overlays rather than API payloads. A document that does not parse as GeoJSON is always left alone, and only a block labeled geojson gets a message explaining why it was refused. Only applies while \"Render GeoJSON documents\" is on."
                     }
                 ]
+            },
+            {
+                "key": "cyber",
+                "title": "Cyber context",
+                "subtitle": "Recognize security indicators written in a message, and show what the installed datasets say about them.",
+                "settings": [
+                    {
+                        "key": "EnableCyber",
+                        "display_name": "Decorate security indicators",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Recognize the indicators below and rewrite each one as a link that opens a Cyber context panel. This is the parent of the five switches under it: turning it off stops all of them, whatever they are set to. Turning it off stops new messages being decorated; links already written keep working. Enrichment is read from datasets on this server and never from the internet, so an air-gapped install behaves exactly as a connected one does."
+                    },
+                    {
+                        "key": "EnableCyberCVE",
+                        "display_name": "Decorate CVE identifiers",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Recognize a vulnerability identifier such as CVE-2021-44228, in any case, and show what the installed vulnerability, exploit prediction and known-exploited datasets say about it. Recognized by shape rather than by lookup, because identifiers are issued daily and no list of them ships in the plugin, so one the datasets do not hold still links and its page says so."
+                    },
+                    {
+                        "key": "EnableCyberCWE",
+                        "display_name": "Decorate CWE identifiers",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Recognize a weakness identifier such as CWE-79, in any case, and show its name, its place in the hierarchy and a summary. Only identifiers the catalog built into this plugin holds are recognized, so a number that names no weakness is left as written."
+                    },
+                    {
+                        "key": "EnableCyberAttack",
+                        "display_name": "Decorate MITRE ATT&CK identifiers",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Recognize a technique, sub-technique or tactic identifier such as T1059, T1059.001 or TA0002, and show its name, its tactics and its place in the hierarchy. Only identifiers the catalog built into this plugin holds are recognized, so an identifier that names nothing is left as written. Written in upper case only."
+                    },
+                    {
+                        "key": "EnableCyberIP",
+                        "display_name": "Decorate IP addresses",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Recognize an IPv4 or IPv6 address and show its scope, and the network and location the installed datasets give for it. A port written after the address is left in the message. Loopback, unspecified and malformed addresses are left as written. A four-part version number is indistinguishable from an address, so one written in a message is recognized as an address; turn this off where that matters more than the enrichment does."
+                    },
+                    {
+                        "key": "EnableCyberHash",
+                        "display_name": "Decorate file hashes",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Recognize a 32, 40 or 64 digit hexadecimal run as an MD5, SHA-1 or SHA-256 hash, and show which it is together with any watchlist entry for it. A hash written behind an md5, sha1 or sha256 label is recognized and the label is left in the message. A 40 digit hash is also the shape of a Git object identifier, which the panel says rather than guessing between them."
+                    },
+                    {
+                        "key": "CyberDatasetsDir",
+                        "display_name": "Cyber dataset directory",
+                        "type": "text",
+                        "default": "",
+                        "placeholder": "/opt/mattermost/tactical-fusion/cyber",
+                        "help_text": "A directory on this server holding the datasets the enrichment reads: cve.tsv, epss.tsv, kev.tsv, ip.tsv and watchlist.tsv, plus any vendor .mmdb database. Drop a file in and it is read within a few seconds without restarting anything; a file here replaces a bundled one of the same name. Leave this empty to use only the datasets the plugin ships. In a cluster every node must see this directory, because each node answers from the files it can read; a dataset on one node alone enriches for some readers and not others."
+                    }
+                ]
             }
         ]
     }

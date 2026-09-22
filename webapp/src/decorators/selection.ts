@@ -47,6 +47,28 @@ export function initRhs(reduxStore: Store, show: unknown, toggle: unknown): void
     toggleAction = toggle;
 }
 
+/**
+ * The team the reader is looking at, or "" when there is none to read.
+ *
+ * Read through a narrow local shape rather than by importing the webapp's own
+ * state types, which would be a runtime dependency on mattermost-redux for one
+ * string. Empty means a caller must not ask for anything team-scoped, rather
+ * than meaning every team.
+ */
+export function currentTeamId(): string {
+    if (!store) {
+        return '';
+    }
+
+    const state = store.getState() as {
+        entities?: {teams?: {currentTeamId?: unknown}};
+    } | undefined;
+
+    const id = state?.entities?.teams?.currentTeamId;
+
+    return typeof id === 'string' ? id : '';
+}
+
 export function openRhs(): void {
     if (store && showAction) {
         store.dispatch(showAction as never);

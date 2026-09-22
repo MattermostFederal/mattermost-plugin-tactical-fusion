@@ -1,4 +1,5 @@
 import airport from './airport';
+import cyber from './cyber';
 import dtg from './dtg';
 import location from './location';
 import {get, register} from './registry';
@@ -14,7 +15,7 @@ import {get, register} from './registry';
  * would leave the sidebar dead until a page reload.
  */
 export function registerBuiltinDecorators(): void {
-    for (const decorator of [dtg, location, airport]) {
+    for (const decorator of [dtg, location, airport, cyber]) {
         if (!get(decorator.type)) {
             register(decorator);
         }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/cyber"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
@@ -34,7 +35,7 @@ type exampleSet struct {
 	rows      []exampleRow
 }
 
-var exampleSetOrder = []string{dtg.Type, location.Type, airport.Type}
+var exampleSetOrder = []string{dtg.Type, location.Type, airport.Type, cyber.Type}
 
 var exampleSets = map[string]exampleSet{
 	dtg.Type: {
@@ -77,6 +78,19 @@ var exampleSets = map[string]exampleSet{
 			{label: "ICAO", text: "ICAO:PHNL", note: "the label is required, in upper case"},
 			{label: "Location", text: "LOC:PGUM"},
 			{label: "Departure", text: "DEPLOC:PHTO"},
+		},
+	},
+
+	cyber.Type: {
+		decorator: cyber.Type,
+		name:      "Cyber context",
+		rows: []exampleRow{
+			{label: "Vulnerability", text: "CVE-2021-44228", note: "recognized by shape, so one no dataset holds still links"},
+			{label: "Weakness", text: "CWE-79", note: "only identifiers the built-in catalog holds"},
+			{label: "Technique", text: "T1059.001", note: "a sub-technique, which carries its parent and its tactics"},
+			{label: "Tactic", text: "TA0002"},
+			{label: "IP address", text: "203.0.113.7", note: "a documentation address, so no dataset describes it"},
+			{label: "File hash", text: "44d88612fea8a8f36de82e1278abb02f", note: "the EICAR test file, an MD5"},
 		},
 	},
 }
