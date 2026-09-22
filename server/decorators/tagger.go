@@ -263,7 +263,7 @@ func resultOf(message string, accepted []candidate) Result {
 	if mixed {
 		result.OnlyType = ""
 	}
-	if cursor != len(strings.TrimRight(message, tokenSurroundingSpace)) {
+	if cursor < len(strings.TrimRight(message, tokenSurroundingSpace)) {
 		result.Covers = false
 	}
 

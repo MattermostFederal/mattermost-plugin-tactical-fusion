@@ -4,11 +4,12 @@
 
 ## Admin settings
 
-The count is **thirty-three switches across eight sections**. Cursor on Target
+The count is **thirty-four switches across eight sections**. Cursor on Target
 added the fifth section and two of the switches, `EnableCot` and `EnableCotFile`,
 GeoJSON added the sixth and three more, aviation reports added the seventh and
-five (`EnableAvReport`, one per kind, and `EnableAvReportCard`, which is the one
-that stamps and carries the search warning; see [`avreports.md`](avreports.md)),
+six (`EnableAvReport`, one per kind, `EnableAvReportTable` for the table under a
+report posted on its own, and `EnableAvReportCard`, which is the one that stamps
+and carries the search warning; see [`avreports.md`](avreports.md)),
 and frequencies added the eighth with the one switch `EnableFrequency`
 ([`frequencies.md`](frequencies.md)). Cursor on Target
 deliberately added no third: the card's map reads `EnableLocationMapInline`,
@@ -55,7 +56,8 @@ the remaining eleven:
 - **Airfields**: `EnableAirport` with `EnableAirportIATA`, `EnableAirportTable` and
   `EnableAirportRoute`.
 - **Aviation reports**: `EnableAvReport` with `EnableAvReportMETAR`,
-  `EnableAvReportTAF`, `EnableAvReportNOTAM` and `EnableAvReportCard`.
+  `EnableAvReportTAF`, `EnableAvReportNOTAM`, `EnableAvReportTable` and
+  `EnableAvReportCard`.
 - **Frequencies**: `EnableFrequency`.
 
 `model.PluginSettingsSchema` carries a `Sections` field

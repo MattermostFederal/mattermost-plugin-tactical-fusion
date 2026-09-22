@@ -106,10 +106,10 @@ func TestAvReportStampsABareMultiLineReport(t *testing.T) {
 	}
 }
 
-func TestASoleSingleLineReportIsLinkedNotStamped(t *testing.T) {
+func TestASoleSingleLineReportIsExpandedNotStamped(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 
-	for _, message := range []string{reportMETAR, reportMETAR + "\n", reportFAANotam, "  " + reportMETAR + "  "} {
+	for _, message := range []string{reportMETAR, reportMETAR + "\n", reportMETAR + "=", reportFAANotam, "  " + reportMETAR + "  "} {
 		updated := p.decoratePost(&model.Post{Message: message, UserId: testUserID}, hookRef)
 		if updated == nil {
 			t.Fatalf("%q was left alone", message)
@@ -117,8 +117,58 @@ func TestASoleSingleLineReportIsLinkedNotStamped(t *testing.T) {
 		if updated.Type != "" {
 			t.Fatalf("%q was stamped as %q", message, updated.Type)
 		}
-		if !strings.Contains(updated.Message, "/decorate/avreport?") {
-			t.Fatalf("%q was not linked: %q", message, updated.Message)
+		if props := standaloneProps(t, updated); props != nil {
+			t.Fatalf("%q was given props: %v", message, props)
+		}
+		for _, want := range []string{"|:--|:--|\n| Report | `", "| Summary | ", "| Details | [Open details](/plugins/", "/decorate/avreport?"} {
+			if !strings.Contains(updated.Message, want) {
+				t.Fatalf("%q was not expanded; missing %q in:\n%s", message, want, updated.Message)
+			}
+		}
+		if n := strings.Count(updated.Message, "/decorate/avreport?"); n != 1 {
+			t.Fatalf("%q links its destination %d times, want once:\n%s", message, n, updated.Message)
+		}
+	}
+}
+
+func TestAReportInsideASentenceIsLinkedNotExpanded(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	updated := p.decoratePost(&model.Post{Message: "current: " + reportMETAR, UserId: testUserID}, hookRef)
+	if updated == nil || !strings.Contains(updated.Message, "/decorate/avreport?") {
+		t.Fatalf("the report was not linked: %+v", updated)
+	}
+	if strings.Contains(updated.Message, "| Report |") {
+		t.Errorf("a report inside a sentence was expanded:\n%s", updated.Message)
+	}
+}
+
+func TestASoleReportIsLinkedNotExpandedWhenTheTableIsOff(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	config := p.getConfiguration().Clone()
+	config.EnableAvReportTable = false
+	p.setConfiguration(config)
+
+	updated := p.decoratePost(&model.Post{Message: reportMETAR, UserId: testUserID}, hookRef)
+	if updated == nil || !strings.HasPrefix(updated.Message, "["+reportMETAR+"](") {
+		t.Fatalf("the report was not linked on its own: %+v", updated)
+	}
+	if strings.Contains(updated.Message, "| Report |") {
+		t.Errorf("a table was written with the switch off:\n%s", updated.Message)
+	}
+}
+
+func TestAnExpandedReportIsNotExpandedAgain(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	for _, message := range []string{reportMETAR, "TAF PGUA 221720Z 2218/2324 07012KT P6SM SCT025", reportFAANotam} {
+		first := p.decoratePost(&model.Post{Message: message, UserId: testUserID}, hookRef)
+		if first == nil || !strings.Contains(first.Message, "| Report |") {
+			t.Fatalf("%q was not expanded: %+v", message, first)
+		}
+		if again := p.decoratePost(&model.Post{Message: first.Message, UserId: testUserID}, hookRef); again != nil {
+			t.Errorf("the stored table for %q was rewritten again:\n%s", message, again.Message)
 		}
 	}
 }

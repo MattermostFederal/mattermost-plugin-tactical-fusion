@@ -469,6 +469,13 @@ to left, and the verdict is taken before it. The separator rule is exactly the
 sole-token rule, whitespace only: `DEPLOC:PHIK, ARRLOC:PGUA` does not cover, and
 that is recorded as a limit rather than widened.
 
+The end-of-message check asks whether the last match falls short of the trimmed
+end, not whether it equals it. A pattern that consumes trailing whitespace, as
+the report patterns do through their `[ \t]*=?` terminator group, matches past
+the trimmed end on a message with trailing spaces, and the equality test read
+that as prose after the token: `  METAR ...  ` was linked and never expanded.
+`TestSoleTokenSurvivesAPatternThatConsumesTrailingSpace` holds it.
+
 `MultiPostRenderer` is the second optional stamping interface, beside
 `PostRenderer`. A decorator that implements it is asked for a post type, a props
 key and a blob when a message is nothing but its tokens; the decorator builds

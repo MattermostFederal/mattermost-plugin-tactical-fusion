@@ -120,6 +120,7 @@ func (p *Plugin) avreportFormats() avreport.Formats {
 		METAR: config.EnableAvReport && config.EnableAvReportMETAR,
 		TAF:   config.EnableAvReport && config.EnableAvReportTAF,
 		NOTAM: config.EnableAvReport && config.EnableAvReportNOTAM,
+		Table: config.EnableAvReport && config.EnableAvReportTable,
 	}
 }
 

@@ -22,9 +22,10 @@ type Formats struct {
 	METAR bool
 	TAF   bool
 	NOTAM bool
+	Table bool
 }
 
-var AllFormats = Formats{METAR: true, TAF: true, NOTAM: true}
+var AllFormats = Formats{METAR: true, TAF: true, NOTAM: true, Table: true}
 
 type Decorator struct {
 	Enabled func() Formats
@@ -111,6 +112,19 @@ func (d *Decorator) Parse(value string, ref time.Time) (url.Values, bool) {
 		ParamValue:   {report.Raw},
 		ParamInstant: {strconv.FormatInt(report.Instant(), 10)},
 	}, true
+}
+
+func (d *Decorator) ExpandMessage(href, trail string, params url.Values) string {
+	if !d.formats().Table || href == "" {
+		return ""
+	}
+
+	report, ok := Validate(params)
+	if !ok {
+		return ""
+	}
+
+	return reportTable(href, trail, report)
 }
 
 func (d *Decorator) kindEnabled(kind string) bool {

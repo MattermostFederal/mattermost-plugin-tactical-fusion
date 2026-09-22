@@ -391,6 +391,7 @@ func newTestPlugin(t *testing.T, siteURL string, enabled bool) *Plugin {
 		EnableAvReportMETAR: enabled,
 		EnableAvReportTAF:   enabled,
 		EnableAvReportNOTAM: enabled,
+		EnableAvReportTable: enabled,
 		EnableAvReportCard:  enabled,
 
 		EnableFrequency: enabled,

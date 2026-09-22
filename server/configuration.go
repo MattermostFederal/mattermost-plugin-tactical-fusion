@@ -108,6 +108,7 @@ type configuration struct {
 	EnableAvReportMETAR bool
 	EnableAvReportTAF   bool
 	EnableAvReportNOTAM bool
+	EnableAvReportTable bool
 	EnableAvReportCard  bool
 
 	EnableFrequency bool

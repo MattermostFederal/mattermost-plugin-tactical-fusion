@@ -45,7 +45,7 @@
         </div>
 
         <h1>Aviation Reports</h1>
-        <p class="tagline">A METAR, SPECI, TAF or NOTAM pasted into a message is decoded into plain language: a link when it fits on one line, a card when it does not. Nothing is fetched.</p>
+        <p class="tagline">A METAR, SPECI, TAF or NOTAM pasted into a message is decoded into plain language: a link when it fits on one line, a table when that line is the whole message, a card when it spans several. Nothing is fetched.</p>
 
         <div class="alert alert-info">
             <p>
@@ -134,6 +134,29 @@
             as it was before this decorator existed.
         </p>
 
+        <h2 id="reports-table">A report posted on its own becomes a table</h2>
+
+        <p>
+            When the message is nothing but one report on a single line, the link is not
+            left on its own: the message is rewritten into a table with the report exactly
+            as you wrote it, the one-line summary, and every decoded group, and its last row
+            is <em>Details</em>, whose link opens <a href="#reports-panel">the panel</a>.
+            The table is markdown in the message itself, exactly as the
+            <a href="airfields.html#airfield-table">airfield table</a> is, so the post keeps
+            its search matches, the table is in every export, and it renders on every client
+            whether or not it runs this plugin.
+        </p>
+
+        <p>
+            The report row is written as code, so a table pasted back into a channel is not
+            decorated a second time. A terminating <code>=</code> stays with the report. A
+            report inside a longer message gets the link alone, and a message that carries
+            several reports one per line gets a link on each. What the table says is what
+            this build decoded at the moment of posting; the panel decodes the report again
+            every time it opens. Setting:
+            <a href="admin.html#enable-avreport-table"><code>EnableAvReportTable</code></a>.
+        </p>
+
         <h2 id="reports-card">A report on several lines becomes a card</h2>
 
         <p>
@@ -166,7 +189,7 @@
                 previews and automatic translation, exactly as the
                 <a href="cot.html#cot-card">Cursor on Target</a> and
                 <a href="geojson.html">GeoJSON</a> cards do. A report on one line is never
-                affected: it is a link, and stays searchable. Turn
+                affected: it is a link or a table, and stays searchable. Turn
                 <a href="admin.html#enable-avreport-card"><code>EnableAvReportCard</code></a>
                 off to keep multi-line reports as ordinary text.
             </p>
@@ -265,6 +288,7 @@
                 <tr><td><a href="admin.html#enable-avreport-metar"><code>EnableAvReportMETAR</code></a></td><td>METAR and SPECI, in both spellings.</td></tr>
                 <tr><td><a href="admin.html#enable-avreport-taf"><code>EnableAvReportTAF</code></a></td><td>TAF.</td></tr>
                 <tr><td><a href="admin.html#enable-avreport-notam"><code>EnableAvReportNOTAM</code></a></td><td>NOTAM, both forms.</td></tr>
+                <tr><td><a href="admin.html#enable-avreport-table"><code>EnableAvReportTable</code></a></td><td><a href="#reports-table">The table</a> under a one-line report posted on its own.</td></tr>
                 <tr><td><a href="admin.html#enable-avreport-card"><code>EnableAvReportCard</code></a></td><td><a href="#reports-card">The card</a>. Links are unaffected.</td></tr>
             </tbody>
         </table>

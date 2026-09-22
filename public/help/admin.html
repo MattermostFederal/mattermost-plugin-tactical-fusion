@@ -45,7 +45,7 @@
         </div>
 
         <h1>Admin Settings</h1>
-        <p class="tagline">System Console, Plugins, Tactical Fusion. Eight sections and thirty-three switches. Thirty-one are on by default; <code>EnableLocationUTM</code> and <code>EnableGeoJSONUnlabeled</code> are the two that are not.</p>
+        <p class="tagline">System Console, Plugins, Tactical Fusion. Eight sections and thirty-four switches. Thirty-two are on by default; <code>EnableLocationUTM</code> and <code>EnableGeoJSONUnlabeled</code> are the two that are not.</p>
 
         <h2>How the date-time group switches relate</h2>
 
@@ -1183,12 +1183,12 @@
         <h2 id="avreport-switches">The aviation report switches</h2>
 
         <p>
-            One parent, three kind switches under it, and one for the card. The parent is
+            One parent, three kind switches under it, one for the table and one for the card. The parent is
             ANDed in code, as every other parent is: a kind switch left on under a parent
             turned off decodes nothing. Every switch governs decoration of <em>new</em>
-            messages; a link or a card already written keeps working after its switch is
-            turned off, which is what lets an admin turn a kind off without breaking a
-            channel's history.
+            messages; a link, a table or a card already written keeps working after its
+            switch is turned off, which is what lets an admin turn a kind off without breaking
+            a channel's history.
         </p>
 
         <h3 id="enable-avreport" data-setting="EnableAvReport">Decode aviation reports <code>EnableAvReport</code></h3>
@@ -1197,7 +1197,7 @@
             <tbody>
                 <tr><td>Type</td><td>Boolean</td></tr>
                 <tr><td>Default</td><td>On</td></tr>
-                <tr><td>Effect when off</td><td>No new message has a report linked or rendered, whatever the four switches below it say. Links and cards already written keep working.</td></tr>
+                <tr><td>Effect when off</td><td>No new message has a report linked, expanded or rendered, whatever the five switches below it say. Links, tables and cards already written keep working.</td></tr>
             </tbody>
         </table>
 
@@ -1245,13 +1245,35 @@
             </tbody>
         </table>
 
+        <h3 id="enable-avreport-table" data-setting="EnableAvReportTable">Show the decode under a report posted on its own <code>EnableAvReportTable</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>New messages that are nothing but a one-line report get the link alone. Messages already posted keep the table they were given.</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-avreport"><code>EnableAvReport</code></a>, and the kind's own switch</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            When a message is nothing but one report on a single line, the message is
+            rewritten into a markdown table: the report exactly as written, a one-line
+            summary, and every decoded group, with a last row that opens the full details.
+            See <a href="reports.html#reports-table">the table</a>. It is the same shape the
+            <a href="#enable-airport-table">airfield table</a> takes, for the same reasons:
+            it goes into the stored message, so the post keeps its search matches and the
+            table is in every export, and it is frozen at the moment of posting. A report
+            inside a longer message gets the link alone.
+        </p>
+
         <h3 id="enable-avreport-card" data-setting="EnableAvReportCard">Render a multi-line or fenced report as a card <code>EnableAvReportCard</code></h3>
 
         <table class="field-table">
             <tbody>
                 <tr><td>Type</td><td>Boolean</td></tr>
                 <tr><td>Default</td><td>On</td></tr>
-                <tr><td>Effect when off</td><td>A report on several lines, or in a labeled fence, is posted as ordinary text. Posts already rendered keep their card. A report on one line is a link either way.</td></tr>
+                <tr><td>Effect when off</td><td>A report on several lines, or in a labeled fence, is posted as ordinary text. Posts already rendered keep their card. A report on one line is a link or a table either way.</td></tr>
                 <tr><td>Requires</td><td><a href="#enable-avreport"><code>EnableAvReport</code></a>, and the kind's own switch</td></tr>
             </tbody>
         </table>

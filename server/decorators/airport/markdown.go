@@ -2,27 +2,14 @@ package airport
 
 import (
 	"strings"
+
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 )
 
 const tableHeaderLabel = "Airfield"
 
-var cellEscaper = strings.NewReplacer(
-	`\`, `\\`,
-	`|`, `\|`,
-	"`", "\\`",
-	`*`, `\*`,
-	`_`, `\_`,
-	`[`, `\[`,
-	`]`, `\]`,
-	`<`, `\<`,
-	`>`, `\>`,
-	`~`, `\~`,
-	"\r", " ",
-	"\n", " ",
-)
-
 func mdCell(value string) string {
-	return cellEscaper.Replace(value)
+	return decorators.TableCell(value)
 }
 
 func airfieldTable(href, trail string, d Details) string {

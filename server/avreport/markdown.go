@@ -1,0 +1,93 @@
+package avreport
+
+import (
+	"strings"
+
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
+)
+
+const (
+	reportRowLabel       = "Report"
+	summaryRowLabel      = "Summary"
+	detailsRowLabel      = "Details"
+	detailsLinkLabel     = "Open details"
+	tableFallbackHeading = "Aviation report"
+
+	inferredDateNote = " (month and year taken from the post date)"
+)
+
+func issuedLabel(kind string) string {
+	if kind == KindNOTAM {
+		return "Effective"
+	}
+	return "Issued"
+}
+
+func reportTable(href, trail string, report Report) string {
+	var b strings.Builder
+
+	heading := report.Kind
+	if report.Station != "" {
+		heading += " " + report.Station
+	}
+	b.WriteString("| " + decorators.TableCell(heading) + " | " + decorators.TableCell(tableHeadingDetail(report)) + " |\n")
+	b.WriteString("|:--|:--|\n")
+
+	writeTableRow(&b, reportRowLabel, reportCell(report.Raw)+decorators.TableCell(trail))
+	if report.Summary != "" {
+		writeTableRow(&b, summaryRowLabel, decorators.TableCell(report.Summary))
+	}
+	if issued := zuluText(report.IssuedAt); issued != "" {
+		if report.Inferred {
+			issued += inferredDateNote
+		}
+		writeTableRow(&b, issuedLabel(report.Kind), decorators.TableCell(issued))
+	}
+	if len(report.Flags) > 0 {
+		writeTableRow(&b, "Flags", decorators.TableCell(strings.Join(report.Flags, ", ")))
+	}
+	for _, row := range report.Rows {
+		if row.Label == "Effective" && report.Kind == KindNOTAM {
+			continue
+		}
+		writeTableRow(&b, decorators.TableCell(row.Label), decorators.TableCell(row.Value))
+	}
+	for _, period := range report.Periods {
+		writeTableRow(&b, decorators.TableCell(period.Period), joinedRows(period.Rows))
+	}
+	if len(report.Remarks) > 0 {
+		writeTableRow(&b, "Remarks", joinedRows(report.Remarks))
+	}
+	if len(report.Unknown) > 0 {
+		writeTableRow(&b, "Not decoded", decorators.TableCell(strings.Join(report.Unknown, " ")))
+	}
+	b.WriteString("| " + detailsRowLabel + " | [" + detailsLinkLabel + "](" + href + ") |")
+
+	return b.String()
+}
+
+func tableHeadingDetail(report Report) string {
+	if report.StationName != "" {
+		return report.StationName
+	}
+	return tableFallbackHeading
+}
+
+func reportCell(raw string) string {
+	if strings.ContainsAny(raw, "`|") {
+		return decorators.TableCell(raw)
+	}
+	return "`" + raw + "`"
+}
+
+func joinedRows(rows []Row) string {
+	parts := make([]string, 0, len(rows))
+	for _, row := range rows {
+		parts = append(parts, decorators.TableCell(row.Label+": "+row.Value))
+	}
+	return strings.Join(parts, "; ")
+}
+
+func writeTableRow(b *strings.Builder, label, value string) {
+	b.WriteString("| " + label + " | " + value + " |\n")
+}

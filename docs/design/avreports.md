@@ -16,10 +16,38 @@ setting for one, because the target is an air-gapped network. Live weather is a
 possible later plan and it would be a different thing: a fetch is a claim about
 now, and a decode is a claim about what the author wrote.
 
-## A link when it fits, a card when it does not
+## A link when it fits, a table when it is the whole message, a card when it does not
 
 A single-line report is a link and never a card, because a link keeps the post
-searchable and a stamp costs its search matches forever. A multi-line report is
+searchable and a stamp costs its search matches forever. When that one line is
+the whole message the link is not left alone: the decorator implements
+`MessageExpander`, as the airfield decorator does, and the message is rewritten
+into a markdown table. The rationale is the airfield table's
+([`airfields.md`](airfields.md), "A markdown table in the stored message, not a
+custom post type"): the table goes into the stored message, so the post keeps
+its search matches, the table is in every export, and it renders on clients that
+never run the webapp. What it says is what this build decoded at the moment of
+posting and it is never rewritten; the panel decodes the report again on every
+open.
+
+The table's last row is `Details`, and its link is the decorator link, so the
+hover and the panel are one click away and the destination appears once. The
+`Report` row carries the report verbatim, plus the `=` terminator the author
+wrote, inside a code span: a code span is a protected range, so a table pasted
+back into a channel from an export is never decorated a second time, which
+`TestAnExpandedReportIsNotExpandedAgain` holds for each kind. A report that
+carries a backtick or a pipe cannot be held by a code span in a table cell, so
+that row falls back to the escaped plain text; re-posting such a table may link
+the report inside the cell, which is a link in a cell rather than corruption.
+A TAF period and the remarks are one row each, their fields joined with `; `,
+because a nested table has no markdown spelling. The station's position is not a
+row: a bare coordinate pair in the stored text would be a location token on
+re-post, and the details page carries it.
+
+The expansion is measured against `safePostRunes` with the decoration and falls
+back to the link alone when it would not fit, the airfield rule. It is gated by
+`EnableAvReportTable`, ANDed with the parent, and never applies inside prose or
+to a bundle of reports one per line, because it needs `SoleToken`. A multi-line report is
 a card and never a link, because a link label spanning lines is a rendering
 claim this plugin has not verified, and a rewrite that breaks rendering is
 permanent. The split is by shape rather than by kind, so a one-line TAF is a
@@ -206,7 +234,8 @@ by the four-letter prefixes.
 ## Switches
 
 An **Aviation reports** section: `EnableAvReport` (parent), `EnableAvReportMETAR`
-(METAR and SPECI), `EnableAvReportTAF`, `EnableAvReportNOTAM`, and
+(METAR and SPECI), `EnableAvReportTAF`, `EnableAvReportNOTAM`,
+`EnableAvReportTable` (the table under a one-line report posted on its own), and
 `EnableAvReportCard` (the stamp, with the search warning `EnableCot` carries).
 All default on. `avreportFormats()` ANDs the parent in Go; `avreportCardEnabled`
 is what the stamper reads, and the kind's own switch is checked again after the
