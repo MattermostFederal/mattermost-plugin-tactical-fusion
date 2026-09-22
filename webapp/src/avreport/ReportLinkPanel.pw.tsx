@@ -14,7 +14,7 @@ test.describe('the link panel', () => {
                 reply='found'
             />);
 
-        await expect(panel.getByTestId('avreport-heading')).toHaveText('METAR PHNL');
+        await expect(panel.getByTestId('avreport-heading')).toHaveCount(0);
         await expect(panel.getByTestId('avreport-summary')).toHaveCount(0);
         await expect(panel.getByTestId('avreport-rows')).toContainText('30.10 inHg');
         await expect(panel.getByRole('button', {name: 'Daniel K. Inouye International Airport'})).toBeVisible();
@@ -46,7 +46,7 @@ test.describe('the link panel', () => {
                 reply='unplaced'
             />);
 
-        await expect(panel.getByTestId('avreport-heading')).toHaveText('METAR PHNL');
+        await expect(panel.getByTestId('avreport-rows')).toBeVisible();
         await expect(panel.getByRole('button', {name: 'Daniel K. Inouye International Airport'})).toBeHidden();
     });
 
@@ -61,7 +61,7 @@ test.describe('the link panel', () => {
             const status = reply === 'hold' ? STATUS_TEXT.loading : STATUS_TEXT[reply];
             await expect(panel.getByTestId('avreport-status')).toHaveText(status);
             await expect(panel.getByTestId('avreport-source')).toHaveText(HONOLULU_METAR.src);
-            await expect(panel.getByTestId('avreport-heading')).toBeHidden();
+            await expect(panel.getByTestId('avreport-rows')).toBeHidden();
         });
     }
 });
