@@ -2,7 +2,8 @@ import React from 'react';
 
 import {useAirport} from './airport';
 import type {AirportState} from './airport';
-import type {AirportCoordinate} from './types';
+import {positionPayload, runwayLabel, runwayShapes} from './map';
+import type {AirportCoordinate, AirportDetails, AirportFrequency, AirportRunway} from './types';
 
 import LinkButton from '../../components/LinkButton';
 import {useFeatures} from '../../features/store';
@@ -12,7 +13,8 @@ import location from '../location';
 import type {LocationPayload} from '../location';
 import CopyButton from '../location/CopyButton';
 import LocationMap from '../location/map/LocationMap';
-import {mapPageHref, viewFor} from '../location/map/view';
+import type {MapShape} from '../location/map/paint';
+import {airportMapPageHref, viewFor} from '../location/map/view';
 import {setSelection} from '../selection';
 
 import type {AirportPayload} from './index';
@@ -67,6 +69,15 @@ const styles: Record<string, React.CSSProperties> = {
         textAlign: 'right',
         borderBottom: '1px solid rgba(var(--center-channel-color-rgb), 0.08)',
     },
+    section: {
+        fontSize: '11px',
+        textTransform: 'uppercase',
+        letterSpacing: '0.04em',
+        fontWeight: 600,
+        opacity: 0.7,
+        color: 'var(--center-channel-color)',
+        margin: '18px 0 4px',
+    },
     note: {
         fontSize: '12px',
         color: 'var(--center-channel-color)',
@@ -78,22 +89,6 @@ const styles: Record<string, React.CSSProperties> = {
     mapWrap: {marginTop: '18px'},
 };
 
-/**
- * One line of the airfield.
- *
- * `onOpen` turns the VALUE into the link rather than adding a second control
- * beside it. The place is where the airfield is, so the place is the thing to
- * follow to see where that is; a separate line saying "Location" underneath was
- * a second way to say the same thing.
- *
- * The copy button stays either way: copying "Indianapolis, IN, US" is copying a
- * value, and whether it also opens something is beside the point.
- *
- * A row that carries a classification rather than a value gets none, which is
- * the rule the coordinate table follows for Resolution, Confidence and Datum:
- * copying "Large Airport" gets you a category, not something to paste into
- * anything.
- */
 const Row: React.FC<{
     label: string;
     value: string;
@@ -120,17 +115,8 @@ const Row: React.FC<{
     </tr>
 );
 
-/**
- * The payload the map draws and the place links to, or null.
- *
- * Built through the location decorator's own `fromParams` from the (format,
- * token) pair the server sent, so both of them use exactly what a click on a
- * coordinate link would have produced. Null can only mean the two sides
- * disagree about the grammar, and then neither the map nor the link is offered,
- * the same way the click handler stands aside rather than guessing.
- */
-function positionPayload(coordinate: AirportCoordinate): LocationPayload | null {
-    const payload = location.fromParams(new URLSearchParams({f: coordinate.format, v: coordinate.value}));
+function readPosition(coordinate: AirportCoordinate): LocationPayload | null {
+    const payload = positionPayload(coordinate);
     if (payload) {
         return payload;
     }
@@ -145,42 +131,29 @@ function positionPayload(coordinate: AirportCoordinate): LocationPayload | null 
     return null;
 }
 
-/**
- * Where the map should point, or null when there is nothing to draw yet.
- *
- * Read from the state rather than from inside the rendered table, because the
- * map has to be mounted from a place that survives a change of selection. See
- * `AirportPanel`.
- */
-function positionOf(state: AirportState): {payload: LocationPayload; region: string} | null {
-    if (state.status !== 'ready' || !state.data || !state.data.found) {
+interface Position {
+    ident: string;
+    payload: LocationPayload;
+    region: string;
+    shapes: MapShape[];
+}
+
+function positionOf(state: AirportState): Position | null {
+    if (state.status !== 'ready' || !state.data || !state.data.found || !state.data.airport) {
         return null;
     }
 
-    const {coordinate} = state.data;
+    const {coordinate, airport, ident} = state.data;
     if (!coordinate) {
         return null;
     }
 
-    const payload = positionPayload(coordinate);
-    return payload ? {payload, region: coordinate.region} : null;
+    const payload = readPosition(coordinate);
+    return payload ? {ident, payload, region: coordinate.region, shapes: runwayShapes(airport.runways)} : null;
 }
 
-/**
- * The airfield's position, drawn.
- *
- * The map is the location decorator's own component, not a second one: two
- * implementations of a projection and a palette are two things that can
- * disagree, and this is the place a reader looks first.
- *
- * No conversion is needed once the lookup lands: `viewFor` reads latitude and
- * longitude out of the parsed token and only the region comes from the server.
- * While the lookup is in flight there is no token yet, so the position is null
- * and `pending` carries the wait, which is the same pair `LocationReadings`
- * passes for a grid token whose conversion has not arrived.
- */
 const Position: React.FC<{
-    position: {payload: LocationPayload; region: string} | null;
+    position: Position | null;
     pending: boolean;
     features: Features;
 }> = ({position, pending, features}) => {
@@ -205,9 +178,75 @@ const Position: React.FC<{
         <LocationMap
             {...viewFor(position.payload, {status: 'loading', data: null})}
             region={position.region}
-            pageHref={features.mapPage ? mapPageHref(position.payload) : undefined}
+            geometries={position.shapes}
+            markerLabel={runwayLabel(position.shapes.length)}
+            pageHref={features.mapPage ? airportMapPageHref(position.ident) : undefined}
             pending={false}
         />
+    );
+};
+
+const Runways: React.FC<{runways: AirportRunway[]}> = ({runways}) => {
+    if (runways.length === 0) {
+        return null;
+    }
+
+    return (
+        <>
+            <p style={styles.section}>{'Runways'}</p>
+            <table style={styles.table}>
+                <tbody>
+                    {runways.map((runway) => (
+                        <tr key={runway.designation}>
+                            <th
+                                scope='row'
+                                style={styles.th}
+                            >{runway.designation}</th>
+                            <td style={{...styles.td, ...styles.plain}}>{runway.summary}</td>
+                            <td style={styles.copyCell}/>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </>
+    );
+};
+
+const Frequencies: React.FC<{frequencies: AirportFrequency[]}> = ({frequencies}) => {
+    if (frequencies.length === 0) {
+        return null;
+    }
+
+    return (
+        <>
+            <p style={styles.section}>{'Frequencies'}</p>
+            <table style={styles.table}>
+                <tbody>
+                    {frequencies.map((frequency, index) => (
+                        <tr key={`${frequency.type}-${frequency.mhz}-${index}`}>
+                            <th
+                                scope='row'
+                                style={styles.th}
+                            >
+                                {frequency.type}
+                                {frequency.description !== '' && (
+                                    <span style={{fontWeight: 400, textTransform: 'none', letterSpacing: 0}}>
+                                        {` ${frequency.description}`}
+                                    </span>
+                                )}
+                            </th>
+                            <td style={styles.td}>{frequency.mhz}</td>
+                            <td style={styles.copyCell}>
+                                <CopyButton
+                                    label={`Copy ${frequency.type} frequency`}
+                                    value={frequency.mhz}
+                                />
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </>
     );
 };
 
@@ -217,31 +256,16 @@ const Footer: React.FC = () => (
     </div>
 );
 
-/**
- * The airfield panel.
- *
- * Everything here comes from the server, which is what makes this decorator
- * different from the other two: the airfield database is compiled into the Go
- * binary and the link carries only the code, so there is nothing to compute
- * locally and nothing to show before the answer arrives.
- */
 const AirportPanel: React.FC<{payload: AirportPayload}> = ({payload}) => {
-    const state = useAirport(payload.ident);
+    const state = useAirport(payload);
     const {features} = useFeatures();
     const position = positionOf(state);
 
-    // The map is mounted from HERE rather than from inside renderBody, and that
-    // placement is the whole of it. The sidebar keeps this panel mounted across
-    // a change of selection, so a second code drives the state back to loading;
-    // with the mount inside the "found" branch that unmounted LocationMap,
-    // which released its WebGL context and re-tessellated the whole basemap on
-    // the next answer, against the browser's cap of roughly sixteen live
-    // contexts shared with the hover and every inline map on screen.
     const drawn = position !== null || state.status === 'loading';
 
     return (
         <>
-            {renderBody(payload.ident, state, position)}
+            {renderBody(payload.code, state, position)}
             {drawn && (
                 <Position
                     position={position}
@@ -254,23 +278,24 @@ const AirportPanel: React.FC<{payload: AirportPayload}> = ({payload}) => {
     );
 };
 
+function militaryUse(airport: AirportDetails): string {
+    return airport.military === '' ? '' : `Military (${airport.military})`;
+}
+
 function renderBody(
-    ident: string,
+    code: string,
     state: AirportState,
-    position: {payload: LocationPayload; region: string} | null,
+    position: Position | null,
 ): React.ReactNode {
     if (state.status === 'loading') {
         return (
             <>
-                <p style={styles.ident}>{ident}</p>
+                <p style={styles.ident}>{code}</p>
                 <p style={styles.note}>{'Looking up this airfield…'}</p>
             </>
         );
     }
 
-    // A hand-edited link. The same verdict the location panel renders, and the
-    // same reason: the server looked at it and said it is not one this plugin
-    // issued.
     if (state.status === 'rejected') {
         return (
             <>
@@ -282,13 +307,10 @@ function renderBody(
         );
     }
 
-    // Nothing may fail the panel silently, and there is nothing computed
-    // locally to fall back to, so this says so plainly rather than rendering
-    // empty rows.
     if (state.status === 'failed' || !state.data) {
         return (
             <>
-                <p style={styles.ident}>{ident}</p>
+                <p style={styles.ident}>{code}</p>
                 <p style={styles.note}>
                     {'This airfield could not be looked up just now. The link is fine; the server could not be reached.'}
                 </p>
@@ -298,13 +320,10 @@ function renderBody(
 
     const answer = state.data;
 
-    // An answer, not a failure: the database is refreshed with the plugin, so a
-    // code that was recognized when the message was written can be retired
-    // later. Saying so beats a blank panel.
     if (!answer.found || !answer.airport) {
         return (
             <>
-                <p style={styles.name}>{ident}</p>
+                <p style={styles.name}>{code}</p>
                 <p style={styles.note}>
                     {'This airfield code is not in this build\'s airfield database. The database is refreshed with the plugin, so a code that was recognized when the message was written may have been retired since.'}
                 </p>
@@ -312,8 +331,9 @@ function renderBody(
         );
     }
 
-    const {airport, coordinate} = answer;
+    const {airport, coordinate, ident} = answer;
     const openPosition = position ? () => setSelection({type: location.type, payload: position.payload}) : undefined;
+    const use = militaryUse(airport);
 
     return (
         <>
@@ -332,6 +352,14 @@ function renderBody(
                             value={airport.place}
                             plain={true}
                             onOpen={openPosition}
+                        />
+                    )}
+                    {use !== '' && (
+                        <Row
+                            label='Use'
+                            value={use}
+                            plain={true}
+                            copyable={false}
                         />
                     )}
                     {airport.type !== '' && (
@@ -358,6 +386,9 @@ function renderBody(
 
                 </tbody>
             </table>
+
+            <Runways runways={airport.runways}/>
+            <Frequencies frequencies={airport.frequencies}/>
 
             {position === null && (
                 <p style={styles.note}>

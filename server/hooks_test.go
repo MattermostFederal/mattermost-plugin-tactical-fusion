@@ -381,6 +381,7 @@ func newTestPlugin(t *testing.T, siteURL string, enabled bool) *Plugin {
 		EnableLocationMapPage:   true,
 
 		EnableAirport:      enabled,
+		EnableAirportIATA:  enabled,
 		EnableAirportTable: enabled,
 
 		EnableCot:     enabled,

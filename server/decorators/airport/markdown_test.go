@@ -223,7 +223,7 @@ func TestTheShippedDatabaseCarriesNothingTheTableCannotEscape(t *testing.T) {
 // caught against values that exist rather than only against invented ones.
 func TestTheShippedHostileRowsStillRender(t *testing.T) {
 	for ident, want := range map[string]string{
-		"LIMN": `Cameri Air Base \[MIL\]`,
+		"KFLR": `\[Delete\] Homestead East Airstrip`,
 		"SDCP": "Hotel Sant\\`anna Heliport",
 	} {
 		d, ok := DescribeFields(ident)

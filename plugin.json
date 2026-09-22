@@ -197,6 +197,13 @@
                         "help_text": "Recognize an ICAO airfield code written behind ICAO:, LOC:, DEPLOC: or ARRLOC: and rewrite it as a link that opens an Airfield panel. A code is only recognized behind one of those labels, in upper case: four letters on their own are indistinguishable from ordinary words, and many airfield codes are ordinary words. Turning this off stops new messages being decorated; links already written keep working."
                     },
                     {
+                        "key": "EnableAirportIATA",
+                        "display_name": "Decorate IATA codes behind their label",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Recognize a three-letter IATA airport code written behind IATA:, in upper case, and rewrite it as a link that opens the same Airfield panel. Three letters collide with ordinary words even more often than four, so the label is required and a bare code is never read. Turning this off stops new messages being decorated; links already written keep working. Only applies while \"Decorate airfield codes\" is on."
+                    },
+                    {
                         "key": "EnableAirportTable",
                         "display_name": "Show the airfield details under a labeled code on its own",
                         "type": "bool",

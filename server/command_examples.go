@@ -77,6 +77,7 @@ var exampleSets = map[string]exampleSet{
 			{label: "ICAO", text: "ICAO:PHNL", note: "the label is required, in upper case"},
 			{label: "Location", text: "LOC:PGUM"},
 			{label: "Departure", text: "DEPLOC:PHTO"},
+			{label: "IATA", text: "IATA:HNL", note: "the three-letter code behind its own label"},
 		},
 	},
 }

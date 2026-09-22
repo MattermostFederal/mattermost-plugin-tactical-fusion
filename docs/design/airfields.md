@@ -27,7 +27,7 @@ are different acts.
 
 **That makes Place load-bearing rather than decorative.** An airfield with no
 place would be one whose position a reader cannot reach on either surface. None
-of the 19,012 has an empty one, because the country is always present, and
+of the 19,280 has an empty one, because the country is always present, and
 `TestEveryAirfieldHasAPlaceToHangTheLinkOn` is what stops a refreshed database
 introducing one silently.
 
@@ -66,8 +66,8 @@ canonical form are always identical.
 
 ### The grammar is label-only, and that is measured
 
-Nothing is detected without a label, permanently. Of the 19,012 idents shipped,
-**343 are English dictionary words**, and the collisions are not theoretical:
+Nothing is detected without a label, permanently. Of the 19,280 idents shipped,
+**349 are English dictionary words**, and the collisions are not theoretical:
 `FACT` is Cape Town International, `FAST` is Somerset East, `USCG` is
 Chelyabinsk Shagol in **Russia**, `LIMA` is Torino-Aeritalia, `UNIT` is Tura
 Mountain, `ETIC` is Grafenwohr Army Air Field. A bare grammar would rewrite
@@ -93,7 +93,7 @@ that are defects that were shipped.
 
 `\s` is never used, for the reason `location.go` records: RE2's `\s` includes
 `\n`, so a label ending a line would claim whatever started the next one, and
-with 343 word-shaped idents "Divert to LOC:" above a line beginning "FAST" would
+with 349 word-shaped idents "Divert to LOC:" above a line beginning "FAST" would
 rewrite ordinary prose permanently into stored post text.
 
 **Nothing may follow the colon either, and that was measured after the fact.**
@@ -124,7 +124,7 @@ beside the three unambiguous labels is open: `DEPLOC` and `ARRLOC` are flight
 plan fields that do not occur in prose, and `ICAO` nearly as good, while `LOC:`
 reads naturally as "location:".
 
-`TestNoIdentIsReachedByCapitalizedProse` sweeps all 19,012 idents behind all
+`TestNoIdentIsReachedByCapitalizedProse` sweeps all 19,280 idents behind all
 four labels in a sentence and requires every one to decline. It reports 76,048
 rewrites against the old separator and zero against this one.
 
@@ -143,13 +143,13 @@ Two separate fixes, because there were two separate problems.
 word, 4,360 of them, from the BSD `web2` list whose 1934 copyright has lapsed.
 It is embedded with `//go:embed` beside `airports.csv` and for the same reason:
 a clean checkout must run `go test` with no network and no prior generator run.
-`TestManyIdentsAreOrdinaryWords` still reports 343 of 19,012, which is the whole
+`TestManyIdentsAreOrdinaryWords` still reports 343 of 19,280, which is the whole
 argument for this decorator having no bare pattern, and it now reports it on
 every PR.
 
 **The behavioral sweep never needed a word list at all.** It asserted three
 things (a bare ident does not decorate, a lower-case or mixed-case label does
-not, an upper-case one does) and every one of them holds for *all* 19,012
+not, an upper-case one does) and every one of them holds for *all* 19,280
 idents, not only the word-shaped ones. Restricting it to dictionary words made
 it 55 times narrower **and** gave it a dependency it did not need, which is what
 made it skip. It sweeps every ident now, so it is both stronger and unskippable;
@@ -194,7 +194,7 @@ belongs in the hover, the panel and the page.
 ### The data
 
 `server/decorators/airport/data/airports.csv`, embedded with `//go:embed` and
-parsed at init. 19,012 rows, about 1.6 MB. Its provenance, the exact filter and
+parsed at init. 19,280 rows, about 1.6 MB. Its provenance, the exact filter and
 the four-decimal argument are in `data/README.md` beside it, which is also where
 the upstream URL and SHA-256 live.
 
@@ -553,7 +553,7 @@ permanent, and one `if` away.
 ### The whitelist is the first layer, escaping is the last
 
 `parseAirfields` refuses any field carrying a rune outside an explicit
-whitelist, and any `www.` or `://` sequence. Measured against all 19,012 rows
+whitelist, and any `www.` or `://` sequence. Measured against all 19,280 rows
 rather than guessed, so a refreshed database carrying something new fails at
 init and in every test.
 
@@ -588,7 +588,7 @@ the backslash first, then the pipe, backtick, asterisk, underscore, brackets,
 angle brackets and tilde, and flattens any stray carriage return or newline to a
 space.
 
-`TestEveryAirfieldTableIsWellFormed` renders all 19,012 and requires every row
+`TestEveryAirfieldTableIsWellFormed` renders all 19,280 and requires every row
 to carry exactly three unescaped pipes, which is the property a broken cell
 actually violates.
 
@@ -616,3 +616,101 @@ One more switch, ANDed with `EnableAirport`. It governs decoration, like every
 format switch, so turning it off stops new messages being expanded and cannot
 un-expand the ones already posted. That is the same rule every decoration
 follows: the text is what the author's message now says.
+
+## The airfield's own data: IATA codes, the designator, runways and frequencies
+
+The database moved from the DataHub `airport-codes` repackaging to OurAirports'
+own three files, because runways and frequencies exist nowhere else and one
+origin is one license and one README. `data/README.md` records the three
+digests, the filter for each file, the surface table and the designator list.
+The regeneration changed the snapshot date too: the ident count is 19,280 and
+the dictionary-word count 349, `PHIK` lost the IATA code the old snapshot gave
+it, and `NZSP`'s longitude moved. The sweeps held every row to the same bar and
+the pinned fixtures were updated to what the data says.
+
+**The `IATA:` grammar is label-only, upper case, validated by lookup**, for
+every reason the ICAO grammar is and with more force: three letters collide
+with ordinary words more often than four. It is a second `Pattern` sharing
+`ReplaceGroup`, `Extract`, the guard and the `[ \t]*:` separator, so the
+`IATA:HNL//` set line keeps its terminator out of the link the same way.
+`Parse` tells the two apart by length, which is what lets the bridge's
+`link('airport', 'HNL')` work with no label.
+
+**The link carries `i=HNL` and nothing else.** The URL carries identity only,
+and for an IATA link the identity is the code the author wrote; resolving it to
+`PHNL` at decoration and writing that would put a derived value in the URL,
+and a refreshed database that moves the code would then disagree with it. The
+page, the API and `ExpandMessage` all go through `ReferenceFromParams`, which
+requires exactly one of `v` and `i` and refuses both or neither with its own
+code (`AirportPageParamsConflict`, `APIAirportParamsConflict`), the rule DTG's
+`z`/`o` pair follows: a link naming two codes cannot be trusted to agree.
+
+**A duplicate IATA code fails the generator** rather than being resolved. The
+current snapshot has none; the index built at init refuses one too, so a
+hand-edited CSV cannot introduce a code that names two fields.
+
+**The API answers `iata` beside `ident`**, and an IATA question the build
+cannot answer carries `found: false`, an empty `ident` and the code asked for.
+The webapp's echo check is by the key that was asked: an IATA question is
+answered by the `iata` field, an ICAO question by `ident`. `asAirport` admits
+an empty ident only on a miss.
+
+**The military designator is the name's own text.** OurAirports has no operator
+field. The generator matches a fixed list of designators as whole words of the
+name and ships the one it found; the row reads "Military (Air Force Base)" and
+never "Military" alone, because the designator is what the data says and an
+operator is a claim it does not make. 601 of 19,280 carry one.
+
+**Runway ends go through the cheap gate, the reference point through the full
+one.** The reference point runs `location.Convert` because its region is the
+map's accessible label. An end needs no region, and `Convert` per end would be
+up to twenty-two polygon lookups per `Describe`, so ends use `location.Parse`
+plus a canonical round trip, the gate CoT positions use. Both gates refuse the
+same tokens. A runway with one end stated carries neither and draws no line;
+`TestEveryRunwayEndIsAcceptedByLocation` sweeps every drawn end.
+
+**The lighting flag is rendered only when set.** OurAirports' `lighted` is
+zero for Honolulu's runways, which are lit, so zero means "not stated" at least
+as often as "unlit". The row says "lighted" or nothing, never "unlit".
+
+**Surfaces are normalized in the generator, not at render.** 355 spellings
+upstream; the table in `build/airportdata` maps the codes and common spellings
+to one name each, keeps a clean residue as written when it is at most 24
+runes, and drops the rest. The counts are in the README so a refresh can be
+compared.
+
+**Frequencies are written to three decimals** because that is the channel
+convention and the source is a database rather than an author's token; the
+resolution rule is about what an author wrote.
+
+**The table carries Runways and Frequencies rows**, joined with `; `, and the
+largest expansion in the shipped data is KCVG at 924 runes against the 4,000
+floor, measured by `TestTheLargestAirfieldTableFitsTheFloor` in the server
+package where `safePostRunes` lives. The expansion still falls back to the
+plain link if a refresh ever crosses it.
+
+**The whitelist is measured over the new columns at init**, exactly as it is
+over the airfield names. The generator blanks a frequency description the
+whitelist refuses and drops a runway whose designation it refuses, so a refresh
+cannot fail the build for a stray degree sign in a description.
+
+### `/map?airport=<ident>`
+
+A third address on `/map`, after `post` and before the coordinate fallback. It
+renders through `RenderOverlayPage` with kind `airport` and a blob built in Go
+from `Describe`: ident, name, the coordinate pair with its region, and every
+runway with both ends. One 404 and one code, `HTTPMapAirportUnavailable`, for
+a malformed value and for an unknown ident alike, so the address cannot be used
+to probe the database a code at a time. The panel's "Open larger" points here
+rather than at the coordinate page, because the coordinate page draws no
+runways. The webapp's `airportMapFromBlob` refuses a blob that is not the shape
+and the page says it cannot read it, the `OVERLAY_UNREADABLE` path.
+
+### The sync test walks the shape
+
+`TestWebappAirportShapeMatches` used to scrape `name: type;` lines. The wire
+shape now nests (`runways: AirportRunway[]`, `ends?: [AirportEnd,
+AirportEnd]`), so the test walks the Go struct by reflection, renders each field
+as the TypeScript it should read as (`string`, `boolean`, `Name[]`, `[Name,
+Name]`, `?` for `omitempty`), and recurses into every nested struct. Names,
+types, optionality and order are all held, for every interface in `types.ts`.

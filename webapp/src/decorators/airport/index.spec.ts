@@ -7,22 +7,26 @@ function params(entries: Record<string, string>): URLSearchParams {
 }
 
 test.describe('fromParams', () => {
-    test('accepts what the server produces', () => {
-        const payload = fromParams(params({v: 'KIND'}));
-
-        expect(payload).not.toBeNull();
-        expect(payload?.ident).toBe('KIND');
+    test('accepts an ICAO ident the server produces', () => {
+        expect(fromParams(params({v: 'KIND'}))).toEqual({key: 'icao', code: 'KIND'});
     });
 
-    test('reads only v, so a stray parameter changes nothing', () => {
-        const payload = fromParams(params({v: 'KIND', f: 'dd', r: 'KIND'}));
-
-        expect(payload?.ident).toBe('KIND');
+    test('accepts an IATA code the server produces', () => {
+        expect(fromParams(params({i: 'HNL'}))).toEqual({key: 'iata', code: 'HNL'});
     });
 
-    test('rejects each mutation of a valid link', () => {
+    test('reads only v and i, so a stray parameter changes nothing', () => {
+        expect(fromParams(params({v: 'KIND', f: 'dd', r: 'KIND'}))).toEqual({key: 'icao', code: 'KIND'});
+    });
+
+    test('refuses a link naming both codes or neither', () => {
+        expect(fromParams(params({v: 'KIND', i: 'IND'}))).toBeNull();
+        expect(fromParams(params({}))).toBeNull();
+        expect(fromParams(params({x: 'KIND'}))).toBeNull();
+    });
+
+    test('rejects each mutation of a valid ident link', () => {
         const cases: Array<[string, Record<string, string>]> = [
-            ['missing value', {}],
             ['empty value', {v: ''}],
             ['three letters', {v: 'KIN'}],
             ['five letters', {v: 'KINDX'}],
@@ -40,6 +44,12 @@ test.describe('fromParams', () => {
         }
     });
 
+    test('rejects each mutation of a valid IATA link', () => {
+        for (const [name, code] of [['empty', ''], ['two letters', 'HN'], ['four letters', 'HNLL'], ['a digit', 'H1L'], ['lower case', 'hnl'], ['a space', 'HN L']]) {
+            expect(fromParams(params({i: code})), name).toBeNull();
+        }
+    });
+
     test('refuses any case but upper, which is what makes one airfield one URL', () => {
         for (const ident of ['kind', 'Kind', 'kIND', 'KINd']) {
             expect(fromParams(params({v: ident})), ident).toBeNull();
@@ -47,7 +57,8 @@ test.describe('fromParams', () => {
     });
 
     test('accepts a well formed code this build may not hold, leaving that to the server', () => {
-        expect(fromParams(params({v: 'QZQZ'}))?.ident).toBe('QZQZ');
+        expect(fromParams(params({v: 'QZQZ'}))?.code).toBe('QZQZ');
+        expect(fromParams(params({i: 'QQQ'}))?.code).toBe('QQQ');
     });
 });
 
@@ -58,7 +69,7 @@ test.describe('the decorator', () => {
     });
 
     test('heads the sidebar with the panel title', () => {
-        expect(decorator.summary({ident: 'KIND'})).toBe(PANEL_TITLE);
+        expect(decorator.summary({key: 'icao', code: 'KIND'})).toBe(PANEL_TITLE);
     });
 
     test('declares a hover', () => {

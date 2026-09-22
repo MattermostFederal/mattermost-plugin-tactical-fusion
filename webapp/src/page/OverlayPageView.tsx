@@ -4,6 +4,8 @@ import type {OverlayPageData} from './payload';
 
 import {CotMapCanvas, drawsNothing as cotDrawsNothing} from '../cot/CotMap';
 import {COT_POST_TYPE, fromProps as cotFromProps} from '../cot/types';
+import {AirportMapCanvas} from '../decorators/airport/AirportMapCanvas';
+import {AIRPORT_MAP_KIND, airportMapFromBlob, runwayLabel} from '../decorators/airport/map';
 import {openingCamera} from '../decorators/location/map/camera';
 import {GeoJsonMapCanvas, drawsNothing as geoJsonDrawsNothing, mapLabel, markersFor, shapesFor} from '../geojson/GeoJsonMap';
 import {GEOJSON_POST_TYPE, fromProps as geoJsonFromProps} from '../geojson/types';
@@ -63,6 +65,24 @@ export const OverlayPageView: React.FC<{data: OverlayPageData}> = ({data}) => {
  * empty basemap that looks like a document with nothing in it.
  */
 function drawingFor(data: OverlayPageData): {canvas: React.ReactNode; label: string} | null {
+    if (data.kind === AIRPORT_MAP_KIND) {
+        const payload = airportMapFromBlob(data.props);
+        if (payload === null) {
+            return null;
+        }
+
+        return {
+            canvas: (
+                <AirportMapCanvas
+                    payload={payload}
+                    fill={true}
+                    openAt={openingCamera() ?? undefined}
+                />
+            ),
+            label: `${payload.name || payload.ident} (${payload.ident}), ${runwayLabel(payload.runways.length)}`,
+        };
+    }
+
     if (data.kind === COT_POST_TYPE) {
         const payload = cotFromProps(data.props);
         if (payload === null) {

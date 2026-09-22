@@ -28,6 +28,7 @@ right-hand sidebar, and a standalone server-rendered page.
 | `hooks_stamp.go` | The forged-type strip, the props ladder, the attachment ownership check |
 | `http.go` | `ServeHTTP`: `/decorate/<type>`, `/map`, `/api/v1/*`, and the session gate |
 | `api.go` | Authenticated JSON API: `/preferences`, `/convert`, `/features`, `/airport`, `/decorate`, `/link` |
+| `mapairport.go` | `/map?airport=<ident>`: the airfield map page, rendered through the overlay shell |
 | `bridge.go` | The plugin bridge: `/bridge/v1/{decorate,link,info}` for other plugins, and the `decorate`/`link` operations `/api/v1` shares |
 | `preferences.go`, `preferences_cache.go` | Per-reader KV store and its cluster-aware cache |
 | `command*.go` | The `/tactical-fusion` slash command and its example builders |
@@ -35,7 +36,7 @@ right-hand sidebar, and a standalone server-rendered page.
 | `decorators/` | Framework: registry, tagger, boundary guard, shared page shell |
 | `decorators/dtg/` | Date-time groups and RFC 3339 timestamps |
 | `decorators/location/` | Coordinate grammars, geodesy, MGRS, rendering, conversion; `mapdata/` holds the generated country polygons |
-| `decorators/airport/` | ICAO airfields; `data/` holds the embedded CSV and its provenance |
+| `decorators/airport/` | ICAO and IATA airfields, their runways and frequencies; `data/` holds the three embedded CSVs and their provenance |
 | `cot/` | Cursor on Target: the bounded XML parse, the type tables, the post props |
 | `geojson/` | GeoJSON: the bounded JSON walk, the parts/rings shape, the post props |
 
@@ -74,13 +75,13 @@ there rather than here or in a comment.
 |---|---|
 | [`docs/design/decorators.md`](docs/design/decorators.md) | The framework, the DTG grammars, the tagger and protected spans, `siteURLPath`, page CSP, the slash command, adding a decorator, the post size limit |
 | [`docs/design/location.md`](docs/design/location.md) | Every coordinate grammar, boundary guards, rendering and resolution, geodesy, `/api/v1/convert`, copy buttons, prior art |
-| [`docs/design/airfields.md`](docs/design/airfields.md) | The label-only ICAO grammar, the embedded database, `/api/v1/airport`, the page and panel |
+| [`docs/design/airfields.md`](docs/design/airfields.md) | The label-only ICAO and IATA grammars, the three embedded files, the military designator, runways and frequencies, `/api/v1/airport`, `/map?airport=`, the page and panel |
 | [`docs/design/cot.md`](docs/design/cot.md) | Cursor on Target: why it is not a decorator, the exclusivity rule, the props budget, `edit_at` over a digest, the parser's refusals, the CE circle |
 | [`docs/design/geojson.md`](docs/design/geojson.md) | GeoJSON: why recognition is narrow, why format order stayed format-major, what the two stampers share and what they must not, the parts/rings shape, why `decimalShape` is not reused, the ringed map prop, extent-only, the cross-shape antimeridian unwrap |
 | [`docs/design/mapping.md`](docs/design/mapping.md) | The vector basemap, the OpenStreetMap detail tier and its seam, detail map packages, `PageStatic` vs `PageMapping`, the page bundle, zoom numbers, the country lookup, `Conversion`, the map page, the panel map, turning maps off, the map under a post |
 | [`docs/design/bridge.md`](docs/design/bridge.md) | The plugin bridge: why `PluginHTTP`, why `Mattermost-Plugin-ID` is trusted, the two transports, why `link` takes no label and still honors switches, the window global and its ready event, where the wire types live |
 | [`docs/design/preferences.md`](docs/design/preferences.md) | The KV store, both caches, the location hover, the location rows, the zone picker and ordering |
-| [`docs/design/admin-settings.md`](docs/design/admin-settings.md) | The twenty-five switches, the two map-package settings, the six sections, why `EnableLocationUTM` and `EnableGeoJSONUnlabeled` ship off |
+| [`docs/design/admin-settings.md`](docs/design/admin-settings.md) | The twenty-six switches, the two map-package settings, the six sections, why `EnableLocationUTM` and `EnableGeoJSONUnlabeled` ship off |
 | [`docs/design/help-and-errors.md`](docs/design/help-and-errors.md) | `public/help/` and the `TF-NNNN` catalog |
 | [`docs/design/unverified.md`](docs/design/unverified.md) | Claims that need a running server or a phone and have never been checked |
 
@@ -248,7 +249,8 @@ side moves alone. Change both halves together.
 | The row catalog: ids, labels, order | `TestWebappRowCatalogMatches` |
 | The format id list | `TestWebappFormatListMatches` |
 | The `/features` payload | `TestWebappFeatureShapeMatches` |
-| The `/airport` payload | `TestWebappAirportShapeMatches` |
+| The `/airport` payload, walked through every nested interface | `TestWebappAirportShapeMatches` |
+| The ident and IATA shapes, and the airfield map kind | `TestWebappAirportIdentShapeMatches`, `TestWebappAirportMapKindMatches` |
 | The 30 minute cache TTL | `TestWebappCacheLifetimeMatches` |
 | The `data-maps` attribute and its tokens | `TestWebappMapSurfaceAttributeMatches` |
 | The seam zoom: `seamZoom` and `SEAM_ZOOM` in `map/span.ts` | `TestSeamZoomMatchesTheWebapp`, `TestDetailPackagesStartAtTheSeam` |

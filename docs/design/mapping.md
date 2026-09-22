@@ -1830,6 +1830,15 @@ control being broken on precisely the posts where a bigger map is worth most.
 travels in the URL there either, and the whole overlay is re-read from stored
 props at render.
 
+`?airport=<ident>` is the third, checked after `post` and before the
+coordinate. An airfield has a canonical token, its ident, but the coordinate
+page draws none of its runways, so the airfield panel's "Open larger" points
+here and the page re-reads the database at render: the blob is built in Go by
+`airport.MapBlob` from the same `Describe` the API answers with, and rendered
+through `RenderOverlayPage` with the kind `airport`. One 404 and one code for
+a malformed value and an unknown ident alike, the `?post=` posture, so the
+address cannot probe the database. See [`airfields.md`](airfields.md).
+
 ### The camera rides in the fragment
 
 "Open larger" used to open on whatever the token or the overlay framed, which
@@ -1953,9 +1962,11 @@ is the part that consults nothing, and the wrapper around it is where the
 reader's sections and the admin's inline switch live. The page IS the map, so
 reaching it is the decision and neither of those applies.
 
-`data-overlay-kind` is the post type, which is already pinned to the webapp's
-copy by `TestWebappCotPostTypeMatches` and `TestWebappGeoJSONPostTypeMatches`, so
-this mode introduced no new vocabulary that could drift.
+`data-overlay-kind` is the post type for a stamped post, which is already
+pinned to the webapp's copy by `TestWebappCotPostTypeMatches` and
+`TestWebappGeoJSONPostTypeMatches`, and `airport` for the airfield address,
+pinned by `TestWebappAirportMapKindMatches`. The kind vocabulary is those three
+and `drawingFor` in `OverlayPageView.tsx` is the one place that reads it.
 
 ### The map's modules, and why the file was split
 

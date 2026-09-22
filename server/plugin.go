@@ -102,6 +102,7 @@ func (p *Plugin) airportFormats() airport.Formats {
 
 	return airport.Formats{
 		Airfield: config.EnableAirport,
+		IATA:     config.EnableAirport && config.EnableAirportIATA,
 
 		// ANDed with the parent, the way locationMaps is: a message is only
 		// ever expanded for an airfield code this plugin decorated.

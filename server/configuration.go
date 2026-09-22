@@ -86,6 +86,8 @@ type configuration struct {
 	// this.
 	EnableAirport bool
 
+	EnableAirportIATA bool
+
 	// EnableAirportTable governs whether a message that is nothing but an
 	// airfield code is expanded with a markdown table of the field's details.
 	//

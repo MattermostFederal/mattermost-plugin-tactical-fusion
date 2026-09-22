@@ -232,7 +232,7 @@
             <tbody>
                 <tr>
                     <td><code>KIND</code> on its own did nothing</td>
-                    <td>There is no bare grammar, permanently. Of the airfield codes this plugin ships, 343 are ordinary English words: <code>FACT</code> is Cape Town International, <code>USCG</code> is an airfield in Russia, <code>LIMA</code> is in Turin. Reading them bare would rewrite ordinary prose.</td>
+                    <td>There is no bare grammar, permanently. Of the airfield codes this plugin ships, 349 are ordinary English words: <code>FACT</code> is Cape Town International, <code>USCG</code> is an airfield in Russia, <code>LIMA</code> is in Turin. Reading them bare would rewrite ordinary prose.</td>
                     <td>Write a <a href="airfields.html#airfield">USMTF field label</a> in front: <code>ICAO:PHNL</code>, <code>LOC:</code>, <code>DEPLOC:</code> or <code>ARRLOC:</code>.</td>
                 </tr>
                 <tr>
@@ -252,8 +252,8 @@
                 </tr>
                 <tr>
                     <td><code>ICAO:PHN</code> or <code>ICAO:PHNLX</code> did nothing</td>
-                    <td>An ICAO ident is exactly four letters. Three is an IATA code, which this plugin does not read.</td>
-                    <td>Write the four-letter ICAO ident. The IATA code is shown in the panel for a field that has one.</td>
+                    <td>An ICAO ident is exactly four letters behind <code>ICAO:</code>, <code>LOC:</code>, <code>DEPLOC:</code> or <code>ARRLOC:</code>. Three letters is an IATA code, which is read only behind its own <code>IATA:</code> label.</td>
+                    <td>Write the four-letter ICAO ident behind one of its labels, or the three-letter code behind <code>IATA:</code>. Either opens the same panel.</td>
                 </tr>
                 <tr>
                     <td><code>logs/ICAO:PHNL</code> did nothing</td>

@@ -205,7 +205,11 @@ func (p *Plugin) formatEnabled(typ string, params url.Values) bool {
 		}
 		return formats.Military
 	case airport.Type:
-		return p.airportFormats().Airfield
+		formats := p.airportFormats()
+		if params.Has(airport.ParamIATA) {
+			return formats.IATA
+		}
+		return formats.Airfield
 	}
 
 	return true

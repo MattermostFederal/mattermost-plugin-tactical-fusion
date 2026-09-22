@@ -149,6 +149,8 @@ const (
 
 	HTTPMapPostUnavailable = 12008
 
+	HTTPMapAirportUnavailable = 12009
+
 	// server/api.go (13000-13999)
 
 	// APINotAuthorized is returned when a request to the authenticated API
@@ -194,6 +196,8 @@ const (
 	// the page does, because a refreshed database must not turn every link
 	// naming a retired code into a permanent failure.
 	APIAirportInvalid = 13009
+
+	APIAirportParamsConflict = 13010
 
 	// server/preferences.go (14000-14999)
 
@@ -295,6 +299,8 @@ const (
 	// hold renders at 200 with a note instead.
 	AirportPageInvalid = 17002
 
+	AirportPageParamsConflict = 17003
+
 	// server/packages.go (18000-18999)
 
 	// PackagesNoBundlePath reports that the plugin cannot locate its own
@@ -380,6 +386,7 @@ var AllCodes = []int{
 	HTTPPackageUnknown,
 	HTTPPackageUnreadable,
 	HTTPMapPostUnavailable,
+	HTTPMapAirportUnavailable,
 
 	APINotAuthorized,
 	APINotFound,
@@ -391,6 +398,7 @@ var AllCodes = []int{
 	APIPreferencesClearFailed,
 	APIConvertInvalid,
 	APIAirportInvalid,
+	APIAirportParamsConflict,
 
 	PreferencesZoneNameTooLong,
 	PreferencesZoneNameControlCharacters,
@@ -415,6 +423,7 @@ var AllCodes = []int{
 	DTGPageParamsInvalid,
 	LocationPageParamsInvalid,
 	AirportPageInvalid,
+	AirportPageParamsConflict,
 
 	PackagesNoBundlePath,
 	PackagesBadName,
