@@ -8,6 +8,7 @@ import (
 
 	"github.com/mattermost/mattermost/server/public/model"
 
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/avreport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
@@ -34,7 +35,7 @@ type exampleSet struct {
 	rows      []exampleRow
 }
 
-var exampleSetOrder = []string{dtg.Type, location.Type, airport.Type}
+var exampleSetOrder = []string{dtg.Type, location.Type, airport.Type, avreport.Type}
 
 var exampleSets = map[string]exampleSet{
 	dtg.Type: {
@@ -78,6 +79,16 @@ var exampleSets = map[string]exampleSet{
 			{label: "Location", text: "LOC:PGUM"},
 			{label: "Departure", text: "DEPLOC:PHTO"},
 			{label: "IATA", text: "IATA:HNL", note: "the three-letter code behind its own label"},
+		},
+	},
+
+	avreport.Type: {
+		decorator: avreport.Type,
+		name:      "Aviation reports",
+		rows: []exampleRow{
+			{label: "METAR", text: "METAR PHNL 221651Z 07012G18KT 10SM FEW025 SCT045 27/19 A3010", note: "hover for the plain-language summary"},
+			{label: "TAF", text: "TAF PGUA 221720Z 2218/2324 07012KT P6SM SCT025", note: "one line; a multi-line forecast posted on its own gets a card instead"},
+			{label: "NOTAM", text: "!HNL 09/123 HNL RWY 08L/26R CLSD 2609221200-2609232359", note: "the FAA domestic form"},
 		},
 	},
 }

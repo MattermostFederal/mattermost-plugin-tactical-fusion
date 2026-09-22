@@ -2,6 +2,8 @@ import React from 'react';
 
 import type {OverlayPageData} from './payload';
 
+import {ReportMapCanvas, drawsNothing as reportDrawsNothing, mapLabel as reportLabel} from '../avreport/ReportMap';
+import {AVREPORT_POST_TYPE, fromProps as reportFromProps} from '../avreport/types';
 import {CotMapCanvas, drawsNothing as cotDrawsNothing} from '../cot/CotMap';
 import {COT_POST_TYPE, fromProps as cotFromProps} from '../cot/types';
 import {AirfieldsMapCanvas} from '../decorators/airport/AirfieldsMap';
@@ -100,6 +102,25 @@ function drawingFor(data: OverlayPageData): {canvas: React.ReactNode; label: str
                 />
             ),
             label: routeLabel(payload),
+        };
+    }
+
+    if (data.kind === AVREPORT_POST_TYPE) {
+        const payload = reportFromProps(data.props);
+        if (payload === null || reportDrawsNothing(payload)) {
+            return null;
+        }
+
+        return {
+            canvas: (
+                <ReportMapCanvas
+                    report={payload}
+                    pageEnabled={false}
+                    fill={true}
+                    openAt={openingCamera() ?? undefined}
+                />
+            ),
+            label: reportLabel(payload),
         };
     }
 

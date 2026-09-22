@@ -1,0 +1,76 @@
+import type {ReportPayload} from './types';
+
+export const HONOLULU_METAR: ReportPayload = {
+    kind: 'METAR',
+    station: 'PHNL',
+    stationName: 'Daniel K. Inouye International Airport',
+    issued: '22 Sep 2026 16:51Z',
+    issuedAt: '1790095860000',
+    inferred: true,
+    summary: 'Wind 070° at 12 kt, gusting 18 kt; 10 statute miles; few clouds at 2,500 ft; 27°C, dew point 19°C; 30.10 inHg',
+    flags: [],
+    rows: [
+        {label: 'Wind', value: '070° at 12 kt, gusting 18 kt'},
+        {label: 'Visibility', value: '10 statute miles'},
+        {label: 'Sky', value: 'few clouds at 2,500 ft'},
+        {label: 'Temperature', value: '27°C, dew point 19°C'},
+        {label: 'Altimeter', value: '30.10 inHg'},
+    ],
+    periods: [],
+    remarks: [{label: 'Station', value: 'automated station with a precipitation discriminator'}],
+    unknown: ['Q9999'],
+    format: 'dd',
+    value: '21.3184,-157.9257',
+    region: 'United States of America',
+    radiusNm: '',
+    src: 'METAR PHNL 221651Z 07012G18KT 10SM FEW025 SCT045 27/19 A3010 RMK AO2 Q9999',
+    source: 'fence',
+    lead: '',
+    trail: '',
+    rowsDropped: false,
+    postId: '',
+};
+
+export const NOTAM_WITH_RADIUS: ReportPayload = {
+    ...HONOLULU_METAR,
+    kind: 'NOTAM',
+    issued: '22 Sep 2026 12:00Z',
+    issuedAt: '1790078400000',
+    inferred: false,
+    summary: 'Runway 08L/26R closed',
+    rows: [{label: 'Effective', value: '22 Sep 2026 12:00Z to 23 Sep 2026 23:59Z'}, {label: 'Text', value: 'RWY 08L/26R CLSD'}],
+    remarks: [],
+    unknown: [],
+    radiusNm: '5',
+    src: 'A1234/26 NOTAMN\nQ) PHZH/QMRLC/IV/NBO/A/000/999/2119N15755W005\nA) PHNL B) 2609221200 C) 2609232359\nE) RWY 08L/26R CLSD',
+    source: 'message',
+};
+
+export function propsFor(payload: ReportPayload, version: unknown = 1): Record<string, unknown> {
+    return {
+        tactical_fusion_avreport: {
+            version,
+            source: payload.source,
+            lead: payload.lead,
+            trail: payload.trail,
+            rows_dropped: payload.rowsDropped ? '1' : '',
+            kind: payload.kind,
+            station: payload.station,
+            station_name: payload.stationName,
+            issued: payload.issued,
+            issued_at: payload.issuedAt,
+            inferred: payload.inferred,
+            summary: payload.summary,
+            flags: payload.flags,
+            rows: payload.rows,
+            periods: payload.periods,
+            remarks: payload.remarks,
+            unknown: payload.unknown,
+            format: payload.format,
+            value: payload.value,
+            region: payload.region,
+            radius_nm: payload.radiusNm,
+            src: payload.src,
+        },
+    };
+}

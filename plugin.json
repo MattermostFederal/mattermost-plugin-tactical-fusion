@@ -220,6 +220,48 @@
                 ]
             },
             {
+                "key": "avreports",
+                "title": "Aviation reports",
+                "subtitle": "Decode a METAR, SPECI, TAF or NOTAM pasted into a message into plain language, with the station on a map.",
+                "settings": [
+                    {
+                        "key": "EnableAvReport",
+                        "display_name": "Decode aviation reports",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Recognize a METAR, SPECI, TAF or NOTAM pasted into a message and decode it. A report on one line becomes a link whose panel shows every decoded group in plain language and the station's airfield on a map; a report spanning several lines, or one in a fenced code block labeled metar, speci, taf or notam, is rendered as a card under the message. Nothing is fetched: the plugin decodes what was pasted and never contacts a weather or NOTAM service. Turning this off stops new messages being decoded; links and cards already written keep working. The three settings below choose the kinds."
+                    },
+                    {
+                        "key": "EnableAvReportMETAR",
+                        "display_name": "Decode METAR and SPECI observations",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Recognize an observation written as \"METAR KJFK 221651Z ...\" or \"SPECI ...\", and one written without the keyword when a wind group follows the time, such as \"KJFK 221651Z 28012KT ...\". The day, hour and minute come from the report and the month and year from the time it was posted, and every surface says so. Only applies while \"Decode aviation reports\" is on."
+                    },
+                    {
+                        "key": "EnableAvReportTAF",
+                        "display_name": "Decode TAF forecasts",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Recognize a forecast written as \"TAF KJFK 221720Z 2218/2324 ...\", with its base forecast and each FM, TEMPO, BECMG and PROB period decoded in turn. A forecast on one line is a link; one spanning several lines is a card when it is the whole message. Only applies while \"Decode aviation reports\" is on."
+                    },
+                    {
+                        "key": "EnableAvReportNOTAM",
+                        "display_name": "Decode NOTAMs",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Recognize a NOTAM in the FAA domestic form, such as \"!JFK 09/123 JFK RWY 04L/22R CLSD 2609221200-2609232359\", on one line or several, and in the ICAO form with its Q) through G) fields when it is the whole message or in a fenced code block labeled notam. Contractions are expanded beside the original text. Only applies while \"Decode aviation reports\" is on."
+                    },
+                    {
+                        "key": "EnableAvReportCard",
+                        "display_name": "Render a multi-line or fenced report as a card",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "When a report spans several lines and is the whole message, or is written in a fenced code block labeled metar, speci, taf or notam, render it as a card with the decode and the station's map. The message itself stays exactly as written. A post rendered this way is marked with a custom type, and Elasticsearch and OpenSearch index such a post but never match it, so it is missing from search and from Recent Mentions; link previews, image embeds and automatic translation are dropped for it as well, as the Cursor on Target and GeoJSON cards are. Turning this off leaves such posts as ordinary messages; posts already rendered keep their card. A report on one line is never affected: it is a link, and stays searchable. Only applies while \"Decode aviation reports\" is on."
+                    }
+                ]
+            },
+            {
                 "key": "cot",
                 "title": "Cursor on Target",
                 "subtitle": "Render a Cursor on Target event pasted into a message or attached to a post, with its position on a map.",

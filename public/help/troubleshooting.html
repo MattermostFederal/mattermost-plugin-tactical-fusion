@@ -23,6 +23,7 @@
             <a href="airfields.html">Airfields</a>
             <a href="cot.html">Cursor on Target</a>
             <a href="geojson.html">GeoJSON</a>
+            <a href="reports.html">Aviation Reports</a>
             <span class="nav-section">Guides</span>
             <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
@@ -434,6 +435,59 @@
                     <td>One feature is listed with a note and is missing from the map</td>
                     <td>That feature carries a coordinate outside the range of the earth, or a ring that does not close. The rest of the document is unaffected.</td>
                     <td>Fix that feature in the source. The note on the card says which of the two it was.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="report-not-decoded">An aviation report was not linked or rendered</h2>
+
+        <p>
+            A report that cannot be decoded is never refused: the post goes out with the text
+            as you typed it. When the report was in a block you labeled <code>metar</code>,
+            <code>speci</code>, <code>taf</code> or <code>notam</code> the plugin also sends
+            you a message, visible only to you, saying what happened. A multi-line message
+            with no label that does not decode is left alone in silence.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>The time group in the middle of a METAR is linked, and the rest is plain text</td>
+                    <td>The report did not decode as a report, so the date-time decorator took the time group as it did before. The usual causes are lower case, a keyword touching a colon, or no wind group after the time in a report written without its keyword.</td>
+                    <td>Check the <a href="reports.html#reports-declined">declined list</a>. Write the report in upper case with a space after any label.</td>
+                </tr>
+                <tr>
+                    <td>A TAF on several lines was posted as plain text with no card</td>
+                    <td>It was not the whole message, or it was inside a fence with no label, or <a href="admin.html#enable-avreport-card"><code>EnableAvReportCard</code></a> is off.</td>
+                    <td>Post the report on its own, or fence it and label the fence <code>taf</code>.</td>
+                </tr>
+                <tr>
+                    <td>Several METARs one per line were linked but got no card</td>
+                    <td>By design. Each line is a report of its own, and a link on each keeps every one searchable.</td>
+                    <td>Nothing to do. Click any of the links.</td>
+                </tr>
+                <tr>
+                    <td>The panel says <em>month and year taken from the post date</em></td>
+                    <td>A METAR or TAF time group carries only the day, hour and minute; the rest is inferred from when the message was posted.</td>
+                    <td>Nothing to do. A report pasted long after it was issued shows the wrong month, which is why the note is there.</td>
+                </tr>
+                <tr>
+                    <td>A group appears under <em>Not decoded</em></td>
+                    <td>This build's vocabulary does not cover it. It is kept exactly as written rather than guessed at.</td>
+                    <td>Read it as you would on the wire. Report the group if it is one a station issues routinely.</td>
+                </tr>
+                <tr>
+                    <td>The card has no map</td>
+                    <td>The station is not in this build's airfield database, or the map under a post is off.</td>
+                    <td>See <a href="#no-map">the map is missing</a>. A station outside the database draws nothing, by design.</td>
+                </tr>
+                <tr>
+                    <td>No report in any message links or renders</td>
+                    <td>The decorator is off.</td>
+                    <td>Check <a href="admin.html#avreport-switches">the admin settings</a>: the parent, the kind's switch, and the card's.</td>
                 </tr>
             </tbody>
         </table>

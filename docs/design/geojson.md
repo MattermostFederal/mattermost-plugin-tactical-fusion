@@ -79,16 +79,19 @@ Shared, in `hooks_stamp.go`:
   second copy of it is one copy too many.
 - `commitStamped`, the measure-and-commit ladder.
 
-**Not shared: the recover.** Each stamper declares its own `defer` as its first
-statement, and each spans its own strip, source-finding, filestore call, parse
-and commit. Putting the recover inside `commitStamped` would leave
-`GetFileInfo` outside every recover on the hook path, because `decoratePost`
-calls the stampers from outside `decorateMessage`'s recover. `hooks_test.go`
-records `panicOnFileInfo` as the only injection point that path has, and
+**Shared, since the third stamper: the recover, through `runStamper`.** Each
+stamper used to declare its own `defer` as its first statement, and this note
+argued against sharing one because a recover inside `commitStamped` would leave
+`GetFileInfo` outside every recover on the hook path, and would have no access
+to the `stripped` clone it is contractually required to return. Both objections
+were about *where* the recover sat, not about sharing it. `runStamper` wraps the
+whole body: it declares the recover first, owns `stripped` and returns it from
+the recover, applies the `enabled && post.Type == ""` gate, and calls a
+`recognize` function holding the source-finding, the filestore call, the parse
+and the commit. `panicOnFileInfo` still lands inside the span, and
 `TestCotRecoversFromARealPanic` and
-`TestAPanicAfterStrippingStillReturnsTheStrippedPost` both depend on it. A
-shared recover also has no access to the `stripped` clone it is contractually
-required to return.
+`TestAPanicAfterStrippingStillReturnsTheStrippedPost` still depend on it. See
+[`avreports.md`](avreports.md), "`runStamper`".
 
 **Not shared: a result type.** `hooks.go` already distinguishes all three states
 from the existing pair. `(nil, false)` is nothing happened, `(clone, false)` is

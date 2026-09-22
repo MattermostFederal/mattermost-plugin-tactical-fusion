@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/bridgeclient"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/avreport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
@@ -210,6 +211,17 @@ func (p *Plugin) formatEnabled(typ string, params url.Values) bool {
 			return formats.IATA
 		}
 		return formats.Airfield
+	case avreport.Type:
+		formats := p.avreportFormats()
+		switch avreport.KindOf(params.Get(avreport.ParamValue), time.Now().UTC()) {
+		case avreport.KindMETAR, avreport.KindSPECI:
+			return formats.METAR
+		case avreport.KindTAF:
+			return formats.TAF
+		case avreport.KindNOTAM:
+			return formats.NOTAM
+		}
+		return false
 	}
 
 	return true
@@ -224,6 +236,8 @@ func parsesWithEveryFormat(typ, token string, ref time.Time) bool {
 		unrestricted = &location.Decorator{}
 	case airport.Type:
 		unrestricted = &airport.Decorator{}
+	case avreport.Type:
+		unrestricted = &avreport.Decorator{}
 	default:
 		return false
 	}
@@ -238,6 +252,7 @@ func (p *Plugin) bridgeInfo() bridgeclient.InfoResponse {
 		dtg.Type:      config.EnableDTG,
 		location.Type: config.EnableLocation,
 		airport.Type:  config.EnableAirport,
+		avreport.Type: config.EnableAvReport,
 	}
 
 	info := bridgeclient.InfoResponse{

@@ -1817,6 +1817,11 @@ not drawn is a card that has said nothing.
 
 ## The map page, addressed by a post
 
+Four kinds reach it today: a Cursor on Target post, a GeoJSON post, an airfield
+route post and an aviation report post. The report kind is the one that can
+carry no position at all, and `overlayForPost` answers 404 for one that does,
+because its card offers no link here; see [`avreports.md`](avreports.md).
+
 `/map` was addressed only by a coordinate: `?f=<format>&v=<canonical>`, with
 every reading re-derived from the token, which is what "a link may never
 disagree with itself" means on that route.

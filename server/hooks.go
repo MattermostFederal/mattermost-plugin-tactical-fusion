@@ -95,6 +95,13 @@ func (p *Plugin) decoratePost(post *model.Post, ref time.Time) *model.Post {
 		result = geoResult
 	}
 
+	if reportResult, reportStamped := p.avreportStamp(post, ref); reportStamped {
+		return reportResult
+	} else if reportResult != nil {
+		post = reportResult
+		result = reportResult
+	}
+
 	// decorateMessage answers nil for "nothing changed", so the strip has to be
 	// handed back itself when decoration finds nothing. Returning its nil would
 	// mean "no change" to the hook and put the forged type straight back on.

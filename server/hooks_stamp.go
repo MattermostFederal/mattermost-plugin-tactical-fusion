@@ -7,6 +7,7 @@ import (
 
 	"github.com/mattermost/mattermost/server/public/model"
 
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/avreport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/cot"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/geojson"
@@ -24,6 +25,7 @@ var stampedTypes = []struct{ postType, propsKey string }{
 	{cot.PostType, cot.PropsKey},
 	{geojson.PostType, geojson.PropsKey},
 	{airport.PostType, airport.PropsKey},
+	{avreport.PostType, avreport.PropsKey},
 }
 
 // stripStampedTypes removes a type and props this hook did not write.
@@ -59,6 +61,39 @@ func stripStampedTypes(post *model.Post) *model.Post {
 	}
 
 	return stripped
+}
+
+func (p *Plugin) runStamper(
+	post *model.Post, enabled bool, panicCode int, panicMessage string,
+	recognize func(post *model.Post) (*model.Post, bool),
+) (result *model.Post, stamped bool) {
+	api := p.API
+
+	var stripped *model.Post
+
+	defer func() {
+		if r := recover(); r != nil {
+			result, stamped = stripped, false
+			if api != nil {
+				api.LogWarn(panicMessage, "error_code", panicCode, "panic", r)
+			}
+		}
+	}()
+
+	if stripped = stripStampedTypes(post); stripped != nil {
+		post = stripped
+	}
+
+	if !enabled || post.Type != "" {
+		return stripped, false
+	}
+
+	updated, ok := recognize(post)
+	if !ok {
+		return stripped, false
+	}
+
+	return updated, true
 }
 
 // stampRung is one width of a props blob, widest first.

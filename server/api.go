@@ -9,6 +9,7 @@ import (
 
 	"github.com/mattermost/mattermost/server/public/model"
 
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/avreport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
@@ -66,6 +67,8 @@ const (
 	// the client builds the archive URL the same way it builds the global one,
 	// so no URL crosses the wire to be got wrong.
 	packagesPathAPI = apiPath + "/packages"
+
+	avreportPath = apiPath + "/avreport"
 )
 
 // airportResponse is what the airfield endpoint answers.
@@ -197,6 +200,11 @@ func (p *Plugin) serveAPI(w http.ResponseWriter, r *http.Request) {
 
 	if r.URL.Path == featuresPath {
 		p.serveFeatures(w, r)
+		return
+	}
+
+	if r.URL.Path == avreportPath {
+		p.serveAvReport(w, r)
 		return
 	}
 
@@ -597,4 +605,22 @@ func (p *Plugin) servePackageAdmin(w http.ResponseWriter, r *http.Request, userI
 		writeAPIError(w, http.StatusMethodNotAllowed,
 			errcode.WithCode(errcode.APIMethodNotAllowed, "Method not allowed."))
 	}
+}
+
+func (p *Plugin) serveAvReport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeAPIError(w, http.StatusMethodNotAllowed,
+			errcode.WithCode(errcode.APIMethodNotAllowed, "Method not allowed."))
+		return
+	}
+
+	report, ok := avreport.Validate(r.URL.Query())
+	if !ok {
+		writeAPIError(w, http.StatusBadRequest,
+			errcode.WithCode(errcode.APIAvReportInvalid, "That is not an aviation report this plugin issued."))
+		return
+	}
+
+	w.Header().Set("Cache-Control", "private, max-age=300")
+	writeAPIJSON(w, http.StatusOK, avreport.Blob(report))
 }

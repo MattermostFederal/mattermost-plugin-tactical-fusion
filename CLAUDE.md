@@ -6,9 +6,9 @@ Mattermost Tactical Fusion enriches conversations with mission-relevant context:
 geospatial data, CoT, time zones, IP intelligence, CVEs, and other operational
 information. The server is Go, the webapp TypeScript/React.
 
-Shipped today: the decorator framework and three decorators, DTG, Location and
-Airfields, plus the bundled offline map, the Cursor on Target renderer and the
-GeoJSON renderer. The rest is not implemented.
+Shipped today: the decorator framework and four decorators, DTG, Location,
+Airfields and Aviation reports, plus the bundled offline map, the Cursor on
+Target renderer and the GeoJSON renderer. The rest is not implemented.
 
 A decorator finds a token in a posted message, rewrites it in
 `MessageWillBePosted` into a markdown link whose query string carries the
@@ -25,9 +25,10 @@ right-hand sidebar, and a standalone server-rendered page.
 | `plugin.go` | The `Plugin` struct, `OnActivate`, `OnPluginClusterEvent` |
 | `configuration.go` | Config struct and `OnConfigurationChange`, plus `dtgFormats`/`locationFormats`/`locationMaps` |
 | `hooks.go` | `MessageWillBePosted`, `decoratePost`, `stampStandalonePost`, the post size constants |
-| `hooks_stamp.go` | The forged-type strip, the props ladder, the attachment ownership check |
+| `hooks_stamp.go` | The forged-type strip, `runStamper`, the props ladder, the attachment ownership check |
+| `hooks_avreport.go` | The aviation report stamper: the fence and bare sources, the attachment gate, the two rungs |
 | `http.go` | `ServeHTTP`: `/decorate/<type>`, `/map`, `/api/v1/*`, and the session gate |
-| `api.go` | Authenticated JSON API: `/preferences`, `/convert`, `/features`, `/airport`, `/decorate`, `/link` |
+| `api.go` | Authenticated JSON API: `/preferences`, `/convert`, `/features`, `/airport`, `/avreport`, `/decorate`, `/link` |
 | `mapairport.go` | `/map?airport=<ident>`: the airfield map page, rendered through the overlay shell |
 | `bridge.go` | The plugin bridge: `/bridge/v1/{decorate,link,info}` for other plugins, and the `decorate`/`link` operations `/api/v1` shares |
 | `preferences.go`, `preferences_cache.go` | Per-reader KV store and its cluster-aware cache |
@@ -37,6 +38,7 @@ right-hand sidebar, and a standalone server-rendered page.
 | `decorators/dtg/` | Date-time groups and RFC 3339 timestamps |
 | `decorators/location/` | Coordinate grammars, geodesy, MGRS, rendering, conversion; `mapdata/` holds the generated country polygons |
 | `decorators/airport/` | ICAO and IATA airfields, their runways and frequencies; `data/` holds the three embedded CSVs and their provenance |
+| `avreport/` | Aviation reports: the METAR, TAF and NOTAM decoders, the decorator, the page, the props; `data/` holds the contraction and Q-code tables |
 | `cot/` | Cursor on Target: the bounded XML parse, the type tables, the post props |
 | `geojson/` | GeoJSON: the bounded JSON walk, the parts/rings shape, the post props |
 
@@ -49,6 +51,7 @@ right-hand sidebar, and a standalone server-rendered page.
 | `src/decorators/{dtg,location,airport}/` | Panels, hovers, and per-decorator clients |
 | `src/cot/` | The Cursor on Target post body, its card and its map |
 | `src/geojson/` | The GeoJSON post body, its card, its map, its panel and its reader |
+| `src/avreport/` | The aviation report reader, client, card, post body, panel, hover and map; `src/decorators/avreport/` is the link's decorator entry |
 | `src/decorators/location/map/` | `LocationMap` (presentation) and `use_map_instance.ts` (the MapLibre lifecycle); `paint.ts` (the simplestyle gate), `overlay.ts` (what is drawn), `bounds.ts` (framing), `label.ts` (the accessible text); MapLibre loading, the basemap reader, span arithmetic |
 | `src/page/` | Standalone pages' entry point, built by a second webpack config into `public/app/page.js` |
 | `src/components/rhs/` | `RhsView` and `RhsTitle` |
@@ -77,11 +80,12 @@ there rather than here or in a comment.
 | [`docs/design/location.md`](docs/design/location.md) | Every coordinate grammar, boundary guards, rendering and resolution, geodesy, `/api/v1/convert`, copy buttons, prior art |
 | [`docs/design/airfields.md`](docs/design/airfields.md) | The label-only ICAO and IATA grammars, the three embedded files, the military designator, runways and frequencies, `/api/v1/airport`, `/map?airport=`, the page and panel |
 | [`docs/design/cot.md`](docs/design/cot.md) | Cursor on Target: why it is not a decorator, the exclusivity rule, the props budget, `edit_at` over a digest, the parser's refusals, the CE circle |
+| [`docs/design/avreports.md`](docs/design/avreports.md) | Aviation reports: link or card by shape, one report per message, the bare METAR boundary, the inferred instant, `runStamper`, the attachment gate, the blob, the vocabulary's provenance |
 | [`docs/design/geojson.md`](docs/design/geojson.md) | GeoJSON: why recognition is narrow, why format order stayed format-major, what the two stampers share and what they must not, the parts/rings shape, why `decimalShape` is not reused, the ringed map prop, extent-only, the cross-shape antimeridian unwrap |
 | [`docs/design/mapping.md`](docs/design/mapping.md) | The vector basemap, the OpenStreetMap detail tier and its seam, detail map packages, `PageStatic` vs `PageMapping`, the page bundle, zoom numbers, the country lookup, `Conversion`, the map page, the panel map, turning maps off, the map under a post |
 | [`docs/design/bridge.md`](docs/design/bridge.md) | The plugin bridge: why `PluginHTTP`, why `Mattermost-Plugin-ID` is trusted, the two transports, why `link` takes no label and still honors switches, the window global and its ready event, where the wire types live |
 | [`docs/design/preferences.md`](docs/design/preferences.md) | The KV store, both caches, the location hover, the location rows, the zone picker and ordering |
-| [`docs/design/admin-settings.md`](docs/design/admin-settings.md) | The twenty-seven switches, the two map-package settings, the six sections, why `EnableLocationUTM` and `EnableGeoJSONUnlabeled` ship off |
+| [`docs/design/admin-settings.md`](docs/design/admin-settings.md) | The thirty-two switches, the two map-package settings, the seven sections, why `EnableLocationUTM` and `EnableGeoJSONUnlabeled` ship off |
 | [`docs/design/help-and-errors.md`](docs/design/help-and-errors.md) | `public/help/` and the `TF-NNNN` catalog |
 | [`docs/design/unverified.md`](docs/design/unverified.md) | Claims that need a running server or a phone and have never been checked |
 
@@ -156,15 +160,17 @@ its auto-translation, its embeds and its slack-style message attachments. Its
 FILE attachments survive: they are drawn outside `PostBodyAdditionalContent`.
 This line said "file attachment list" and a card grew a download link on the
 strength of it. The inline map, the airfield route map,
-the Cursor on Target card and the GeoJSON card are the only four things that do
-it; `EnableLocationMapInline`, `EnableAirportRoute`, `EnableCot` and
-`EnableGeoJSON` are how an install opts out of each.
+the Cursor on Target card, the GeoJSON card and the aviation report card are
+the only five things that do it; `EnableLocationMapInline`, `EnableAirportRoute`,
+`EnableCot`, `EnableGeoJSON` and `EnableAvReportCard` are how an install opts
+out of each.
 
-**A stamped post is never decorated, and the stamp is atomic.** Two formats
-stamp: Cursor on Target, then GeoJSON. Each declares its own recover as its
-first statement, spanning its own source-finding, filestore call and parse,
-because `decoratePost` calls them from outside `decorateMessage`'s recover and
-there is no other one on that path.
+**A stamped post is never decorated, and the stamp is atomic.** Three formats
+stamp: Cursor on Target, then GeoJSON, then aviation reports. All three run
+through `runStamper`, which declares the recover as its first statement and
+spans the strip, the source-finding, any filestore call, the parse and the
+commit, because `decoratePost` calls them from outside `decorateMessage`'s
+recover and there is no other one on that path.
 
 CoT is tried first and wins, because the card renders the text around an event
 as plain text and a decorator link written into that text could not render
@@ -262,6 +268,9 @@ side moves alone. Change both halves together.
 | The `data-packages` attribute and its separator | `TestWebappPackagesAttributeMatches` |
 | The CoT post type, props key and props version | `TestWebappCotPostTypeMatches` |
 | The GeoJSON post type, props key, props version and source kinds | `TestWebappGeoJSONPostTypeMatches` |
+| The aviation report post type, props key, version, source kinds, caps and decorator type | `TestWebappAvReportPostTypeMatches` |
+| The aviation report kinds and their order | `TestWebappAvReportKindsMatch` |
+| The aviation report props shape, walked rather than scraped | `TestWebappAvReportShapeMatches` |
 | The GeoJSON `kind` vocabulary and its order | `TestWebappGeoJSONKindsMatch` |
 | The GeoJSON panel's hideable sections: ids, labels, order | `TestWebappGeoJSONSectionCatalogMatches` |
 | The GeoJSON props shape, walked rather than scraped | `TestWebappGeoJSONShapeMatches` |

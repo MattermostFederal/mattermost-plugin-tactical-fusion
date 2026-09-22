@@ -16,6 +16,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/avreport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
@@ -385,6 +386,12 @@ func newTestPlugin(t *testing.T, siteURL string, enabled bool) *Plugin {
 		EnableAirportTable: enabled,
 		EnableAirportRoute: enabled,
 
+		EnableAvReport:      enabled,
+		EnableAvReportMETAR: enabled,
+		EnableAvReportTAF:   enabled,
+		EnableAvReportNOTAM: enabled,
+		EnableAvReportCard:  enabled,
+
 		EnableCot:     enabled,
 		EnableCotFile: enabled,
 
@@ -409,6 +416,7 @@ func registerDecoratorsForTest(t *testing.T, p *Plugin) {
 		&dtg.Decorator{Enabled: p.dtgFormats},
 		&location.Decorator{Enabled: p.locationFormats, Maps: p.locationMaps},
 		&airport.Decorator{Enabled: p.airportFormats},
+		&avreport.Decorator{Enabled: p.avreportFormats},
 	)
 	if err != nil {
 		t.Fatalf("failed to build the decorator registry: %v", err)

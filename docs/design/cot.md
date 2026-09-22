@@ -53,6 +53,10 @@ from disagreeing about the same characters. It is not what keeps them apart.
 
 ### The hook restructure
 
+There are now three stampers, and the shared prologue lives in `runStamper`;
+see [`avreports.md`](avreports.md). The rest of this section describes the
+first one.
+
 Three early returns in the old `decoratePost` belonged to decoration alone, and
 two of them would have killed the file case outright: `post.Message == ""` is
 the file case by definition, and `p.decorators == nil` is a registry CoT does

@@ -115,6 +115,12 @@ const (
 	HooksAirfieldsPropsUnmeasurable = 11016
 	HooksAirfieldsPropsTooLarge     = 11017
 
+	HooksAvReportPanic             = 11018
+	HooksAvReportUnreadable        = 11019
+	HooksAvReportPropsUnmeasurable = 11020
+	HooksAvReportPropsTooLarge     = 11021
+	HooksAvReportRowsDropped       = 11022
+
 	// server/http.go (12000-12999)
 
 	// HTTPMethodNotAllowed is returned for anything other than GET on the
@@ -201,6 +207,8 @@ const (
 	APIAirportInvalid = 13009
 
 	APIAirportParamsConflict = 13010
+
+	APIAvReportInvalid = 13011
 
 	// server/preferences.go (14000-14999)
 
@@ -304,6 +312,8 @@ const (
 
 	AirportPageParamsConflict = 17003
 
+	AvReportPageInvalid = 17004
+
 	// server/packages.go (18000-18999)
 
 	// PackagesNoBundlePath reports that the plugin cannot locate its own
@@ -381,6 +391,11 @@ var AllCodes = []int{
 	HooksGeoJSONFileNotOwned,
 	HooksAirfieldsPropsUnmeasurable,
 	HooksAirfieldsPropsTooLarge,
+	HooksAvReportPanic,
+	HooksAvReportUnreadable,
+	HooksAvReportPropsUnmeasurable,
+	HooksAvReportPropsTooLarge,
+	HooksAvReportRowsDropped,
 
 	HTTPMethodNotAllowed,
 	HTTPDecoratePathInvalid,
@@ -404,6 +419,7 @@ var AllCodes = []int{
 	APIConvertInvalid,
 	APIAirportInvalid,
 	APIAirportParamsConflict,
+	APIAvReportInvalid,
 
 	PreferencesZoneNameTooLong,
 	PreferencesZoneNameControlCharacters,
@@ -429,6 +445,7 @@ var AllCodes = []int{
 	LocationPageParamsInvalid,
 	AirportPageInvalid,
 	AirportPageParamsConflict,
+	AvReportPageInvalid,
 
 	PackagesNoBundlePath,
 	PackagesBadName,

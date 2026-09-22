@@ -23,6 +23,7 @@
             <a href="airfields.html">Airfields</a>
             <a href="cot.html">Cursor on Target</a>
             <a href="geojson.html">GeoJSON</a>
+            <a href="reports.html">Aviation Reports</a>
             <span class="nav-section">Guides</span>
             <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
@@ -149,6 +150,31 @@
                     <td><code>TF-11017</code></td>
                     <td><code>HooksAirfieldsPropsTooLarge</code> <span class="level">warn</span></td>
                     <td><code>the parsed document would exceed the maximum post props size; posting unstamped</code> The route's props, added to what the post already carried, would cross the props budget. The links are written and the map is not. A route of up to 64 airfields fits on its own; this fires when another integration has already filled most of the budget.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-11018</code></td>
+                    <td><code>HooksAvReportPanic</code> <span class="level">warn</span></td>
+                    <td><code>recovered from panic while reading an aviation report; post left unmodified</code> The report decoder panicked. The post goes out with the message as written and no card, and decoration of the rest of the message still runs. The recover is the one all three card formats share; a panic here is a bug, so report the log line.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-11019</code></td>
+                    <td><code>HooksAvReportUnreadable</code> <span class="level">warn</span></td>
+                    <td><code>an aviation report could not be read; posting unstamped</code> A fenced block labeled <code>metar</code>, <code>speci</code>, <code>taf</code> or <code>notam</code> did not decode. The author is told the same in a message only they see. A multi-line message with no label that fails to decode is left alone silently and logs nothing, because ordinary text reaches that reader constantly.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-11020</code></td>
+                    <td><code>HooksAvReportPropsUnmeasurable</code> <span class="level">warn</span></td>
+                    <td><code>the post's props could not be measured; posting unstamped</code> A report was about to get its card, but something already on the post's props would not encode, so the size gate could not run. The author is told. The value that will not encode came from elsewhere on the post.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-11021</code></td>
+                    <td><code>HooksAvReportPropsTooLarge</code> <span class="level">warn</span></td>
+                    <td><code>the parsed document would exceed the maximum post props size; posting unstamped</code> Even with the decoded rows dropped, the report's props would cross the props budget, so the post goes out as ordinary text and the author is told. A report on its own always fits; this fires when another integration has already filled most of the budget.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-11022</code></td>
+                    <td><code>HooksAvReportRowsDropped</code> <span class="level">warn</span></td>
+                    <td><code>the decoded report carried more rows than the post props map has room for; stamping without them</code> The card was rendered on its lower rung: the report as posted, its summary and its station are kept, and the decoded rows, periods, remarks and undecoded groups are dropped. The card says so.</td>
                 </tr>
                 <tr>
                     <td><code>TF-11009</code></td>
@@ -317,6 +343,11 @@
                     <td><code>APIAirportParamsConflict</code> <span class="level">400</span></td>
                     <td><code>An airfield link names exactly one code.</code> The request carried both <code>v</code> (an ICAO ident) and <code>i</code> (an IATA code), or neither. A link this plugin writes carries one of the two, so a request with both was assembled by hand and the two could disagree about which airfield is meant.</td>
                 </tr>
+                <tr>
+                    <td><code>TF-13011</code></td>
+                    <td><code>APIAvReportInvalid</code> <span class="level">400</span></td>
+                    <td><code>That is not an aviation report this plugin issued.</code> The report endpoint was given a <code>v</code> that does not decode as a report, or a <code>t</code> that does not reproduce the report's own day, hour and minute. A link this plugin writes always does both, so the link was edited by hand.</td>
+                </tr>
             </tbody>
         </table>
 
@@ -466,6 +497,11 @@
                     <td><code>TF-17003</code></td>
                     <td><code>AirportPageParamsConflict</code> <span class="level">400</span></td>
                     <td><code>An airfield link names exactly one code.</code> The page was asked for both an ICAO ident and an IATA code, or for neither. The same rule <code>TF-13010</code> applies on the API: a link carries one code, so two of them cannot be trusted to agree.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-17004</code></td>
+                    <td><code>AvReportPageInvalid</code> <span class="level">400</span></td>
+                    <td><code>That is not an aviation report this plugin issued.</code> The report page was given a <code>v</code> that does not decode or a <code>t</code> that does not reproduce the report's time group. The same rule <code>TF-13011</code> applies on the API.</td>
                 </tr>
             </tbody>
         </table>

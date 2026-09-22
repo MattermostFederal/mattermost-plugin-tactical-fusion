@@ -7,6 +7,7 @@ import (
 
 	"github.com/mattermost/mattermost/server/public/model"
 
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/avreport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
@@ -114,6 +115,10 @@ func (p *Plugin) overlayForPost(userID, postID string) (overlay, bool) {
 	}
 
 	if fileID, named := blob["file_id"].(string); named && !slices.Contains(post.FileIds, fileID) {
+		return overlay{}, false
+	}
+
+	if post.Type == avreport.PostType && blob["format"] == "" {
 		return overlay{}, false
 	}
 

@@ -1,0 +1,169 @@
+role,code,meaning
+subject,QFA,aerodrome
+subject,QFF,fire fighting and rescue
+subject,QFH,helicopter landing area
+subject,QFL,aerodrome lighting
+subject,QFM,meteorological service
+subject,QFP,heliport
+subject,QFU,fuel availability
+subject,QFW,civil aviation authority
+subject,QFZ,customs
+subject,QLA,approach lighting system
+subject,QLB,aerodrome beacon
+subject,QLC,runway centerline lights
+subject,QLD,landing direction indicator lights
+subject,QLE,runway edge lights
+subject,QLH,high intensity runway lights
+subject,QLK,low intensity runway lights
+subject,QLL,low intensity approach lighting system
+subject,QLM,medium intensity runway lights
+subject,QLP,precision approach path indicator
+subject,QLR,all landing area lighting facilities
+subject,QLS,stopway lights
+subject,QLT,threshold lights
+subject,QLV,visual approach slope indicator
+subject,QLW,heliport lighting
+subject,QLX,taxiway centerline lights
+subject,QLY,taxiway edge lights
+subject,QLZ,runway touchdown zone lights
+subject,QMA,movement area
+subject,QMB,bearing strength
+subject,QMC,clearway
+subject,QMD,declared distances
+subject,QMH,runway arresting gear
+subject,QMK,parking area
+subject,QMM,daylight markings
+subject,QMN,apron
+subject,QMP,aircraft stands
+subject,QMR,runway
+subject,QMS,stopway
+subject,QMT,threshold
+subject,QMU,runway turning bay
+subject,QMW,strip
+subject,QMX,taxiway
+subject,QMY,rapid exit taxiway
+subject,QNA,all radio navigation facilities
+subject,QNB,non-directional radio beacon
+subject,QND,distance measuring equipment
+subject,QNF,fan marker
+subject,QNL,locator
+subject,QNM,VOR/DME
+subject,QNN,TACAN
+subject,QNO,omega
+subject,QNT,VORTAC
+subject,QNV,VOR
+subject,QOB,obstacle
+subject,QOL,obstacle lights
+subject,QOA,aeronautical information service
+subject,QPA,standard instrument arrival
+subject,QPD,standard instrument departure
+subject,QPI,instrument approach procedure
+subject,QPM,aerodrome operating minima
+subject,QPR,radio failure procedure
+subject,QPU,missed approach procedure
+subject,QRA,airspace reservation
+subject,QRD,danger area
+subject,QRP,prohibited area
+subject,QRR,restricted area
+subject,QRT,temporary restricted area
+subject,QSA,automatic terminal information service
+subject,QSB,ATS reporting office
+subject,QSE,flight information service
+subject,QST,aerodrome control tower
+subject,QWA,air display
+subject,QWB,aerial survey
+subject,QWC,captive balloon or kite
+subject,QWD,demolition of explosives
+subject,QWE,exercises
+subject,QWF,air refuelling
+subject,QWG,glider flying
+subject,QWH,blasting
+subject,QWJ,banner or target towing
+subject,QWL,ascent of free balloon
+subject,QWM,missile gun or rocket firing
+subject,QWP,parachute jumping exercise
+subject,QWR,radioactive materials or toxic chemicals
+subject,QWS,burning or blowing gas
+subject,QWT,mass movement of aircraft
+subject,QWU,unmanned aircraft
+subject,QWV,formation flight
+subject,QWW,significant volcanic activity
+subject,QWZ,model flying
+condition,QAC,withdrawn for maintenance
+condition,QAD,available for daylight operation
+condition,QAF,flight checked and found reliable
+condition,QAG,operating but ground checked only
+condition,QAH,hours of service are now
+condition,QAK,resumed normal operations
+condition,QAL,operative subject to previously published limitations
+condition,QAM,military operations only
+condition,QAN,available on prior request
+condition,QAO,operational
+condition,QAP,available on prior permission
+condition,QAR,available on request
+condition,QAS,unserviceable
+condition,QAU,not available
+condition,QAW,completely withdrawn
+condition,QAX,previously promulgated shutdown has been cancelled
+condition,QCA,activated
+condition,QCC,completed
+condition,QCD,deactivated
+condition,QCE,erected
+condition,QCF,operating frequency changed to
+condition,QCG,downgraded to
+condition,QCH,changed
+condition,QCI,identification or radio call sign changed to
+condition,QCL,realigned
+condition,QCM,displaced
+condition,QCN,cancelled
+condition,QCO,operating
+condition,QCP,operating on reduced power
+condition,QCR,temporarily replaced by
+condition,QCS,installed
+condition,QCT,on test
+condition,QHA,braking action is
+condition,QHB,braking coefficient is
+condition,QHC,covered by compacted snow
+condition,QHD,covered by dry snow
+condition,QHE,covered by water
+condition,QHF,totally free of snow and ice
+condition,QHG,grass cutting in progress
+condition,QHH,hazard due to
+condition,QHI,covered by ice
+condition,QHK,grass cutting completed
+condition,QHL,snow clearance completed
+condition,QHM,marked by
+condition,QHN,covered by wet snow or slush
+condition,QHO,obscured by snow
+condition,QHP,snow clearance in progress
+condition,QHQ,operation cancelled
+condition,QHR,standing water
+condition,QHS,sanding in progress
+condition,QHT,approach according to signal area only
+condition,QHU,launching planned
+condition,QHV,work completed
+condition,QHW,work in progress
+condition,QHX,concentration of birds
+condition,QHY,snow banks exist
+condition,QHZ,covered by frozen ruts and ridges
+condition,QLA,operating on auxiliary power supply
+condition,QLB,reserved for aircraft with base there
+condition,QLC,closed
+condition,QLD,unsafe
+condition,QLE,operating without auxiliary power supply
+condition,QLF,interference from
+condition,QLG,operating without identification
+condition,QLH,unserviceable for aircraft heavier than
+condition,QLI,closed to IFR operations
+condition,QLK,operating as a fixed light
+condition,QLL,usable for length and width
+condition,QLN,closed to all night operations
+condition,QLP,prohibited to
+condition,QLR,restricted to runways and taxiways
+condition,QLS,subject to interruption
+condition,QLT,limited to
+condition,QLV,closed to VFR operations
+condition,QLW,will take place
+condition,QLX,operating but caution advised due to
+condition,QTT,trigger NOTAM
+condition,QXX,plain language

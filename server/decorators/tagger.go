@@ -853,3 +853,7 @@ func elementEnd(message, name string, start int) (int, bool) {
 
 	return 0, false
 }
+
+func HasCodeSpan(message string) bool {
+	return len(codeRanges(message)) > 0
+}

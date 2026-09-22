@@ -4,6 +4,17 @@
 
 Prerequisites that need a running server and have **not** been checked.
 
+### Aviation reports
+
+**The decoders against real traffic.** The METAR, TAF and NOTAM vocabularies
+were written from the FAA Aviation Weather Handbook, FAA Order JO 7340.2 and the
+FAA NOTAM manual's Q-code table, and tested against reports written for the
+tests. None has been run over a day of real traffic from a station. A group the
+vocabulary lacks lands under "Not decoded" rather than being misread, so the
+failure is visible; the readings most likely to be wrong are the ICAO NOTAM
+`Q)` line's radius unit (read as nautical miles) and the FAA form's keyword
+list.
+
 ### Cursor on Target
 
 **The `<detail>` extension shapes.** `docs/design/cot.md` carries the provenance

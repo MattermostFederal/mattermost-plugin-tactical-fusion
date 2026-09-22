@@ -351,3 +351,12 @@ func FormatOffset(minutes int) string {
 
 	return fmt.Sprintf("%s%02d:%02d", sign, minutes/60, minutes%60)
 }
+
+func ResolveDayTime(day, hour, minute int, ref time.Time) (time.Time, bool) {
+	refUTC := ref.UTC()
+	d := DTG{Day: day, Hour: hour, Minute: minute, Zone: 'Z', Month: refUTC.Month(), Year: refUTC.Year()}
+	if !d.valid(0) {
+		return time.Time{}, false
+	}
+	return d.resolveInstant(), true
+}

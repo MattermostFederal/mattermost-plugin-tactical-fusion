@@ -7,6 +7,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/plugin"
 	"github.com/pkg/errors"
 
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/avreport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
@@ -111,6 +112,21 @@ func (p *Plugin) airportFormats() airport.Formats {
 	}
 }
 
+func (p *Plugin) avreportFormats() avreport.Formats {
+	config := p.getConfiguration()
+
+	return avreport.Formats{
+		METAR: config.EnableAvReport && config.EnableAvReportMETAR,
+		TAF:   config.EnableAvReport && config.EnableAvReportTAF,
+		NOTAM: config.EnableAvReport && config.EnableAvReportNOTAM,
+	}
+}
+
+func (p *Plugin) avreportCardEnabled() bool {
+	config := p.getConfiguration()
+	return config.EnableAvReport && config.EnableAvReportCard
+}
+
 // locationMaps reports which surfaces the admin has left drawing a map.
 //
 // Two parents rather than one, because a map only ever appears behind a
@@ -182,6 +198,7 @@ func (p *Plugin) OnActivate() error {
 		&dtg.Decorator{Enabled: p.dtgFormats},
 		&location.Decorator{Enabled: p.locationFormats, Maps: p.locationMaps, Packages: p.packageNames},
 		&airport.Decorator{Enabled: p.airportFormats},
+		&avreport.Decorator{Enabled: p.avreportFormats},
 	)
 	// Expected to stay uncovered: Register only rejects a duplicate or empty
 	// type, and there is one decorator here with a constant one. It is what

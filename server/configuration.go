@@ -104,6 +104,12 @@ type configuration struct {
 
 	EnableAirportRoute bool
 
+	EnableAvReport      bool
+	EnableAvReportMETAR bool
+	EnableAvReportTAF   bool
+	EnableAvReportNOTAM bool
+	EnableAvReportCard  bool
+
 	// EnableLocationMap is the switch for drawing a coordinate on a map, and
 	// the three below select which surfaces draw one. They are ANDed with
 	// EnableLocation as well as with each other, because a map only ever

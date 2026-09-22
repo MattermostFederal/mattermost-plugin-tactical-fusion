@@ -35,6 +35,7 @@ var helpPages = []string{
 	"airfields.html",
 	"cot.html",
 	"geojson.html",
+	"reports.html",
 	"formats.html",
 	"panel.html",
 	"admin.html",
@@ -584,7 +585,8 @@ func spellNumber(t *testing.T, n int) string {
 	words := map[int]string{
 		20: "twenty", 21: "twenty-one", 22: "twenty-two", 23: "twenty-three",
 		24: "twenty-four", 25: "twenty-five", 26: "twenty-six", 27: "twenty-seven",
-		28: "twenty-eight", 29: "twenty-nine", 30: "thirty",
+		28: "twenty-eight", 29: "twenty-nine", 30: "thirty", 31: "thirty-one",
+		32: "thirty-two", 33: "thirty-three",
 		4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight",
 	}
 	word, ok := words[n]

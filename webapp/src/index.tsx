@@ -5,6 +5,9 @@ import type {Store} from 'redux';
 import type {PluginRegistry} from 'types/mattermost-webapp';
 
 import PackageUploader from './admin/PackageUploader';
+import {registerReportPanel} from './avreport/panel';
+import ReportPostBody from './avreport/ReportPostBody';
+import {AVREPORT_POST_TYPE} from './avreport/types';
 import {installBridgeGlobal} from './bridge/global';
 import {RhsTitle, RhsView} from './components/rhs/RhsView';
 import CotPostBody from './cot/CotPostBody';
@@ -48,6 +51,7 @@ export default class Plugin {
         registerBuiltinDecorators();
         registerCotPanel();
         registerGeoJsonPanel();
+        registerReportPanel();
 
         const {id: rhsId, showRHSPlugin, toggleRHSPlugin} = registry.registerRightHandSidebarComponent(
             RhsView,
@@ -91,6 +95,9 @@ export default class Plugin {
 
         const airfieldsId = registry.registerPostTypeComponent(AIRFIELDS_POST_TYPE, AirfieldsPostBody);
         this.disposers.push(() => registry.unregisterPostTypeComponent(airfieldsId));
+
+        const reportId = registry.registerPostTypeComponent(AVREPORT_POST_TYPE, ReportPostBody);
+        this.disposers.push(() => registry.unregisterPostTypeComponent(reportId));
 
         const headerId = registry.registerChannelHeaderButtonAction(
             <HeaderIcon/>,

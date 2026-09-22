@@ -25,6 +25,10 @@ const (
 
 	// TypeAirport is a four-letter ICAO airfield ident, such as "PHIK".
 	TypeAirport = "airport"
+
+	// TypeAvReport is a METAR, SPECI, TAF or FAA-format NOTAM on one line,
+	// exactly as written.
+	TypeAvReport = "avreport"
 )
 
 // Reasons a Link request is declined, carried in ErrorResponse.Reason.
@@ -69,7 +73,7 @@ type DecorateResponse struct {
 
 // LinkRequest asks for one decorator link for a token of a known type.
 type LinkRequest struct {
-	// Type is TypeDTG, TypeLocation or TypeAirport.
+	// Type is TypeDTG, TypeLocation, TypeAirport or TypeAvReport.
 	Type string `json:"type"`
 
 	// Token is the value alone, with no field label: "PHIK" rather than

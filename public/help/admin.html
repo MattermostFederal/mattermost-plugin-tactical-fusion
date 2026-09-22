@@ -23,6 +23,7 @@
             <a href="airfields.html">Airfields</a>
             <a href="cot.html">Cursor on Target</a>
             <a href="geojson.html">GeoJSON</a>
+            <a href="reports.html">Aviation Reports</a>
             <span class="nav-section">Guides</span>
             <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
@@ -43,7 +44,7 @@
         </div>
 
         <h1>Admin Settings</h1>
-        <p class="tagline">System Console, Plugins, Tactical Fusion. Six sections and twenty-seven switches. Twenty-five are on by default; <code>EnableLocationUTM</code> and <code>EnableGeoJSONUnlabeled</code> are the two that are not.</p>
+        <p class="tagline">System Console, Plugins, Tactical Fusion. Seven sections and thirty-two switches. Thirty are on by default; <code>EnableLocationUTM</code> and <code>EnableGeoJSONUnlabeled</code> are the two that are not.</p>
 
         <h2>How the date-time group switches relate</h2>
 
@@ -1176,6 +1177,93 @@
             fenced as code is never read. Only a block labeled <code>geojson</code> gets a
             message explaining a refusal; the ambiguous spellings fail silently, because a
             notice on every one of them would fire constantly on ordinary posts.
+        </p>
+
+        <h2 id="avreport-switches">The aviation report switches</h2>
+
+        <p>
+            One parent, three kind switches under it, and one for the card. The parent is
+            ANDed in code, as every other parent is: a kind switch left on under a parent
+            turned off decodes nothing. Every switch governs decoration of <em>new</em>
+            messages; a link or a card already written keeps working after its switch is
+            turned off, which is what lets an admin turn a kind off without breaking a
+            channel's history.
+        </p>
+
+        <h3 id="enable-avreport" data-setting="EnableAvReport">Decode aviation reports <code>EnableAvReport</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>No new message has a report linked or rendered, whatever the four switches below it say. Links and cards already written keep working.</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            The <a href="reports.html">aviation report</a> decorator as a whole. Nothing here
+            fetches: the plugin decodes what was pasted and never contacts a weather or NOTAM
+            service, so there is no source URL to configure and no switch for one.
+        </p>
+
+        <h3 id="enable-avreport-metar" data-setting="EnableAvReportMETAR">Decode METAR and SPECI observations <code>EnableAvReportMETAR</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>No new observation is linked or rendered, in either spelling. A time group inside one is linked as a date-time group, as it was before.</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-avreport"><code>EnableAvReport</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Covers the keyword forms and the bare form that a wind group makes unambiguous:
+            see <a href="reports.html#reports-link">what is read</a>.
+        </p>
+
+        <h3 id="enable-avreport-taf" data-setting="EnableAvReportTAF">Decode TAF forecasts <code>EnableAvReportTAF</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>No new forecast is linked or rendered.</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-avreport"><code>EnableAvReport</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <h3 id="enable-avreport-notam" data-setting="EnableAvReportNOTAM">Decode NOTAMs <code>EnableAvReportNOTAM</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>No new NOTAM is linked or rendered, in either form.</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-avreport"><code>EnableAvReport</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <h3 id="enable-avreport-card" data-setting="EnableAvReportCard">Render a multi-line or fenced report as a card <code>EnableAvReportCard</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>A report on several lines, or in a labeled fence, is posted as ordinary text. Posts already rendered keep their card. A report on one line is a link either way.</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-avreport"><code>EnableAvReport</code></a>, and the kind's own switch</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            This is the one report switch that costs something, and it carries the same
+            warning <a href="#enable-cot"><code>EnableCot</code></a> does. Rendering a card
+            marks the post with a custom type, which excludes it from Elasticsearch and
+            OpenSearch results and Recent Mentions, drops its link previews and image embeds,
+            and turns off its automatic translation. The message text is left exactly as
+            written, so an export still carries the report. The map under the card reads
+            <a href="#enable-location-map-inline"><code>EnableLocationMapInline</code></a>, and
+            a report that is only a link is never affected by this switch.
         </p>
 
         <h2>Reader settings are not admin settings</h2>

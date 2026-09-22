@@ -23,6 +23,7 @@ are now the index and the shared-mechanics pages respectively.
 | `location.html` | The twelve coordinate grammars, the rows, the map, the declined list, the panel | `server/decorators/location/` |
 | `airfields.html` | The label-only grammar, the database, the table expansion, the panel | `server/decorators/airport/` |
 | `cot.html` | The whole schema: `event`, `point`, `detail`, the type tables, the limits and refusals, worked examples, the card, the panel, the map | `server/cot/`, `server/hooks_cot.go`, `webapp/src/cot/` |
+| `reports.html` | What is read, the link and the card, the inferred instant, the declined list, the panel, the map, the vocabulary's provenance | `server/avreport/`, `server/hooks_avreport.go`, `webapp/src/avreport/` |
 | `formats.html` | The index, and the rules every decorator shares: boundaries, consumed labels, protected spans | `server/decorators/tagger.go`, `boundary.go` |
 | `panel.html` | What a hover, a click and a standalone page are; preferences, restore defaults, zone ordering | `webapp/src/decorators/` |
 | `admin.html` | One section per switch, and what a switch does not do | `plugin.json` `settings_schema.settings` |
