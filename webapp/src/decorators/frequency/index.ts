@@ -84,7 +84,7 @@ const decorator: Decorator<FrequencyPayload> = {
     type: 'frequency',
     fromParams,
 
-    summary: () => PANEL_TITLE,
+    summary: (payload) => `${PANEL_TITLE}: ${payload.token}`,
 
     style: {color: FREQUENCY_COLOR, background: 'rgba(107, 79, 187, 0.12)'},
 

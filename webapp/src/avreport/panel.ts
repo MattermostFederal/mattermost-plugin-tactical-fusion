@@ -1,6 +1,6 @@
-import ReportPanel, {PANEL_TITLE} from './ReportPanel';
+import ReportPanel from './ReportPanel';
 import type {ReportPayload} from './types';
-import {AVREPORT_PANEL_TYPE} from './types';
+import {AVREPORT_PANEL_TYPE, headingOf} from './types';
 
 import {openRhs, setSelection} from '../decorators/selection';
 import {getPanel, registerPanel} from '../panels';
@@ -12,7 +12,7 @@ export function registerReportPanel(): void {
 
     registerPanel(AVREPORT_PANEL_TYPE, {
         Panel: ReportPanel,
-        summary: () => PANEL_TITLE,
+        summary: headingOf,
     });
 }
 

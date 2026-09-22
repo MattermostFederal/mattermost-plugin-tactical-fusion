@@ -33,7 +33,7 @@ const decorator: Decorator<AirportPayload> = {
     type: 'airport',
     fromParams,
 
-    summary: () => PANEL_TITLE,
+    summary: (payload) => `${PANEL_TITLE}: ${payload.code}`,
 
     style: {color: AIRFIELD_COLOR, background: 'rgba(184, 119, 15, 0.12)'},
 

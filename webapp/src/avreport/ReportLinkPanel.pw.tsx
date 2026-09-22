@@ -91,3 +91,27 @@ test.describe('the hover', () => {
         });
     }
 });
+
+test.describe('the title', () => {
+    test('is the kind and the station once decoded', async ({mount}) => {
+        const title = await mount(
+            <ReportLinkPanelHarness
+                surface='title'
+                reply='found'
+            />);
+
+        await expect(title.getByTestId('surface')).toHaveText('METAR PHNL');
+    });
+
+    for (const reply of ['hold', 'failed', 'rejected'] as const) {
+        test(`reads the kind and station off the link while ${reply}`, async ({mount}) => {
+            const title = await mount(
+                <ReportLinkPanelHarness
+                    surface='title'
+                    reply={reply}
+                />);
+
+            await expect(title.getByTestId('surface')).toHaveText('METAR PHNL');
+        });
+    }
+});

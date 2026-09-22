@@ -3,7 +3,7 @@ import type {Coordinate, LocationFormat} from './format';
 import LocationHover from './LocationHover';
 import LocationInline from './LocationInline';
 import LocationPanel from './LocationPanel';
-import LocationTitle, {PANEL_TITLE} from './LocationTitle';
+import LocationTitle, {titleOf} from './LocationTitle';
 
 import type {Decorator} from '../types';
 
@@ -132,7 +132,7 @@ const decorator: Decorator<LocationPayload> = {
 
     // The fallback when the header cannot render a component. LocationTitle is
     // what the sidebar normally shows, and it follows the panel into the editor.
-    summary: () => PANEL_TITLE,
+    summary: titleOf,
 
     // Teal, matching the coordinate color in mattermost-plugin-aocanywhere, so
     // the two plugins agree about what a coordinate looks like in a channel.

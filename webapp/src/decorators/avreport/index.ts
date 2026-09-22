@@ -1,7 +1,8 @@
 import type {ReportLinkPayload} from '../../avreport/client';
 import ReportHover from '../../avreport/ReportHover';
 import {REPORT_COLOR} from '../../avreport/ReportMap';
-import {PANEL_TITLE, ReportLinkPanel} from '../../avreport/ReportPanel';
+import {ReportLinkPanel, ReportLinkTitle} from '../../avreport/ReportPanel';
+import {headingFromSource} from '../../avreport/title';
 import type {Decorator} from '../types';
 
 export const MAX_SOURCE_RUNES = 2048;
@@ -32,11 +33,13 @@ const decorator: Decorator<ReportLinkPayload> = {
     type: 'avreport',
     fromParams,
 
-    summary: () => PANEL_TITLE,
+    summary: (payload) => headingFromSource(payload.v),
 
     style: {color: REPORT_COLOR, background: 'rgba(46, 125, 154, 0.12)'},
 
     Panel: ReportLinkPanel,
+
+    Title: ReportLinkTitle,
 
     Hover: ReportHover,
 };

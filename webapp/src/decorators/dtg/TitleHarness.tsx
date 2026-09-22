@@ -33,7 +33,7 @@ const TitleHarness: React.FC<{instantMs: number}> = ({instantMs}) => {
 
     return (
         <div>
-            <h1 data-testid='rhs-title'><DtgTitle/></h1>
+            <h1 data-testid='rhs-title'><DtgTitle payload={payload}/></h1>
             <DtgPanel payload={payload}/>
         </div>
     );

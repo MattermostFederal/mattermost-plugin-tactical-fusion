@@ -3,7 +3,7 @@ import React from 'react';
 import {_resetForTesting as resetReports} from './client';
 import {HONOLULU_METAR, propsFor} from './report_fixtures';
 import ReportHover from './ReportHover';
-import {ReportLinkPanel} from './ReportPanel';
+import {ReportLinkPanel, ReportLinkTitle} from './ReportPanel';
 import {AVREPORT_PROPS_KEY} from './types';
 
 import {_resetForTesting as resetSelection} from '../decorators/selection';
@@ -13,7 +13,7 @@ import {featuresReply, isFeaturesRequest, setStubbedFeatures} from '../features/
 export type Reply = 'found' | 'unplaced' | 'rejected' | 'failed' | 'hold';
 
 interface Props {
-    surface: 'panel' | 'hover';
+    surface: 'panel' | 'hover' | 'title';
     reply: Reply;
     maps?: boolean;
 }
@@ -62,7 +62,9 @@ const ReportLinkPanelHarness: React.FC<Props> = ({surface, reply, maps = false})
     return (
         <div data-testid='harness'>
             <div data-testid='surface'>
-                {surface === 'panel' ? <ReportLinkPanel payload={payload}/> : <ReportHover payload={payload}/>}
+                {surface === 'panel' && <ReportLinkPanel payload={payload}/>}
+                {surface === 'hover' && <ReportHover payload={payload}/>}
+                {surface === 'title' && <ReportLinkTitle payload={payload}/>}
             </div>
         </div>
     );

@@ -68,8 +68,9 @@ test.describe('the decorator', () => {
         expect(decorator.fromParams).toBe(fromParams);
     });
 
-    test('heads the sidebar with the panel title', () => {
-        expect(decorator.summary({key: 'icao', code: 'KIND'})).toBe(PANEL_TITLE);
+    test('heads the sidebar with the panel title and the code', () => {
+        expect(decorator.summary({key: 'icao', code: 'KIND'})).toBe(`${PANEL_TITLE}: KIND`);
+        expect(decorator.summary({key: 'iata', code: 'IND'})).toBe(`${PANEL_TITLE}: IND`);
     });
 
     test('declares a hover', () => {

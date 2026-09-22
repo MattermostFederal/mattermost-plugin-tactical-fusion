@@ -1,7 +1,7 @@
 import {formatOffsetLabel} from './describe';
 import DtgHover from './DtgHover';
 import DtgPanel from './DtgPanel';
-import DtgTitle, {PANEL_TITLE} from './DtgTitle';
+import DtgTitle, {titleOf} from './DtgTitle';
 import {ZONE_OFFSETS} from './zones';
 
 import type {Decorator} from '../types';
@@ -160,7 +160,7 @@ const decorator: Decorator<Dtg> = {
     // The fallback when the header cannot render a component. DtgTitle is what
     // the sidebar actually shows, since the header has to follow the panel into
     // the editor and back.
-    summary: () => PANEL_TITLE,
+    summary: titleOf,
     style: {color: '#3d85c6', background: 'rgba(61, 133, 198, 0.12)'},
     Panel: DtgPanel,
     Title: DtgTitle,

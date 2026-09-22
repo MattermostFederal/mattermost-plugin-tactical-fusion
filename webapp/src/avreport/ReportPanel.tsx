@@ -4,6 +4,7 @@ import type {ReportLinkPayload} from './client';
 import {useReport} from './client';
 import ReportDetail, {StationLine} from './ReportDetail';
 import ReportMap from './ReportMap';
+import {headingFromSource} from './title';
 import type {Report, ReportPayload} from './types';
 import {headingOf} from './types';
 
@@ -13,7 +14,7 @@ import Disclosure from '../cot/Disclosure';
 import CopyButton from '../decorators/location/CopyButton';
 import {docsUrl} from '../plugin_url';
 
-export const PANEL_TITLE = 'Aviation report';
+export {PANEL_TITLE} from './title';
 
 export const SOURCE_LABEL = 'As posted';
 
@@ -111,6 +112,12 @@ export const ReportPanel: React.FC<{payload: ReportPayload}> = ({payload}) => (
         postId={payload.postId === '' ? undefined : payload.postId}
     />
 );
+
+export const ReportLinkTitle: React.FC<{payload: ReportLinkPayload}> = ({payload}) => {
+    const state = useReport(payload);
+
+    return <>{state.status === 'ready' && state.data !== null ? headingOf(state.data) : headingFromSource(payload.v)}</>;
+};
 
 export const ReportLinkPanel: React.FC<{payload: ReportLinkPayload}> = ({payload}) => {
     const state = useReport(payload);
