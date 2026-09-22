@@ -19,6 +19,7 @@
 //	17000-17999   server/decorators/            framework and decorator pages
 //	18000-18999   server/packages.go            detail map packages
 //	19000-19999   server/bridge.go              the plugin bridge
+//	20000-20999   server/mcp.go                 the Agents MCP server
 //
 // Within a range codes are allocated in source order the first time a file is
 // instrumented; a site added later takes the next free number in its range, so
@@ -344,6 +345,16 @@ const (
 	BridgeTokenNotRecognized = 19006
 	BridgeFormatDisabled     = 19007
 	BridgePanic              = 19008
+
+	MCPInitFailed         = 20000
+	MCPManifestIncomplete = 20001
+	MCPRegistrationFailed = 20002
+	MCPUnregisterFailed   = 20003
+	MCPNotReady           = 20004
+	MCPToolPanic          = 20005
+	MCPLinkDeclined       = 20006
+	MCPConvertInvalid     = 20007
+	MCPAirportInvalid     = 20008
 )
 
 // AllCodes lists every code declared above. TestAllCodesComplete enforces that
@@ -435,4 +446,14 @@ var AllCodes = []int{
 	BridgeTokenNotRecognized,
 	BridgeFormatDisabled,
 	BridgePanic,
+
+	MCPInitFailed,
+	MCPManifestIncomplete,
+	MCPRegistrationFailed,
+	MCPUnregisterFailed,
+	MCPNotReady,
+	MCPToolPanic,
+	MCPLinkDeclined,
+	MCPConvertInvalid,
+	MCPAirportInvalid,
 }

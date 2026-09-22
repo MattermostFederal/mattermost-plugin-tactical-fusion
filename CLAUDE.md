@@ -29,6 +29,7 @@ right-hand sidebar, and a standalone server-rendered page.
 | `http.go` | `ServeHTTP`: `/decorate/<type>`, `/map`, `/api/v1/*`, and the session gate |
 | `api.go` | Authenticated JSON API: `/preferences`, `/convert`, `/features`, `/airport`, `/decorate`, `/link` |
 | `bridge.go` | The plugin bridge: `/bridge/v1/{decorate,link,info}` for other plugins, and the `decorate`/`link` operations `/api/v1` shares |
+| `mcp.go`, `mcp_tools.go` | The Agents MCP server: the `/mcp` endpoint, its lifecycle, and the four tools |
 | `preferences.go`, `preferences_cache.go` | Per-reader KV store and its cluster-aware cache |
 | `command*.go` | The `/tactical-fusion` slash command and its example builders |
 | `errcode/` | The `TF-NNNN` catalog |
@@ -79,6 +80,7 @@ there rather than here or in a comment.
 | [`docs/design/geojson.md`](docs/design/geojson.md) | GeoJSON: why recognition is narrow, why format order stayed format-major, what the two stampers share and what they must not, the parts/rings shape, why `decimalShape` is not reused, the ringed map prop, extent-only, the cross-shape antimeridian unwrap |
 | [`docs/design/mapping.md`](docs/design/mapping.md) | The vector basemap, the OpenStreetMap detail tier and its seam, detail map packages, `PageStatic` vs `PageMapping`, the page bundle, zoom numbers, the country lookup, `Conversion`, the map page, the panel map, turning maps off, the map under a post |
 | [`docs/design/bridge.md`](docs/design/bridge.md) | The plugin bridge: why `PluginHTTP`, why `Mattermost-Plugin-ID` is trusted, the two transports, why `link` takes no label and still honors switches, the window global and its ready event, where the wire types live |
+| [`docs/design/mcp.md`](docs/design/mcp.md) | The Agents MCP server: why it is a third transport, the user-scoping exception and `GetUserID`, the tool budget, why registration failure is a warn, the two routing orderings, the dependency's two license levels |
 | [`docs/design/preferences.md`](docs/design/preferences.md) | The KV store, both caches, the location hover, the location rows, the zone picker and ordering |
 | [`docs/design/admin-settings.md`](docs/design/admin-settings.md) | The twenty-five switches, the two map-package settings, the six sections, why `EnableLocationUTM` and `EnableGeoJSONUnlabeled` ship off |
 | [`docs/design/help-and-errors.md`](docs/design/help-and-errors.md) | `public/help/` and the `TF-NNNN` catalog |
@@ -216,6 +218,17 @@ bridge answer is a pure function of the request and the admin switches; a route
 that needs a reader belongs somewhere a user id is proven. Within `v1` changes are
 additive only, because the callers are other teams' plugins. `bridge.md` argues
 both.
+
+**`/mcp` is the one transport that may read a reader, and only through
+`pluginmcp.GetUserID`.** Agents propagates the acting user, and the helper
+stashes it in the request context under an unexported key after its plugin-id
+check. A tool that wants a reader goes through that function and refuses when it
+returns empty; reading `X-Mattermost-UserID` from the headers is a disclosure
+bug, because the header is trustworthy only inside a request that arrived
+through `pluginmcp.Server.ServeHTTP`. No tool shipped today reads one, and a
+test calls every registered tool with no user id to keep that deliberate. The
+route sits above the method check and the session gate: MCP is POST, and a
+plugin request has no session to redirect. `mcp.md` argues all of it.
 
 **`plugin.json` may not contain a backtick.** Both generated manifests embed it
 inside a literal a backtick terminates, so one breaks the Go and the webapp build

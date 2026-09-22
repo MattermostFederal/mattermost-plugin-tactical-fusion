@@ -4,6 +4,40 @@
 
 Prerequisites that need a running server and have **not** been checked.
 
+### The Agents MCP server
+
+**Nothing has been end to end against a live Agents plugin.** Everything in
+[`mcp.md`](mcp.md) is verified by unit tests, including a real `tools/list` and
+`tools/call` round trip through `httptest.Server` and the go-sdk client, but no
+part of it has met the Agents plugin itself. The helper package was read at
+`v2.7.0` and its documented behavior taken at its word. What that leaves open:
+
+- **Does `Register()` actually land?** The retry loop POSTs to
+  `/mattermost-ai/bridge/v1/mcp/register`, a route that has to exist in the
+  installed Agents build. The check is a `Connected to plugin MCP server
+  com.mattermost.plugin-tactical-fusion` line in the Agents log; its absence
+  means registration never succeeded. `TF-20002` is what this plugin logs, and
+  the retry loop's own terminal messages go to the standard library logger.
+- **Do the tools appear in the admin Tools tab**, named
+  `com_mattermost_plugin-tactical-fusion__<name>`, each with its own policy
+  control? The namespacing is unit tested against the sanitizer's rules, not
+  against what the console renders.
+- **Does `ExposeExternal: true` do what the field name says?** It is sent on
+  every register POST and the admin `Enabled` state and per-tool policy are
+  documented to survive re-registration. Neither has been observed.
+- **Is `X-Mattermost-UserID` populated in practice?** No tool reads it today, so
+  nothing depends on it, but the user-scoping rule in `mcp.md` is written against
+  the helper's documented behavior. The first user-scoped tool should confirm it
+  arrives before trusting it.
+- **Does `OnDeactivate` retract the registration in time?** `Unregister` bounds
+  its wait at five seconds and fires one POST. Whether Mattermost lets
+  `OnDeactivate` run to completion on an upgrade or a disable has not been
+  checked, and a missed unregister leaves Agents offering tools that answer 503.
+
+The one-off manual pass is: `make docker-setup`, `make deploy`, install an Agents
+build with cross-plugin MCP support, then read the Tools tab and
+`make docker-logs`.
+
 ### Cursor on Target
 
 **The `<detail>` extension shapes.** `docs/design/cot.md` carries the provenance

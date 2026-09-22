@@ -130,6 +130,44 @@ require used in exactly one place, `expirable.LRU` in
 `server/preferences_cache.go`, and roughly forty lines of stdlib would retire
 the entry. Its exception says so.
 
+### The CC-BY-4.0 exception
+
+`github.com/modelcontextprotocol/go-sdk`, the MCP Go SDK the Agents MCP server
+is built on, ships **one** `LICENSE` file holding three licenses: the full
+Apache 2.0 text, the full MIT text, and a pointer to CC-BY-4.0 for
+documentation excluding specifications. The project is mid transition from MIT
+to Apache 2.0, and contributions whose authors have not consented to
+relicensing stay MIT.
+
+`cyclonedx-gomod` collapses that file to a single id and picks `CC-BY-4.0`, the
+one of the three that does not apply to the Go code at all. The code linked into
+the bundle is Apache 2.0 or MIT, both on the allowlist, and no documentation
+from the module ships. CC-BY-4.0 is attribution-only, and is not the
+share-alike `CC-BY-SA` the denied list names.
+
+The exception is therefore a detection artifact recorded rather than a
+copyleft dependency excused. If a later version splits the file into per-license
+files, the exception stops matching and fails, which is the right outcome:
+somebody should look again.
+
+### The Agents MCP dependency, which needs no exception
+
+`github.com/mattermost/mattermost-plugin-agents/v2` is Apache 2.0 at its root
+and carries a second license inside it: `enterprise/LICENSE` is the Mattermost
+Source Available License, which forbids distribution without an Enterprise
+subscription. That is not a violation here and deliberately has no entry,
+because nothing under `enterprise/` ships:
+`external/pluginmcp`, the only package imported, depends on the standard library
+and `modelcontextprotocol/go-sdk/mcp` and nothing else. The license gate reads
+the module root, where the answer is Apache 2.0, and `build/notices` reads the
+module root non-recursively, so the notices file cannot pick the
+source-available text up by accident.
+
+**An import that reached any other package in that module has to be re-checked**,
+and one that reached `enterprise/` would put non-distributable code in a bundle
+that ships to customers. [`docs/design/mcp.md`](design/mcp.md) has the full
+argument.
+
 ### Adding or changing an exception
 
 An exception names one component **and** one license. A module that relicenses
