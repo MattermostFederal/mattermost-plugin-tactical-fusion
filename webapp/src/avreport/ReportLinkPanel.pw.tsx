@@ -20,7 +20,7 @@ test.describe('the link panel', () => {
         await expect(panel.getByRole('button', {name: 'Daniel K. Inouye International Airport'})).toBeVisible();
     });
 
-    test('keeps the report as posted collapsed under the rows, with the map last', async ({mount}) => {
+    test('keeps the report as posted collapsed under the map', async ({mount}) => {
         const panel = await mount(
             <ReportLinkPanelHarness
                 surface='panel'
@@ -36,7 +36,7 @@ test.describe('the link panel', () => {
         const order = await panel.locator('[data-testid="avreport-rows"], [data-testid="avreport-source"], [data-testid="avreport-map"]').evaluateAll(
             (nodes) => nodes.map((node) => node.getAttribute('data-testid')),
         );
-        expect(order).toEqual(['avreport-rows', 'avreport-source', 'avreport-map']);
+        expect(order).toEqual(['avreport-rows', 'avreport-map', 'avreport-source']);
     });
 
     test('a station outside the database gets no name line', async ({mount}) => {

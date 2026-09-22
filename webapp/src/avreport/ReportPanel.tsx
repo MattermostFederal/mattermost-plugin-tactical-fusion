@@ -73,6 +73,14 @@ export const ReportView: React.FC<{report: Report; postId?: string}> = ({report,
             <ReportDetail report={report}/>
         </ErrorBoundary>
 
+        <ErrorBoundary fallback={<p style={styles.status}>{SECTION_FAILED}</p>}>
+            <ReportMap
+                report={report}
+                surface='panel'
+                postId={postId}
+            />
+        </ErrorBoundary>
+
         {report.src !== '' && (
             <Disclosure
                 label={SOURCE_LABEL}
@@ -92,14 +100,6 @@ export const ReportView: React.FC<{report: Report; postId?: string}> = ({report,
                 >{report.src}</pre>
             </Disclosure>
         )}
-
-        <ErrorBoundary fallback={<p style={styles.status}>{SECTION_FAILED}</p>}>
-            <ReportMap
-                report={report}
-                surface='panel'
-                postId={postId}
-            />
-        </ErrorBoundary>
 
         <Footer/>
     </div>
