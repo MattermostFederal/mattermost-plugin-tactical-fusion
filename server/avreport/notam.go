@@ -117,7 +117,7 @@ func decodeFAANotam(line string, ref time.Time) (Report, bool) {
 		start, ok := fullDate(e[1])
 		if ok {
 			report.IssuedAt = start
-			report.Rows = append(report.Rows, Row{Label: "Effective", Value: zuluText(start)})
+			report.Rows = append(report.Rows, Row{Label: "Effective", Value: zuluText(start), At: start})
 		} else {
 			report.Unknown = append(report.Unknown, e[1])
 		}
@@ -131,7 +131,7 @@ func decodeFAANotam(line string, ref time.Time) (Report, bool) {
 				if e[3] != "" {
 					value += " (estimated)"
 				}
-				report.Rows = append(report.Rows, Row{Label: "Expires", Value: value})
+				report.Rows = append(report.Rows, Row{Label: "Expires", Value: value, At: end})
 			} else {
 				report.Unknown = append(report.Unknown, e[2])
 			}
@@ -202,7 +202,7 @@ func decodeICAONotam(text string, ref time.Time) (Report, bool) {
 	if b, ok := fields["B"]; ok {
 		if start, valid := fullDate(strings.TrimSpace(b)); valid {
 			report.IssuedAt = start
-			report.Rows = append(report.Rows, Row{Label: "Effective", Value: zuluText(start)})
+			report.Rows = append(report.Rows, Row{Label: "Effective", Value: zuluText(start), At: start})
 		} else {
 			report.Unknown = append(report.Unknown, "B) "+b)
 		}
@@ -219,7 +219,7 @@ func decodeICAONotam(text string, ref time.Time) (Report, bool) {
 				if strings.HasSuffix(value, "EST") {
 					text += " (estimated)"
 				}
-				report.Rows = append(report.Rows, Row{Label: "Expires", Value: text})
+				report.Rows = append(report.Rows, Row{Label: "Expires", Value: text, At: end})
 			} else {
 				report.Unknown = append(report.Unknown, "C) "+c)
 			}

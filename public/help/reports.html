@@ -137,16 +137,15 @@
         <h2 id="reports-table">A report posted on its own becomes a table</h2>
 
         <p>
-            When the message is nothing but one report, the message is rewritten into a
-            table with the report exactly as you wrote it, the one-line summary, and every
-            decoded group, and its last row is <em>Details</em>, whose link opens
-            <a href="#reports-panel">the panel</a>. The header names the station, and when
-            the build holds that airfield the name is a link to
-            <a href="airfields.html#airfield-panel">its panel</a>. A one-line report is the first row; a
-            report on several lines, a TAF with its <code>FM</code> and <code>TEMPO</code>
-            lines or an ICAO NOTAM with its lettered fields, is written in a code block above
-            the table, because a table cell cannot hold a line break. The block carries no
-            label, so a table pasted back into a channel is never read as a fenced report.
+            When the message is nothing but one report, on one line or several, the message
+            is rewritten into a table of the decode: the one-line summary, then every
+            decoded group, and a last row, <em>Details</em>, whose link opens
+            <a href="#reports-panel">the panel</a>. The report as you wrote it is not in the
+            table; the panel and <a href="#reports-link">the link's page</a> show it
+            verbatim. The header names the station, and when the build holds that airfield
+            the name is a link to <a href="airfields.html#airfield-panel">its panel</a>.
+            Every time in the table, the issued or effective time and a NOTAM's expiry, is a
+            <a href="dtg.html">date-time link</a>, so hovering it gives the reader's zones.
             The table is markdown in the message itself, exactly as the
             <a href="airfields.html#airfield-table">airfield table</a> is, so the post keeps
             its search matches, the table is in every export, and it renders on every client
@@ -154,9 +153,7 @@
         </p>
 
         <p>
-            The report row is written as code, so a table pasted back into a channel is not
-            decorated a second time. A terminating <code>=</code> stays with the report. A
-            report inside a longer message gets the link alone, and a message that carries
+            A report inside a longer message gets the link alone, and a message that carries
             several reports one per line gets a link on each. What the table says is what
             this build decoded at the moment of posting; the panel decodes the report again
             every time it opens. Setting:

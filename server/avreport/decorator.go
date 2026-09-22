@@ -114,7 +114,7 @@ func (d *Decorator) Parse(value string, ref time.Time) (url.Values, bool) {
 	}, true
 }
 
-func (d *Decorator) ExpandMessage(href, trail string, params url.Values) string {
+func (d *Decorator) ExpandMessage(href, _ string, params url.Values) string {
 	if !d.formats().Table || href == "" {
 		return ""
 	}
@@ -124,18 +124,14 @@ func (d *Decorator) ExpandMessage(href, trail string, params url.Values) string 
 		return ""
 	}
 
-	return reportTable(href, trail, report, true)
+	return reportTable(href, report)
 }
 
 func Expanded(href string, report Report) (string, bool) {
-	if href == "" || strings.Contains(report.Raw, "```") {
+	if href == "" {
 		return "", false
 	}
-	if !strings.Contains(report.Raw, "\n") {
-		return reportTable(href, "", report, true), true
-	}
-
-	return "```\n" + report.Raw + "\n```\n" + reportTable(href, "", report, false), true
+	return reportTable(href, report), true
 }
 
 func (d *Decorator) kindEnabled(kind string) bool {

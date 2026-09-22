@@ -38,6 +38,7 @@ const (
 type Row struct {
 	Label string
 	Value string
+	At    time.Time
 }
 
 type Period struct {

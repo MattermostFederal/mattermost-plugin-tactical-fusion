@@ -123,7 +123,7 @@ func TestASoleSingleLineReportIsExpandedNotStamped(t *testing.T) {
 		if props := standaloneProps(t, updated); props != nil {
 			t.Fatalf("%q was given props: %v", message, props)
 		}
-		for _, want := range []string{"|:--|:--|\n| Report | `", "| Summary | ", "| Details | [Open details](/plugins/", "/decorate/avreport?"} {
+		for _, want := range []string{"|:--|:--|\n| Summary | ", "| Details | [Open details](/plugins/", "/decorate/avreport?"} {
 			if !strings.Contains(updated.Message, want) {
 				t.Fatalf("%q was not expanded; missing %q in:\n%s", message, want, updated.Message)
 			}
@@ -154,7 +154,7 @@ func TestAReportInsideASentenceIsLinkedNotExpanded(t *testing.T) {
 	if updated == nil || !strings.Contains(updated.Message, "/decorate/avreport?") {
 		t.Fatalf("the report was not linked: %+v", updated)
 	}
-	if strings.Contains(updated.Message, "| Report |") {
+	if strings.Contains(updated.Message, "| Details |") {
 		t.Errorf("a report inside a sentence was expanded:\n%s", updated.Message)
 	}
 }
@@ -170,7 +170,7 @@ func TestASoleReportIsLinkedNotExpandedWhenTheTableIsOff(t *testing.T) {
 	if updated == nil || !strings.HasPrefix(updated.Message, "["+reportMETAR+"](") {
 		t.Fatalf("the report was not linked on its own: %+v", updated)
 	}
-	if strings.Contains(updated.Message, "| Report |") {
+	if strings.Contains(updated.Message, "| Details |") {
 		t.Errorf("a table was written with the switch off:\n%s", updated.Message)
 	}
 }
@@ -187,7 +187,7 @@ func TestAnExpandedReportIsNotExpandedAgain(t *testing.T) {
 		reportMETAR + " RMK |PIPE| TICK`",
 	} {
 		first := p.decoratePost(&model.Post{Message: message, UserId: testUserID}, hookRef)
-		if first == nil || !strings.Contains(first.Message, "| Report |") {
+		if first == nil || !strings.Contains(first.Message, "| Details |") {
 			t.Fatalf("%q was not expanded: %+v", message, first)
 		}
 		if again := p.decoratePost(&model.Post{Message: first.Message, UserId: testUserID}, hookRef); again != nil {
@@ -234,8 +234,8 @@ func TestABareMultiLineReportIsExpandedNotStamped(t *testing.T) {
 		if _, ok := updated.GetProps()[avreport.PropsKey]; ok {
 			t.Fatalf("%q was given the card's props", body)
 		}
-		if !strings.HasPrefix(updated.Message, "```\n"+strings.TrimSpace(body)+"\n```\n|") {
-			t.Fatalf("%q does not lead with the fenced report:\n%s", body, updated.Message)
+		if !strings.HasPrefix(updated.Message, "| ") || strings.Contains(updated.Message, strings.TrimSpace(body)) {
+			t.Fatalf("%q is not the table alone:\n%s", body, updated.Message)
 		}
 		if !strings.Contains(updated.Message, "| Details | [Open details](/plugins/") || strings.Count(updated.Message, "/decorate/avreport?") != 1 {
 			t.Fatalf("%q has no single details link:\n%s", body, updated.Message)
@@ -273,7 +273,7 @@ func TestTheTableBeatsAnAttachmentAsTheCardDoes(t *testing.T) {
 	api.fileContent = map[string][]byte{testFileID: []byte(cotEventXML)}
 
 	updated := p.decoratePost(&model.Post{Message: reportTAF, FileIds: []string{testFileID}, UserId: testUserID}, hookRef)
-	if updated == nil || updated.Type != "" || !strings.HasPrefix(updated.Message, "```\n") {
+	if updated == nil || updated.Type != "" || !strings.HasPrefix(updated.Message, "| TAF | ") {
 		t.Fatalf("the attachment won over the visible report: %+v", updated)
 	}
 }

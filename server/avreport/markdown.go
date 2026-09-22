@@ -3,16 +3,19 @@ package avreport
 import (
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
 )
 
 const (
-	reportRowLabel       = "Report"
 	summaryRowLabel      = "Summary"
 	tableFallbackHeading = "Aviation report"
 
 	inferredDateNote = " (month and year taken from the post date)"
+
+	timestampLayout = "2006-01-02T15:04:05Z"
 )
 
 func issuedLabel(kind string) string {
@@ -22,23 +25,22 @@ func issuedLabel(kind string) string {
 	return "Issued"
 }
 
-func reportTable(href, trail string, report Report, withReportRow bool) string {
+func reportTable(href string, report Report) string {
 	var b strings.Builder
+	links := &decorators.Tagger{URLPrefix: href[:strings.LastIndex(href, "/"+Type+"?")]}
 
-	b.WriteString("| " + decorators.TableCell(report.Kind) + " | " + tableHeadingDetail(href, report) + " |\n")
+	b.WriteString("| " + decorators.TableCell(report.Kind) + " | " + tableHeadingDetail(links, report) + " |\n")
 	b.WriteString("|:--|:--|\n")
 
-	if withReportRow {
-		writeTableRow(&b, reportRowLabel, reportCell(report.Raw)+decorators.TableCell(trail))
-	}
 	if report.Summary != "" {
 		writeTableRow(&b, summaryRowLabel, decorators.TableCell(report.Summary))
 	}
-	if issued := zuluText(report.IssuedAt); issued != "" {
+	if !report.IssuedAt.IsZero() {
+		value := timeCell(links, report.IssuedAt)
 		if report.Inferred {
-			issued += inferredDateNote
+			value += decorators.TableCell(inferredDateNote)
 		}
-		writeTableRow(&b, issuedLabel(report.Kind), decorators.TableCell(issued))
+		writeTableRow(&b, issuedLabel(report.Kind), value)
 	}
 	if len(report.Flags) > 0 {
 		writeTableRow(&b, "Flags", decorators.TableCell(strings.Join(report.Flags, ", ")))
@@ -47,7 +49,7 @@ func reportTable(href, trail string, report Report, withReportRow bool) string {
 		if row.Label == "Effective" && report.Kind == KindNOTAM {
 			continue
 		}
-		writeTableRow(&b, decorators.TableCell(row.Label), decorators.TableCell(row.Value))
+		writeTableRow(&b, decorators.TableCell(row.Label), rowCell(links, row))
 	}
 	for _, period := range report.Periods {
 		writeTableRow(&b, decorators.TableCell(period.Period), joinedRows(period.Rows))
@@ -63,34 +65,31 @@ func reportTable(href, trail string, report Report, withReportRow bool) string {
 	return b.String()
 }
 
-func tableHeadingDetail(href string, report Report) string {
+func tableHeadingDetail(links *decorators.Tagger, report Report) string {
 	switch {
 	case report.Station != "" && report.StationName != "":
 		label := decorators.TableCell(report.Station + " - " + report.StationName)
-		return "[" + label + "](" + airfieldHref(href, report.Station) + ")"
+		return "[" + label + "](" + links.URLFor(airfieldPath, url.Values{"v": {report.Station}}) + ")"
 	case report.Station != "":
 		return decorators.TableCell(report.Station)
 	}
 	return tableFallbackHeading
 }
 
-func airfieldHref(reportHref, station string) string {
-	prefix := reportHref[:strings.LastIndex(reportHref, "/"+Type+"?")]
-	return prefix + "/" + airfieldPath + "?" + url.Values{"v": {station}}.Encode()
+func rowCell(links *decorators.Tagger, row Row) string {
+	if row.At.IsZero() {
+		return decorators.TableCell(row.Value)
+	}
+	return timeCell(links, row.At) + decorators.TableCell(strings.TrimPrefix(row.Value, zuluText(row.At)))
 }
 
-func reportCell(raw string) string {
-	delimiter := "`"
-	for strings.Contains(raw, delimiter) {
-		delimiter += "`"
+func timeCell(links *decorators.Tagger, at time.Time) string {
+	label := decorators.TableCell(zuluText(at))
+	params, ok := (&dtg.Decorator{}).Parse(at.UTC().Format(timestampLayout), at)
+	if !ok {
+		return label
 	}
-
-	body := strings.ReplaceAll(raw, "|", `\|`)
-	if strings.HasPrefix(raw, "`") || strings.HasSuffix(raw, "`") {
-		body = " " + body + " "
-	}
-
-	return delimiter + body + delimiter
+	return "[" + label + "](" + links.URLFor(dtg.Type, params) + ")"
 }
 
 func joinedRows(rows []Row) string {
