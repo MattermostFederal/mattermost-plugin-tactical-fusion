@@ -209,6 +209,13 @@
                         "type": "bool",
                         "default": true,
                         "help_text": "When a message is nothing but one labeled airfield reference, such as \"ICAO:KIND\" or \"DEPLOC:KIND//\", add a table of the field's details under it: its name, where it is, what kind of field it is, its elevation and its IATA code. The table is written into the message itself, so it appears on every client, is included when messages are exported, and is what the author sees if they edit the post. The values are fixed when the message is posted and are not updated when a later plugin version corrects the database. Turning this off stops new messages being expanded; messages already posted keep their table. Only applies while \"Decorate airfield codes\" is on."
+                    },
+                    {
+                        "key": "EnableAirportRoute",
+                        "display_name": "Draw a map under a message of nothing but airfield codes",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "When a message is nothing but labeled airfield references, such as \"DEPLOC:PHIK ARRLOC:PGUA//\", draw every airfield on one map under the post, numbered in message order with a leg between each pair. The links stay in the message. This sets the post's type, which excludes it from Elasticsearch and OpenSearch results and Recent Mentions, turns off its auto-translation, and drops its link previews; the map under a lone coordinate and the Cursor on Target card pay the same cost. Only applies while \"Decorate airfield codes\" and \"Show a map under a post\" are on."
                     }
                 ]
             },

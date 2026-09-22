@@ -1380,9 +1380,10 @@ worth its own change with its own whole-policy test.
 
 ### The map under a post
 
-**Two surfaces reach this now**, not one: a coordinate-only post, and a Cursor
-on Target card. Both read `features.mapInline`, both respect `INLINE_ID`, and
-both pay the `Post.Type` costs below. The CoT card additionally passes
+**Three surfaces reach this now**, not one: a coordinate-only post, a Cursor
+on Target card, and a message of nothing but airfield codes, whose route map is
+argued in [`airfields.md`](airfields.md). All read `features.mapInline`, all
+respect `INLINE_ID`, and all pay the `Post.Type` costs below. The CoT card additionally passes
 `accuracyMeters`, which draws the event's stated circular error as a geodesic
 polygon around the pin; `LocationMap` takes it as an optional prop and every
 location surface omits it, so a coordinate's own precision keeps being carried by

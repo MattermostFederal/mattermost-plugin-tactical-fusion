@@ -383,6 +383,7 @@ func newTestPlugin(t *testing.T, siteURL string, enabled bool) *Plugin {
 		EnableAirport:      enabled,
 		EnableAirportIATA:  enabled,
 		EnableAirportTable: enabled,
+		EnableAirportRoute: enabled,
 
 		EnableCot:     enabled,
 		EnableCotFile: enabled,

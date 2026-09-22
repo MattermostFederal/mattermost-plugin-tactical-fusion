@@ -21,9 +21,10 @@ type Formats struct {
 	Airfield bool
 	IATA     bool
 	Table    bool
+	Route    bool
 }
 
-var AllFormats = Formats{Airfield: true, IATA: true, Table: true}
+var AllFormats = Formats{Airfield: true, IATA: true, Table: true, Route: true}
 
 type Decorator struct {
 	Enabled func() Formats

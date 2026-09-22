@@ -226,6 +226,33 @@ func StandaloneExpansion(d Decorator, href, trail string, params url.Values) str
 	return expander.ExpandMessage(href, trail, params)
 }
 
+type MultiPostRenderer interface {
+	MultiPost() (postType, propsKey string)
+	MultiPostProps(tokens []Token) (map[string]any, bool)
+}
+
+func MultiPostType(d Decorator) (postType, propsKey string) {
+	renderer, ok := d.(MultiPostRenderer)
+	if !ok {
+		return "", ""
+	}
+
+	postType, propsKey = renderer.MultiPost()
+	if !strings.HasPrefix(postType, PostTypePrefix) || len(postType) > PostTypeMaxLen || propsKey == "" {
+		return "", ""
+	}
+	return postType, propsKey
+}
+
+func MultiPostProps(d Decorator, tokens []Token) (map[string]any, bool) {
+	renderer, ok := d.(MultiPostRenderer)
+	if !ok {
+		return nil, false
+	}
+
+	return renderer.MultiPostProps(tokens)
+}
+
 func StandalonePostProps(r Result) map[string]any {
 	props := map[string]any{
 		"version": PostPropsVersion,

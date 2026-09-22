@@ -141,6 +141,16 @@
                     <td>Something already attached to the post could not be converted to JSON, so the size of the post's properties could not be checked and nothing was rendered. This is not caused by the event and cannot be fixed by posting a smaller one: look for another integration writing a value it cannot serialize.</td>
                 </tr>
                 <tr>
+                    <td><code>TF-11016</code></td>
+                    <td><code>HooksAirfieldsPropsUnmeasurable</code> <span class="level">warn</span></td>
+                    <td><code>the post's props could not be measured; posting unstamped</code> A message of nothing but airfield codes was about to get its route map, but something already on the post's props would not encode, so the size gate could not run. The links are written and the map is not. Not the author's doing: the value that will not encode came from elsewhere on the post.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-11017</code></td>
+                    <td><code>HooksAirfieldsPropsTooLarge</code> <span class="level">warn</span></td>
+                    <td><code>the parsed document would exceed the maximum post props size; posting unstamped</code> The route's props, added to what the post already carried, would cross the props budget. The links are written and the map is not. A route of up to 64 airfields fits on its own; this fires when another integration has already filled most of the budget.</td>
+                </tr>
+                <tr>
                     <td><code>TF-11009</code></td>
                     <td><code>HooksGeoJSONPanic</code> <span class="level">Warn</span></td>
                     <td>Reading a GeoJSON document panicked. The post was created unchanged, so nothing was lost, but the document was not rendered. Please report it with the message that caused it.</td>

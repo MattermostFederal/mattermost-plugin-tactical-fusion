@@ -421,6 +421,26 @@ it was going to. Only wrappable text was ever squeezed.
 against a pixel count, so it fails on two lines whatever the line height
 resolves to, and checks the card still fits inside a sidebar-width column.
 
+### The tagger reports every token
+
+`Result` carries `Tokens`, every accepted token in message order with its type,
+params and trail; `Covers`, true when the tokens and the whitespace between and
+around them make up the whole message; and `OnlyType`, the one type every token
+has or empty. `SoleToken` is derived, `Covers` with one token, so every reader
+of it is unchanged. `resultOf` walks a clone of the accepted candidates sorted
+by `match.start` because `applyReplacements` sorts the original in place, right
+to left, and the verdict is taken before it. The separator rule is exactly the
+sole-token rule, whitespace only: `DEPLOC:PHIK, ARRLOC:PGUA` does not cover, and
+that is recorded as a limit rather than widened.
+
+`MultiPostRenderer` is the second optional stamping interface, beside
+`PostRenderer`. A decorator that implements it is asked for a post type, a props
+key and a blob when a message is nothing but its tokens; the decorator builds
+the blob because only it can look its tokens up. `stampDecoratedPost` tries the
+sole-token stamp first and the multi-token one only on a post still untyped,
+inside the gate that keeps "expanded or stamped, never both". The airfield
+decorator is the one implementer; [`airfields.md`](airfields.md) has the rest.
+
 ### Adding a decorator
 
 1. **Server**: create `server/decorators/<type>/` implementing

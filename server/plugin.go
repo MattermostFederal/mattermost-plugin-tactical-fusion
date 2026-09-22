@@ -107,6 +107,7 @@ func (p *Plugin) airportFormats() airport.Formats {
 		// ANDed with the parent, the way locationMaps is: a message is only
 		// ever expanded for an airfield code this plugin decorated.
 		Table: config.EnableAirport && config.EnableAirportTable,
+		Route: config.EnableAirport && config.EnableAirportRoute && p.locationMaps().Inline,
 	}
 }
 

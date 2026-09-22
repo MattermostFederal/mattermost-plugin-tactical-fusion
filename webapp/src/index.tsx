@@ -10,6 +10,8 @@ import {RhsTitle, RhsView} from './components/rhs/RhsView';
 import CotPostBody from './cot/CotPostBody';
 import {registerCotPanel} from './cot/index';
 import {COT_POST_TYPE} from './cot/types';
+import AirfieldsPostBody from './decorators/airport/AirfieldsPostBody';
+import {AIRFIELDS_POST_TYPE} from './decorators/airport/route';
 import {installDecoratorClickHandler} from './decorators/click_handler';
 import {registerBuiltinDecorators} from './decorators/index';
 import {DecoratorPostBody} from './decorators/PostBody';
@@ -86,6 +88,9 @@ export default class Plugin {
 
         const geoJsonId = registry.registerPostTypeComponent(GEOJSON_POST_TYPE, GeoJsonPostBody);
         this.disposers.push(() => registry.unregisterPostTypeComponent(geoJsonId));
+
+        const airfieldsId = registry.registerPostTypeComponent(AIRFIELDS_POST_TYPE, AirfieldsPostBody);
+        this.disposers.push(() => registry.unregisterPostTypeComponent(airfieldsId));
 
         const headerId = registry.registerChannelHeaderButtonAction(
             <HeaderIcon/>,

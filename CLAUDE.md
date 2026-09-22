@@ -81,7 +81,7 @@ there rather than here or in a comment.
 | [`docs/design/mapping.md`](docs/design/mapping.md) | The vector basemap, the OpenStreetMap detail tier and its seam, detail map packages, `PageStatic` vs `PageMapping`, the page bundle, zoom numbers, the country lookup, `Conversion`, the map page, the panel map, turning maps off, the map under a post |
 | [`docs/design/bridge.md`](docs/design/bridge.md) | The plugin bridge: why `PluginHTTP`, why `Mattermost-Plugin-ID` is trusted, the two transports, why `link` takes no label and still honors switches, the window global and its ready event, where the wire types live |
 | [`docs/design/preferences.md`](docs/design/preferences.md) | The KV store, both caches, the location hover, the location rows, the zone picker and ordering |
-| [`docs/design/admin-settings.md`](docs/design/admin-settings.md) | The twenty-six switches, the two map-package settings, the six sections, why `EnableLocationUTM` and `EnableGeoJSONUnlabeled` ship off |
+| [`docs/design/admin-settings.md`](docs/design/admin-settings.md) | The twenty-seven switches, the two map-package settings, the six sections, why `EnableLocationUTM` and `EnableGeoJSONUnlabeled` ship off |
 | [`docs/design/help-and-errors.md`](docs/design/help-and-errors.md) | `public/help/` and the `TF-NNNN` catalog |
 | [`docs/design/unverified.md`](docs/design/unverified.md) | Claims that need a running server or a phone and have never been checked |
 
@@ -155,10 +155,10 @@ bytes do not, and a browser revalidating a cached byte range then gets the whole
 its auto-translation, its embeds and its slack-style message attachments. Its
 FILE attachments survive: they are drawn outside `PostBodyAdditionalContent`.
 This line said "file attachment list" and a card grew a download link on the
-strength of it. The inline map,
-the Cursor on Target card and the GeoJSON card are the only three things that do
-it; `EnableLocationMapInline`, `EnableCot` and `EnableGeoJSON` are how an install
-opts out of each.
+strength of it. The inline map, the airfield route map,
+the Cursor on Target card and the GeoJSON card are the only four things that do
+it; `EnableLocationMapInline`, `EnableAirportRoute`, `EnableCot` and
+`EnableGeoJSON` are how an install opts out of each.
 
 **A stamped post is never decorated, and the stamp is atomic.** Two formats
 stamp: Cursor on Target, then GeoJSON. Each declares its own recover as its
@@ -209,7 +209,9 @@ this has to change a test rather than slip through.
 **The strip clears every stamped props key on every post, not just the one
 matching the post's type.** The commit copies existing props forward, so a
 forged sibling blob would otherwise reach stored props permanently.
-`custom_tf_location` is deliberately outside the table.
+`custom_tf_location` is deliberately outside the table; `custom_tf_airfields`,
+which the route stamp writes from decoration, is inside it because `/map?post=`
+finds a blob through the same table.
 
 **`/bridge/v1` is gated only on `Mattermost-Plugin-ID`, so it may never answer
 with per-user or per-channel data.** A plugin request carries no reader. Every

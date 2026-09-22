@@ -120,6 +120,15 @@ writes that type from decoration rather than from recognition, and sweeping it
 in would change forged-type handling on a shipped path that nothing asked to
 change.
 
+`custom_tf_airfields` **is** in the table, although it too is written from
+decoration. The difference is that `/map?post=` finds a stamped post's blob
+through `stampedPropsKey`, which reads this table, so a type the map page
+serves has to be here; and a route was never shipped outside it, so nothing
+changes under anybody. A forged airfields post is therefore stripped and
+re-decided by the tagger, which is the stronger posture. See
+[`airfields.md`](airfields.md), "The route under a message of nothing but
+airfields".
+
 ## The parse
 
 ### A token walk has no depth limit

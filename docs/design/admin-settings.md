@@ -4,7 +4,7 @@
 
 ## Admin settings
 
-The count is **twenty-six switches across six sections**. Cursor on Target added
+The count is **twenty-seven switches across six sections**. Cursor on Target added
 the fifth section and two of the switches, `EnableCot` and `EnableCotFile`, and
 GeoJSON added the sixth and three more. Cursor on Target
 deliberately added no third: the card's map reads `EnableLocationMapInline`,
@@ -32,7 +32,7 @@ help pages disagreeing, none of them true of the same manifest.
 totals from the manifest rather than restating them, so adding a switch or a
 section fails the test until the prose is caught up.
 
-The **first four** of those sections hold twenty-one of the switches, plus the two
+The **first four** of those sections hold twenty-two of the switches, plus the two
 map-package settings, which are a path and a control rather than switches. The
 Cursor on Target and GeoJSON sections below add the remaining five:
 
@@ -47,7 +47,8 @@ Cursor on Target and GeoJSON sections below add the remaining five:
   `LocationMapPackagesDir` and `LocationMapPackages`. See
   [`mapping.md`](mapping.md#the-openstreetmap-detail-tier-above-the-seam) for
   why the storage is a real directory.
-- **Airfields**: `EnableAirport` with `EnableAirportIATA` and `EnableAirportTable`.
+- **Airfields**: `EnableAirport` with `EnableAirportIATA`, `EnableAirportTable` and
+  `EnableAirportRoute`.
 
 `model.PluginSettingsSchema` carries a `Sections` field
 (`PluginSettingsSection{Key, Title, Subtitle, Settings, Header, Footer}`), so
@@ -74,7 +75,7 @@ twice. `loadSettings` in `configuration_settings_test.go` flattens the sections,
 which is what stops the move making every other test in that file iterate an
 empty slice and pass while checking nothing.
 
-**Twenty-four default on. `EnableLocationUTM` and `EnableGeoJSONUnlabeled` default off, and they are the only two.** The
+**Twenty-five default on. `EnableLocationUTM` and `EnableGeoJSONUnlabeled` default off, and they are the only two.** The
 reason is a difference in kind rather than in degree: every other switch trades
 a false positive against a missed decoration, so its worst case is that
 something which was not a coordinate gets linked, or something which was does

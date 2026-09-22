@@ -112,6 +112,9 @@ const (
 	HooksGeoJSONFileUnreadable    = 11014
 	HooksGeoJSONFileNotOwned      = 11015
 
+	HooksAirfieldsPropsUnmeasurable = 11016
+	HooksAirfieldsPropsTooLarge     = 11017
+
 	// server/http.go (12000-12999)
 
 	// HTTPMethodNotAllowed is returned for anything other than GET on the
@@ -376,6 +379,8 @@ var AllCodes = []int{
 	HooksGeoJSONPropertiesDropped,
 	HooksGeoJSONFileUnreadable,
 	HooksGeoJSONFileNotOwned,
+	HooksAirfieldsPropsUnmeasurable,
+	HooksAirfieldsPropsTooLarge,
 
 	HTTPMethodNotAllowed,
 	HTTPDecoratePathInvalid,

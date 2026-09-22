@@ -321,6 +321,49 @@
             </p>
         </div>
 
+        <h2 id="airfield-route">The map under a message of nothing but airfield codes</h2>
+
+        <p>Setting: <a href="admin.html#enable-airport-route"><code>EnableAirportRoute</code></a></p>
+
+        <p>
+            A message whose whole text is labeled airfield references, on one line or one per
+            line, keeps its links and gains a map under the post with every airfield marked,
+            a numbered legend that opens each airfield's panel, and a leg drawn between each
+            consecutive pair in message order:
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Message</th><th>Result</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code class="copyable">DEPLOC:PHIK ARRLOC:PGUA//</code></td><td>two links, and a map with 1 and 2 and the leg between them</td></tr>
+                <tr><td><code class="copyable">ICAO:PHIK IATA:HNL LOC:PGUA</code></td><td>three links, and a map with three markers and two legs</td></tr>
+                <tr><td><code>DEPLOC:PHIK, ARRLOC:PGUA</code></td><td>two links and no map: the comma is prose between the codes</td></tr>
+                <tr><td><code>DEPLOC:PHIK 091630ZAUG26</code></td><td>two links and no map: not every token is an airfield</td></tr>
+                <tr><td><code>ICAO:PHIK</code></td><td>the <a href="#airfield-table">table</a> while that is on; a one-airfield map when it is off</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            A leg is a straight line between consecutive airfields in the order they were
+            written, and the map says so. It is not a route somebody stated. Up to 64
+            airfields are drawn; a longer message keeps its links and gets no map.
+            <strong>Open larger</strong> opens the same map full window.
+        </p>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">This sets the post's type.</p>
+            <p>
+                A post with the map under it is excluded from Elasticsearch and OpenSearch
+                results and from Recent Mentions, loses its link previews and is not
+                auto-translated, exactly as the map under a lone coordinate is. The links
+                in the message are still there, and the airfield names stay searchable
+                nowhere but in the map's legend. Turn the setting off to keep such posts
+                ordinary.
+            </p>
+        </div>
+
         <h2 id="airfield-data">Where the data comes from</h2>
 
         <p>
@@ -342,6 +385,7 @@
                 <tr><td><a href="admin.html#enable-airport"><code>EnableAirport</code></a></td><td>The whole decorator. There is no separate label switch, because the grammar is label-only by construction.</td></tr>
                 <tr><td><a href="admin.html#enable-airport-iata"><code>EnableAirportIATA</code></a></td><td><a href="#airfield-iata">The IATA grammar</a>. Only applies while <code>EnableAirport</code> is on.</td></tr>
                 <tr><td><a href="admin.html#enable-airport-table"><code>EnableAirportTable</code></a></td><td><a href="#airfield-table">The table</a> under a code-only message.</td></tr>
+                <tr><td><a href="admin.html#enable-airport-route"><code>EnableAirportRoute</code></a></td><td><a href="#airfield-route">The map</a> under a message of nothing but airfield codes. Also needs the map under a post to be on.</td></tr>
             </tbody>
         </table>
 

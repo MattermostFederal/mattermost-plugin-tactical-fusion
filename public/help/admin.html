@@ -43,7 +43,7 @@
         </div>
 
         <h1>Admin Settings</h1>
-        <p class="tagline">System Console, Plugins, Tactical Fusion. Six sections and twenty-six switches. Twenty-four are on by default; <code>EnableLocationUTM</code> and <code>EnableGeoJSONUnlabeled</code> are the two that are not.</p>
+        <p class="tagline">System Console, Plugins, Tactical Fusion. Six sections and twenty-seven switches. Twenty-five are on by default; <code>EnableLocationUTM</code> and <code>EnableGeoJSONUnlabeled</code> are the two that are not.</p>
 
         <h2>How the date-time group switches relate</h2>
 
@@ -1013,6 +1013,35 @@
             the same question about one specific message, which is what to reach for when
             somebody reports that a coordinate was not linked.
         </p>
+
+        <h3 id="enable-airport-route" data-setting="EnableAirportRoute">Draw a map under a message of nothing but airfield codes <code>EnableAirportRoute</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>New messages of nothing but airfield codes are decorated and get no map. Posts already stamped keep their map.</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-airport"><code>EnableAirport</code></a>, <a href="#enable-location-map-inline"><code>EnableLocationMapInline</code></a> and its parents</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            When a message is nothing but labeled airfield references, such as
+            <code class="copyable">DEPLOC:PHIK ARRLOC:PGUA//</code>, every airfield is drawn on
+            one map under the post, numbered in message order with a leg between each pair,
+            and the links stay in the message. A message of one code gets the
+            <a href="#enable-airport-table">table</a> instead while that is on.
+        </p>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">This sets the post's type.</p>
+            <p>
+                A post with a custom type is excluded from Elasticsearch and OpenSearch results
+                and from Recent Mentions, is not auto-translated, and loses its link previews.
+                The map under a lone coordinate and the Cursor on Target card pay the same cost,
+                and this switch is how an install declines it for routes.
+            </p>
+        </div>
 
         <h2 id="cot-switches">The Cursor on Target switches</h2>
 

@@ -714,3 +714,67 @@ AirportEnd]`), so the test walks the Go struct by reflection, renders each field
 as the TypeScript it should read as (`string`, `boolean`, `Name[]`, `[Name,
 Name]`, `?` for `omitempty`), and recurses into every nested struct. Names,
 types, optionality and order are all held, for every interface in `types.ts`.
+
+## The route under a message of nothing but airfields
+
+A message that is only labeled airfield references, `DEPLOC:PHIK ARRLOC:PGUA//`
+on one line or one per line, is stamped `custom_tf_airfields` and the webapp
+draws every airfield on one map under the post, numbered in message order, with
+a leg between each consecutive pair. The links stay in the message: this is the
+location inline map's mechanism, a stamp on a decorated post, not the CoT card's
+verbatim-text one.
+
+**Why a stamp and not a table.** The table is the right shape for one airfield,
+whose details are rows. Several airfields are a picture, and a picture cannot be
+written into stored text. The cost is the one every stamp pays, the post's
+search matches, so it has its own switch, `EnableAirportRoute`, carrying the same
+warning `EnableCot` carries, and it is ANDed with `EnableLocationMapInline` and
+its parents in Go the way location's `PostType()` is: with the inline map off
+`MultiPost` answers empty and nothing is stamped, rather than stamped and then
+drawn as nothing.
+
+**The framework now reports every token.** `Result` carries `Tokens` in message
+order, `Covers` (the tokens and whitespace alone make up the message) and
+`OnlyType`; `SoleToken` is derived as `Covers` with one token, so nothing that
+read it changed. `resultOf` walks a clone of the accepted candidates sorted by
+`match.start`, because `applyReplacements` re-sorts the original in place and
+the verdict is taken before it. Separators are whitespace only, exactly the
+sole-token rule: `DEPLOC:PHIK, ARRLOC:PGUA` does not cover and is decorated with
+no map. That is a limit rather than a bug to widen quietly.
+
+**`MultiPostRenderer` is a second optional interface**, beside `PostRenderer`,
+and the decorator builds the blob because only it can look the airfields up.
+`stampDecoratedPost` tries the sole-token stamp first and the multi-token stamp
+only on a post still untyped, inside the `message == decorated` gate that keeps
+"expanded or stamped, never both". So one airfield with the table on is expanded;
+one airfield with the table off is a one-marker route; two or more are a route;
+an airfield beside a DTG is `OnlyType == ""` and gets nothing; two coordinates
+get nothing because location declares no `MultiPostRenderer`.
+
+**The props key is the decorator's own, `tactical_fusion_airfields`**, never the
+shared `tactical_fusion` key location writes: the strip deliberately leaves that
+one alone. The airfields row is in `stampedTypes` because `stampedPropsKey` is
+how `/map?post=` finds a blob, and a key anything dispatches on belongs in the
+strip; a forged `custom_tf_airfields` post is therefore stripped in `cotStamp`
+and re-decided by the tagger, which is a stronger posture than location's.
+
+**The blob carries ident, the code as written, the name and the location pair**,
+built through the cheap `location.Parse` gate rather than `Convert`, because
+this runs on the post path and no region is needed. The cap is 64 airfields and
+past it the stamp is refused rather than truncated, the `maxCotEvents`
+argument; the whole props map is still measured by `commitStamped`, so a post
+whose other props already fill the budget gets its links and no map, with
+`HooksAirfieldsPropsTooLarge` logged.
+
+**The webapp's body stands down when the message and the props disagree.**
+`decoratorLinks` reads every decorator link in the message in order, and the
+body requires the sequence of link codes to equal the props' codes; anything
+else renders the message as plain text. That is what an edit does, since
+`edit_at` also stands the body down, and it is the multi-link form of the
+`agrees()` check the location body makes. Legs are drawn only between
+consecutive placeable entries, so a leg never crosses an airfield that failed
+to place. The reader refuses a blob past the cap rather than slicing it.
+
+**Legs are straight lines in message order and the map says so.** A great
+circle would be a claim about a route nobody stated; message order is what the
+author wrote.

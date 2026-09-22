@@ -4,8 +4,10 @@ import type {OverlayPageData} from './payload';
 
 import {CotMapCanvas, drawsNothing as cotDrawsNothing} from '../cot/CotMap';
 import {COT_POST_TYPE, fromProps as cotFromProps} from '../cot/types';
+import {AirfieldsMapCanvas} from '../decorators/airport/AirfieldsMap';
 import {AirportMapCanvas} from '../decorators/airport/AirportMapCanvas';
 import {AIRPORT_MAP_KIND, airportMapFromBlob, runwayLabel} from '../decorators/airport/map';
+import {AIRFIELDS_POST_TYPE, airfieldsFromProps, drawsNothing as airfieldsDrawNothing, routeLabel} from '../decorators/airport/route';
 import {openingCamera} from '../decorators/location/map/camera';
 import {GeoJsonMapCanvas, drawsNothing as geoJsonDrawsNothing, mapLabel, markersFor, shapesFor} from '../geojson/GeoJsonMap';
 import {GEOJSON_POST_TYPE, fromProps as geoJsonFromProps} from '../geojson/types';
@@ -80,6 +82,24 @@ function drawingFor(data: OverlayPageData): {canvas: React.ReactNode; label: str
                 />
             ),
             label: `${payload.name || payload.ident} (${payload.ident}), ${runwayLabel(payload.runways.length)}`,
+        };
+    }
+
+    if (data.kind === AIRFIELDS_POST_TYPE) {
+        const payload = airfieldsFromProps(data.props);
+        if (payload === null || airfieldsDrawNothing(payload)) {
+            return null;
+        }
+
+        return {
+            canvas: (
+                <AirfieldsMapCanvas
+                    payload={payload}
+                    fill={true}
+                    openAt={openingCamera() ?? undefined}
+                />
+            ),
+            label: routeLabel(payload),
         };
     }
 

@@ -102,6 +102,8 @@ type configuration struct {
 	// the text is what the author's message now says.
 	EnableAirportTable bool
 
+	EnableAirportRoute bool
+
 	// EnableLocationMap is the switch for drawing a coordinate on a map, and
 	// the three below select which surfaces draw one. They are ANDed with
 	// EnableLocation as well as with each other, because a map only ever

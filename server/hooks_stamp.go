@@ -8,6 +8,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/cot"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/geojson"
 )
 
@@ -22,6 +23,7 @@ const stampPropsBudgetRunes = model.PostPropsMaxUserRunes
 var stampedTypes = []struct{ postType, propsKey string }{
 	{cot.PostType, cot.PropsKey},
 	{geojson.PostType, geojson.PropsKey},
+	{airport.PostType, airport.PropsKey},
 }
 
 // stripStampedTypes removes a type and props this hook did not write.
