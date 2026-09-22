@@ -64,7 +64,7 @@ func stripStampedTypes(post *model.Post) *model.Post {
 }
 
 func (p *Plugin) runStamper(
-	post *model.Post, enabled bool, panicCode int, panicMessage string,
+	post *model.Post, enabled func() bool, panicCode int, panicMessage string,
 	recognize func(post *model.Post) (*model.Post, bool),
 ) (result *model.Post, stamped bool) {
 	api := p.API
@@ -84,7 +84,7 @@ func (p *Plugin) runStamper(
 		post = stripped
 	}
 
-	if !enabled || post.Type != "" {
+	if !enabled() || post.Type != "" {
 		return stripped, false
 	}
 

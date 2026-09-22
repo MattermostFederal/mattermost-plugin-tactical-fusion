@@ -4,6 +4,7 @@ import {HONOLULU_METAR, NOTAM_WITH_RADIUS} from './report_fixtures';
 import ReportPostBodyHarness from './ReportPostBodyHarness';
 
 import {expect, test} from '../../playwright/ct-coverage';
+import {serveMapAssets} from '../decorators/location/map/asset_fixtures';
 import {stubFeaturesRoute} from '../features/stub_route';
 
 test.beforeEach(async ({page}) => {
@@ -86,6 +87,26 @@ test('stands down after an edit', async ({mount}) => {
 
 test('draws no map when the inline map is off', async ({mount}) => {
     const body = await mount(<ReportPostBodyHarness/>);
+
+    await expect(body.getByTestId('avreport-card')).toBeVisible();
+    await expect(body.getByTestId('avreport-map')).toBeHidden();
+});
+
+test('draws the station under the post when the inline map is on', async ({mount, page}) => {
+    await stubFeaturesRoute(page, {mapPanel: true, mapInline: true, mapPage: true});
+    await serveMapAssets(page);
+
+    const body = await mount(<ReportPostBodyHarness/>);
+
+    await expect(body.getByTestId('avreport-map')).toBeVisible();
+    await expect(body.getByRole('button', {name: 'Reset view'})).toBeVisible();
+    await expect(body.getByRole('link', {name: 'Open larger'})).toHaveAttribute('href', /map\?post=post0000000000000000000000/);
+});
+
+test('draws no map for a station the build cannot place, even with the inline map on', async ({mount, page}) => {
+    await stubFeaturesRoute(page, {mapPanel: true, mapInline: true, mapPage: true});
+
+    const body = await mount(<ReportPostBodyHarness payload={{...HONOLULU_METAR, format: '', value: '', region: ''}}/>);
 
     await expect(body.getByTestId('avreport-card')).toBeVisible();
     await expect(body.getByTestId('avreport-map')).toBeHidden();

@@ -34,7 +34,7 @@ var geoJSONFileSuffixes = []string{".geojson"}
 var geoJSONLooseFileSuffixes = []string{".json"}
 
 func (p *Plugin) geoJSONStamp(post *model.Post) (*model.Post, bool) {
-	return p.runStamper(post, p.geoJSONEnabled(), errcode.HooksGeoJSONPanic,
+	return p.runStamper(post, p.geoJSONEnabled, errcode.HooksGeoJSONPanic,
 		"tactical-fusion: recovered from panic while reading a GeoJSON document; post left unmodified",
 		p.recognizeGeoJSON)
 }

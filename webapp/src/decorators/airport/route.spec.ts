@@ -113,3 +113,12 @@ test('payloadFor opens an IATA entry by its code and an ICAO entry by its ident'
     expect(payloadFor(HONOLULU)).toEqual({key: 'iata', code: 'HNL'});
     expect(payloadFor(HICKAM)).toEqual({key: 'icao', code: 'PHIK'});
 });
+
+test('an airfield past the Mercator limit is not drawn and breaks the leg', () => {
+    const SOUTH_POLE = {ident: 'NZSP', code: 'NZSP', name: 'Amundsen-Scott South Pole Station Airport', format: 'dd', value: '-90.0000,-1.0000'};
+    const payload = {airfields: [HICKAM, SOUTH_POLE, ANDERSEN], postId: ''};
+
+    expect(routeMarkers(payload)).toHaveLength(2);
+    expect(routeLegs(payload)).toHaveLength(0);
+    expect(drawsNothing({airfields: [SOUTH_POLE], postId: ''})).toBe(true);
+});

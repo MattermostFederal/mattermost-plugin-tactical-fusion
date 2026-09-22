@@ -1,6 +1,7 @@
 package airport
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
@@ -66,8 +67,8 @@ func TestTheMilitaryDesignatorIsAWholeWordOfTheName(t *testing.T) {
 			continue
 		}
 		count++
-		if !strings.Contains(a.Name, a.Military) {
-			t.Fatalf("%s carries designator %q, which is not in %q", ident, a.Military, a.Name)
+		if !regexp.MustCompile(`(^|[^A-Za-z])` + regexp.QuoteMeta(a.Military) + `($|[^A-Za-z])`).MatchString(a.Name) {
+			t.Fatalf("%s carries designator %q, which is not a whole word of %q", ident, a.Military, a.Name)
 		}
 	}
 	if count < 100 {

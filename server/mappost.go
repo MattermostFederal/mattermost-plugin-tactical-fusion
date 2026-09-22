@@ -118,7 +118,7 @@ func (p *Plugin) overlayForPost(userID, postID string) (overlay, bool) {
 		return overlay{}, false
 	}
 
-	if post.Type == avreport.PostType && blob["format"] == "" {
+	if format, _ := blob["format"].(string); post.Type == avreport.PostType && format == "" {
 		return overlay{}, false
 	}
 

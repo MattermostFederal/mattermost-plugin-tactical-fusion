@@ -5,6 +5,7 @@ import {
     AVREPORT_POST_TYPE,
     AVREPORT_PROPS_KEY,
     AVREPORT_PROPS_VERSION,
+    MAX_REPORT_FLAGS,
     MAX_REPORT_PERIODS,
     MAX_REPORT_ROWS,
     fromProps,
@@ -35,9 +36,20 @@ test.describe('fromProps', () => {
         expect(payload?.src).toContain('\n');
     });
 
-    test('refuses a version this build does not know', () => {
+    test('refuses a version this build does not know, or one that is not a number', () => {
         expect(fromProps(propsFor(HONOLULU_METAR, 2))).toBeNull();
         expect(fromProps(propsFor(HONOLULU_METAR, 'one'))).toBeNull();
+        expect(fromProps(propsFor(HONOLULU_METAR, '1'))).toBeNull();
+        expect(fromProps(propsFor(HONOLULU_METAR, true))).toBeNull();
+        expect(fromProps(propsFor(HONOLULU_METAR, [1]))).toBeNull();
+    });
+
+    test('refuses a text field that is present and not a string', () => {
+        for (const key of ['lead', 'trail', 'rows_dropped']) {
+            const blob = propsFor(HONOLULU_METAR);
+            (blob[AVREPORT_PROPS_KEY] as Record<string, unknown>)[key] = 5;
+            expect(fromProps(blob), key).toBeNull();
+        }
     });
 
     test('refuses a source kind it does not know, and a missing blob', () => {
@@ -64,6 +76,20 @@ test.describe('fromWire', () => {
 
     test('refuses a report with no text', () => {
         expect(fromWire({...wire(), src: ''})).toBeNull();
+    });
+
+    test('refuses a text field that is present and not a string, and reads an absent one as empty', () => {
+        for (const key of ['station', 'station_name', 'summary', 'region', 'radius_nm', 'issued', 'format', 'value']) {
+            expect(fromWire({...wire(), [key]: 5}), key).toBeNull();
+        }
+        const absent = {...wire()};
+        delete absent.summary;
+        expect(fromWire(absent)?.summary).toBe('');
+    });
+
+    test('caps the flags', () => {
+        const report = fromWire({...wire(), flags: Array.from({length: MAX_REPORT_FLAGS + 3}, () => 'COR')});
+        expect(report?.flags).toHaveLength(MAX_REPORT_FLAGS);
     });
 
     test('refuses half a position', () => {

@@ -1,9 +1,8 @@
-import {useEffect, useState} from 'react';
-
 import type {AirportCoordinate, AirportDetails, AirportEnd, AirportFrequency, AirportResponse, AirportRunway} from './types';
 
 import {pluginBaseUrl} from '../../plugin_url';
-import {CACHE_TTL_MS} from '../../preferences/store';
+import type {Answer, AnswerStatus} from '../cached_client';
+import {createCachedClient} from '../cached_client';
 
 import type {AirportPayload} from './index';
 
@@ -11,16 +10,9 @@ export const IDENT = /^[A-Z]{4}$/;
 
 export const IATA = /^[A-Z]{3}$/;
 
-export type AirportStatus = 'loading' | 'ready' | 'failed' | 'rejected';
+export type AirportStatus = AnswerStatus;
 
-export interface AirportState {
-    status: AirportStatus;
-    data: AirportResponse | null;
-}
-
-const LOADING: AirportState = {status: 'loading', data: null};
-
-class RejectedError extends Error {}
+export type AirportState = Answer<AirportResponse>;
 
 function endpoint(payload: AirportPayload): string {
     const param = payload.key === 'iata' ? 'i' : 'v';
@@ -152,8 +144,6 @@ function asCoordinate(value: unknown): AirportCoordinate {
     return {format: wire.format, value: wire.value, region: wire.region};
 }
 
-let fetchTimeoutMs = 10000;
-
 function answersTheQuestion(answer: AirportResponse, payload: AirportPayload): boolean {
     if (payload.key === 'iata') {
         return answer.iata === payload.code;
@@ -161,147 +151,20 @@ function answersTheQuestion(answer: AirportResponse, payload: AirportPayload): b
     return answer.ident === payload.code;
 }
 
-async function fetchAirport(payload: AirportPayload): Promise<AirportResponse> {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), fetchTimeoutMs);
-
-    try {
-        const response = await fetch(endpoint(payload), {
-            credentials: 'same-origin',
-            signal: controller.signal,
-            headers: {'X-Requested-With': 'XMLHttpRequest'},
-        });
-
-        if (response.status === 400) {
-            throw new RejectedError('not an airfield code this plugin issued');
-        }
-        if (!response.ok) {
-            throw new Error(`The server returned ${response.status}.`);
-        }
-
-        const answer = asAirport(await response.json());
-
-        if (!answersTheQuestion(answer, payload)) {
-            throw new Error('The server answered about a different airfield.');
-        }
-
-        return answer;
-    } finally {
-        clearTimeout(timer);
+export function readAirport(body: unknown, payload: AirportPayload): AirportResponse {
+    const answer = asAirport(body);
+    if (!answersTheQuestion(answer, payload)) {
+        throw new Error('The server answered about a different airfield.');
     }
+    return answer;
 }
 
-interface CachedAnswer {
-    state: AirportState;
-    at: number;
-}
+const client = createCachedClient<AirportPayload, AirportResponse>({
+    endpoint,
+    cacheKey,
+    read: readAirport,
+});
 
-const answers = new Map<string, CachedAnswer>();
-const inflight = new Map<string, Promise<AirportState>>();
+export const {request, useAnswer: useAirport} = client;
 
-function now(): number {
-    return Date.now();
-}
-
-function fresh(key: string): AirportState | null {
-    const cached = answers.get(key);
-    if (!cached) {
-        return null;
-    }
-    if (now() - cached.at >= CACHE_TTL_MS) {
-        answers.delete(key);
-        return null;
-    }
-
-    return cached.state;
-}
-
-function remembered(state: AirportState): boolean {
-    return state.status === 'ready' || state.status === 'rejected';
-}
-
-async function load(payload: AirportPayload): Promise<AirportState> {
-    try {
-        return {status: 'ready', data: await fetchAirport(payload)};
-    } catch (error: unknown) {
-        return {
-            status: error instanceof RejectedError ? 'rejected' : 'failed',
-            data: null,
-        };
-    }
-}
-
-export function request(payload: AirportPayload): Promise<AirportState> {
-    const key = cacheKey(payload);
-
-    const answer = fresh(key);
-    if (answer) {
-        return Promise.resolve(answer);
-    }
-
-    const pending = inflight.get(key);
-    if (pending) {
-        return pending;
-    }
-
-    const started: Promise<AirportState> = load(payload).then((state) => {
-        if (inflight.get(key) !== started) {
-            return state;
-        }
-        if (remembered(state)) {
-            answers.set(key, {state, at: now()});
-        }
-        inflight.delete(key);
-
-        return state;
-    });
-
-    inflight.set(key, started);
-
-    return started;
-}
-
-export function useAirport(payload: AirportPayload): AirportState {
-    const key = cacheKey(payload);
-    const [state, setState] = useState<AirportState>(() => fresh(key) ?? LOADING);
-    const [current, setCurrent] = useState(key);
-
-    if (current !== key) {
-        setCurrent(key);
-        setState(fresh(key) ?? LOADING);
-    }
-
-    useEffect(() => {
-        const answered = fresh(key);
-        if (answered) {
-            setState(answered);
-            return undefined;
-        }
-
-        let live = true;
-
-        request(payload).then((answer) => {
-            if (live) {
-                setState(answer);
-            }
-        });
-
-        return () => {
-            live = false;
-        };
-    }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
-
-    return state;
-}
-
-/** @internal exported for tests, which must not inherit another test's cache. */
-export function _resetForTesting(): void { // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
-    answers.clear();
-    inflight.clear();
-    fetchTimeoutMs = 10000;
-}
-
-/** @internal shortens the hang timeout, so the test for it does not wait ten seconds. */
-export function _setFetchTimeoutForTesting(ms: number): void { // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
-    fetchTimeoutMs = ms;
-}
+export const {_resetForTesting, _setFetchTimeoutForTesting} = client; // eslint-disable-line @typescript-eslint/naming-convention

@@ -16,6 +16,8 @@ export const MAX_REPORT_PERIODS = 24;
 
 export const MAX_REPORT_UNKNOWN = 64;
 
+export const MAX_REPORT_FLAGS = 8;
+
 export const KINDS = ['METAR', 'SPECI', 'TAF', 'NOTAM'] as const;
 
 export type ReportKind = typeof KINDS[number];
@@ -65,8 +67,12 @@ function record(value: unknown): Record<string, unknown> | null {
     return value as Record<string, unknown>;
 }
 
-function text(blob: Record<string, unknown>, key: string): string {
-    return typeof blob[key] === 'string' ? (blob[key] as string) : '';
+function text(blob: Record<string, unknown>, key: string): string | null {
+    const value = blob[key];
+    if (value === undefined) {
+        return '';
+    }
+    return typeof value === 'string' ? value : null;
 }
 
 function flag(blob: Record<string, unknown>, key: string): boolean {
@@ -88,16 +94,17 @@ function strings(blob: Record<string, unknown>, key: string, cap: number): strin
     return out;
 }
 
-function readRow(value: unknown): ReportRow | null {
-    const raw = record(value);
+function readRow(item: unknown): ReportRow | null {
+    const raw = record(item);
     if (raw === null) {
         return null;
     }
     const label = text(raw, 'label');
-    if (label === '') {
+    const value = text(raw, 'value');
+    if (label === '' || label === null || value === null) {
         return null;
     }
-    return {label, value: text(raw, 'value')};
+    return {label, value};
 }
 
 function rows(blob: Record<string, unknown>, key: string): ReportRow[] | null {
@@ -123,7 +130,7 @@ function readPeriod(value: unknown): ReportPeriod | null {
     }
     const period = text(raw, 'period');
     const periodRows = rows(raw, 'rows');
-    if (period === '' || periodRows === null) {
+    if (period === '' || period === null || periodRows === null) {
         return null;
     }
     return {period, rows: periodRows};
@@ -157,22 +164,32 @@ export function fromWire(body: unknown): Report | null {
 
     const kind = text(blob, 'kind');
     const src = text(blob, 'src');
-    if (!isKind(kind) || src === '') {
+    if (kind === null || !isKind(kind) || src === '' || src === null) {
         return null;
     }
 
     const format = text(blob, 'format');
     const value = text(blob, 'value');
-    if ((format === '') !== (value === '')) {
+    if (format === null || value === null || (format === '') !== (value === '')) {
         return null;
     }
 
     const issuedAt = text(blob, 'issued_at');
-    if (!(/^-?\d+$/).test(issuedAt)) {
+    if (issuedAt === null || !(/^-?\d+$/).test(issuedAt)) {
         return null;
     }
 
-    const flags = strings(blob, 'flags', MAX_REPORT_UNKNOWN);
+    const station = text(blob, 'station');
+    const stationName = text(blob, 'station_name');
+    const issued = text(blob, 'issued');
+    const summary = text(blob, 'summary');
+    const region = text(blob, 'region');
+    const radiusNm = text(blob, 'radius_nm');
+    if (station === null || stationName === null || issued === null || summary === null || region === null || radiusNm === null) {
+        return null;
+    }
+
+    const flags = strings(blob, 'flags', MAX_REPORT_FLAGS);
     const bodyRows = rows(blob, 'rows');
     const bodyPeriods = periods(blob, 'periods');
     const remarks = rows(blob, 'remarks');
@@ -183,12 +200,12 @@ export function fromWire(body: unknown): Report | null {
 
     return {
         kind,
-        station: text(blob, 'station'),
-        stationName: text(blob, 'station_name'),
-        issued: text(blob, 'issued'),
+        station,
+        stationName,
+        issued,
         issuedAt,
         inferred: flag(blob, 'inferred'),
-        summary: text(blob, 'summary'),
+        summary,
         flags,
         rows: bodyRows,
         periods: bodyPeriods,
@@ -196,8 +213,8 @@ export function fromWire(body: unknown): Report | null {
         unknown,
         format,
         value,
-        region: text(blob, 'region'),
-        radiusNm: text(blob, 'radius_nm'),
+        region,
+        radiusNm,
         src,
     };
 }
@@ -209,7 +226,7 @@ export function fromProps(props: unknown): ReportPayload | null {
     }
 
     const blob = record(outer[AVREPORT_PROPS_KEY]);
-    if (blob === null || Number(blob.version) !== AVREPORT_PROPS_VERSION) {
+    if (blob === null || typeof blob.version !== 'number' || blob.version !== AVREPORT_PROPS_VERSION) {
         return null;
     }
 
@@ -219,16 +236,19 @@ export function fromProps(props: unknown): ReportPayload | null {
     }
 
     const report = fromWire(blob);
-    if (report === null) {
+    const lead = text(blob, 'lead');
+    const trail = text(blob, 'trail');
+    const rowsDropped = text(blob, 'rows_dropped');
+    if (report === null || lead === null || trail === null || rowsDropped === null) {
         return null;
     }
 
     return {
         ...report,
         source,
-        lead: text(blob, 'lead'),
-        trail: text(blob, 'trail'),
-        rowsDropped: text(blob, 'rows_dropped') === '1',
+        lead,
+        trail,
+        rowsDropped: rowsDropped === '1',
         postId: '',
     };
 }

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
@@ -113,7 +114,10 @@ func (d *Decorator) Parse(value string, ref time.Time) (url.Values, bool) {
 }
 
 func (d *Decorator) kindEnabled(kind string) bool {
-	formats := d.formats()
+	return KindEnabled(d.formats(), kind)
+}
+
+func KindEnabled(formats Formats, kind string) bool {
 	switch kind {
 	case KindMETAR, KindSPECI:
 		return formats.METAR
@@ -132,7 +136,7 @@ func Validate(params url.Values) (Report, bool) {
 	}
 
 	millis, err := strconv.ParseInt(params.Get(ParamInstant), 10, 64)
-	if err != nil || millis < minInstantMillis || millis > maxInstantMillis {
+	if err != nil || millis < dtg.MinInstantMillis || millis > dtg.MaxInstantMillis {
 		return Report{}, false
 	}
 

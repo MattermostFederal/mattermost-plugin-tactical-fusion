@@ -15,7 +15,7 @@ import (
 var avreportFenceLabels = []string{"metar", "speci", "taf", "notam"}
 
 func (p *Plugin) avreportStamp(post *model.Post, ref time.Time) (*model.Post, bool) {
-	return p.runStamper(post, p.avreportCardEnabled(), errcode.HooksAvReportPanic,
+	return p.runStamper(post, p.avreportCardEnabled, errcode.HooksAvReportPanic,
 		"tactical-fusion: recovered from panic while reading an aviation report; post left unmodified",
 		func(post *model.Post) (*model.Post, bool) { return p.recognizeAvReport(post, ref) })
 }
@@ -38,7 +38,7 @@ func (p *Plugin) recognizeAvReport(post *model.Post, ref time.Time) (*model.Post
 			"The aviation report you just posted could not be read, so it was left as ordinary text.")
 		return nil, false
 	}
-	if !p.avreportKindEnabled(report.Kind) {
+	if !avreport.KindEnabled(p.avreportFormats(), report.Kind) {
 		return nil, false
 	}
 
@@ -59,19 +59,6 @@ func (p *Plugin) recognizeAvReport(post *model.Post, ref time.Time) (*model.Post
 	}
 
 	return updated, true
-}
-
-func (p *Plugin) avreportKindEnabled(kind string) bool {
-	formats := p.avreportFormats()
-	switch kind {
-	case avreport.KindMETAR, avreport.KindSPECI:
-		return formats.METAR
-	case avreport.KindTAF:
-		return formats.TAF
-	case avreport.KindNOTAM:
-		return formats.NOTAM
-	}
-	return false
 }
 
 func avreportRefusalMessage(code int) string {
@@ -120,9 +107,9 @@ func (p *Plugin) messageShowsAvReport(post *model.Post) bool {
 		return true
 	}
 
-	_, err := avreport.Decode(source.Text, referenceTime(post))
+	report, err := avreport.Decode(source.Text, referenceTime(post))
 
-	return err == nil
+	return err == nil && avreport.KindEnabled(p.avreportFormats(), report.Kind)
 }
 
 func (p *Plugin) reportAvReportRefusal(post *model.Post, source avreport.Source, code int, message string) {

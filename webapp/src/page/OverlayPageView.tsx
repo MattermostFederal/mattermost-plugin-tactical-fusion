@@ -8,7 +8,7 @@ import {CotMapCanvas, drawsNothing as cotDrawsNothing} from '../cot/CotMap';
 import {COT_POST_TYPE, fromProps as cotFromProps} from '../cot/types';
 import {AirfieldsMapCanvas} from '../decorators/airport/AirfieldsMap';
 import {AirportMapCanvas} from '../decorators/airport/AirportMapCanvas';
-import {AIRPORT_MAP_KIND, airportMapFromBlob, runwayLabel} from '../decorators/airport/map';
+import {AIRPORT_MAP_KIND, airportMapFromBlob, positionPayload, runwayLabel, runwayShapes} from '../decorators/airport/map';
 import {AIRFIELDS_POST_TYPE, airfieldsFromProps, drawsNothing as airfieldsDrawNothing, routeLabel} from '../decorators/airport/route';
 import {openingCamera} from '../decorators/location/map/camera';
 import {GeoJsonMapCanvas, drawsNothing as geoJsonDrawsNothing, mapLabel, markersFor, shapesFor} from '../geojson/GeoJsonMap';
@@ -71,7 +71,7 @@ export const OverlayPageView: React.FC<{data: OverlayPageData}> = ({data}) => {
 function drawingFor(data: OverlayPageData): {canvas: React.ReactNode; label: string} | null {
     if (data.kind === AIRPORT_MAP_KIND) {
         const payload = airportMapFromBlob(data.props);
-        if (payload === null) {
+        if (payload === null || positionPayload(payload.coordinate) === null) {
             return null;
         }
 
@@ -83,7 +83,7 @@ function drawingFor(data: OverlayPageData): {canvas: React.ReactNode; label: str
                     openAt={openingCamera() ?? undefined}
                 />
             ),
-            label: `${payload.name || payload.ident} (${payload.ident}), ${runwayLabel(payload.runways.length)}`,
+            label: `${payload.name || payload.ident} (${payload.ident}), ${runwayLabel(runwayShapes(payload.runways).length)}`,
         };
     }
 

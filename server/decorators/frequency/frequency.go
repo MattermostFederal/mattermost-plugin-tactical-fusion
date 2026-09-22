@@ -38,7 +38,9 @@ var scanPattern = regexp.MustCompile(scanExpr)
 
 var frequencyShape = regexp.MustCompile(`^(\d{1,4}\.\d{1,3}|\d{4,5})(?:[ \t]*(MHZ|KHZ))?$`)
 
-func BodyExpr() string { return frequencyBody }
+func ShapeExpr() string {
+	return strings.TrimSuffix(strings.TrimPrefix(frequencyShape.String(), "^"), "$")
+}
 
 type Formats struct {
 	Frequency bool

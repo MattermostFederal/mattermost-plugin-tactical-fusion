@@ -18,7 +18,7 @@ pre { white-space: pre-wrap; word-break: break-word; font-size: 13px; padding: 1
 h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; margin: 18px 0 4px;
   color: var(--muted); }
 td.value { text-align: right; }
-td.value a { color: var(--accent); }
+a { color: var(--accent); }
 `
 
 const airfieldPath = "airport"

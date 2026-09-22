@@ -54,7 +54,7 @@ const AirfieldsMap: React.FC<{payload: RoutePayload}> = ({payload}) => {
     const [box, setBox] = useState<HTMLDivElement | null>(null);
     const near = useNearViewport(box);
 
-    if (!features.mapInline || !isRowVisible(preferences.location.hiddenRows, INLINE_ID)) {
+    if (!features.mapInline || !isRowVisible(preferences.location.hiddenRows, INLINE_ID) || drawsNothing(payload)) {
         return null;
     }
 

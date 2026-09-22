@@ -28,6 +28,9 @@ const (
 	MaxRows        = 64
 	MaxPeriods     = 24
 	MaxUnknown     = 64
+	MaxFlags       = 8
+
+	summaryMaxRunes = 160
 
 	maxNoteRunes = 65536
 )
@@ -65,7 +68,6 @@ type Report struct {
 
 	Format string
 	Value  string
-	Region string
 }
 
 type Source struct {
@@ -119,6 +121,9 @@ func Decode(text string, ref time.Time) (Report, error) {
 	if len(report.Unknown) > MaxUnknown {
 		report.Unknown = report.Unknown[:MaxUnknown]
 	}
+	if len(report.Flags) > MaxFlags {
+		report.Flags = report.Flags[:MaxFlags]
+	}
 	placeStation(&report)
 
 	return report, nil
@@ -168,7 +173,7 @@ func capRows(rows []Row, limit int) []Row {
 
 func placeStation(report *Report) {
 	if report.Center != nil {
-		if token, ok := ddToken(report.Center.Lat, report.Center.Lon); ok {
+		if token, ok := airport.DDToken(report.Center.Lat, report.Center.Lon); ok {
 			report.Format = string(location.FormatDD)
 			report.Value = token
 		}
@@ -185,19 +190,10 @@ func placeStation(report *Report) {
 	if report.Format != "" {
 		return
 	}
-	if token, ok := ddToken(a.Lat, a.Lon); ok {
+	if token, ok := airport.DDToken(a.Lat, a.Lon); ok {
 		report.Format = string(location.FormatDD)
 		report.Value = token
 	}
-}
-
-func ddToken(lat, lon float64) (string, bool) {
-	token := strconv.FormatFloat(lat, 'f', 4, 64) + "," + strconv.FormatFloat(lon, 'f', 4, 64)
-	parsed, ok := location.Parse(location.FormatDD, token)
-	if !ok || parsed.Canonical() != token {
-		return "", false
-	}
-	return token, true
 }
 
 func (r Report) Instant() int64 {

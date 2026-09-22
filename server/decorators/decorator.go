@@ -245,6 +245,11 @@ func MultiPostType(d Decorator) (postType, propsKey string) {
 }
 
 func MultiPostProps(d Decorator, tokens []Token) (map[string]any, bool) {
+	for _, token := range tokens {
+		if token.Type != d.Type() {
+			return nil, false
+		}
+	}
 	renderer, ok := d.(MultiPostRenderer)
 	if !ok {
 		return nil, false

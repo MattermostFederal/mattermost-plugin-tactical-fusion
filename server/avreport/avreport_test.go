@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 )
 
 var ref = time.Date(2026, time.September, 22, 18, 0, 0, 0, time.UTC)
@@ -409,5 +410,119 @@ func TestEveryKindIsNamed(t *testing.T) {
 		if !seen[kind] {
 			t.Errorf("no fixture produced %s", kind)
 		}
+	}
+}
+
+func TestRVRSpellings(t *testing.T) {
+	for text, want := range map[string]string{
+		"METAR KJFK 221651Z 28012KT 1/2SM R04L/0600FT FG 24/12 A3012":          "runway 04L: 600 ft",
+		"METAR KJFK 221651Z 28012KT 1/2SM R22/M0150 FG 24/12 A3012":            "runway 22: less than 150 m",
+		"METAR KJFK 221651Z 28012KT 1/2SM R09/P2000 FG 24/12 A3012":            "runway 09: more than 2,000 m",
+		"METAR KJFK 221651Z 28012KT 1/2SM R09/0350V0600U FG 24/12 A3012":       "runway 09: 350 to 600 m, improving",
+		"METAR KJFK 221651Z 28012KT 1/2SM R27R/1200FT/D FG 24/12 A3012":        "runway 27R: 1,200 ft, worsening",
+		"METAR KJFK 221651Z 28012KT 1/2SM R27R/M0600VP1200FT/N FG 24/12 A3012": "runway 27R: less than 600 to more than 1,200 ft, no change",
+	} {
+		report, err := Decode(text, ref)
+		if err != nil {
+			t.Fatalf("%s: %v", text, err)
+		}
+		if got := rowValue(report.Rows, "Runway visual range"); got != want {
+			t.Errorf("%s: rvr = %q, want %q", text, got, want)
+		}
+	}
+}
+
+func TestTAFBecomingNoWeatherAndWindShear(t *testing.T) {
+	text := "TAF KJFK 221720Z 2218/2324 28012KT P6SM SCT025 WS ALL RWY\n  BECMG 2300/2302 09008KT P6SM NSW FEW030"
+	report, err := Decode(text, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Periods) != 2 || !strings.HasPrefix(report.Periods[1].Period, "Becoming") {
+		t.Fatalf("periods = %+v", report.Periods)
+	}
+	if got := rowValue(report.Periods[1].Rows, "Weather"); got != "no significant weather" {
+		t.Errorf("nsw = %q", got)
+	}
+	if got := rowValue(report.Periods[0].Rows, "Wind shear"); got == "" {
+		t.Errorf("WS ALL RWY was not decoded: %+v", report.Periods[0].Rows)
+	}
+}
+
+func TestAPunctuationOnlyWordDoesNotPanicTheNotamDecoder(t *testing.T) {
+	for _, text := range []string{
+		"!HNL 09/123 HNL RWY 08L/26R CLSD .",
+		"!HNL 09/123 HNL RWY 08L/26R CLSD ... SEE AIP",
+		"A1234/26 NOTAMN\nA) PHNL\nE) RWY 08L/26R CLSD , ; :",
+	} {
+		report, err := Decode(text, ref)
+		if err != nil {
+			t.Fatalf("%q: %v", text, err)
+		}
+		if report.Kind != KindNOTAM {
+			t.Errorf("%q: kind = %q", text, report.Kind)
+		}
+	}
+	if got := expandContractions("CLSD . ... RWY,"); got != "closed . ... runway," {
+		t.Errorf("expandContractions = %q", got)
+	}
+}
+
+func TestAnEmptyICAOLocationFieldIsNotAStation(t *testing.T) {
+	for _, text := range []string{
+		"A1234/26 NOTAMN\nA)\nE) RWY 04L/22R CLSD",
+		"A1234/26 NOTAMN\nE) RWY 04L/22R CLSD\nA)",
+		"A1234/26 NOTAMN\nA) NOT-AN-IDENT\nE) RWY 04L/22R CLSD",
+	} {
+		report, err := Decode(text, ref)
+		if err != nil {
+			t.Fatalf("%q: %v", text, err)
+		}
+		if report.Station != "" {
+			t.Errorf("%q: station = %q, want none", text, report.Station)
+		}
+	}
+}
+
+func TestAnFAANotamWhoseLocationCannotBeResolvedNamesNoStation(t *testing.T) {
+	report, err := Decode("!ZZZ 09/001 QQQ TWY A CLSD", ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Station != "" || report.Format != "" {
+		t.Errorf("station = %q, format = %q, want neither", report.Station, report.Format)
+	}
+}
+
+func TestTheSummaryIsCutOnRunesNotBytes(t *testing.T) {
+	text := "!HNL 09/123 HNL RWY 08L/26R CLSD " + strings.Repeat("é", 200)
+	report, err := Decode(text, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !utf8.ValidString(report.Summary) {
+		t.Fatalf("the summary is not valid UTF-8: %q", report.Summary)
+	}
+	if n := utf8.RuneCountInString(report.Summary); n > summaryMaxRunes+1 {
+		t.Errorf("summary is %d runes", n)
+	}
+}
+
+func TestAnEffectiveDateWithASignIsRefused(t *testing.T) {
+	if _, ok := fullDate("-101011200"); ok {
+		t.Fatal("a signed year was accepted")
+	}
+	if _, ok := fullDate("2609221200"); !ok {
+		t.Fatal("a well formed date was refused")
+	}
+}
+
+func TestFlagsAreCapped(t *testing.T) {
+	report, err := Decode("METAR COR KJFK 221651Z AUTO 28012KT 10SM 24/12 A3012 "+strings.Repeat("COR ", MaxFlags+4), ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Flags) > MaxFlags {
+		t.Fatalf("%d flags, cap is %d", len(report.Flags), MaxFlags)
 	}
 }

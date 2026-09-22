@@ -16,8 +16,7 @@ func TestWebappFrequencyTokenShapeMatches(t *testing.T) {
 	if found == nil {
 		t.Fatal("no `export const TOKEN = /^...$/;` in the webapp's frequency/index.ts")
 	}
-	want := `(\d{1,4}\.\d{1,3}|\d{4,5})(?:[ \t]*(MHZ|KHZ))?`
-	if found[1] != want {
+	if want := frequency.ShapeExpr(); found[1] != want {
 		t.Errorf("the token shape is %q in the webapp and %q here", found[1], want)
 	}
 	if !strings.Contains(source, "type: '"+frequency.Type+"'") {
@@ -33,11 +32,21 @@ func TestWebappFrequencyTokenShapeMatches(t *testing.T) {
 func TestWebappFrequencyBandsMatch(t *testing.T) {
 	source := readWebappFile(t, "decorators", "frequency", "bands.ts")
 
+	named := map[string]int{"VHF_AIR_LOW": frequency.VHFAirLowKHz, "VHF_AIR_HIGH": frequency.VHFAirHighKHz}
+	bound := func(raw string) int {
+		if n, ok := named[raw]; ok {
+			return n
+		}
+		n, err := strconv.Atoi(raw)
+		if err != nil {
+			t.Fatalf("band bound %q is neither a number nor a named constant", raw)
+		}
+		return n
+	}
+
 	var bands []frequency.Band
-	for _, m := range regexp.MustCompile(`\{low: (\d+), high: (\d+), name: '([^']+)'\}`).FindAllStringSubmatch(source, -1) {
-		low, _ := strconv.Atoi(m[1])
-		high, _ := strconv.Atoi(m[2])
-		bands = append(bands, frequency.Band{LowKHz: low, HighKHz: high, Name: m[3]})
+	for _, m := range regexp.MustCompile(`\{low: (\w+), high: (\w+), name: '([^']+)'\}`).FindAllStringSubmatch(source, -1) {
+		bands = append(bands, frequency.Band{LowKHz: bound(m[1]), HighKHz: bound(m[2]), Name: m[3]})
 	}
 	if len(bands) != len(frequency.Bands) {
 		t.Fatalf("the webapp lists %d bands and Go %d", len(bands), len(frequency.Bands))
@@ -62,26 +71,15 @@ func TestWebappFrequencyBandsMatch(t *testing.T) {
 		}
 	}
 
-	if !strings.Contains(source, "export const OUTSIDE_BANDS = '"+frequency.OutsideBands+"';") {
-		t.Errorf("the webapp's OUTSIDE_BANDS is not %q", frequency.OutsideBands)
-	}
-}
-
-func TestWebappFrequencyRendersLikeGo(t *testing.T) {
-	source := readWebappFile(t, "decorators", "frequency", "index.spec.ts")
-
-	for _, token := range []string{"121.5", "118.305", "8992 KHZ", "1090.0", "243.0"} {
-		f, ok := frequency.ParseToken(token)
-		if !ok {
-			t.Fatalf("%q was refused", token)
-		}
-		d := frequency.Describe(f)
-		want := "band: '" + d.Band + "'"
-		if d.Band == frequency.OutsideBands {
-			want = "band: OUTSIDE_BANDS"
-		}
-		if !strings.Contains(source, want) {
-			t.Errorf("the webapp spec does not assert %s for %q", want, token)
+	for name, want := range map[string]string{
+		"OUTSIDE_BANDS": "'" + frequency.OutsideBands + "'",
+		"CHANNEL_25":    "'" + frequency.Channel25 + "'",
+		"CHANNEL_833":   "'" + frequency.Channel833 + "'",
+		"VHF_AIR_LOW":   strconv.Itoa(frequency.VHFAirLowKHz),
+		"VHF_AIR_HIGH":  strconv.Itoa(frequency.VHFAirHighKHz),
+	} {
+		if !strings.Contains(source, "export const "+name+" = "+want+";") {
+			t.Errorf("the webapp's %s is not %s", name, want)
 		}
 	}
 }

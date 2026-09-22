@@ -359,6 +359,28 @@ therefore `PageMapping`, widening the policy on a route that echoes a request
 value. It links to the coordinate page instead, which draws one.
 
 
+## The route stamp tells the author nothing
+
+`stampMultiTokenPost` discards the code `commitStamped` hands back, and the
+author gets no ephemeral, unlike the three card formats. The difference is what
+a refusal costs the reader: a card that does not fit leaves a document as raw
+text, so the author needs to know; a route that does not fit leaves every link
+in the message and loses only the map under it, which the author sees is
+missing. `commitStamped` still logs `HooksAirfieldsPropsTooLarge` or
+`HooksAirfieldsPropsUnmeasurable` for the operator.
+
+## The route map and the runway lines stop at the Mercator limit
+
+`route.ts` `placed` and `map.ts` `runwayShapes` apply `isRenderable` as the
+report, Cursor on Target and GeoJSON maps do. The route map is extent-only, so
+`use_map_instance`'s own out-of-range note never runs for it, and an
+unrenderable marker went straight into the source: the shipped database holds
+`NZSP` at latitude -90 (the South Pole station, with runway ends past -89.9),
+and `DEPLOC:NZSP` opened a blank map with nothing said. A marker past the limit
+now draws nothing and breaks the leg either side of it, and the overlay page's
+airfield branch refuses a position the build cannot place rather than rendering
+a canvas that returns null under a label.
+
 ## Testing the two surfaces
 
 `AirportHarness.tsx` stubs the one route both surfaces read and switches between
@@ -396,6 +418,16 @@ a parent effect could have subscribed, and the first request is the one that
 matters. Counting in a module variable and reading it during render does not
 work either, since the count would only reach the DOM on some later unrelated
 commit and a stale low reading passes the assertion it exists to fail.
+
+**The harness answers only the airfield route.** Everything else the panel
+fetches, the features route above all, is delegated to the real `fetch`:
+answering it from the harness would leave the map permanently on "Loading
+map…", because the map's own requests would land on the stub too.
+
+**`setStubbedFeatures` runs in the render body, not in the setup initializer.**
+The initializer does not re-run on `component.update()`, so a `features` prop
+passed to an update was silently ignored and the surface kept the answer from
+its first mount, with every test still green.
 
 `draws the map and none of the furniture` in `LocationMap.pw.tsx` is
 **flaky under coverage instrumentation**: it waits on a WebGL map being ready

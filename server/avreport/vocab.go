@@ -4,6 +4,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 )
 
 const (
@@ -101,23 +103,6 @@ func compass(degrees string) string {
 	return degrees + "°"
 }
 
-func withThousands(n int) string {
-	sign := ""
-	if n < 0 {
-		sign = "-"
-		n = -n
-	}
-	digits := strconv.Itoa(n)
-	var b strings.Builder
-	for i, r := range digits {
-		if i > 0 && (len(digits)-i)%3 == 0 {
-			b.WriteByte(',')
-		}
-		b.WriteRune(r)
-	}
-	return sign + b.String()
-}
-
 func windText(m []string) string {
 	direction, speed, gust, unit := m[1], m[2], m[3], m[4]
 	unitText := map[string]string{"KT": "kt", "MPS": "m/s", "KMH": "km/h"}[unit]
@@ -151,7 +136,7 @@ func visibilityMetersText(m []string) string {
 	if meters == 0 {
 		return "less than 50 m"
 	}
-	text := withThousands(meters) + " m"
+	text := airport.WithThousands(meters) + " m"
 	if m[2] != "" {
 		text += ", no directional variation"
 	}
@@ -211,7 +196,7 @@ func skyText(m []string) string {
 		return cover + " at an unknown height"
 	}
 	hundreds, _ := strconv.Atoi(m[2])
-	text := cover + " at " + withThousands(hundreds*100) + " ft"
+	text := cover + " at " + airport.WithThousands(hundreds*100) + " ft"
 	if kind, ok := cloudTypes[m[3]]; ok {
 		text += ", " + kind
 	}
@@ -251,11 +236,11 @@ func rvrText(m []string) string {
 	modifierText := map[string]string{"M": "less than ", "P": "more than ", "": ""}
 
 	lowValue, _ := strconv.Atoi(low)
-	text := "runway " + runway + ": " + modifierText[lowMod] + withThousands(lowValue) + unit
+	text := "runway " + runway + ": " + modifierText[lowMod] + airport.WithThousands(lowValue) + unit
 	if high != "" {
 		highValue, _ := strconv.Atoi(high)
-		text = "runway " + runway + ": " + modifierText[lowMod] + withThousands(lowValue) +
-			" to " + modifierText[highMod] + withThousands(highValue) + unit
+		text = "runway " + runway + ": " + modifierText[lowMod] + airport.WithThousands(lowValue) +
+			" to " + modifierText[highMod] + airport.WithThousands(highValue) + unit
 	}
 	switch trend {
 	case "U":

@@ -421,6 +421,42 @@ it was going to. Only wrappable text was ever squeezed.
 against a pixel count, so it fails on two lines whatever the line height
 resolves to, and checks the card still fits inside a sidebar-width column.
 
+### The label escaper covers the table delimiter
+
+`labelEscaper` escapes `\ [ ] * _ ` ~` and, since the aviation report
+decorator, `|`. Every earlier label was four letters, a date-time group or a
+coordinate, so a pipe could never reach a label; a report's label is the whole
+rest of its line, and a METAR written inside a markdown table row ended on the
+cell's closing pipe. The URL half was safe (`url.Values` encodes it) but the
+label half carried the raw pipe, GFM splits table cells before inline parsing,
+and the stored row was permanently broken.
+`TestAReportInATableRowKeepsTheCellDelimiterOutOfTheLabel` holds it. `<` and
+`>` are deliberately not escaped: Mattermost's renderer escapes raw HTML and the
+protected ranges already drop a match overlapping a complete tag or an
+autolink.
+
+### `MultiPostProps` checks the tokens are the decorator's own
+
+The interface signature cannot say "every token is mine", and the guarantee
+used to live only in the one caller (`stampMultiTokenPost` checks `Covers` and
+`OnlyType`) and in each implementer's own loop. The helper now refuses a token
+list carrying another type, so a second caller that forgot `OnlyType` cannot
+hand one decorator another's params to stamp a post with.
+
+### One cached client for every fetching decorator
+
+`webapp/src/decorators/cached_client.ts` is the five-state client the airfield
+and aviation report decorators share: TTL cache, ten-second abort, a failed
+answer never remembered, a 400 remembered as rejected, in-flight requests
+de-duplicated, and a hook that ignores an answer arriving after its key
+changed. It began as two byte-for-byte copies (`airport.ts` and
+`avreport/client.ts`) that could drift on any of those rules. The cache is
+bounded at `MAX_CACHED_ANSWERS`, evicting the oldest insertion, because the
+report cache is keyed by author text rather than by a finite database and a
+long session in a busy channel grew it without limit. Eviction of a stale entry
+happens in `request`, never in `fresh`, so nothing mutates module state during
+a render.
+
 ### The tagger reports every token
 
 `Result` carries `Tokens`, every accepted token in message order with its type,

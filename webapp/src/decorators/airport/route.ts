@@ -1,7 +1,8 @@
-import {positionPayload} from './map';
+import {AIRFIELD_COLOR, positionPayload} from './map';
 
 import type {MapMarker} from '../location/map/overlay';
 import type {MapShape} from '../location/map/paint';
+import {isRenderable} from '../location/map/span';
 
 import type {AirportKey, AirportPayload} from './index';
 
@@ -13,7 +14,7 @@ export const AIRFIELDS_PROPS_VERSION = 1;
 
 export const MAX_ROUTE_AIRFIELDS = 64;
 
-const ROUTE_COLOR = '#b8770f';
+const ROUTE_COLOR = AIRFIELD_COLOR;
 
 const LEG_WIDTH = '2';
 
@@ -43,7 +44,7 @@ function readEntry(value: unknown): RouteAirfield | null {
     const ident = readString(rawEntry, 'ident');
     const code = readString(rawEntry, 'code');
     const name = readString(rawEntry, 'name');
-    if (ident === null || code === null || name === null || !(/^[A-Z]{4}$/).test(ident)) {
+    if (ident === null || code === null || name === null || !(/^[A-Z]{4}$/).test(ident) || !(/^[A-Z]{3,4}$/).test(code)) {
         return null;
     }
 
@@ -95,7 +96,7 @@ function placed(airfield: RouteAirfield): {lat: number; lon: number} | null {
         return null;
     }
     const coord = positionPayload({format: airfield.format, value: airfield.value})?.coord;
-    if (!coord) {
+    if (!coord || !isRenderable(coord.lat.decimal)) {
         return null;
     }
     return {lat: coord.lat.decimal, lon: coord.lon.decimal};

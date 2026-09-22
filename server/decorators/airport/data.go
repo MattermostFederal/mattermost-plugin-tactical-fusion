@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"encoding/csv"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"unicode"
@@ -91,6 +92,32 @@ func Idents() []string {
 }
 
 func IATACount() int { return len(iataIndex) }
+
+func RunwayCount() int {
+	n := 0
+	for _, records := range runways {
+		n += len(records)
+	}
+	return n
+}
+
+func FrequencyCount() int {
+	n := 0
+	for _, records := range frequencies {
+		n += len(records)
+	}
+	return n
+}
+
+func MilitaryCount() int {
+	n := 0
+	for _, a := range airfields {
+		if a.Military != "" {
+			n++
+		}
+	}
+	return n
+}
 
 func runwaysOf(ident string) []runwayRecord { return runways[ident] }
 
@@ -325,8 +352,9 @@ func parseFrequencies(source string, fields map[string]Airport) (map[string][]fr
 		if row[1] == "" {
 			return nil, fmt.Errorf("%s: a frequency has no type", ident)
 		}
-		if _, err := strconv.ParseFloat(row[3], 64); err != nil {
-			return nil, fmt.Errorf("%s frequency: %w", ident, err)
+		mhz, err := strconv.ParseFloat(row[3], 64)
+		if err != nil || math.IsNaN(mhz) || math.IsInf(mhz, 0) || mhz < 0 {
+			return nil, fmt.Errorf("%s frequency: %q is not a frequency", ident, row[3])
 		}
 
 		out[ident] = append(out[ident], frequencyRecord{Type: row[1], Description: row[2], MHz: row[3]})

@@ -310,7 +310,7 @@ func parseISO(value string) (ISO, bool) {
 		// years are clamped to a single century, but RFC 3339 has no such
 		// limit and "1918-11-11T11:00:00Z" is an ordinary thing to write.
 		millis := parsed.UnixMilli()
-		if millis < minInstantMillis || millis > maxInstantMillis {
+		if millis < MinInstantMillis || millis > MaxInstantMillis {
 			return ISO{}, false
 		}
 

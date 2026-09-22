@@ -147,6 +147,28 @@ or `MAX_REPORT_PERIODS` rather than refusing the blob. That is acceptable for
 rows where it was not for GeoJSON rings: a shortened list of readings is still a
 true list of readings, and a shortened ring is a polygon nobody posted.
 
+## What the decoders refused to panic on
+
+`expandContractions` indexed byte 0 of a word after trimming its punctuation,
+and a word that was nothing but punctuation (a lone `.`, an ellipsis) trimmed
+to nothing. The decoder runs unrecovered on `/api/v1/avreport` and
+`/decorate/avreport`, so any logged-in reader could crash the plugin with one
+FAA NOTAM ending in a full stop. An empty ICAO `A)` line reached
+`strings.Fields(a)[0]` the same way. Both are held by tests now, and the ICAO
+station is admitted only when it is four letters, the shape every other caller
+of `airport.Lookup` enforces. `faaStation` answers nothing rather than
+inventing a `K`-prefixed five-letter ident when no lookup resolves the
+affected location. The summary is cut on runes through `sanitizeText`, because
+a byte cut landed inside a multibyte rune and put invalid UTF-8 into the props.
+`Flags` is capped at `MaxFlags`, as every other list in the blob is, and the
+webapp caps it to the same number.
+
+`messageShowsAvReport` consults the kind's own switch after the decode, so a
+TAF whose kind is off no longer suppresses a `.cot` attachment for a card that
+`recognizeAvReport` would then decline. The bridge classifies a report against
+the request's reference time, never the wall clock, which is what makes its
+answer a pure function of the request.
+
 ## The webapp
 
 `webapp/src/avreport/` holds the reader, the client for the link, the card,

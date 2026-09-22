@@ -193,11 +193,12 @@ const Runways: React.FC<{runways: AirportRunway[]}> = ({runways}) => {
 
     return (
         <>
-            <p style={styles.section}>{'Runways'}</p>
+            <h3 style={styles.section}>{'Runways'}</h3>
             <table style={styles.table}>
                 <tbody>
-                    {runways.map((runway) => (
-                        <tr key={runway.designation}>
+                    {runways.map((runway, index) => (
+                        // eslint-disable-next-line react/no-array-index-key
+                        <tr key={`${runway.designation}-${index}`}>
                             <th
                                 scope='row'
                                 style={styles.th}
@@ -219,7 +220,7 @@ const Frequencies: React.FC<{frequencies: AirportFrequency[]}> = ({frequencies})
 
     return (
         <>
-            <p style={styles.section}>{'Frequencies'}</p>
+            <h3 style={styles.section}>{'Frequencies'}</h3>
             <table style={styles.table}>
                 <tbody>
                     {frequencies.map((frequency, index) => (
@@ -238,7 +239,7 @@ const Frequencies: React.FC<{frequencies: AirportFrequency[]}> = ({frequencies})
                             <td style={styles.td}>{frequency.mhz}</td>
                             <td style={styles.copyCell}>
                                 <CopyButton
-                                    label={`Copy ${frequency.type} frequency`}
+                                    label={`Copy ${frequency.type}${frequency.description === '' ? '' : ` ${frequency.description}`} ${frequency.mhz}`}
                                     value={frequency.mhz}
                                 />
                             </td>

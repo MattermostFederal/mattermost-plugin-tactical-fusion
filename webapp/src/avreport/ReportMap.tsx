@@ -1,14 +1,11 @@
 import React, {useState} from 'react';
 
+import {REPORT_COLOR, drawsNothing, mapLabel, placed, radiusEllipse} from './map';
 import type {Report} from './types';
-import {headingOf, isPlaced} from './types';
 
-import {positionPayload} from '../decorators/airport/map';
 import type {Camera} from '../decorators/location/map/camera';
 import LocationMap, {INLINE_MAP_HEIGHT, MAP_HEIGHT} from '../decorators/location/map/LocationMap';
 import {useNearViewport} from '../decorators/location/map/near_viewport';
-import type {MapEllipse} from '../decorators/location/map/overlay';
-import {isRenderable} from '../decorators/location/map/span';
 import {overlayPageHref} from '../decorators/location/map/view';
 import {INLINE_ID, isRowVisible} from '../decorators/location/rows';
 import {withTheme} from '../decorators/theme';
@@ -16,44 +13,15 @@ import {useFeatures} from '../features/store';
 import {pluginBaseUrl} from '../plugin_url';
 import {usePreferences} from '../preferences/store';
 
+export {REPORT_COLOR, drawsNothing, mapLabel} from './map';
+
 export const REPORT_MAP_MAX_WIDTH_PX = 640;
-
-const METERS_PER_NAUTICAL_MILE = 1852;
-
-export const REPORT_COLOR = '#2e7d9a';
 
 const styles: Record<string, React.CSSProperties> = {
     frame: {maxWidth: REPORT_MAP_MAX_WIDTH_PX, padding: '0 12px 8px'},
     reserved: {height: MAP_HEIGHT},
     reservedInline: {height: INLINE_MAP_HEIGHT},
 };
-
-export function placed(report: Report): {lat: number; lon: number} | null {
-    if (!isPlaced(report)) {
-        return null;
-    }
-    const coord = positionPayload({format: report.format, value: report.value})?.coord;
-    if (!coord || !isRenderable(coord.lat.decimal)) {
-        return null;
-    }
-    return {lat: coord.lat.decimal, lon: coord.lon.decimal};
-}
-
-export function radiusEllipse(report: Report): MapEllipse | undefined {
-    if (report.radiusNm === '') {
-        return undefined;
-    }
-    const radius = Number(report.radiusNm);
-    if (!Number.isFinite(radius) || radius <= 0) {
-        return undefined;
-    }
-    const meters = radius * METERS_PER_NAUTICAL_MILE;
-    return {major: meters, minor: meters, angle: 0, color: REPORT_COLOR};
-}
-
-export function drawsNothing(report: Report): boolean {
-    return placed(report) === null;
-}
 
 function coordinatePageHref(report: Report): string {
     const params = new URLSearchParams({f: report.format, v: report.value});
@@ -65,11 +33,6 @@ function largerHref(pageEnabled: boolean, report: Report, postId: string | undef
         return undefined;
     }
     return postId ? overlayPageHref(postId) : coordinatePageHref(report);
-}
-
-export function mapLabel(report: Report): string {
-    const what = report.stationName === '' ? headingOf(report) : `${report.stationName} (${report.station})`;
-    return report.radiusNm === '' ? what : `${what}, ${report.radiusNm} NM radius`;
 }
 
 export const ReportMapCanvas: React.FC<{

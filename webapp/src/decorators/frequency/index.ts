@@ -26,11 +26,13 @@ export interface FrequencyDetails {
     use: string;
 }
 
-function toKHz(number: string, unit: string): number | null {
+type Unit = 'MHZ' | 'KHZ';
+
+function toKHz(number: string, unit: Unit | ''): number | null {
     const [whole, fraction] = number.split('.');
     const decimal = fraction !== undefined;
-    const assumed = decimal ? 'MHZ' : 'KHZ';
-    const resolved = unit === '' ? assumed : unit;
+    const assumed: Unit = decimal ? 'MHZ' : 'KHZ';
+    const resolved: Unit = unit === '' ? assumed : unit;
 
     const wholeN = Number(whole);
     const fractionN = decimal ? Number(`${fraction}000`.slice(0, 3)) : 0;
@@ -49,7 +51,11 @@ export function parseToken(token: string): FrequencyPayload | null {
     if (m === null) {
         return null;
     }
-    const khz = toKHz(m[1], m[2] ?? '');
+    const unit = m[2] ?? '';
+    if (unit !== '' && unit !== 'MHZ' && unit !== 'KHZ') {
+        return null;
+    }
+    const khz = toKHz(m[1], unit);
     if (khz === null || khz < MIN_KHZ || khz > MAX_KHZ) {
         return null;
     }

@@ -129,6 +129,7 @@ var labelEscaper = strings.NewReplacer(
 	`_`, `\_`,
 	"`", "\\`",
 	`~`, `\~`,
+	`|`, `\|`,
 )
 
 // Tagger rewrites tokens in a message into decorator links.

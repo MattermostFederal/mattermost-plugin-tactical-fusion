@@ -7,11 +7,6 @@ import (
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
 )
 
-const (
-	minInstantMillis int64 = 0
-	maxInstantMillis int64 = 7_258_118_400_000
-)
-
 func resolveGroup(day, hour, minute string, ref time.Time) (time.Time, bool) {
 	d, _ := strconv.Atoi(day)
 	h, _ := strconv.Atoi(hour)
@@ -20,7 +15,7 @@ func resolveGroup(day, hour, minute string, ref time.Time) (time.Time, bool) {
 }
 
 func fullDate(raw string) (time.Time, bool) {
-	if len(raw) != 10 {
+	if len(raw) != 10 || !isDigits(raw) {
 		return time.Time{}, false
 	}
 	year, err := strconv.Atoi(raw[0:2])
@@ -63,4 +58,13 @@ func dayHourText(day, hour string) string {
 
 func dayHourMinuteText(day, hour, minute string) string {
 	return "day " + day + " at " + hour + ":" + minute + "Z"
+}
+
+func isDigits(s string) bool {
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }

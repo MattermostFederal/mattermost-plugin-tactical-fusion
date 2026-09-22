@@ -51,11 +51,11 @@ const Footer: React.FC = () => (
 
 export const ReportView: React.FC<{report: Report; postId?: string}> = ({report, postId}) => (
     <div data-testid='avreport-panel'>
-        <p
+        <h2
             style={styles.heading}
             data-testid='avreport-heading'
-        >{headingOf(report)}</p>
-        <p style={styles.subhead}><StationLine report={report}/></p>
+        >{headingOf(report)}</h2>
+        {report.stationName !== '' && <p style={styles.subhead}><StationLine report={report}/></p>}
         {report.summary !== '' && (
             <p
                 style={styles.summary}

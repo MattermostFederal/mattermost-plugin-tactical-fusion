@@ -159,6 +159,9 @@ func TestDescribeNamesTheBandAndTheUse(t *testing.T) {
 }
 
 func TestEveryBandIsOrderedAndDisjoint(t *testing.T) {
+	if len(Bands) == 0 || len(Allocations) == 0 {
+		t.Fatal("the band or allocation catalog is empty; the sweeps below would pass vacuously")
+	}
 	last := 0
 	for _, band := range Bands {
 		if band.LowKHz <= last || band.HighKHz < band.LowKHz {
@@ -173,7 +176,7 @@ func TestEveryBandIsOrderedAndDisjoint(t *testing.T) {
 
 func TestEveryAllocationLiesInsideABand(t *testing.T) {
 	for _, allocation := range Allocations {
-		if BandOf(allocation.KHz) == OutsideBands {
+		if bandOf(allocation.KHz) == OutsideBands {
 			t.Errorf("%d kHz (%s) is inside no band", allocation.KHz, allocation.Use)
 		}
 	}

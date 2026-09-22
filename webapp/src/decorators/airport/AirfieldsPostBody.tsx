@@ -84,10 +84,16 @@ export const AirfieldsPostBody: React.FC<Props> = ({post, compactDisplay}) => {
             <span style={styles.message}>{renderMessage(message, links)}</span>
             {!compactDisplay && (
                 <ErrorBoundary>
-                    <ol style={styles.legend}>
+                    <ol
+                        style={styles.legend}
+                        aria-label='The airfields in this post'
+                    >
                         {route.airfields.map((airfield, index) => (
                             <li key={`${airfield.code}-${index}`}>
-                                <span style={styles.number}>{`${index + 1}.`}</span>
+                                <span
+                                    style={styles.number}
+                                    aria-hidden='true'
+                                >{`${index + 1}.`}</span>
                                 <LinkButton
                                     onClick={() => {
                                         setSelection({type: 'airport', payload: payloadFor(airfield)});

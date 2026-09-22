@@ -176,7 +176,7 @@ func (p *Plugin) buildLink(req bridgeclient.LinkRequest) (bridgeclient.LinkRespo
 
 	params, parsed := decorator.Parse(token, ref)
 	switch {
-	case parsed && p.formatEnabled(decorator.Type(), params):
+	case parsed && p.formatEnabled(decorator.Type(), params, ref):
 	case parsed || parsesWithEveryFormat(decorator.Type(), token, ref):
 		return bridgeclient.LinkResponse{}, &refusedDisabled
 	default:
@@ -198,7 +198,7 @@ func (p *Plugin) buildLink(req bridgeclient.LinkRequest) (bridgeclient.LinkRespo
 	}, nil
 }
 
-func (p *Plugin) formatEnabled(typ string, params url.Values) bool {
+func (p *Plugin) formatEnabled(typ string, params url.Values, ref time.Time) bool {
 	switch typ {
 	case dtg.Type:
 		formats := p.dtgFormats()
@@ -215,16 +215,7 @@ func (p *Plugin) formatEnabled(typ string, params url.Values) bool {
 	case frequency.Type:
 		return p.frequencyFormats().Frequency
 	case avreport.Type:
-		formats := p.avreportFormats()
-		switch avreport.KindOf(params.Get(avreport.ParamValue), time.Now().UTC()) {
-		case avreport.KindMETAR, avreport.KindSPECI:
-			return formats.METAR
-		case avreport.KindTAF:
-			return formats.TAF
-		case avreport.KindNOTAM:
-			return formats.NOTAM
-		}
-		return false
+		return avreport.KindEnabled(p.avreportFormats(), avreport.KindOf(params.Get(avreport.ParamValue), ref))
 	}
 
 	return true

@@ -275,3 +275,13 @@ func TestLooksLikeHeader(t *testing.T) {
 		}
 	}
 }
+
+func TestAReportInATableRowKeepsTheCellDelimiterOutOfTheLabel(t *testing.T) {
+	out := decorate(t, "| "+metarLine+" |")
+	if strings.Contains(out, "A3012 |](") {
+		t.Fatalf("a raw pipe reached the link label: %q", out)
+	}
+	if !strings.Contains(out, `A3012 \|](`) {
+		t.Fatalf("the pipe was not escaped in the label: %q", out)
+	}
+}

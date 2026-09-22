@@ -55,6 +55,12 @@ plugin names, so the reader still gets the megahertz and kilohertz readings and
 a copy button. Refusing it would make the decorator disagree with the author
 about whether they wrote a frequency.
 
+The channel note is the same duplicate: `Channel25`, `Channel833` and the VHF
+air-band edges exist as exported constants on both sides and
+`TestWebappFrequencyBandsMatch` holds them, because a note reworded on one
+side alone made the page and the panel disagree about the same frequency with
+every test green.
+
 ## Switch
 
 `EnableFrequency`, alone in a **Frequencies** section, default on. Like the

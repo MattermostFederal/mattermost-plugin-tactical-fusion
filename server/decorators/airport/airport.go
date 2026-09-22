@@ -113,7 +113,7 @@ type Reference struct {
 
 var ErrParamsConflict = errors.New("airport: exactly one of v and i is required")
 
-var ErrParamsInvalid = errors.New("airport: not an airfield code this plugin issued")
+var errParamsInvalid = errors.New("airport: not an airfield code this plugin issued")
 
 func ReferenceFromParams(params url.Values) (Reference, error) {
 	hasIdent, hasIATA := params.Has(ParamValue), params.Has(ParamIATA)
@@ -124,14 +124,14 @@ func ReferenceFromParams(params url.Values) (Reference, error) {
 	if hasIdent {
 		ident := params.Get(ParamValue)
 		if !MatchesIdentShape(ident) {
-			return Reference{}, ErrParamsInvalid
+			return Reference{}, errParamsInvalid
 		}
 		return Reference{Ident: ident}, nil
 	}
 
 	code := params.Get(ParamIATA)
 	if !MatchesIATAShape(code) {
-		return Reference{}, ErrParamsInvalid
+		return Reference{}, errParamsInvalid
 	}
 	return Reference{IATA: code}, nil
 }

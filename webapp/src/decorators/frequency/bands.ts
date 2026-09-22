@@ -4,10 +4,18 @@ export interface Band {
     name: string;
 }
 
+export const CHANNEL_25 = '25 kHz channel';
+
+export const CHANNEL_833 = '8.33 kHz channel';
+
+export const VHF_AIR_LOW = 118000;
+
+export const VHF_AIR_HIGH = 136975;
+
 export const BANDS: readonly Band[] = [
     {low: 2000, high: 30000, name: 'HF aeronautical'},
     {low: 108000, high: 117975, name: 'VHF navigation'},
-    {low: 118000, high: 136975, name: 'VHF air band'},
+    {low: VHF_AIR_LOW, high: VHF_AIR_HIGH, name: 'VHF air band'},
     {low: 156000, high: 162025, name: 'VHF marine'},
     {low: 225000, high: 400000, name: 'UHF military air band'},
     {low: 406000, high: 406100, name: 'Distress beacons'},
@@ -30,9 +38,6 @@ export const ALLOCATIONS: readonly Allocation[] = [
 
 export const OUTSIDE_BANDS = 'Outside the aviation bands this plugin names';
 
-const VHF_AIR_LOW = 118000;
-const VHF_AIR_HIGH = 136975;
-
 export function bandOf(khz: number): string {
     return BANDS.find((band) => khz >= band.low && khz <= band.high)?.name ?? OUTSIDE_BANDS;
 }
@@ -41,7 +46,7 @@ export function channelOf(khz: number): string {
     if (khz < VHF_AIR_LOW || khz > VHF_AIR_HIGH) {
         return '';
     }
-    return khz % 25 === 0 ? '25 kHz channel' : '8.33 kHz channel';
+    return khz % 25 === 0 ? CHANNEL_25 : CHANNEL_833;
 }
 
 export function allocationOf(khz: number): string {

@@ -8,10 +8,18 @@ type Band struct {
 	Name    string
 }
 
+const (
+	VHFAirLowKHz  = 118_000
+	VHFAirHighKHz = 136_975
+
+	Channel25  = "25 kHz channel"
+	Channel833 = "8.33 kHz channel"
+)
+
 var Bands = []Band{
 	{2_000, 30_000, "HF aeronautical"},
 	{108_000, 117_975, "VHF navigation"},
-	{118_000, 136_975, "VHF air band"},
+	{VHFAirLowKHz, VHFAirHighKHz, "VHF air band"},
 	{156_000, 162_025, "VHF marine"},
 	{225_000, 400_000, "UHF military air band"},
 	{406_000, 406_100, "Distress beacons"},
@@ -46,15 +54,15 @@ type Details struct {
 func Describe(f Frequency) Details {
 	return Details{
 		Token:   f.Token,
-		MHz:     MHzText(f.KHz),
+		MHz:     mhzText(f.KHz),
 		KHz:     strconv.Itoa(f.KHz),
-		Band:    BandOf(f.KHz),
-		Channel: ChannelOf(f.KHz),
-		Use:     UseOf(f.KHz),
+		Band:    bandOf(f.KHz),
+		Channel: channelOf(f.KHz),
+		Use:     useOf(f.KHz),
 	}
 }
 
-func MHzText(khz int) string {
+func mhzText(khz int) string {
 	return strconv.Itoa(khz/1000) + "." + pad3(khz%1000)
 }
 
@@ -66,7 +74,7 @@ func pad3(n int) string {
 	return s
 }
 
-func BandOf(khz int) string {
+func bandOf(khz int) string {
 	for _, band := range Bands {
 		if khz >= band.LowKHz && khz <= band.HighKHz {
 			return band.Name
@@ -75,17 +83,17 @@ func BandOf(khz int) string {
 	return OutsideBands
 }
 
-func ChannelOf(khz int) string {
-	if khz < 118_000 || khz > 136_975 {
+func channelOf(khz int) string {
+	if khz < VHFAirLowKHz || khz > VHFAirHighKHz {
 		return ""
 	}
 	if khz%25 == 0 {
-		return "25 kHz channel"
+		return Channel25
 	}
-	return "8.33 kHz channel"
+	return Channel833
 }
 
-func UseOf(khz int) string {
+func useOf(khz int) string {
 	for _, allocation := range Allocations {
 		if allocation.KHz == khz {
 			return allocation.Use

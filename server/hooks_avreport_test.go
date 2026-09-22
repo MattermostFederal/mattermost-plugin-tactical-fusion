@@ -147,25 +147,96 @@ func TestAvReportLeavesTheMessageExactlyAsWritten(t *testing.T) {
 	}
 }
 
+func multiLineReportOfKind(t *testing.T, kind string) string {
+	t.Helper()
+
+	switch kind {
+	case avreport.KindMETAR:
+		return reportFence("metar", reportMETAR)
+	case avreport.KindSPECI:
+		return reportFence("speci", strings.Replace(reportMETAR, "METAR", "SPECI", 1))
+	case avreport.KindTAF:
+		return reportTAF
+	case avreport.KindNOTAM:
+		return reportICAONotam
+	}
+	t.Fatalf("no fixture for kind %q; add one when a kind is added", kind)
+	return ""
+}
+
+func kindSwitchOff(t *testing.T, kind string) func(c *configuration) {
+	t.Helper()
+
+	switch kind {
+	case avreport.KindMETAR, avreport.KindSPECI:
+		return func(c *configuration) { c.EnableAvReportMETAR = false }
+	case avreport.KindTAF:
+		return func(c *configuration) { c.EnableAvReportTAF = false }
+	case avreport.KindNOTAM:
+		return func(c *configuration) { c.EnableAvReportNOTAM = false }
+	}
+	t.Fatalf("no switch for kind %q; add one when a kind is added", kind)
+	return nil
+}
+
+func kindFamily(kind string) string {
+	if kind == avreport.KindSPECI {
+		return avreport.KindMETAR
+	}
+	return kind
+}
+
 func TestAvReportIsSilentWhenTheAdminTurnedItOff(t *testing.T) {
-	for name, mutate := range map[string]func(c *configuration){
-		"card":   func(c *configuration) { c.EnableAvReportCard = false },
-		"parent": func(c *configuration) { c.EnableAvReport = false },
-		"taf":    func(c *configuration) { c.EnableAvReportTAF = false },
-	} {
+	type switchCase struct {
+		mutate  func(c *configuration)
+		offKind string
+	}
+	cases := map[string]switchCase{
+		"card":   {func(c *configuration) { c.EnableAvReportCard = false }, ""},
+		"parent": {func(c *configuration) { c.EnableAvReport = false }, ""},
+	}
+	for _, kind := range avreport.Kinds {
+		cases["kind "+kind] = switchCase{kindSwitchOff(t, kind), kind}
+	}
+
+	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
 			p := newTestPlugin(t, "https://example.com", true)
-			withConfiguration(p, mutate)
+			withConfiguration(p, c.mutate)
 			api := p.API.(*fakeAPI)
 
-			updated := p.decoratePost(&model.Post{Message: reportTAF, UserId: testUserID}, hookRef)
-			if updated != nil && updated.Type != "" {
-				t.Fatalf("Type = %q with the switch off", updated.Type)
+			for _, kind := range avreport.Kinds {
+				message := multiLineReportOfKind(t, kind)
+				refused := c.offKind == "" || kindFamily(kind) == kindFamily(c.offKind)
+				if !refused {
+					stampedReport(t, p, message)
+					continue
+				}
+				updated := p.decoratePost(&model.Post{Message: message, UserId: testUserID}, hookRef)
+				if updated != nil && updated.Type != "" {
+					t.Fatalf("%s: Type = %q with the switch off", kind, updated.Type)
+				}
 			}
 			if len(api.ephemeral) != 0 || len(api.warnings) != 0 {
 				t.Fatal("a switched-off stamper spoke")
 			}
 		})
+	}
+}
+
+func TestAKindThatIsOffDoesNotSuppressAnAttachment(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	withConfiguration(p, func(c *configuration) { c.EnableAvReportTAF = false })
+	api := p.API.(*fakeAPI)
+	api.files = map[string]*model.FileInfo{
+		testFileID: {Id: testFileID, Name: "track.cot", Size: int64(len(cotEventXML)), CreatorId: testUserID},
+	}
+	api.fileContent = map[string][]byte{testFileID: []byte(cotEventXML)}
+
+	post := &model.Post{Message: reportTAF, FileIds: []string{testFileID}, UserId: testUserID}
+	updated := p.decoratePost(post, hookRef)
+	if updated == nil || updated.Type != cot.PostType {
+		t.Fatalf("a TAF whose kind is off still suppressed the attachment: %+v", updated)
 	}
 }
 
@@ -406,7 +477,7 @@ func TestRunStamperRecoversAndHandsBackTheStrippedPost(t *testing.T) {
 	post := &model.Post{Message: reportTAF, UserId: testUserID, Type: avreport.PostType}
 	post.AddProp(avreport.PropsKey, map[string]any{"forged": true})
 
-	updated, stamped := p.runStamper(post, true, errcode.HooksAvReportPanic, "tactical-fusion: test panic",
+	updated, stamped := p.runStamper(post, func() bool { return true }, errcode.HooksAvReportPanic, "tactical-fusion: test panic",
 		func(*model.Post) (*model.Post, bool) { panic(errors.New("boom")) })
 
 	if stamped {
@@ -428,10 +499,10 @@ func TestRunStamperNeverRecognizesWhenOffOrTyped(t *testing.T) {
 	called := false
 	recognize := func(post *model.Post) (*model.Post, bool) { called = true; return post, true }
 
-	if _, stamped := p.runStamper(&model.Post{Message: "x"}, false, 0, "", recognize); stamped || called {
+	if _, stamped := p.runStamper(&model.Post{Message: "x"}, func() bool { return false }, 0, "", recognize); stamped || called {
 		t.Fatal("a switched-off stamper reached its recognizer")
 	}
-	if _, stamped := p.runStamper(&model.Post{Message: "x", Type: "custom_other"}, true, 0, "", recognize); stamped || called {
+	if _, stamped := p.runStamper(&model.Post{Message: "x", Type: "custom_other"}, func() bool { return true }, 0, "", recognize); stamped || called {
 		t.Fatal("a typed post reached the recognizer")
 	}
 }
@@ -568,5 +639,20 @@ func TestAvReportIsInTheStripTable(t *testing.T) {
 	key, ok := stampedPropsKey(avreport.PostType)
 	if !ok || key != avreport.PropsKey {
 		t.Fatalf("stampedPropsKey(%q) = %q, %v", avreport.PostType, key, ok)
+	}
+}
+
+func TestTheSwitchIsReadInsideTheRecover(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	api := p.API.(*fakeAPI)
+
+	updated, stamped := p.runStamper(&model.Post{Message: "x"}, func() bool { panic("switch") }, errcode.HooksAvReportPanic, "tactical-fusion: test panic",
+		func(post *model.Post) (*model.Post, bool) { return post, true })
+
+	if stamped || updated != nil {
+		t.Fatalf("a panicking switch read escaped the recover: %+v, %v", updated, stamped)
+	}
+	if len(api.warnCodes) == 0 || api.warnCodes[len(api.warnCodes)-1] != errcode.HooksAvReportPanic {
+		t.Fatalf("the recover did not log its code: %v", api.warnCodes)
 	}
 }

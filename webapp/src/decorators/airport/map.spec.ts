@@ -85,3 +85,9 @@ test.describe('airportMapFromBlob', () => {
         }
     });
 });
+
+test('a runway end past the Mercator limit draws no line', () => {
+    const shapes = runwayShapes([{ends: [{format: 'dd', value: '-89.9659,-1.0000'}, {format: 'dd', value: '-89.9950,-1.0000'}]}]);
+
+    expect(shapes).toEqual([]);
+});

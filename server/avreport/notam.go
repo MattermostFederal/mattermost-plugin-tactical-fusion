@@ -7,7 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
+
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 )
 
 //go:embed data/contractions.csv
@@ -157,7 +158,7 @@ func faaStation(affected string) string {
 			return candidate
 		}
 	}
-	return "K" + affected
+	return ""
 }
 
 func decodeICAONotam(text string, ref time.Time) (Report, bool) {
@@ -192,8 +193,10 @@ func decodeICAONotam(text string, ref time.Time) (Report, bool) {
 	if q, ok := fields["Q"]; ok {
 		decodeQLine(&report, q)
 	}
-	if a, ok := fields["A"]; ok {
-		report.Station = strings.Fields(a)[0]
+	if a, ok := fields["A"]; ok && a != "" {
+		if codes := strings.Fields(a); airport.MatchesIdentShape(codes[0]) {
+			report.Station = codes[0]
+		}
 		report.Rows = append(report.Rows, Row{Label: "Location", Value: a})
 	}
 	if b, ok := fields["B"]; ok {
@@ -319,13 +322,11 @@ func expandContractions(text string) string {
 	words := strings.Fields(text)
 	for i, word := range words {
 		core := strings.TrimRightFunc(word, func(r rune) bool { return r == '.' || r == ',' || r == ';' || r == ':' })
-		suffix := word[len(core):]
-		if expansion, ok := contractions[core]; ok {
-			words[i] = expansion + suffix
+		if core == "" {
 			continue
 		}
-		if unicode.IsUpper(rune(core[0])) && len(core) > 1 {
-			words[i] = word
+		if expansion, ok := contractions[core]; ok {
+			words[i] = expansion + word[len(core):]
 		}
 	}
 	return strings.Join(words, " ")
@@ -344,9 +345,5 @@ func summarizeNotam(report Report) string {
 	if len(parts) == 0 {
 		return ""
 	}
-	text := strings.Join(parts, "; ")
-	if len(text) > 160 {
-		text = text[:157] + "..."
-	}
-	return text
+	return sanitizeText(strings.Join(parts, "; "), summaryMaxRunes)
 }

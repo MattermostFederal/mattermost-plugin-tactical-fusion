@@ -102,10 +102,18 @@ func ddToken(lat, lon float64) string {
 		"," + strconv.FormatFloat(lon, 'f', coordinateDigits, 64)
 }
 
-func endCoordinate(lat, lon float64) (Coordinate, bool) {
+func DDToken(lat, lon float64) (string, bool) {
 	token := ddToken(lat, lon)
 	parsed, ok := location.Parse(location.FormatDD, token)
 	if !ok || parsed.Canonical() != token {
+		return "", false
+	}
+	return token, true
+}
+
+func endCoordinate(lat, lon float64) (Coordinate, bool) {
+	token, ok := DDToken(lat, lon)
+	if !ok {
 		return Coordinate{}, false
 	}
 	return Coordinate{Format: string(location.FormatDD), Token: token}, true
@@ -187,7 +195,7 @@ func feetText(feet *int) string {
 	if feet == nil {
 		return ""
 	}
-	return withThousands(*feet) + " ft"
+	return WithThousands(*feet) + " ft"
 }
 
 func typeText(raw string) string {
@@ -227,7 +235,7 @@ func elevationText(a Airport) string {
 	return feetText(a.ElevationFt)
 }
 
-func withThousands(n int) string {
+func WithThousands(n int) string {
 	sign := ""
 	if n < 0 {
 		sign = "-"

@@ -22,6 +22,7 @@ func TestWebappAvReportPostTypeMatches(t *testing.T) {
 		"MAX_REPORT_ROWS":        strconv.Itoa(avreport.MaxRows),
 		"MAX_REPORT_PERIODS":     strconv.Itoa(avreport.MaxPeriods),
 		"MAX_REPORT_UNKNOWN":     strconv.Itoa(avreport.MaxUnknown),
+		"MAX_REPORT_FLAGS":       strconv.Itoa(avreport.MaxFlags),
 	} {
 		pattern := regexp.MustCompile(`export const ` + name + ` = '?([^';]+)'?;`)
 		m := pattern.FindStringSubmatch(source)
@@ -55,9 +56,8 @@ func TestWebappAvReportKindsMatch(t *testing.T) {
 		webapp = append(webapp, strings.Trim(strings.TrimSpace(item), "'"))
 	}
 
-	want := []string{avreport.KindMETAR, avreport.KindSPECI, avreport.KindTAF, avreport.KindNOTAM}
-	if strings.Join(webapp, ",") != strings.Join(want, ",") {
-		t.Errorf("KINDS = %v in the webapp, %v in Go", webapp, want)
+	if strings.Join(webapp, ",") != strings.Join(avreport.Kinds, ",") {
+		t.Errorf("KINDS = %v in the webapp, %v in Go", webapp, avreport.Kinds)
 	}
 }
 

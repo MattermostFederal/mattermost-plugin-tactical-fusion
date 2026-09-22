@@ -40,3 +40,14 @@ test('unescapes the label the tagger escaped', () => {
 test('finds nothing in plain text', () => {
     expect(decoratorLinks('DEPLOC:PHIK ARRLOC:PGUA')).toEqual([]);
 });
+
+test('refuses a link whose href is not this origin, whatever its path says', () => {
+    for (const href of [
+        'javascript:alert(1)', // eslint-disable-line no-script-url
+        `//evil.example${PREFIX}/airport?v=PHIK`,
+        `https://evil.example${PREFIX}/airport?v=PHIK`,
+        `data:text/html,${PREFIX}/airport?v=PHIK`,
+    ]) {
+        expect(decoratorLinks(`[PHIK](${href})`), href).toEqual([]);
+    }
+});

@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 )
 
 var metarHeaderPattern = regexp.MustCompile(`^(?:(METAR|SPECI)[ \t]+)?(?:(COR)[ \t]+)?([A-Z][A-Z0-9]{3})[ \t]+(\d{2})(\d{2})(\d{2})Z(?:[ \t]+(.*))?$`)
@@ -153,7 +155,7 @@ func decodeGroup(tokens []string, i int) (Row, int, bool) {
 			return Row{Label: "Sky", Value: "sky obscured, vertical visibility unknown"}, 0, true
 		}
 		hundreds, _ := strconv.Atoi(m[1])
-		return Row{Label: "Sky", Value: "sky obscured, vertical visibility " + withThousands(hundreds*100) + " ft"}, 0, true
+		return Row{Label: "Sky", Value: "sky obscured, vertical visibility " + airport.WithThousands(hundreds*100) + " ft"}, 0, true
 	}
 	if m := temperaturePattern.FindStringSubmatch(token); m != nil {
 		temperature, hasTemperature := temperatureValue(m[1])
@@ -172,7 +174,7 @@ func decodeGroup(tokens []string, i int) (Row, int, bool) {
 	}
 	if m := windShearPattern.FindStringSubmatch(token); m != nil {
 		speed, _ := strconv.Atoi(m[3])
-		return Row{Label: "Wind shear", Value: "at " + withThousands(mustAtoi(m[1])*100) + " ft, wind " + compass(m[2]) + " at " + strconv.Itoa(speed) + " kt"}, 0, true
+		return Row{Label: "Wind shear", Value: "at " + airport.WithThousands(mustAtoi(m[1])*100) + " ft, wind " + compass(m[2]) + " at " + strconv.Itoa(speed) + " kt"}, 0, true
 	}
 
 	return Row{}, 0, false

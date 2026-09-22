@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
@@ -596,4 +597,29 @@ func spellNumber(t *testing.T, n int) string {
 	}
 
 	return word
+}
+
+func TestTheStatedDataCountsMatchTheData(t *testing.T) {
+	readme, err := os.ReadFile(filepath.Join("decorators", "airport", "data", "README.md"))
+	if err != nil {
+		t.Fatalf("read the data README: %v", err)
+	}
+	airfieldsPage := readHelpFile(t, "airfields.html")
+
+	for name, claim := range map[string]struct {
+		count int
+		pages []string
+	}{
+		"airfields":   {airport.Count(), []string{airfieldsPage, string(readme)}},
+		"runways":     {airport.RunwayCount(), []string{airfieldsPage, string(readme)}},
+		"frequencies": {airport.FrequencyCount(), []string{airfieldsPage, string(readme)}},
+		"designators": {airport.MilitaryCount(), []string{string(readme)}},
+	} {
+		want := airport.WithThousands(claim.count)
+		for i, page := range claim.pages {
+			if !strings.Contains(page, want) {
+				t.Errorf("%s: page %d does not state %s; the data has changed and the prose has not", name, i, want)
+			}
+		}
+	}
 }

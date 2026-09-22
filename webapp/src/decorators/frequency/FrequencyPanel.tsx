@@ -15,7 +15,7 @@ const styles: Record<string, React.CSSProperties> = {
         color: 'var(--center-channel-color)',
         margin: '0 0 2px',
     },
-    band: {fontSize: '14px', color: 'var(--center-channel-color)', margin: '0 0 16px'},
+    band: {fontSize: '14px', fontWeight: 400, color: 'var(--center-channel-color)', margin: '0 0 16px'},
     table: {width: '100%', borderCollapse: 'collapse', fontSize: '13px'},
     th: {
         textAlign: 'left',
@@ -76,10 +76,10 @@ const FrequencyPanel: React.FC<{payload: FrequencyPayload}> = ({payload}) => {
                 style={styles.token}
                 data-testid='frequency-token'
             >{details.token}</p>
-            <p
+            <h3
                 style={styles.band}
                 data-testid='frequency-band'
-            >{details.band}</p>
+            >{details.band}</h3>
 
             <table style={styles.table}>
                 <tbody>

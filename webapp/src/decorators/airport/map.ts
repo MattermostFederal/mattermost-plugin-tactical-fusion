@@ -3,6 +3,7 @@ import type {AirportCoordinate, AirportEnd} from './types';
 import location from '../location';
 import type {LocationPayload} from '../location';
 import type {MapShape} from '../location/map/paint';
+import {isRenderable} from '../location/map/span';
 
 export const AIRPORT_MAP_KIND = 'airport';
 
@@ -36,9 +37,8 @@ export function runwayShapes(runways: ReadonlyArray<{ends?: [AirportEnd, Airport
 
         const ring: Array<{lat: number; lon: number}> = [];
         for (const end of runway.ends) {
-            const payload = positionPayload(end);
-            const coord = payload?.coord;
-            if (!coord) {
+            const coord = positionPayload(end)?.coord;
+            if (!coord || !isRenderable(coord.lat.decimal)) {
                 break;
             }
             ring.push({lat: coord.lat.decimal, lon: coord.lon.decimal});

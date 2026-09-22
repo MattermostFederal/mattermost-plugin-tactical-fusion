@@ -16,7 +16,7 @@ const styles: Record<string, React.CSSProperties> = {
     },
     term: {opacity: 0.85},
     value: {margin: 0, wordBreak: 'break-word'},
-    section: {margin: '12px 0 2px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.04em', opacity: 0.85},
+    section: {margin: '12px 0 2px', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', opacity: 0.85},
     unknown: {fontFamily: 'monospace', fontSize: '0.85em', margin: '2px 0 0', opacity: 0.85, wordBreak: 'break-word'},
     flags: {fontFamily: 'monospace', fontSize: '0.85em', opacity: 0.9},
 };
@@ -85,14 +85,14 @@ export const ReportDetail: React.FC<{report: Report}> = ({report}) => (
         {report.periods.map((period, index) => (
             // eslint-disable-next-line react/no-array-index-key
             <React.Fragment key={`${period.period}-${index}`}>
-                <p style={styles.section}>{period.period}</p>
+                <h3 style={styles.section}>{period.period}</h3>
                 <Rows rows={period.rows}/>
             </React.Fragment>
         ))}
 
         {report.remarks.length > 0 && (
             <>
-                <p style={styles.section}>{'Remarks'}</p>
+                <h3 style={styles.section}>{'Remarks'}</h3>
                 <Rows
                     rows={report.remarks}
                     testId='avreport-remarks'
@@ -102,7 +102,7 @@ export const ReportDetail: React.FC<{report: Report}> = ({report}) => (
 
         {report.unknown.length > 0 && (
             <>
-                <p style={styles.section}>{'Not decoded'}</p>
+                <h3 style={styles.section}>{'Not decoded'}</h3>
                 <p
                     style={styles.unknown}
                     data-testid='avreport-unknown'

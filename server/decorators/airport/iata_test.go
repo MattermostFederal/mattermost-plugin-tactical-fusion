@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 )
 
 func TestLabeledIATACodesDecorate(t *testing.T) {
@@ -79,8 +81,14 @@ func TestUnknownIATACodesDecline(t *testing.T) {
 
 func TestTheIATAPatternIsOffWithItsSwitch(t *testing.T) {
 	d := &Decorator{Enabled: func() Formats { return Formats{Airfield: true} }}
-	if len(d.Patterns()) != 1 {
-		t.Fatalf("%d patterns with IATA off, want the ICAO one alone", len(d.Patterns()))
+	registry, err := decorators.NewDefaultRegistry(d)
+	if err != nil {
+		t.Fatalf("registry: %v", err)
+	}
+	tagger := &decorators.Tagger{Registry: registry, URLPrefix: "/plugins/tf/decorate"}
+	out := tagger.Decorate("ICAO:PHNL IATA:HNL", time.Now().UTC())
+	if !strings.Contains(out, "airport?v=PHNL") || strings.Contains(out, "airport?i=HNL") {
+		t.Fatalf("with IATA off the ICAO code should link and the IATA code should not: %q", out)
 	}
 
 	off := &Decorator{Enabled: func() Formats { return Formats{IATA: true} }}
@@ -158,8 +166,8 @@ func TestReferenceFromParamsRequiresExactlyOneCode(t *testing.T) {
 		"digit in iata": {ParamIATA: {"H1L"}},
 	} {
 		t.Run(name, func(t *testing.T) {
-			if _, err := ReferenceFromParams(params); err != ErrParamsInvalid {
-				t.Fatalf("err = %v, want ErrParamsInvalid", err)
+			if _, err := ReferenceFromParams(params); err != errParamsInvalid {
+				t.Fatalf("err = %v, want errParamsInvalid", err)
 			}
 		})
 	}

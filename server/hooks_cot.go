@@ -13,7 +13,7 @@ import (
 var cotFileSuffixes = []string{".xml", ".cot"}
 
 func (p *Plugin) cotStamp(post *model.Post) (*model.Post, bool) {
-	return p.runStamper(post, p.cotEnabled(), errcode.HooksCotPanic,
+	return p.runStamper(post, p.cotEnabled, errcode.HooksCotPanic,
 		"tactical-fusion: recovered from panic while reading a Cursor on Target event; post left unmodified",
 		p.recognizeCot)
 }
