@@ -363,14 +363,19 @@ func (p *Plugin) serveAirport(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Cache-Control", "private, max-age=300")
 
-	var details airport.Details
 	ident, found := ref.Resolve()
-	if found {
-		details, found = airport.Describe(ident)
-	}
 	if !found {
 		writeAPIJSON(w, http.StatusOK, airportResponse{Found: false, Ident: ref.Ident, IATA: ref.IATA})
 		return
+	}
+
+	writeAPIJSON(w, http.StatusOK, describeAirport(ident))
+}
+
+func describeAirport(ident string) airportResponse {
+	details, found := airport.Describe(ident)
+	if !found {
+		return airportResponse{Found: false, Ident: ident}
 	}
 
 	body := airportResponse{
@@ -396,7 +401,7 @@ func (p *Plugin) serveAirport(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	writeAPIJSON(w, http.StatusOK, body)
+	return body
 }
 
 func airportRunways(runways []airport.Runway) []airportRunway {

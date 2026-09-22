@@ -74,6 +74,10 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	if p.serveMCPIfMatch(w, r) {
+		return
+	}
+
 	if r.Method != http.MethodGet {
 		decorators.WriteError(w, http.StatusMethodNotAllowed,
 			errcode.WithCode(errcode.HTTPMethodNotAllowed, "Method not allowed."))

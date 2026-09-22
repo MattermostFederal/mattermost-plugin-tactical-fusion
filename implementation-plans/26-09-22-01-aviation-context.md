@@ -451,8 +451,8 @@ but not linked (the `//` trick, `ReplaceGroup`):
 
 | Kind | Header, upper case only |
 |---|---|
-| METAR, SPECI | `(?:METAR|SPECI)[ \t]+(?:COR[ \t]+)?[A-Z][A-Z0-9]{3}[ \t]+\d{6}Z[ \t]+` then the rest of the line; or the bare form `[A-Z][A-Z0-9]{3}[ \t]+\d{6}Z[ \t]+(?:AUTO[ \t]+|COR[ \t]+)?(?:\d{3}|VRB)\d{2,3}(?:G\d{2,3})?(?:KT|MPS)` then the rest |
-| TAF | `TAF[ \t]+(?:AMD[ \t]+|COR[ \t]+)?[A-Z][A-Z0-9]{3}[ \t]+\d{6}Z[ \t]+(?:\d{4}/\d{4}|NIL|CNL)` then the rest |
+| METAR, SPECI | `(?:METAR\|SPECI)[ \t]+(?:COR[ \t]+)?[A-Z][A-Z0-9]{3}[ \t]+\d{6}Z[ \t]+` then the rest of the line; or the bare form `[A-Z][A-Z0-9]{3}[ \t]+\d{6}Z[ \t]+(?:AUTO[ \t]+\|COR[ \t]+)?(?:\d{3}\|VRB)\d{2,3}(?:G\d{2,3})?(?:KT\|MPS)` then the rest |
+| TAF | `TAF[ \t]+(?:AMD[ \t]+\|COR[ \t]+)?[A-Z][A-Z0-9]{3}[ \t]+\d{6}Z[ \t]+(?:\d{4}/\d{4}\|NIL\|CNL)` then the rest |
 | NOTAM (FAA domestic) | `![A-Z]{3}[ \t]+\d{2}/\d{3,4}[ \t]+[A-Z]{3,4}[ \t]+` then the rest |
 
 The bare METAR form is admitted because the wind group makes it as specific

@@ -636,6 +636,69 @@
                 </tr>
             </tbody>
         </table>
+
+        <h2 id="mcp">Agents MCP server <code>20000</code> to <code>20999</code></h2>
+
+        <p>
+            Answers to the <a href="integration.html#mcp">Mattermost Agents plugin</a>
+            calling this plugin's tools over MCP at <code>/mcp</code>. The first five are
+            activation, shutdown and routing; the last three are a tool declining what it
+            was asked for, which an agent sees as a failed tool call rather than as an
+            answer.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Code</th><th>Name and level</th><th>Meaning</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>TF-20000</code></td>
+                    <td><code>MCPInitFailed</code> <span class="level">Activation</span></td>
+                    <td>The MCP server could not be built, so the plugin refuses to start. The only cause is an incomplete manifest, which means the build is broken rather than the server.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-20001</code></td>
+                    <td><code>MCPManifestIncomplete</code> <span class="level">Activation</span></td>
+                    <td>The plugin manifest is missing its id, version or name. The reason behind <code>TF-20000</code>, and a packaging bug rather than anything an administrator can change.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-20002</code></td>
+                    <td><code>MCPRegistrationFailed</code> <span class="level">Warn</span></td>
+                    <td>Registering with the Agents plugin did not succeed. Activation continues: everything except the MCP tools is unaffected. Usually means the Agents plugin is not installed, not enabled, or still starting. Registration retries on its own, and is attempted again whenever this plugin re-activates.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-20003</code></td>
+                    <td><code>MCPUnregisterFailed</code> <span class="level">Warn</span></td>
+                    <td>Telling the Agents plugin to drop this server on shutdown did not succeed, so it may keep offering tools that are no longer there until it is restarted or this plugin re-activates. Shutdown continues.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-20004</code></td>
+                    <td><code>MCPNotReady</code> <span class="level">503</span></td>
+                    <td><code>Not ready.</code> An MCP request landed before activation finished or before the plugin configuration loaded. Retrying works.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-20005</code></td>
+                    <td><code>MCPToolPanic</code> <span class="level">Error</span></td>
+                    <td><code>Internal error.</code> A tool call panicked and was recovered. Logged with the same code and the tool's name. This is a bug worth reporting with the arguments that caused it.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-20006</code></td>
+                    <td><code>MCPLinkDeclined</code> <span class="level">Tool error</span></td>
+                    <td>The <code>link_token</code> tool was given a type it does not know, a token that type does not read, or a token whose format an administrator has switched off. It carries the same wording as the matching <code>19005</code> to <code>19007</code> refusal, because it is the same operation on a different transport.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-20007</code></td>
+                    <td><code>MCPConvertInvalid</code> <span class="level">Tool error</span></td>
+                    <td><code>That is not a coordinate this plugin issued.</code> The <code>convert_coordinate</code> tool was given a format and value that do not validate together, the same check <code>/api/v1/convert</code> applies.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-20008</code></td>
+                    <td><code>MCPAirportInvalid</code> <span class="level">Tool error</span></td>
+                    <td><code>That is not an airfield code this plugin issued.</code> The <code>lookup_airfield</code> tool was given a value that is not the shape of an ICAO identifier. A well-shaped code the database does not hold is not this: that answers <code>found: false</code>.</td>
+                </tr>
+            </tbody>
+        </table>
     </main>
 </div>
 </body>

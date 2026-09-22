@@ -79,7 +79,7 @@ to end. `formats.html` and `panel.html` hold only what is shared.
 | `troubleshooting.html` | Symptom, cause and fix, quoting the exact user-facing strings | Every message the server can produce |
 | `error-codes.html` | The `TF-NNNN` registry, grouped by source file | `server/errcode/codes.go` |
 | `styles.css` | Shared stylesheet. Rarely changes | Adapted from `mattermost-plugin-chatsurfer` |
-| `copy.js` | The one script. Makes copyable examples copy on click; every page loads it and works without it | `docs/design/help-and-errors.md` |
+| `copy.js` | The one script. Makes copyable examples copy on click; every page loads it and works without it | |
 
 The list of pages the tests walk is `helpPages` in `server/help_docs_test.go`. If this table and that list disagree, the list is right and this table needs fixing.
 

@@ -250,5 +250,4 @@ Releases are automated with
 changelog are never hand-edited. Dependabot opens weekly dependency PRs.
 
 Further reading: [CLAUDE.md](CLAUDE.md) for the architecture and the reasoning
-behind it, [docs/RELEASING.md](docs/RELEASING.md), [docs/SECURITY.md](docs/SECURITY.md),
-and the [Mattermost plugin developer docs](https://developers.mattermost.com/extend/plugins/).
+behind it, and the [Mattermost plugin developer docs](https://developers.mattermost.com/extend/plugins/).
