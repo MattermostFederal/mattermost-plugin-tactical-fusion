@@ -17,11 +17,12 @@ func datasets(t *testing.T, files map[string][]string) *intel.Set {
 
 	dir := t.TempDir()
 	for name, rows := range files {
-		body := fmt.Sprintf("%s%d\t%s\t2026-09-01T00:00:00Z\ttest\n", intel.SchemaPrefix, intel.SchemaVersion, name)
+		var body strings.Builder
+		body.WriteString(fmt.Sprintf("%s%d\t%s\t2026-09-01T00:00:00Z\ttest\n", intel.SchemaPrefix, intel.SchemaVersion, name))
 		for _, row := range rows {
-			body += row + "\n"
+			body.WriteString(row + "\n")
 		}
-		if err := os.WriteFile(filepath.Join(dir, name+intel.Suffix), []byte(body), 0o600); err != nil {
+		if err := os.WriteFile(filepath.Join(dir, name+intel.Suffix), []byte(body.String()), 0o600); err != nil {
 			t.Fatalf("writing %s: %v", name, err)
 		}
 	}

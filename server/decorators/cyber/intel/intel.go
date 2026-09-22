@@ -6,6 +6,7 @@ import (
 	"net/netip"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -111,7 +112,7 @@ func scanCandidates(dirs []string) map[string]fingerprint {
 
 		for _, entry := range entries {
 			name := entry.Name()
-			if entry.IsDir() || !(strings.HasSuffix(name, Suffix) || strings.HasSuffix(name, MMDBSuffix)) {
+			if entry.IsDir() || (!strings.HasSuffix(name, Suffix) && !strings.HasSuffix(name, MMDBSuffix)) {
 				continue
 			}
 
@@ -417,10 +418,8 @@ func fill(into *string, value string) {
 }
 
 func appendOnce(values []string, value string) []string {
-	for _, existing := range values {
-		if existing == value {
-			return values
-		}
+	if slices.Contains(values, value) {
+		return values
 	}
 	return append(values, value)
 }

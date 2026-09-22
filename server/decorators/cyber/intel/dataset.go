@@ -75,14 +75,14 @@ func openDataset(path string) (*Dataset, error) {
 		return nil, fmt.Errorf("%q is not a dataset this build reads", name)
 	}
 
-	handle, err := os.Open(path)
+	handle, err := os.Open(path) // #nosec G304 -- a path built from a whitelisted name under an operator-configured directory
 	if err != nil {
 		return nil, err
 	}
 
 	info, err := handle.Stat()
 	if err != nil {
-		handle.Close()
+		_ = handle.Close()
 		return nil, err
 	}
 
@@ -95,13 +95,13 @@ func openDataset(path string) (*Dataset, error) {
 
 	bodyStart, err := d.readStamp()
 	if err != nil {
-		handle.Close()
+		_ = handle.Close()
 		return nil, err
 	}
 
 	body, err := searchableEnd(handle, bodyStart, d.size)
 	if err != nil {
-		handle.Close()
+		_ = handle.Close()
 		return nil, err
 	}
 
@@ -114,7 +114,7 @@ func openDataset(path string) (*Dataset, error) {
 
 	if spec.inspect != nil {
 		if err := spec.inspect(d); err != nil {
-			handle.Close()
+			_ = handle.Close()
 			return nil, err
 		}
 	}
@@ -161,11 +161,17 @@ func searchableEnd(source readerAt, bodyStart, size int64) (int64, error) {
 	end := size
 
 	for end-1 > bodyStart {
-		var pair [2]byte
-		if _, err := source.ReadAt(pair[:], end-2); err != nil && !errors.Is(err, io.EOF) {
+		last, err := byteAt(source, end-1)
+		if err != nil {
 			return 0, err
 		}
-		if pair[0] != '\n' || pair[1] != '\n' {
+
+		previous, err := byteAt(source, end-2)
+		if err != nil {
+			return 0, err
+		}
+
+		if last != '\n' || previous != '\n' {
 			break
 		}
 		end--
@@ -178,9 +184,18 @@ func searchableEnd(source readerAt, bodyStart, size int64) (int64, error) {
 	return end, nil
 }
 
+func byteAt(source readerAt, off int64) (byte, error) {
+	var one [1]byte
+	if _, err := source.ReadAt(one[:], off); err != nil && !errors.Is(err, io.EOF) {
+		return 0, err
+	}
+
+	return one[0], nil
+}
+
 func (d *Dataset) close() {
 	if d.handle != nil {
-		d.handle.Close()
+		_ = d.handle.Close()
 	}
 }
 

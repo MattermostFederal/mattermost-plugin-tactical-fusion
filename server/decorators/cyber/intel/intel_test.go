@@ -309,7 +309,7 @@ func TestTheIPKeySortsBothFamiliesTogether(t *testing.T) {
 	upper := IPKey(netip.MustParseAddr("8.8.8.255"))
 	sixish := IPKey(netip.MustParseAddr("2001:db8::"))
 
-	if !(lower < upper) {
+	if lower >= upper {
 		t.Fatalf("%q does not sort before %q", lower, upper)
 	}
 	if len(lower) != 32 || len(sixish) != 32 {
@@ -478,13 +478,13 @@ func TestABodyOfBlankLinesFindsNothing(t *testing.T) {
 func TestASkippedFileDoesNotForceAPermanentReopen(t *testing.T) {
 	cases := map[string]func(dir string){
 		"a file with no stamp": func(dir string) {
-			os.WriteFile(filepath.Join(dir, NameCVE+Suffix), []byte("CVE-2021-0001\ta\n"), 0o600)
+			_ = os.WriteFile(filepath.Join(dir, NameCVE+Suffix), []byte("CVE-2021-0001\ta\n"), 0o600)
 		},
 		"a name this build does not read": func(dir string) {
 			writeDataset(t, dir, "notes")
 		},
 		"a vendor database this build cannot classify": func(dir string) {
-			os.WriteFile(filepath.Join(dir, "something"+MMDBSuffix), []byte("not a database"), 0o600)
+			_ = os.WriteFile(filepath.Join(dir, "something"+MMDBSuffix), []byte("not a database"), 0o600)
 		},
 	}
 

@@ -165,10 +165,10 @@ func (p *Plugin) serveCyberMentions(w http.ResponseWriter, r *http.Request, user
 	w.Header().Set("Cache-Control", "no-store")
 
 	results, appErr := p.API.SearchPostsInTeamForUser(teamID, userID, model.SearchParameter{
-		Terms:      stringPointer(`"` + value + `"`),
-		IsOrSearch: boolPointer(false),
-		Page:       intPointer(0),
-		PerPage:    intPointer(mentionsPerPage),
+		Terms:      new(`"` + value + `"`),
+		IsOrSearch: new(false),
+		Page:       new(0),
+		PerPage:    new(mentionsPerPage),
 	})
 	if appErr != nil {
 		p.API.LogWarn("the prior-mentions search failed",
@@ -193,7 +193,7 @@ func (p *Plugin) mentionsBody(value, teamID string, results *model.PostSearchRes
 	}
 
 	for _, id := range results.Order {
-		post := results.PostList.Posts[id]
+		post := results.Posts[id]
 		if post == nil {
 			continue
 		}
@@ -231,11 +231,5 @@ func mentionSnippet(message string) string {
 
 	return strings.TrimSpace(string(runes[:mentionSnippetRune])) + "..."
 }
-
-func stringPointer(v string) *string { return &v }
-
-func boolPointer(v bool) *bool { return &v }
-
-func intPointer(v int) *int { return &v }
 
 var markdownLinkRe = regexp.MustCompile(`\[([^\]]*)\]\([^)]*\)`)

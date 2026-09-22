@@ -62,10 +62,7 @@ func (f *sortedFile) previousLineStart(start int64) (int64, error) {
 
 	end := start - 1
 	for end > f.bodyStart {
-		from := end - blockBytes
-		if from < f.bodyStart {
-			from = f.bodyStart
-		}
+		from := max(end-blockBytes, f.bodyStart)
 
 		buf := make([]byte, end-from)
 		n, err := f.readAt(buf, from)
@@ -109,8 +106,8 @@ func (f *sortedFile) readLine(start int64) (string, int64, error) {
 }
 
 func keyOf(line string) string {
-	if index := strings.IndexByte(line, '\t'); index >= 0 {
-		return line[:index]
+	if before, _, ok := strings.Cut(line, "\t"); ok {
+		return before
 	}
 	return line
 }
@@ -180,9 +177,9 @@ func (f *sortedFile) LookupRange(key string) ([]string, error) {
 	}
 
 	if start < f.size {
-		line, _, err := f.readLine(start)
-		if err != nil {
-			return nil, err
+		line, _, readErr := f.readLine(start)
+		if readErr != nil {
+			return nil, readErr
 		}
 		if keyOf(line) == key {
 			return f.row(line)

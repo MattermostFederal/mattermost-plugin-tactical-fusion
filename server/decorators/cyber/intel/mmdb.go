@@ -46,7 +46,7 @@ func openMMDB(path string) (*mmdbReader, error) {
 
 	kind := classifyMMDB(reader.Metadata.DatabaseType)
 	if kind == "" {
-		reader.Close()
+		_ = reader.Close()
 		return nil, &UnknownMMDBError{Path: path, DatabaseType: reader.Metadata.DatabaseType}
 	}
 
@@ -64,7 +64,7 @@ func (e *UnknownMMDBError) Error() string {
 
 func (m *mmdbReader) close() {
 	if m.reader != nil {
-		m.reader.Close()
+		_ = m.reader.Close()
 	}
 }
 

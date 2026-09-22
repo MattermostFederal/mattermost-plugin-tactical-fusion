@@ -15,12 +15,13 @@ import (
 func writeKEV(t *testing.T, dir string, rows ...string) {
 	t.Helper()
 
-	body := fmt.Sprintf("%s%d\t%s\t2026-09-01T00:00:00Z\ttest\n", intel.SchemaPrefix, intel.SchemaVersion, intel.NameKEV)
+	var body strings.Builder
+	body.WriteString(fmt.Sprintf("%s%d\t%s\t2026-09-01T00:00:00Z\ttest\n", intel.SchemaPrefix, intel.SchemaVersion, intel.NameKEV))
 	for _, row := range rows {
-		body += row + "\n"
+		body.WriteString(row + "\n")
 	}
 
-	if err := os.WriteFile(filepath.Join(dir, "kev"+intel.Suffix), []byte(body), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "kev"+intel.Suffix), []byte(body.String()), 0o600); err != nil {
 		t.Fatalf("writing: %v", err)
 	}
 }
@@ -110,19 +111,19 @@ func TestEachUnusableFileReportsItsOwnCode(t *testing.T) {
 	}{
 		"no schema stamp": {
 			write: func(dir string) {
-				os.WriteFile(filepath.Join(dir, "kev"+intel.Suffix), []byte("CVE-2021-0001\ta\n"), 0o600)
+				_ = os.WriteFile(filepath.Join(dir, "kev"+intel.Suffix), []byte("CVE-2021-0001\ta\n"), 0o600)
 			},
 			code: errcode.CyberDataSchemaMismatch,
 		},
 		"a name this build does not read": {
 			write: func(dir string) {
-				os.WriteFile(filepath.Join(dir, "notes"+intel.Suffix), []byte("x\n"), 0o600)
+				_ = os.WriteFile(filepath.Join(dir, "notes"+intel.Suffix), []byte("x\n"), 0o600)
 			},
 			code: errcode.CyberDataBadName,
 		},
 		"a vendor database that will not open": {
 			write: func(dir string) {
-				os.WriteFile(filepath.Join(dir, "GeoLite2-ASN"+intel.MMDBSuffix), []byte("nope"), 0o600)
+				_ = os.WriteFile(filepath.Join(dir, "GeoLite2-ASN"+intel.MMDBSuffix), []byte("nope"), 0o600)
 			},
 			code: errcode.CyberDataMMDBUnreadable,
 		},
@@ -156,12 +157,12 @@ func TestABrokenFileIsReportedOnceAndTheRestStillAnswer(t *testing.T) {
 	writeKEV(t, dir, strings.Join([]string{
 		"CVE-2021-44228", "2021-12-10", "2021-12-24", "Known", "Apache Log4j2", "Apply updates.",
 	}, "\t"))
-	os.WriteFile(filepath.Join(dir, "cve"+intel.Suffix), []byte("no stamp here\n"), 0o600)
+	_ = os.WriteFile(filepath.Join(dir, "cve"+intel.Suffix), []byte("no stamp here\n"), 0o600)
 
 	p := withDatasetDir(t, dir)
 	api := p.API.(*fakeAPI)
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		p.forgetCyberDatasets()
 
 		set := p.cyberIntel()

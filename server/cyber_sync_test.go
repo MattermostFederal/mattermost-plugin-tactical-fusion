@@ -18,7 +18,7 @@ func cyberWebappSource(t *testing.T, name string) string {
 	t.Helper()
 
 	path := filepath.Join("..", "webapp", "src", "decorators", "cyber", name)
-	source, err := os.ReadFile(path)
+	source, err := os.ReadFile(path) // #nosec G304 -- fixed, repo-relative source path
 	if err != nil {
 		t.Fatalf("reading %s: %v", path, err)
 	}
@@ -67,14 +67,14 @@ func goWireFields(t *testing.T, value any) []webappField {
 	typ := reflect.TypeOf(value)
 
 	var fields []webappField
-	for i := 0; i < typ.NumField(); i++ {
-		tag := typ.Field(i).Tag.Get("json")
+	for field := range typ.Fields() {
+		tag := field.Tag.Get("json")
 		if tag == "" || tag == "-" {
-			t.Fatalf("%s.%s carries no json tag", typ.Name(), typ.Field(i).Name)
+			t.Fatalf("%s.%s carries no json tag", typ.Name(), field.Name)
 		}
 		fields = append(fields, webappField{
 			name: strings.Split(tag, ",")[0],
-			kind: wireKind(typ.Field(i).Type),
+			kind: wireKind(field.Type),
 		})
 	}
 
@@ -196,7 +196,7 @@ func TestWebappCyberKindsMatch(t *testing.T) {
 	}
 
 	var webapp []string
-	for _, entry := range strings.Split(found[1], ",") {
+	for entry := range strings.SplitSeq(found[1], ",") {
 		entry = strings.TrimSpace(strings.Trim(strings.TrimSpace(entry), "'"))
 		if entry != "" {
 			webapp = append(webapp, entry)
