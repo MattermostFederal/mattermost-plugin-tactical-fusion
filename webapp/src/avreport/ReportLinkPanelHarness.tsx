@@ -60,7 +60,9 @@ const ReportLinkPanelHarness: React.FC<Props> = ({surface, reply}) => {
 
     return (
         <div data-testid='harness'>
-            {surface === 'panel' ? <ReportLinkPanel payload={payload}/> : <ReportHover payload={payload}/>}
+            <div data-testid='surface'>
+                {surface === 'panel' ? <ReportLinkPanel payload={payload}/> : <ReportHover payload={payload}/>}
+            </div>
         </div>
     );
 };

@@ -68,8 +68,8 @@ test.describe('the hover', () => {
                     reply={reply}
                 />);
 
-            await expect(hover.getByTestId('harness')).toBeAttached();
-            await expect(hover.getByTestId('harness')).toBeEmpty();
+            await expect(hover.getByTestId('surface')).toBeAttached();
+            await expect(hover.getByTestId('surface')).toBeEmpty();
         });
     }
 });

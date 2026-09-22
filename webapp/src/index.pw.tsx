@@ -42,7 +42,7 @@ test('registers the sidebar before the header button', async ({mount, page}) => 
 
     const result = await recorded(page);
 
-    expect(result.order).toEqual(['rhs', 'tooltip', 'post-type', 'post-type', 'post-type', 'header']);
+    expect(result.order).toEqual(['rhs', 'tooltip', 'post-type', 'post-type', 'post-type', 'post-type', 'post-type', 'header']);
 });
 
 // One registration for the whole plugin: a decorator gets a hover by declaring
@@ -64,8 +64,8 @@ test('registers a post body for every decorator that declares one', async ({moun
 
     const result = await recorded(page);
 
-    expect(result.postTypes).toEqual(['custom_tf_location', 'custom_tf_cot', 'custom_tf_geojson']);
-    expect(result.postBodyComponentNames).toEqual(['DecoratorPostBody', 'CotPostBody', 'GeoJsonPostBody']);
+    expect(result.postTypes).toEqual(['custom_tf_location', 'custom_tf_cot', 'custom_tf_geojson', 'custom_tf_airfields', 'custom_tf_avreport']);
+    expect(result.postBodyComponentNames).toEqual(['DecoratorPostBody', 'CotPostBody', 'GeoJsonPostBody', 'AirfieldsPostBody', 'ReportPostBody']);
 });
 
 test('wires the channel header button', async ({mount, page}) => {
@@ -162,7 +162,7 @@ test('uninitialize gives back every registry component', async ({mount, page}) =
 
     await expect(page.getByTestId('unregistered')).toHaveText(
         'rhs-id,tooltip-id,post-type-id-custom_tf_location,post-type-id-custom_tf_cot,' +
-        'post-type-id-custom_tf_geojson,header-id');
+        'post-type-id-custom_tf_geojson,post-type-id-custom_tf_airfields,post-type-id-custom_tf_avreport,header-id');
 });
 
 // Calling it twice must be a no-op rather than running every disposer again.

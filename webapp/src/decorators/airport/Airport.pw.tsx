@@ -509,7 +509,7 @@ test.describe('the airfield details', () => {
         await expect(panel.getByText('11,200 x 150 ft, Concrete, lighted', {exact: true})).toBeVisible();
         await expect(panel.getByText('Frequencies', {exact: true})).toBeVisible();
         await expect(panel.getByText('120.900', {exact: true})).toBeVisible();
-        await expect(panel.getByRole('button', {name: 'Copy TWR frequency'})).toBeVisible();
+        await expect(panel.getByRole('button', {name: 'Copy TWR 120.900'})).toBeVisible();
         await expect(panel.getByText('ATIS Arrival', {exact: true})).toBeVisible();
     });
 
