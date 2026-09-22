@@ -23,7 +23,7 @@ func issuedLabel(kind string) string {
 	return "Issued"
 }
 
-func reportTable(href, trail string, report Report) string {
+func reportTable(href, trail string, report Report, withReportRow bool) string {
 	var b strings.Builder
 
 	heading := report.Kind
@@ -33,7 +33,9 @@ func reportTable(href, trail string, report Report) string {
 	b.WriteString("| " + decorators.TableCell(heading) + " | " + decorators.TableCell(tableHeadingDetail(report)) + " |\n")
 	b.WriteString("|:--|:--|\n")
 
-	writeTableRow(&b, reportRowLabel, reportCell(report.Raw)+decorators.TableCell(trail))
+	if withReportRow {
+		writeTableRow(&b, reportRowLabel, reportCell(report.Raw)+decorators.TableCell(trail))
+	}
 	if report.Summary != "" {
 		writeTableRow(&b, summaryRowLabel, decorators.TableCell(report.Summary))
 	}

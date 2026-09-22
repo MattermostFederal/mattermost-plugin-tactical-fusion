@@ -45,7 +45,7 @@
         </div>
 
         <h1>Aviation Reports</h1>
-        <p class="tagline">A METAR, SPECI, TAF or NOTAM pasted into a message is decoded into plain language: a link when it fits on one line, a table when that line is the whole message, a card when it spans several. Nothing is fetched.</p>
+        <p class="tagline">A METAR, SPECI, TAF or NOTAM pasted into a message is decoded into plain language: a link inside a message, a table when the report is the whole message, a card when it is fenced. Nothing is fetched.</p>
 
         <div class="alert alert-info">
             <p>
@@ -137,10 +137,14 @@
         <h2 id="reports-table">A report posted on its own becomes a table</h2>
 
         <p>
-            When the message is nothing but one report on a single line, the link is not
-            left on its own: the message is rewritten into a table with the report exactly
-            as you wrote it, the one-line summary, and every decoded group, and its last row
-            is <em>Details</em>, whose link opens <a href="#reports-panel">the panel</a>.
+            When the message is nothing but one report, the message is rewritten into a
+            table with the report exactly as you wrote it, the one-line summary, and every
+            decoded group, and its last row is <em>Details</em>, whose link opens
+            <a href="#reports-panel">the panel</a>. A one-line report is the first row; a
+            report on several lines, a TAF with its <code>FM</code> and <code>TEMPO</code>
+            lines or an ICAO NOTAM with its lettered fields, is written in a code block above
+            the table, because a table cell cannot hold a line break. The block carries no
+            label, so a table pasted back into a channel is never read as a fenced report.
             The table is markdown in the message itself, exactly as the
             <a href="airfields.html#airfield-table">airfield table</a> is, so the post keeps
             its search matches, the table is in every export, and it renders on every client
@@ -157,23 +161,17 @@
             <a href="admin.html#enable-avreport-table"><code>EnableAvReportTable</code></a>.
         </p>
 
-        <h2 id="reports-card">A report on several lines becomes a card</h2>
+        <h2 id="reports-card">A fenced report becomes a card</h2>
 
         <p>
-            A link cannot span lines, so a report that does is rendered as a card under the
-            message instead, with the message itself left exactly as written. Two things are
-            read this way:
+            A report in a fenced code block labeled <code>metar</code>, <code>speci</code>,
+            <code>taf</code> or <code>notam</code>, whether or not the report inside it is one
+            line, is rendered as a card under the message, with the message itself left
+            exactly as written. A fence is never rewritten, and the label is your statement
+            of what it holds. A report on several lines posted on its own without a fence
+            gets <a href="#reports-table">the table</a> instead, and the card only while
+            that is turned off.
         </p>
-
-        <ul>
-            <li>A message that is nothing but one report whose first line is a report header:
-                a TAF with its <code>FM</code> and <code>TEMPO</code> lines, an ICAO NOTAM with
-                its lettered fields, or a wrapped FAA NOTAM.</li>
-            <li>A fenced code block labeled <code>metar</code>, <code>speci</code>,
-                <code>taf</code> or <code>notam</code>, whether or not the report inside it is
-                one line. A fence is never rewritten, and the label is your statement of what it
-                holds.</li>
-        </ul>
 
         <p>
             The card shows the report as posted, the summary line, the decoded groups, each TAF
@@ -188,10 +186,10 @@
                 Elasticsearch and OpenSearch results and Recent Mentions and drops its link
                 previews and automatic translation, exactly as the
                 <a href="cot.html#cot-card">Cursor on Target</a> and
-                <a href="geojson.html">GeoJSON</a> cards do. A report on one line is never
-                affected: it is a link or a table, and stays searchable. Turn
+                <a href="geojson.html">GeoJSON</a> cards do. A report that became a link or a
+                table is never affected, and stays searchable. Turn
                 <a href="admin.html#enable-avreport-card"><code>EnableAvReportCard</code></a>
-                off to keep multi-line reports as ordinary text.
+                off to keep fenced reports as ordinary text.
             </p>
         </div>
 
@@ -288,8 +286,8 @@
                 <tr><td><a href="admin.html#enable-avreport-metar"><code>EnableAvReportMETAR</code></a></td><td>METAR and SPECI, in both spellings.</td></tr>
                 <tr><td><a href="admin.html#enable-avreport-taf"><code>EnableAvReportTAF</code></a></td><td>TAF.</td></tr>
                 <tr><td><a href="admin.html#enable-avreport-notam"><code>EnableAvReportNOTAM</code></a></td><td>NOTAM, both forms.</td></tr>
-                <tr><td><a href="admin.html#enable-avreport-table"><code>EnableAvReportTable</code></a></td><td><a href="#reports-table">The table</a> under a one-line report posted on its own.</td></tr>
-                <tr><td><a href="admin.html#enable-avreport-card"><code>EnableAvReportCard</code></a></td><td><a href="#reports-card">The card</a>. Links are unaffected.</td></tr>
+                <tr><td><a href="admin.html#enable-avreport-table"><code>EnableAvReportTable</code></a></td><td><a href="#reports-table">The table</a> under a report posted on its own.</td></tr>
+                <tr><td><a href="admin.html#enable-avreport-card"><code>EnableAvReportCard</code></a></td><td><a href="#reports-card">The card</a>. Links and tables are unaffected.</td></tr>
             </tbody>
         </table>
 

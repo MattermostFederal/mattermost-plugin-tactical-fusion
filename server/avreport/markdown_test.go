@@ -132,3 +132,54 @@ func TestExpandMessageFollowsTheSwitchAndTheLink(t *testing.T) {
 		t.Errorf("a table was written for a hand-edited link:\n%s", got)
 	}
 }
+
+const multiLineTAF = "TAF PGUA 221720Z 2218/2324 07012KT P6SM SCT025\n  FM230600 09008KT P6SM FEW030\n  TEMPO 2312/2316 5SM -SHRA BKN020"
+
+const icaoNotam = "A1234/26 NOTAMN\nQ) PHZH/QMRLC/IV/NBO/A/000/999/2119N15755W005\nA) PHNL B) 2609221200 C) 2609232359\nE) RWY 08L/26R CLSD DUE WIP"
+
+func TestExpandedWritesAMultiLineReportAsAFenceAboveTheTable(t *testing.T) {
+	for _, text := range []string{multiLineTAF, icaoNotam} {
+		report, err := Decode(text, ref)
+		if err != nil {
+			t.Fatal(err)
+		}
+		message, ok := Expanded(tableHREF, report)
+		if !ok {
+			t.Fatalf("no expansion for %q", text)
+		}
+
+		if !strings.HasPrefix(message, "```\n"+report.Raw+"\n```\n| "+report.Kind+" "+report.Station+" | ") {
+			t.Errorf("the fence does not lead:\n%s", message)
+		}
+		if strings.Contains(message, "| Report |") {
+			t.Errorf("the report row repeats what the fence holds:\n%s", message)
+		}
+		if !strings.HasSuffix(message, "| Details | [Open details]("+tableHREF+") |") {
+			t.Errorf("the details link is not last:\n%s", message)
+		}
+	}
+}
+
+func TestExpandedWritesASingleLineReportAsTheTableAlone(t *testing.T) {
+	report, err := Decode(metarLine, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	message, ok := Expanded(tableHREF, report)
+	if !ok || strings.HasPrefix(message, "```") || !strings.Contains(message, "| Report | `"+metarLine+"` |") {
+		t.Errorf("a one-line report is not the table alone:\n%s", message)
+	}
+}
+
+func TestExpandedRefusesWhatAFenceCannotHold(t *testing.T) {
+	report, err := Decode(multiLineTAF+"\n```", ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if message, ok := Expanded(tableHREF, report); ok {
+		t.Errorf("a report carrying a fence marker was fenced:\n%s", message)
+	}
+	if _, ok := Expanded("", report); ok {
+		t.Error("an expansion was written with no destination")
+	}
+}

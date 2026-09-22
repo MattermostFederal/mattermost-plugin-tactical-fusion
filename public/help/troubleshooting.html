@@ -461,13 +461,13 @@
                     <td>Check the <a href="reports.html#reports-declined">declined list</a>. Write the report in upper case with a space after any label.</td>
                 </tr>
                 <tr>
-                    <td>A TAF on several lines was posted as plain text with no card</td>
-                    <td>It was not the whole message, or it was inside a fence with no label, or <a href="admin.html#enable-avreport-card"><code>EnableAvReportCard</code></a> is off.</td>
+                    <td>A TAF on several lines was posted as plain text with no table and no card</td>
+                    <td>It was not the whole message, or it was inside a fence with no label, or both <a href="admin.html#enable-avreport-table"><code>EnableAvReportTable</code></a> and <a href="admin.html#enable-avreport-card"><code>EnableAvReportCard</code></a> are off.</td>
                     <td>Post the report on its own, or fence it and label the fence <code>taf</code>.</td>
                 </tr>
                 <tr>
-                    <td>A METAR posted on its own came back as a table</td>
-                    <td>By design: a one-line report that is the whole message is expanded into a table whose last row opens the details, and the message stays searchable. <a href="admin.html#enable-avreport-table"><code>EnableAvReportTable</code></a> governs it.</td>
+                    <td>A METAR, TAF or NOTAM posted on its own came back as a table</td>
+                    <td>By design: a report that is the whole message is expanded into a table whose last row opens the details, and the message stays searchable. To get the card instead, put the report in a fence labeled with its kind. <a href="admin.html#enable-avreport-table"><code>EnableAvReportTable</code></a> governs it.</td>
                     <td>Nothing to do, or write the report inside a sentence to get the link alone.</td>
                 </tr>
                 <tr>

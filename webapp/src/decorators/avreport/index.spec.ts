@@ -27,8 +27,8 @@ test('refuses an instant that is not a number', () => {
     expect(fromParams(new URLSearchParams({v: METAR, t: '9'.repeat(18)}))).toBeNull();
 });
 
-test('refuses what the server would refuse: a newline or an over-long report', () => {
-    expect(fromParams(new URLSearchParams({v: `${METAR}\nmore`, t: '1'}))).toBeNull();
+test('refuses what the server would refuse: an over-long report', () => {
+    expect(fromParams(new URLSearchParams({v: `${METAR}\nRMK NONE`, t: '1'}))).toEqual({v: `${METAR}\nRMK NONE`, t: '1'});
     expect(fromParams(new URLSearchParams({v: 'x'.repeat(MAX_SOURCE_RUNES + 1), t: '1'}))).toBeNull();
     expect(fromParams(new URLSearchParams({v: 'x'.repeat(MAX_SOURCE_RUNES), t: '1'}))).not.toBeNull();
 });

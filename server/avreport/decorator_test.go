@@ -175,7 +175,7 @@ func TestValidateRequiresTheInstantToRoundTrip(t *testing.T) {
 			p.Set(ParamValue, "hello there")
 		},
 		"a padded report": func(p url.Values) { p.Set(ParamValue, " "+metarLine) },
-		"a newline":       func(p url.Values) { p.Set(ParamValue, metarLine+"\nmore") },
+		"a second report": func(p url.Values) { p.Set(ParamValue, metarLine+"\n"+metarLine) },
 	} {
 		t.Run(name, func(t *testing.T) {
 			clone := url.Values{}
@@ -187,6 +187,25 @@ func TestValidateRequiresTheInstantToRoundTrip(t *testing.T) {
 				t.Fatal("a hand-edited link was accepted")
 			}
 		})
+	}
+}
+
+func TestValidateAcceptsTheMultiLineReportADetailsLinkCarries(t *testing.T) {
+	for _, text := range []string{
+		"TAF KJFK 221720Z 2218/2324 28012KT P6SM\nFM230000 09008KT P6SM FEW030",
+		"A1234/26 NOTAMN\nQ) KZNY/QMRLC/IV/NBO/A/000/999/4038N07347W005\nA) KJFK B) 2609221200 C) 2609232359\nE) RWY 04L/22R CLSD",
+	} {
+		report, err := Decode(text, ref)
+		if err != nil {
+			t.Fatalf("Decode(%q): %v", text, err)
+		}
+		params := url.Values{ParamValue: {report.Raw}, ParamInstant: {strconv.FormatInt(report.Instant(), 10)}}
+		if _, ok := Validate(params); !ok {
+			t.Errorf("a multi-line report was refused: %q", text)
+		}
+		if _, ok := (&Decorator{}).Parse(text, ref); ok {
+			t.Errorf("a multi-line report was accepted as a link token: %q", text)
+		}
 	}
 }
 

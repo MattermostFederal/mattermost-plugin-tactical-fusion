@@ -97,6 +97,7 @@ func TestAvReportStampsAFencedTAFAndNotam(t *testing.T) {
 
 func TestAvReportStampsABareMultiLineReport(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
+	withConfiguration(p, tableOff)
 
 	for _, body := range []string{reportTAF, reportICAONotam, reportFAANotam + "\nRMK NONE"} {
 		blob := reportBlob(t, stampedReport(t, p, body))
@@ -195,12 +196,70 @@ func TestTwoReportsOnTwoLinesAreLinkedNotStamped(t *testing.T) {
 
 func TestAvReportLeavesTheMessageExactlyAsWritten(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
+	withConfiguration(p, tableOff)
 
 	for _, message := range []string{reportFence("metar", reportMETAR), reportTAF, "  " + reportTAF + "\n\n"} {
 		updated := stampedReport(t, p, message)
 		if updated.Message != message {
 			t.Fatalf("the message was rewritten:\n%q\n%q", message, updated.Message)
 		}
+	}
+}
+
+func tableOff(c *configuration) { c.EnableAvReportTable = false }
+
+func TestABareMultiLineReportIsExpandedNotStamped(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	for _, body := range []string{reportTAF, reportICAONotam, reportFAANotam + "\nRMK NONE"} {
+		updated := p.decoratePost(&model.Post{Message: body, UserId: testUserID}, hookRef)
+		if updated == nil || updated.Type != "" {
+			t.Fatalf("%q was not left an ordinary post: %+v", body, updated)
+		}
+		if _, ok := updated.GetProps()[avreport.PropsKey]; ok {
+			t.Fatalf("%q was given the card's props", body)
+		}
+		if !strings.HasPrefix(updated.Message, "```\n"+strings.TrimSpace(body)+"\n```\n|") {
+			t.Fatalf("%q does not lead with the fenced report:\n%s", body, updated.Message)
+		}
+		if !strings.Contains(updated.Message, "| Details | [Open details](/plugins/") || strings.Count(updated.Message, "/decorate/avreport?") != 1 {
+			t.Fatalf("%q has no single details link:\n%s", body, updated.Message)
+		}
+		if again := p.decoratePost(&model.Post{Message: updated.Message, UserId: testUserID}, hookRef); again != nil {
+			t.Errorf("the stored table for %q was rewritten again as %q:\n%s", body, again.Type, again.Message)
+		}
+	}
+}
+
+func TestABareMultiLineReportIsPlainTextWhenTheTableAndTheCardAreOff(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	withConfiguration(p, func(c *configuration) { c.EnableAvReportTable = false; c.EnableAvReportCard = false })
+
+	updated := p.decoratePost(&model.Post{Message: reportTAF, UserId: testUserID}, hookRef)
+	if updated != nil && (updated.Type != "" || strings.Contains(updated.Message, "| Details |") || strings.HasPrefix(updated.Message, "```")) {
+		t.Fatalf("a bare report was given a shape with both shapes off: %+v", updated)
+	}
+	if updated := stampedReport(t, withTable(p), reportFence("taf", reportTAF)); updated.Message != reportFence("taf", reportTAF) {
+		t.Fatal("a fenced report was rewritten")
+	}
+}
+
+func withTable(p *Plugin) *Plugin {
+	withConfiguration(p, func(c *configuration) { c.EnableAvReportTable = true; c.EnableAvReportCard = true })
+	return p
+}
+
+func TestTheTableBeatsAnAttachmentAsTheCardDoes(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	api := p.API.(*fakeAPI)
+	api.files = map[string]*model.FileInfo{
+		testFileID: {Id: testFileID, Name: "track.cot", Size: int64(len(cotEventXML)), CreatorId: testUserID},
+	}
+	api.fileContent = map[string][]byte{testFileID: []byte(cotEventXML)}
+
+	updated := p.decoratePost(&model.Post{Message: reportTAF, FileIds: []string{testFileID}, UserId: testUserID}, hookRef)
+	if updated == nil || updated.Type != "" || !strings.HasPrefix(updated.Message, "```\n") {
+		t.Fatalf("the attachment won over the visible report: %+v", updated)
 	}
 }
 
@@ -259,6 +318,7 @@ func TestAvReportIsSilentWhenTheAdminTurnedItOff(t *testing.T) {
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
 			p := newTestPlugin(t, "https://example.com", true)
+			withConfiguration(p, tableOff)
 			withConfiguration(p, c.mutate)
 			api := p.API.(*fakeAPI)
 
@@ -430,6 +490,7 @@ func TestAnotherIntegrationsTypeIsStillLeftAloneByAvReport(t *testing.T) {
 
 func TestAvReportKeepsAnotherIntegrationsProps(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
+	withConfiguration(p, tableOff)
 
 	post := &model.Post{Message: reportTAF, UserId: testUserID}
 	post.AddProp("from_another_plugin", "keep me")
@@ -465,6 +526,7 @@ func reportRungRunes(t *testing.T, text string, withRows bool) int {
 
 func TestOverBudgetTheRowsAreDroppedBeforeTheCardIs(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
+	withConfiguration(p, tableOff)
 	api := p.API.(*fakeAPI)
 
 	post := &model.Post{Message: reportTAF, UserId: testUserID}
@@ -574,6 +636,7 @@ func TestRunStamperNeverRecognizesWhenOffOrTyped(t *testing.T) {
 func TestTheVisibleReportBeatsAnAttachmentAcrossFormats(t *testing.T) {
 	t.Run("a taf fence beside a .cot attachment", func(t *testing.T) {
 		p := newTestPlugin(t, "https://example.com", true)
+		withConfiguration(p, tableOff)
 		api := p.API.(*fakeAPI)
 		api.files = map[string]*model.FileInfo{
 			testFileID: {Id: testFileID, Name: "track.cot", Size: int64(len(cotEventXML)), CreatorId: testUserID},
@@ -589,6 +652,7 @@ func TestTheVisibleReportBeatsAnAttachmentAcrossFormats(t *testing.T) {
 
 	t.Run("a bare TAF beside a .geojson attachment", func(t *testing.T) {
 		p := newTestPlugin(t, "https://example.com", true)
+		withConfiguration(p, tableOff)
 		api := p.API.(*fakeAPI)
 		api.files = map[string]*model.FileInfo{
 			geoFileID: {Id: geoFileID, Name: "overlay.geojson", Size: int64(len(geoPoint)), CreatorId: testUserID},
@@ -604,6 +668,7 @@ func TestTheVisibleReportBeatsAnAttachmentAcrossFormats(t *testing.T) {
 
 	t.Run("a report fence does not suppress the attachment when the card is off", func(t *testing.T) {
 		p := newTestPlugin(t, "https://example.com", true)
+		withConfiguration(p, tableOff)
 		withConfiguration(p, func(c *configuration) { c.EnableAvReportCard = false })
 		api := p.API.(*fakeAPI)
 		api.files = map[string]*model.FileInfo{
@@ -651,6 +716,7 @@ func TestABareReportNeverReachesIntoCode(t *testing.T) {
 
 func TestCRLFIsReadAsMultiLine(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
+	withConfiguration(p, tableOff)
 
 	blob := reportBlob(t, stampedReport(t, p, strings.ReplaceAll(reportTAF, "\n", "\r\n")))
 	if blob["src"] != reportTAF {
