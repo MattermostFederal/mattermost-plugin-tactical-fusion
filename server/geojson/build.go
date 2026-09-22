@@ -20,6 +20,12 @@ func build(root object) (*Document, error) {
 
 	switch {
 	case kind == typeCollection:
+		if name, ok := root.string("name"); ok {
+			document.Name = sanitize(name, maxFieldRunes)
+		}
+		if description, ok := root.string("description"); ok {
+			document.Description = sanitize(description, maxDescriptionRunes)
+		}
 		features, ok := root["features"].([]any)
 		if !ok {
 			return nil, ErrNotGeoJSON

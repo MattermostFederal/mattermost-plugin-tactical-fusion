@@ -454,3 +454,36 @@ func TestOnlyASinglePositionBecomesALink(t *testing.T) {
 		t.Error("a collection of several parts was linked")
 	}
 }
+
+func TestACollectionNamesAndDescribesItself(t *testing.T) {
+	document := parse(t, `{"type":"FeatureCollection","name":"Operating area","description":"Tonight's overlay","features":[]}`)
+	if document.Name != "Operating area" || document.Description != "Tonight's overlay" {
+		t.Fatalf("name=%q description=%q", document.Name, document.Description)
+	}
+
+	blob := Props(document, Source{Kind: SourceFence})
+	if blob["name"] != "Operating area" || blob["description"] != "Tonight's overlay" {
+		t.Errorf("the blob does not carry the name and description: %v", blob)
+	}
+
+	for _, source := range []string{
+		`{"type":"FeatureCollection","features":[]}`,
+		`{"type":"FeatureCollection","name":7,"description":["x"],"features":[]}`,
+		`{"type":"Feature","geometry":null,"properties":{"name":"A feature"}}`,
+	} {
+		if d := parse(t, source); d.Name != "" || d.Description != "" {
+			t.Errorf("%s named itself %q / %q", source, d.Name, d.Description)
+		}
+	}
+}
+
+func TestTheDocumentNameAndDescriptionAreCapped(t *testing.T) {
+	long := strings.Repeat("x", 2000)
+	document := parse(t, `{"type":"FeatureCollection","name":"`+long+`","description":"`+long+`","features":[]}`)
+	if n := utf8.RuneCountInString(document.Name); n > maxFieldRunes+1 {
+		t.Errorf("name is %d runes", n)
+	}
+	if n := utf8.RuneCountInString(document.Description); n > maxDescriptionRunes+1 {
+		t.Errorf("description is %d runes", n)
+	}
+}

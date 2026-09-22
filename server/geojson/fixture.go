@@ -25,7 +25,7 @@ func Fixture() string {
 		feature(`{"type":"Point","coordinates":[999,34.05]}`, `{"name":"Out of range"}`),
 	}
 
-	return `{"type":"FeatureCollection","features":[` + strings.Join(features, ",") + `]}`
+	return `{"type":"FeatureCollection","name":"Fixture overlay","description":"Every kind, every note and every optional field.","features":[` + strings.Join(features, ",") + `]}`
 }
 
 const fixtureRing = `[[[-118.25,34.05],[-118.24,34.05],[-118.24,34.06],[-118.25,34.05]]]`

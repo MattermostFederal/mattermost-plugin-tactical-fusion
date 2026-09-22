@@ -118,7 +118,9 @@ type Feature struct {
 }
 
 type Document struct {
-	Features []Feature
+	Name        string
+	Description string
+	Features    []Feature
 
 	// Note is what the document says about itself, or "" when it says nothing.
 	Note string

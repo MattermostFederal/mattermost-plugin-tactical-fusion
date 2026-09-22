@@ -211,8 +211,10 @@
         <h2 id="geojson-card">What the card shows</h2>
 
         <p>
-            A heading counting the features, then the geometry mix and anything not drawn. Then one
-            row per feature:
+            The collection's own <code>name</code> and <code>description</code> when it states
+            them, or the file's name for an attachment, then anything the document says about
+            itself. Then one row per feature, with its color as a dot before its name when it
+            asked for one:
         </p>
 
         <table>
@@ -224,7 +226,7 @@
                 <tr><td>Geometry</td><td>The type, verbatim.</td></tr>
                 <tr><td>Position</td><td>For a lone point only. A polygon's corners are not positions anybody reported.</td></tr>
                 <tr><td>Size</td><td>Rings and points, for anything that is not a lone point.</td></tr>
-                <tr><td>Properties</td><td>Every key and value the feature carries, as text.</td></tr>
+                <tr><td>Properties</td><td>Every key and value the feature carries, as text, except the simplestyle keys, which say how to draw it rather than what it is, and the key it was named by. The sidebar lists all of them.</td></tr>
                 <tr><td>Note</td><td>Only when the feature is not drawn, saying why.</td></tr>
             </tbody>
         </table>
@@ -319,7 +321,7 @@
             <p>
                 A symbol name points into an icon set. This plugin ships an offline basemap with
                 no icon set in it, so there is nothing for a name to point at. The property is
-                shown among the feature's properties like any other, so nothing is lost, but no
+                listed among the feature's properties in the sidebar, so nothing is lost, but no
                 icon is drawn for it.
             </p>
         </div>
@@ -334,8 +336,8 @@
         </p>
 
         <p>
-            Anything outside those is <strong>refused, not adjusted</strong>: the value is shown
-            as text among the feature's properties and that part of the shape is drawn in the
+            Anything outside those is <strong>refused, not adjusted</strong>: the value is listed
+            as text among the feature's properties in the sidebar and that part of the shape is drawn in the
             theme's own style. Clamping a width of 4000 down to 10 would draw something the
             document did not ask for while claiming to honor it, and a value handed to the map
             unchecked is a value the browser will interpret.

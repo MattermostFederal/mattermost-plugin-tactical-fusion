@@ -164,6 +164,10 @@ export interface GeoJsonPayload {
     postId?: string;
     fileName: string;
 
+    /** The collection's own name and description, or '' when it states none. */
+    name: string;
+    description: string;
+
     /** What the document says about itself, or '' when it says nothing. */
     note: string;
 
@@ -235,6 +239,8 @@ export function fromProps(props: unknown): GeoJsonPayload | null {
         src: text(rawBlob, 'src'),
         fileId: text(rawBlob, 'file_id'),
         fileName: text(rawBlob, 'file_name'),
+        name: text(rawBlob, 'name'),
+        description: text(rawBlob, 'description'),
         note: text(rawBlob, 'note'),
         unplaceable: text(rawBlob, 'unplaceable') !== '',
         propertiesDropped: text(rawBlob, 'properties_dropped') !== '',

@@ -104,6 +104,8 @@ const GeoJsonPanelHarness: React.FC<Props> = ({
         src,
         fileId: '',
         fileName: '',
+        name: '',
+        description: '',
         note,
         unplaceable: false,
         propertiesDropped,

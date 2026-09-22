@@ -15,22 +15,72 @@ test('renders the card for a well formed post', async ({mount}) => {
     );
 
     await expect(component.getByTestId('geojson-card')).toBeVisible();
-    await expect(component.getByTestId('geojson-heading')).toContainText('1 feature');
     await expect(component).toContainText('Depot');
     await expect(component).toContainText('34.0561, -118.25');
 });
 
-test('counts and the geometry mix read as a sentence', async ({mount}) => {
+test('names and describes the document, and never counts its features', async ({mount}) => {
     const component = await mount(
         <GeoJsonPostBodyHarness
             features={[{name: 'A'}, {name: 'B'}, {name: 'C'}]}
             counts={{features: 3, points: 1, lines: 1, polygons: 1}}
+            name='Operating area'
+            description='Tonight&apos;s overlay'
         />,
     );
 
-    await expect(component.getByTestId('geojson-heading')).toContainText('3 features');
-    await expect(component.getByTestId('geojson-summary')).
-        toContainText('1 point, 1 line and 1 polygon');
+    await expect(component.getByTestId('geojson-heading')).toHaveText('Operating area');
+    await expect(component.getByTestId('geojson-description')).toHaveText("Tonight's overlay");
+    await expect(component.getByTestId('geojson-summary')).toHaveCount(0);
+    await expect(component).not.toContainText('3 features');
+    await expect(component).not.toContainText('1 point');
+});
+
+test('falls back to the file name and otherwise heads the card with nothing', async ({mount}) => {
+    const named = await mount(<GeoJsonPostBodyHarness fileName='overlay.geojson'/>);
+    await expect(named.getByTestId('geojson-heading')).toHaveText('overlay.geojson');
+    await named.unmount();
+
+    const bare = await mount(<GeoJsonPostBodyHarness/>);
+    await expect(bare.getByTestId('geojson-heading')).toHaveCount(0);
+    await expect(bare.getByTestId('geojson-description')).toHaveCount(0);
+});
+
+test('draws a feature its color as a dot before its name', async ({mount}) => {
+    const component = await mount(
+        <GeoJsonPostBodyHarness features={[{name: 'Red', color: '#ff0000'}, {name: 'Plain'}]}/>,
+    );
+
+    const dots = component.getByTestId('geojson-dot');
+    await expect(dots).toHaveCount(1);
+    await expect(dots).toHaveCSS('background-color', 'rgb(255, 0, 0)');
+});
+
+test('keeps the style keys and the naming key out of a feature\'s properties', async ({mount}) => {
+    const component = await mount(
+        <GeoJsonPostBodyHarness
+            features={[{
+                name: 'Operating area',
+                color: '#ff0000',
+                properties: [
+                    {key: 'fill', value: '#ff0000'},
+                    {key: 'fill-opacity', value: '0.25'},
+                    {key: 'name', value: 'Operating area'},
+                    {key: 'stroke', value: '#ff0000'},
+                    {key: 'stroke-opacity', value: '0.8'},
+                    {key: 'stroke-width', value: '3'},
+                    {key: 'status', value: 'active'},
+                ],
+            }]}
+        />,
+    );
+
+    await expect(component).toContainText('status');
+    await expect(component).toContainText('active');
+    await Promise.all(['fill', 'fill-opacity', 'stroke', 'stroke-opacity', 'stroke-width', '0.25', '0.8'].map(
+        (hidden) => expect(component.getByText(hidden, {exact: true})).toHaveCount(0),
+    ));
+    await expect(component.getByText('Operating area', {exact: true})).toHaveCount(1);
 });
 
 test('keeps the text the author wrote around the document, in reading order', async ({mount}) => {
