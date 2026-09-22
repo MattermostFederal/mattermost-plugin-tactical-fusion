@@ -9,8 +9,6 @@ import (
 const (
 	reportRowLabel       = "Report"
 	summaryRowLabel      = "Summary"
-	detailsRowLabel      = "Details"
-	detailsLinkLabel     = "Open details"
 	tableFallbackHeading = "Aviation report"
 
 	inferredDateNote = " (month and year taken from the post date)"
@@ -59,7 +57,7 @@ func reportTable(href, trail string, report Report, withReportRow bool) string {
 	if len(report.Unknown) > 0 {
 		writeTableRow(&b, "Not decoded", decorators.TableCell(strings.Join(report.Unknown, " ")))
 	}
-	b.WriteString("| " + detailsRowLabel + " | [" + detailsLinkLabel + "](" + href + ") |")
+	b.WriteString(decorators.TableDetailsRow(href))
 
 	return b.String()
 }

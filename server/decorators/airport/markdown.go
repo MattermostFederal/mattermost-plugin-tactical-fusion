@@ -19,7 +19,7 @@ func airfieldTable(href, trail string, d Details) string {
 	}
 
 	var b strings.Builder
-	b.WriteString("| " + tableHeaderLabel + " | [" + mdCell(name) + "](" + href + ") |\n")
+	b.WriteString("| " + tableHeaderLabel + " | " + mdCell(name) + " |\n")
 	b.WriteString("|:--|:--|\n")
 
 	for _, row := range []struct{ label, value string }{
@@ -38,7 +38,9 @@ func airfieldTable(href, trail string, d Details) string {
 		b.WriteString("| " + row.label + " | " + mdCell(row.value) + " |\n")
 	}
 
-	return strings.TrimRight(b.String(), "\n")
+	b.WriteString(decorators.TableDetailsRow(href))
+
+	return b.String()
 }
 
 func runwaysCell(runways []Runway) string {

@@ -1185,7 +1185,8 @@ func TestDecoratePostExpandsAnAirfieldOnlyMessage(t *testing.T) {
 	}
 
 	for _, want := range []string{
-		"| Airfield | [Indianapolis International Airport](/plugins/",
+		"| Airfield | Indianapolis International Airport |",
+		"| Details | [Open details](/plugins/",
 		"/decorate/airport?v=KIND) |",
 		"|:--|:--|",
 		"| Code | KIND |",

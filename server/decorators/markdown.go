@@ -20,3 +20,12 @@ var tableCellEscaper = strings.NewReplacer(
 func TableCell(value string) string {
 	return tableCellEscaper.Replace(value)
 }
+
+const (
+	DetailsRowLabel  = "Details"
+	DetailsLinkLabel = "Open details"
+)
+
+func TableDetailsRow(href string) string {
+	return "| " + DetailsRowLabel + " | [" + DetailsLinkLabel + "](" + href + ") |"
+}
