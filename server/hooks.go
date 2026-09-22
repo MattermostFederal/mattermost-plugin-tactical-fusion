@@ -24,7 +24,7 @@ import (
 // There used to be two. `defaultPostRunes`, PostMessageMaxRunesV2, was the
 // larger guess the example-details command packed against, and it fell out with
 // that command: everything left here either has to fit everywhere or is better
-// off refusing. See "The slash command" in docs/design/decorators.md.
+// off refusing.
 const (
 	// safePostRunes is the floor every server accepts. PostMessageMaxRunesV1
 	// is what the model validated against before the column widened, and no

@@ -584,10 +584,9 @@ test('a degraded card says so where the reader is', async ({mount}) => {
 });
 
 // The class picks the layout from the type code, so it can name a block the
-// event never carried. `ClassSummary` says it degrades to nothing in that case
-// and `docs/design/cot.md` states the rule, but only chat was ever tested for
-// it: a summary label with nothing after it would have gone unnoticed on the
-// other three.
+// event never carried. `ClassSummary` says it degrades to nothing in that
+// case, but only chat was ever tested for it: a summary label with nothing
+// after it would have gone unnoticed on the other three.
 test.describe('a class whose block is absent degrades to the ordinary card', () => {
     const cases = [
         {name: 'medevac', label: 'Patients stated'},
