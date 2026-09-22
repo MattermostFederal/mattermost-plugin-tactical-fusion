@@ -289,12 +289,7 @@ function renderBody(
     position: Position | null,
 ): React.ReactNode {
     if (state.status === 'loading') {
-        return (
-            <>
-                <p style={styles.ident}>{code}</p>
-                <p style={styles.note}>{'Looking up this airfield…'}</p>
-            </>
-        );
+        return <p style={styles.note}>{'Looking up this airfield…'}</p>;
     }
 
     if (state.status === 'rejected') {
@@ -310,12 +305,9 @@ function renderBody(
 
     if (state.status === 'failed' || !state.data) {
         return (
-            <>
-                <p style={styles.ident}>{code}</p>
-                <p style={styles.note}>
-                    {'This airfield could not be looked up just now. The link is fine; the server could not be reached.'}
-                </p>
-            </>
+            <p style={styles.note}>
+                {'This airfield could not be looked up just now. The link is fine; the server could not be reached.'}
+            </p>
         );
     }
 
@@ -323,12 +315,9 @@ function renderBody(
 
     if (!answer.found || !answer.airport) {
         return (
-            <>
-                <p style={styles.name}>{code}</p>
-                <p style={styles.note}>
-                    {'This airfield code is not in this build\'s airfield database. The database is refreshed with the plugin, so a code that was recognized when the message was written may have been retired since.'}
-                </p>
-            </>
+            <p style={styles.note}>
+                {'This airfield code is not in this build\'s airfield database. The database is refreshed with the plugin, so a code that was recognized when the message was written may have been retired since.'}
+            </p>
         );
     }
 
@@ -339,7 +328,7 @@ function renderBody(
     return (
         <>
             <p style={styles.name}>{airport.name || ident}</p>
-            <p style={styles.ident}>{ident}</p>
+            {ident !== code && <p style={styles.ident}>{ident}</p>}
 
             <table style={styles.table}>
                 <tbody>

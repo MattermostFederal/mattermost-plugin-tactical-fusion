@@ -191,7 +191,7 @@ test.describe('the panel', () => {
                 reply='unknown'
             />);
 
-        await expect(panel.getByText('QZQZ', {exact: true})).toBeVisible();
+        await expect(panel.getByText('QZQZ', {exact: true})).toHaveCount(0);
         await expect(panel.getByText('not in this build', {exact: false})).toBeVisible();
         await expect(panel.getByText(NOT_A_CODE)).toBeHidden();
     });
@@ -235,7 +235,7 @@ test.describe('the panel', () => {
         await expect(panel.getByText(NOT_A_CODE)).toBeHidden();
     });
 
-    test('shows the code while the lookup is in flight', async ({mount}) => {
+    test('says the lookup is in flight and shows nothing else', async ({mount}) => {
         const panel = await mount(
             <AirportHarness
                 surface='panel'
@@ -243,7 +243,8 @@ test.describe('the panel', () => {
                 reply='hold'
             />);
 
-        await expect(panel.getByText('KIND', {exact: true})).toBeVisible();
+        await expect(panel.getByText('Looking up this airfield…')).toBeVisible();
+        await expect(panel.getByText('KIND', {exact: true})).toHaveCount(0);
         await expect(panel.getByText(NAME)).toBeHidden();
     });
 
@@ -343,10 +344,10 @@ test.describe('the panel', () => {
                 reply='hold'
             />);
 
-        await expect(panel.getByText('KIND', {exact: true})).toBeVisible();
+        await expect(panel.getByText('Looking up this airfield…')).toBeVisible();
         await panel.unmount();
 
-        await expect(page.getByText('KIND', {exact: true})).toHaveCount(0);
+        await expect(page.getByText('Looking up this airfield…')).toHaveCount(0);
         expect(errors, 'unmounting mid-request must not throw').toEqual([]);
     });
 
@@ -577,7 +578,7 @@ test.describe('the airfield details', () => {
                 reply='unknown'
             />);
 
-        await expect(panel.getByText('QQQ', {exact: true})).toBeVisible();
+        await expect(panel.getByText('QQQ', {exact: true})).toHaveCount(0);
         await expect(panel.getByText('not in this build', {exact: false})).toBeVisible();
     });
 
