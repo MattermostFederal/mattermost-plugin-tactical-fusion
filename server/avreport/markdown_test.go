@@ -46,15 +46,16 @@ func TestReportTableCarriesTheReportVerbatimInACodeSpanWithItsTerminator(t *test
 	}
 }
 
-func TestReportTableEscapesAReportThatACodeSpanCannotHold(t *testing.T) {
-	hostile := metarLine + " RMK |PIPE| `TICK`"
-	table := expandFixture(t, hostile, "")
-
-	if strings.Contains(table, "`"+hostile+"`") {
-		t.Fatalf("a report carrying a backtick was written as a code span:\n%s", table)
-	}
-	if !strings.Contains(table, `\|PIPE\| \`+"`TICK\\`") {
-		t.Errorf("the report row is not escaped:\n%s", table)
+func TestReportTableKeepsAHostileReportInsideOneCodeSpan(t *testing.T) {
+	for raw, want := range map[string]string{
+		metarLine + " RMK |PIPE|":              "| Report | `" + metarLine + " RMK \\|PIPE\\|` |",
+		metarLine + " RMK `TICK":               "| Report | ``" + metarLine + " RMK `TICK`` |",
+		metarLine + " RMK ``TWO`` |PIPE| ONE`": "| Report | ``` " + metarLine + " RMK ``TWO`` \\|PIPE\\| ONE` ``` |",
+	} {
+		table := expandFixture(t, raw, "")
+		if !strings.Contains(table, want) {
+			t.Errorf("%q is not held in one code span; want %q in:\n%s", raw, want, table)
+		}
 	}
 }
 

@@ -1,6 +1,6 @@
 import {expect, test} from '@playwright/test';
 
-import decorator, {MAX_SOURCE_RUNES, fromParams} from './index';
+import decorator, {MAX_INSTANT_MS, MAX_SOURCE_RUNES, MIN_INSTANT_MS, fromParams} from './index';
 
 const METAR = 'METAR PHNL 221651Z 07012G18KT 10SM FEW025 SCT045 27/19 A3010';
 
@@ -25,6 +25,14 @@ test('refuses an instant that is not a number', () => {
     expect(fromParams(new URLSearchParams({v: METAR, t: 'soon'}))).toBeNull();
     expect(fromParams(new URLSearchParams({v: METAR, t: '1.5'}))).toBeNull();
     expect(fromParams(new URLSearchParams({v: METAR, t: '9'.repeat(18)}))).toBeNull();
+});
+
+test('refuses what the server would refuse: an instant outside its window', () => {
+    expect(fromParams(new URLSearchParams({v: METAR, t: '-1'}))).toBeNull();
+    expect(fromParams(new URLSearchParams({v: METAR, t: String(MAX_INSTANT_MS + 1)}))).toBeNull();
+    expect(fromParams(new URLSearchParams({v: METAR, t: '9'.repeat(17)}))).toBeNull();
+    expect(fromParams(new URLSearchParams({v: METAR, t: String(MIN_INSTANT_MS)}))).not.toBeNull();
+    expect(fromParams(new URLSearchParams({v: METAR, t: String(MAX_INSTANT_MS)}))).not.toBeNull();
 });
 
 test('refuses what the server would refuse: an over-long report', () => {

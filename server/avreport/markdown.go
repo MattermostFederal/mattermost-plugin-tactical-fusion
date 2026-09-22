@@ -75,10 +75,17 @@ func tableHeadingDetail(report Report) string {
 }
 
 func reportCell(raw string) string {
-	if strings.ContainsAny(raw, "`|") {
-		return decorators.TableCell(raw)
+	delimiter := "`"
+	for strings.Contains(raw, delimiter) {
+		delimiter += "`"
 	}
-	return "`" + raw + "`"
+
+	body := strings.ReplaceAll(raw, "|", `\|`)
+	if strings.HasPrefix(raw, "`") || strings.HasSuffix(raw, "`") {
+		body = " " + body + " "
+	}
+
+	return delimiter + body + delimiter
 }
 
 func joinedRows(rows []Row) string {

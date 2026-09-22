@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/avreport"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
 )
 
 func TestWebappAvReportPostTypeMatches(t *testing.T) {
@@ -41,6 +42,14 @@ func TestWebappAvReportPostTypeMatches(t *testing.T) {
 	}
 	if !strings.Contains(link, "type: '"+avreport.Type+"'") {
 		t.Errorf("the webapp decorator's type is not %q", avreport.Type)
+	}
+	for name, want := range map[string]int64{
+		"MIN_INSTANT_MS": dtg.MinInstantMillis,
+		"MAX_INSTANT_MS": dtg.MaxInstantMillis,
+	} {
+		if !strings.Contains(link, "export const "+name+" = "+strconv.FormatInt(want, 10)+";") {
+			t.Errorf("the webapp's %s is not %d, the window the report page holds an instant to", name, want)
+		}
 	}
 }
 
