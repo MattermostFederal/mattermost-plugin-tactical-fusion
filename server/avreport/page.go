@@ -12,7 +12,6 @@ const pageStyles = `
 .kind { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px;
   color: var(--muted); margin: 0; letter-spacing: .08em; }
 .name { font-size: 22px; font-weight: 600; margin: 0 0 6px; }
-.summary { font-size: 15px; margin: 0 0 14px; }
 pre { white-space: pre-wrap; word-break: break-word; font-size: 13px; padding: 10px;
   border: 1px solid var(--muted); border-radius: 4px; }
 h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; margin: 18px 0 4px;
@@ -37,9 +36,6 @@ func renderBody(report Report) string {
 	if report.StationName != "" {
 		href := airfieldPath + "?" + url.Values{"v": {report.Station}}.Encode()
 		b.WriteString(`<p class="kind"><a href="` + html.EscapeString(href) + `">` + html.EscapeString(report.StationName) + `</a></p>`)
-	}
-	if report.Summary != "" {
-		b.WriteString(`<p class="summary">` + html.EscapeString(report.Summary) + `</p>`)
 	}
 
 	b.WriteString(`<pre>` + html.EscapeString(report.Raw) + `</pre>`)

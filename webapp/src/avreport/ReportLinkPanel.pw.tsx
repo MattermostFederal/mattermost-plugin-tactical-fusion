@@ -15,7 +15,7 @@ test.describe('the link panel', () => {
             />);
 
         await expect(panel.getByTestId('avreport-heading')).toHaveText('METAR PHNL');
-        await expect(panel.getByTestId('avreport-summary')).toContainText('Wind 070°');
+        await expect(panel.getByTestId('avreport-summary')).toHaveCount(0);
         await expect(panel.getByTestId('avreport-rows')).toContainText('30.10 inHg');
         await expect(panel.getByRole('button', {name: 'Daniel K. Inouye International Airport'})).toBeVisible();
     });

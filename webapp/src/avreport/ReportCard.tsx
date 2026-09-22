@@ -12,7 +12,7 @@ export const CARD_KIND = 'Aviation report';
 
 export const DETAIL_FAILED = 'The detail of this report could not be rendered. The report itself is shown above as it was posted.';
 
-export const ROWS_DROPPED_NOTE = 'The decoded groups were omitted to fit the size limit. The report is shown as posted, and its summary is unchanged.';
+export const ROWS_DROPPED_NOTE = 'The decoded groups were omitted to fit the size limit. The report is shown as posted.';
 
 const styles: Record<string, React.CSSProperties> = {
     text: {whiteSpace: 'pre-wrap'},
@@ -26,7 +26,6 @@ const styles: Record<string, React.CSSProperties> = {
     kind: {fontWeight: 700, margin: 0, padding: '8px 12px 0'},
     header: {alignItems: 'baseline', display: 'flex', flexWrap: 'wrap', gap: '0.5em', padding: '2px 12px 4px'},
     heading: {fontWeight: 600},
-    summary: {opacity: 0.85, padding: '0 12px 8px', margin: 0},
     source: {
         fontFamily: 'monospace',
         fontSize: '0.85em',
@@ -62,12 +61,6 @@ export const ReportCard: React.FC<{payload: ReportPayload; compactDisplay?: bool
                 >{headingOf(payload)}</span>
                 <StationLine report={payload}/>
             </div>
-            {payload.summary !== '' && (
-                <p
-                    style={styles.summary}
-                    data-testid='avreport-summary'
-                >{payload.summary}</p>
-            )}
 
             <pre
                 style={styles.source}

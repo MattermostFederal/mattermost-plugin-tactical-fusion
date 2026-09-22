@@ -11,13 +11,13 @@ test.beforeEach(async ({page}) => {
     await stubFeaturesRoute(page, {mapPanel: true, mapInline: false, mapPage: true});
 });
 
-test('renders the report as posted, its summary and its decoded rows', async ({mount}) => {
+test('renders the report as posted and its decoded rows, with no summary line', async ({mount}) => {
     const body = await mount(<ReportPostBodyHarness/>);
 
     await expect(body.getByTestId('avreport-card')).toBeVisible();
     await expect(body.getByTestId('avreport-heading')).toHaveText('METAR PHNL');
     await expect(body.getByTestId('avreport-source')).toHaveText(HONOLULU_METAR.src);
-    await expect(body.getByTestId('avreport-summary')).toContainText('Wind 070°');
+    await expect(body.getByTestId('avreport-summary')).toHaveCount(0);
     await expect(body.getByTestId('avreport-rows')).toContainText('Issued');
     await expect(body.getByTestId('avreport-rows')).toContainText('30.10 inHg');
     await expect(body.getByTestId('avreport-remarks')).toContainText('automated station');
@@ -54,7 +54,7 @@ test('says when the rows were dropped', async ({mount}) => {
     const body = await mount(<ReportPostBodyHarness payload={{...HONOLULU_METAR, rowsDropped: true, rows: [], remarks: [], unknown: []}}/>);
 
     await expect(body.getByTestId('avreport-degraded')).toBeVisible();
-    await expect(body.getByTestId('avreport-summary')).toBeVisible();
+    await expect(body.getByTestId('avreport-source')).toBeVisible();
 });
 
 test('compact display keeps the report and drops the detail', async ({mount}) => {

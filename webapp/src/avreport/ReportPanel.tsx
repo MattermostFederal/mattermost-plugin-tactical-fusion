@@ -28,7 +28,6 @@ export const STATUS_TEXT: Record<'loading' | 'failed' | 'rejected', string> = {
 const styles: Record<string, React.CSSProperties> = {
     heading: {margin: '0 0 4px', fontSize: '16px', fontWeight: 600},
     subhead: {margin: '0 0 8px', opacity: 0.85, fontSize: '13px'},
-    summary: {margin: '0 0 12px', fontSize: '14px'},
     source: {
         fontFamily: 'monospace',
         fontSize: '0.85em',
@@ -69,12 +68,6 @@ export const ReportView: React.FC<{report: Report; postId?: string}> = ({report,
             data-testid='avreport-heading'
         >{headingOf(report)}</h2>
         {report.stationName !== '' && <p style={styles.subhead}><StationLine report={report}/></p>}
-        {report.summary !== '' && (
-            <p
-                style={styles.summary}
-                data-testid='avreport-summary'
-            >{report.summary}</p>
-        )}
 
         <ErrorBoundary fallback={<p style={styles.status}>{SECTION_FAILED}</p>}>
             <ReportDetail report={report}/>
