@@ -162,7 +162,14 @@ func TestASoleReportIsLinkedNotExpandedWhenTheTableIsOff(t *testing.T) {
 func TestAnExpandedReportIsNotExpandedAgain(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 
-	for _, message := range []string{reportMETAR, "TAF PGUA 221720Z 2218/2324 07012KT P6SM SCT025", reportFAANotam} {
+	for _, message := range []string{
+		reportMETAR,
+		"TAF PGUA 221720Z 2218/2324 07012KT P6SM SCT025",
+		reportFAANotam,
+		reportMETAR + " RMK |PIPE|",
+		reportMETAR + " RMK `TICK",
+		reportMETAR + " RMK |PIPE| TICK`",
+	} {
 		first := p.decoratePost(&model.Post{Message: message, UserId: testUserID}, hookRef)
 		if first == nil || !strings.Contains(first.Message, "| Report |") {
 			t.Fatalf("%q was not expanded: %+v", message, first)
