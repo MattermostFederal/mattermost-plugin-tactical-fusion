@@ -301,6 +301,9 @@ export function useMapInstance({
 
     const openAtRef = useRef<Camera | undefined>(openAt);
 
+    const focusRef = useRef<MapFocus | undefined>(focus);
+    const appliedFocusSeq = useRef<number | null>(null);
+
     // Pending readiness deadlines, so unmounting cannot leave one to fire
     // against a component that is gone.
     const deadlines = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
@@ -336,6 +339,22 @@ export function useMapInstance({
         // shapes together: a shape larger than its own <point> would otherwise
         // open half off screen, or at a zoom chosen for a point inside it.
         const frame = (fallback: {lat: number; lon: number} | null) => {
+            const pending = focusRef.current;
+            if (pending !== undefined && pending.seq !== appliedFocusSeq.current) {
+                appliedFocusSeq.current = pending.seq;
+                openAtRef.current = undefined;
+                if (pending.box === null) {
+                    instance.jumpTo({center: [pending.center.lon, pending.center.lat], zoom: POINT_FOCUS_ZOOM});
+                } else {
+                    instance.fitBounds(pending.box, {
+                        padding: fitPadding(width, height, !previewRef.current),
+                        animate: false,
+                        maxZoom: MAX_ZOOM,
+                    });
+                }
+                return;
+            }
+
             const start = openAtRef.current;
             if (start !== undefined) {
                 openAtRef.current = undefined;
@@ -407,25 +426,9 @@ export function useMapInstance({
     }, []);
 
     useEffect(() => {
-        const instance = map.current;
-        if (!focus || !instance || !ready.current) {
-            return;
-        }
-
-        const width = container.current?.clientWidth || DEFAULT_WIDTH_PX;
-        const height = container.current?.clientHeight || MAP_MIN_HEIGHT_PX;
-
-        if (focus.box !== null && !degenerate(focus.box)) {
-            instance.fitBounds(focus.box, {
-                padding: fitPadding(width, height, !previewRef.current),
-                animate: false,
-                maxZoom: MAX_ZOOM,
-            });
-            return;
-        }
-
-        instance.jumpTo({center: [focus.center.lon, focus.center.lat], zoom: POINT_FOCUS_ZOOM});
-    }, [focus]);
+        focusRef.current = focus;
+        applyView();
+    }, [focus, applyView]);
 
     // What the overlays ARE, rather than the objects carrying them.
     //

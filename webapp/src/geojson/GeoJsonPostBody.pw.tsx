@@ -399,10 +399,8 @@ test('a drawn feature is a button that shows it on the map, and an undrawn one i
         />,
     );
 
-    const show = component.getByRole('button', {name: 'Show Depot on the map'});
-    await expect(show).toBeVisible();
-    await show.click();
-    await expect(component.getByRole('button', {name: 'Show Unlocated on the map'})).toHaveCount(0);
+    await expect(component.getByRole('button', {name: /^Show on the map: Depot/})).toBeVisible();
+    await expect(component.getByTestId('geojson-feature-show')).toHaveCount(1);
 });
 
 test('the whole feature row, description included, is the button', async ({mount}) => {
@@ -412,7 +410,29 @@ test('the whole feature row, description included, is the button', async ({mount
         />,
     );
 
-    const show = component.getByRole('button', {name: 'Show Depot on the map'});
+    const show = component.getByRole('button', {name: /^Show on the map: Depot/});
     await expect(show.getByTestId('geojson-feature-description')).toHaveText('Issue point');
-    await component.getByTestId('geojson-feature-description').click();
+    await expect(show).toHaveAccessibleName(/Issue point/);
+});
+
+test('a color that is not a hex triple draws no dot', async ({mount}) => {
+    const component = await mount(
+        <GeoJsonPostBodyHarness features={[{name: 'Forged', color: 'url(https://example.com/x)'}, {name: 'Red', color: '#ff0000'}]}/>,
+    );
+
+    await expect(component.getByTestId('geojson-dot')).toHaveCount(1);
+    await expect(component.getByTestId('geojson-dot')).toHaveCSS('background-color', 'rgb(255, 0, 0)');
+});
+
+test('an unplaceable document offers no map buttons, because it draws no map', async ({mount}) => {
+    const component = await mount(
+        <GeoJsonPostBodyHarness
+            features={[{name: 'Depot', kind: 'Point'}]}
+            note='The document states a coordinate reference system whose axis order this build cannot confirm, so nothing is drawn.'
+            unplaceable={true}
+        />,
+    );
+
+    await expect(component).toContainText('Depot');
+    await expect(component.getByTestId('geojson-feature-show')).toHaveCount(0);
 });

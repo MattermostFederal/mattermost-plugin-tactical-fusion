@@ -179,3 +179,37 @@ func dtgHref(t *testing.T, links *decorators.Tagger, token string) string {
 	}
 	return links.URLFor(dtg.Type, params)
 }
+
+func TestExpandedRefusesAnHrefThatIsNotAReportLink(t *testing.T) {
+	report, err := Decode(metarLine, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, href := range []string{"", "/elsewhere?v=1", "/plugins/tf/decorate/airport?v=KJFK"} {
+		if table, ok := Expanded(href, report); ok || table != "" {
+			t.Errorf("Expanded(%q) wrote a table:\n%s", href, table)
+		}
+	}
+}
+
+func TestATruncatedReportIsNeverExpanded(t *testing.T) {
+	text := metarLine + strings.Repeat(" ZZ1", MaxUnknown+5)
+	report, err := Decode(text, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !report.Truncated {
+		t.Fatalf("a report past the unknown cap was not marked truncated: %d unknown", len(report.Unknown))
+	}
+	if table, ok := Expanded(tableHREF, report); ok || table != "" {
+		t.Errorf("a truncated report was expanded:\n%s", table)
+	}
+
+	whole, err := Decode(metarLine, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if whole.Truncated {
+		t.Error("a report under every cap was marked truncated")
+	}
+}

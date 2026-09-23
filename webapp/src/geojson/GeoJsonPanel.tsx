@@ -2,11 +2,11 @@ import React, {useEffect, useLayoutEffect, useRef} from 'react';
 
 import Customize from './Customize';
 import {setEditing, useEditing} from './editing';
-import {descriptionOf, measureLine, shapeLine, shownProperties} from './GeoJsonCard';
+import {descriptionOf, shownProperties} from './GeoJsonCard';
 import GeoJsonMap from './GeoJsonMap';
 import {isSectionVisible, sectionLabel} from './sections';
 import type {GeoJsonFeature, GeoJsonPayload} from './types';
-import {isLinkable, solePosition} from './types';
+import {ringCount, vertexCount, isLinkable, solePosition} from './types';
 
 import ErrorBoundary from '../components/ErrorBoundary';
 import LinkButton from '../components/LinkButton';
@@ -84,6 +84,46 @@ function Position({feature}: {feature: GeoJsonFeature}) {
             {reading}
         </HoverLink>
     );
+}
+
+function plural(n: number, word: string): string {
+    return `${n} ${word}${n === 1 ? '' : 's'}`;
+}
+
+/**
+ * What a feature's geometry is, in words.
+ *
+ * Counts rather than coordinates for anything but a lone point: a polygon's
+ * vertices are not positions somebody reported, and listing them would say they
+ * were.
+ */
+export function shapeLine(feature: GeoJsonFeature): string {
+    if (feature.kind === 'none') {
+        return '';
+    }
+
+    const vertices = vertexCount(feature);
+    const rings = ringCount(feature);
+
+    if (feature.kind === 'Point' && vertices === 1) {
+        return '';
+    }
+    if (feature.kind === 'Polygon' || feature.kind === 'MultiPolygon') {
+        return `${plural(rings, 'ring')}, ${plural(vertices, 'point')}`;
+    }
+
+    return plural(vertices, 'point');
+}
+
+/**
+ * What the geometry measures, as the server rendered it.
+ *
+ * Taken rather than computed, so the card and the panel cannot round the same
+ * figure into two different answers. Both empty means the geometry has no such
+ * measure, or the server would not stand behind the shape.
+ */
+export function measureLine(feature: GeoJsonFeature): string {
+    return [feature.length, feature.area].filter((part) => part !== '').join(', ');
 }
 
 const Feature: React.FC<{feature: GeoJsonFeature; showProperties: boolean}> = ({

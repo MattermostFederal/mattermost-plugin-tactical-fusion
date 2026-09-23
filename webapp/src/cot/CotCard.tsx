@@ -1,4 +1,4 @@
-import React, {useRef, useState} from 'react';
+import React from 'react';
 
 import CotMap, {focusFor} from './CotMap';
 import {ClassSummary, chatReading} from './summary';
@@ -7,7 +7,7 @@ import {affiliationColor, isLinkable, validFor} from './types';
 
 import ErrorBoundary from '../components/ErrorBoundary';
 import HoverLink from '../decorators/HoverLink';
-import type {MapFocus} from '../decorators/location/map/focus';
+import {SHOW_ON_MAP, SR_ONLY, useInlineMapShown, useMapFocus} from '../decorators/location/map/use_map_focus';
 import {pluginBaseUrl} from '../plugin_url';
 
 import {showCotEvent} from './index';
@@ -87,16 +87,12 @@ function Row({label, children}: {label: string; children: React.ReactNode}) {
     );
 }
 
-function PositionValue({event}: {event: CotEvent}) {
-    return <span>{`${event.lat}, ${event.lon}`}</span>;
-}
-
 const FILE_ID = /^[a-z0-9]{26}$/;
 
 /**
  * A time, linked to the date-time group tools when the server could spell it.
  *
- * The anchor is a plain one, exactly as the position row's is: the stylesheet's
+ * The anchor is a plain one: the stylesheet's
  * href rule and the document-level click handler both key off the path, so the
  * chip and the sidebar come back without either of them knowing this card
  * exists.
@@ -158,16 +154,14 @@ function ShowOnMap({event, onShow, children}: {event: CotEvent; onShow?: (event:
         return <>{children}</>;
     }
 
-    const name = event.callsign === '' ? event.uid : event.callsign;
-
     return (
         <button
             type='button'
             style={styles.showButton}
             onClick={() => onShow(event)}
-            aria-label={`Show ${name} on the map`}
             data-testid='cot-event-show'
         >
+            <span style={SR_ONLY}>{SHOW_ON_MAP}</span>
             {children}
         </button>
     );
@@ -203,7 +197,7 @@ function EventDetail({event}: {event: CotEvent}) {
                 role='group'
                 aria-label={`Details of the Cursor on Target event ${event.callsign === '' ? event.uid : event.callsign}`}
             >
-                {event.lat !== '' && <Row label='Position'><PositionValue event={event}/></Row>}
+                {event.lat !== '' && <Row label='Position'>{`${event.lat}, ${event.lon}`}</Row>}
                 {event.speed !== '' && (
                     <Row label='Track'>
                         {event.speed}
@@ -243,10 +237,10 @@ function EventDetail({event}: {event: CotEvent}) {
  * Several events, one line each.
  *
  * A post is one post. Rendering every event in full would put N maps and N
- * tables in the channel, so the list names each track and links its position,
- * and the panel behind "Open details" carries the rest.
+ * tables in the channel, so the list names each track, a click on one shows it
+ * on the map, and the panel behind "Open details" carries the rest.
  */
-function EventList({events, onShow}: {events: readonly CotEvent[]; onShow: (event: CotEvent) => void}) {
+function EventList({events, onShow}: {events: readonly CotEvent[]; onShow?: (event: CotEvent) => void}) {
     return (
         <ul
             style={styles.list}
@@ -276,16 +270,9 @@ function EventList({events, onShow}: {events: readonly CotEvent[]; onShow: (even
 export const CotCard: React.FC<Props> = ({payload, compactDisplay}) => {
     const {events} = payload;
     const only = events.length === 1 ? events[0] : undefined;
-    const [focus, setFocus] = useState<MapFocus | undefined>(undefined);
-    const clicks = useRef(0);
-
-    const show = (event: CotEvent) => {
-        clicks.current += 1;
-        const next = focusFor(event, clicks.current);
-        if (next !== null) {
-            setFocus(next);
-        }
-    };
+    const [focus, show] = useMapFocus(focusFor);
+    const mapShown = useInlineMapShown() && !compactDisplay && events.some(isLinkable);
+    const onShow = mapShown ? show : undefined;
 
     return (
         <div>
@@ -304,7 +291,7 @@ export const CotCard: React.FC<Props> = ({payload, compactDisplay}) => {
                         <div style={styles.header}>
                             <ShowOnMap
                                 event={only}
-                                onShow={compactDisplay ? undefined : show}
+                                onShow={onShow}
                             >
                                 <Naming event={only}/>
                             </ShowOnMap>
@@ -331,7 +318,7 @@ export const CotCard: React.FC<Props> = ({payload, compactDisplay}) => {
                     ) : (
                         <EventList
                             events={events}
-                            onShow={show}
+                            onShow={onShow}
                         />
                     )}
                 </ErrorBoundary>

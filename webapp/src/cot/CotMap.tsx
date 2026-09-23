@@ -234,8 +234,14 @@ export function focusFor(event: CotEvent, seq: number): MapFocus | null {
         return null;
     }
 
+    const lat = Number(event.lat);
+    const lon = Number(event.lon);
+    if (event.lon === '' || !Number.isFinite(lat) || !Number.isFinite(lon)) {
+        return null;
+    }
+
     const outline = outlineOf(event);
-    const positions = outline === undefined ? [{lat: Number(event.lat), lon: Number(event.lon)}] : [...outline.points, {lat: Number(event.lat), lon: Number(event.lon)}];
+    const positions = outline === undefined ? [{lat, lon}] : [...outline.points, {lat, lon}];
 
     return focusOn(positions, seq);
 }

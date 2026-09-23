@@ -362,12 +362,14 @@ interface Props {
      * sitting through the real twenty seconds.
      */
     readyDeadlineMs?: number;
+
+    focus?: MapFocus;
 }
 
 const LocationMapHarness: React.FC<Props> = ({
     start = 'Los Angeles', region = '', pending = false, pageHref, fill, openAt, noWebGL, preview, markers,
     markerLabel, accuracyMeters, accuracyLabel, ellipse, geometries,
-    extentLabel, readyDeadlineMs,
+    extentLabel, readyDeadlineMs, focus: startFocus,
 }) => {
     // Set during render, before the child's effects construct a map, and
     // restored on unmount so one test cannot shorten another's.
@@ -383,7 +385,7 @@ const LocationMapHarness: React.FC<Props> = ({
     webgl2Allowed = !noWebGL;
 
     const [name, setName] = useState<ViewName>(start);
-    const [focus, setFocus] = useState<MapFocus | undefined>(undefined);
+    const [focus, setFocus] = useState<MapFocus | undefined>(startFocus);
     const focusSeq = useRef(0);
     const [mounted, setMounted] = useState(true);
     const [live, setLive] = useState(false);

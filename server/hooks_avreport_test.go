@@ -141,7 +141,10 @@ func TestTheReportTableLinksTheStationTheWayTheTaggerWould(t *testing.T) {
 
 	for _, message := range []string{reportMETAR, reportTAF} {
 		updated := p.decoratePost(&model.Post{Message: message, UserId: testUserID}, hookRef)
-		if updated == nil || !strings.Contains(updated.Message, strings.Replace(want, "METAR", strings.Fields(message)[0], 1)) {
+		if updated == nil {
+			t.Fatalf("%q was left alone", message)
+		}
+		if !strings.Contains(updated.Message, strings.Replace(want, "METAR", strings.Fields(message)[0], 1)) {
 			t.Errorf("the station is not linked to its airfield:\n%s", updated.Message)
 		}
 	}
@@ -799,5 +802,24 @@ func TestTheSwitchIsReadInsideTheRecover(t *testing.T) {
 	}
 	if len(api.warnCodes) == 0 || api.warnCodes[len(api.warnCodes)-1] != errcode.HooksAvReportPanic {
 		t.Fatalf("the recover did not log its code: %v", api.warnCodes)
+	}
+}
+
+func TestAFenceIsNeitherReadNorRefusedWhileOnlyTheTableIsOn(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	withConfiguration(p, func(c *configuration) { c.EnableAvReportCard = false })
+	api := p.API.(*fakeAPI)
+
+	unreadable := reportFence("taf", "TAF PHNL garbled beyond reading")
+	if updated := p.decoratePost(&model.Post{Message: unreadable, UserId: testUserID}, hookRef); updated != nil && updated.Type != "" {
+		t.Fatalf("a fence was stamped with the card off: %+v", updated)
+	}
+	if len(api.ephemeral) != 0 {
+		t.Errorf("the author was told a disabled card could not be read: %v", api.ephemeral)
+	}
+	for _, code := range api.warnCodes {
+		if code == errcode.HooksAvReportUnreadable {
+			t.Error("a disabled card logged an unreadable report")
+		}
 	}
 }

@@ -22,9 +22,14 @@ func issuedLabel(kind string) string {
 	return "Issued"
 }
 
-func reportTable(href string, report Report) string {
+func reportTable(href string, report Report) (string, bool) {
+	cut := strings.LastIndex(href, "/"+Type+"?")
+	if cut < 0 {
+		return "", false
+	}
+
 	var b strings.Builder
-	links := &decorators.Tagger{URLPrefix: href[:strings.LastIndex(href, "/"+Type+"?")]}
+	links := &decorators.Tagger{URLPrefix: href[:cut]}
 
 	b.WriteString("| " + decorators.TableCell(report.Kind) + " | " + tableHeadingDetail(links, report) + " |\n")
 	b.WriteString("|:--|:--|\n")
@@ -52,7 +57,7 @@ func reportTable(href string, report Report) string {
 	}
 	b.WriteString(decorators.TableDetailsRow(href))
 
-	return b.String()
+	return b.String(), true
 }
 
 func tableHeadingDetail(links *decorators.Tagger, report Report) string {

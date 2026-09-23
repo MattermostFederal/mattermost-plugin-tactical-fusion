@@ -377,8 +377,8 @@ test.describe('the hover the card carries itself', () => {
 });
 
 /*
- * A block of several events. One post stays one post: the card names each track
- * and links its position, and the panel behind "Open details" carries the rest.
+ * A block of several events. One post stays one post: the card names each track,
+ * and the panel behind "Open details" carries the rest.
  */
 test.describe('a post carrying several events', () => {
     test('names every one of them, and says how many', async ({mount}) => {
@@ -422,7 +422,7 @@ test.describe('a post carrying several events', () => {
         await expect(
             component.getByRole('group', {name: /^Details of the Cursor on Target event /}),
         ).toBeVisible();
-        await expect(component.getByTestId('cot-card')).not.toContainText('1 events');
+        await expect(component.getByTestId('cot-card')).toContainText('Cursor on Target (CoT):');
     });
 
     test('every placed event in the block is a button that shows it on the map', async ({mount}) => {
@@ -435,16 +435,32 @@ test.describe('a post carrying several events', () => {
             />,
         );
 
-        await expect(component.getByRole('button', {name: 'Show ALPHA on the map'})).toBeVisible();
-        await component.getByRole('button', {name: 'Show BRAVO on the map'}).click();
-        await expect(component.getByRole('link', {name: '34.0561, -118.2500'})).toHaveCount(0);
+        await expect(component.getByRole('button', {name: /^Show on the map: ALPHA/})).toBeVisible();
+        await expect(component.getByRole('button', {name: /^Show on the map: BRAVO/})).toBeVisible();
     });
 });
 
 test('a single placed event names itself as a button that recenters the map', async ({mount}) => {
     const component = await mount(<CotPostBodyHarness event={{lat: '34.0561', lon: '-118.2500', format: 'dd', value: '34.0561,-118.2500', callsign: 'DELTA1'}}/>);
 
-    await expect(component.getByRole('button', {name: 'Show DELTA1 on the map'})).toBeVisible();
+    const show = component.getByRole('button', {name: /^Show on the map: DELTA1/});
+    await expect(show).toBeVisible();
+    await expect(show).toHaveAccessibleName(/Friendly Ground/);
+});
+
+test('compact display offers no map buttons, because it draws no map', async ({mount}) => {
+    const component = await mount(
+        <CotPostBodyHarness
+            compactDisplay={true}
+            events={[
+                {callsign: 'ALPHA', lat: '34.0561', lon: '-118.2500', format: 'dd', value: '34.0561,-118.2500'},
+                {callsign: 'BRAVO', lat: '35.0000', lon: '-119.0000', format: 'dd', value: '35.0000,-119.0000'},
+            ]}
+        />,
+    );
+
+    await expect(component).toContainText('ALPHA');
+    await expect(component.getByTestId('cot-event-show')).toHaveCount(0);
 });
 
 test.describe('the class picks one line, and nothing else moves', () => {

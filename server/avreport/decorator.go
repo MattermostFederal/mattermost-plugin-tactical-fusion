@@ -115,7 +115,7 @@ func (d *Decorator) Parse(value string, ref time.Time) (url.Values, bool) {
 }
 
 func (d *Decorator) ExpandMessage(href, _ string, params url.Values) string {
-	if !d.formats().Table || href == "" {
+	if !d.formats().Table {
 		return ""
 	}
 
@@ -124,14 +124,15 @@ func (d *Decorator) ExpandMessage(href, _ string, params url.Values) string {
 		return ""
 	}
 
-	return reportTable(href, report)
+	table, _ := Expanded(href, report)
+	return table
 }
 
 func Expanded(href string, report Report) (string, bool) {
-	if href == "" {
+	if report.Truncated {
 		return "", false
 	}
-	return reportTable(href, report), true
+	return reportTable(href, report)
 }
 
 func (d *Decorator) kindEnabled(kind string) bool {

@@ -48,6 +48,10 @@ function colorFor(feature: GeoJsonFeature, fallback: string): string {
     return styleOf(statedStyle(feature)).color ?? fallback;
 }
 
+export function checkedColor(feature: GeoJsonFeature): string {
+    return colorFor(feature, '');
+}
+
 /**
  * The simplestyle a feature stated, in the shape `styleOf` gates.
  *

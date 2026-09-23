@@ -1892,6 +1892,19 @@ test('a stated style survives the extent-only write path', async ({mount, page})
 });
 
 test.describe('focusing on one feature', () => {
+    test('a focus given before the map has loaded is applied once it has', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(
+            <LocationMapHarness focus={{seq: 1, box: null, center: {lat: 38.89, lon: -77.035}}}/>,
+        );
+        await expectDrawn(component);
+        await readMap(component);
+
+        await expect(component.getByTestId('camera')).toHaveText('38.890,-77.035');
+        await expect(component.getByTestId('zoom')).toHaveText('14');
+    });
+
     test('a point focus jumps the camera to it at street level', async ({mount, page}) => {
         await serveMapAssets(page);
 

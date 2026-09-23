@@ -66,6 +66,7 @@ type Report struct {
 	Center      *Center
 	RadiusNm    string
 	Raw         string
+	Truncated   bool
 
 	Format string
 	Value  string
@@ -114,6 +115,8 @@ func Decode(text string, ref time.Time) (Report, error) {
 	}
 
 	report.Raw = normalized
+	report.Truncated = len(report.Rows) > MaxRows || len(report.Remarks) > MaxRows ||
+		len(report.Periods) > MaxPeriods || len(report.Unknown) > MaxUnknown || len(report.Flags) > MaxFlags
 	report.Rows = capRows(report.Rows, MaxRows)
 	report.Remarks = capRows(report.Remarks, MaxRows)
 	if len(report.Periods) > MaxPeriods {

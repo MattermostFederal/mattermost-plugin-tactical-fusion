@@ -24,3 +24,9 @@ test('a shape across the antimeridian is framed on the short way round', () => {
 
     expect(focus?.box).toEqual([[179.5, 0], [180.5, 1]]);
 });
+
+test('a line along a meridian keeps its box, so it is fitted rather than zoomed to its midpoint', () => {
+    const focus = focusOn([{lat: 21, lon: -158}, {lat: 22, lon: -158}], 1);
+
+    expect(focus?.box).toEqual([[-158, 21], [-158, 22]]);
+});

@@ -57,6 +57,14 @@ const (
  */
 const maxStrokeWidth = 10
 
+func StyleKeys() []string {
+	return []string{
+		styleMarkerColor, styleMarkerSize,
+		styleStroke, styleStrokeWidth, styleStrokeOpacity,
+		styleFill, styleFillOpacity,
+	}
+}
+
 // markerSizes is simplestyle's whole vocabulary for marker-size. Anything else
 // is not a size, and is left to the theme rather than guessed at.
 var markerSizes = map[string]bool{"small": true, "medium": true, "large": true}

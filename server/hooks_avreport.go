@@ -27,7 +27,7 @@ func (p *Plugin) recognizeAvReport(post *model.Post, ref time.Time) (*model.Post
 	api := p.API
 
 	source, found := p.avreportSource(post)
-	if !found {
+	if !found || !p.avreportSurfaceEnabled(source) {
 		return nil, false
 	}
 

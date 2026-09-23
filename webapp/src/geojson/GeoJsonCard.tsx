@@ -1,12 +1,11 @@
-import React, {useRef, useState} from 'react';
+import React from 'react';
 
-import GeoJsonMap, {focusFor} from './GeoJsonMap';
+import GeoJsonMap, {checkedColor, focusFor} from './GeoJsonMap';
 import {showGeoJsonDocument} from './panel';
 import type {GeoJsonFeature, GeoJsonPayload, GeoJsonProperty} from './types';
-import {ringCount, vertexCount} from './types';
 
 import ErrorBoundary from '../components/ErrorBoundary';
-import type {MapFocus} from '../decorators/location/map/focus';
+import {SHOW_ON_MAP, SR_ONLY, useInlineMapShown, useMapFocus} from '../decorators/location/map/use_map_focus';
 
 interface Props {
     payload: GeoJsonPayload;
@@ -15,8 +14,8 @@ interface Props {
 
 export const CARD_KIND = 'GeoJSON';
 
-export const STYLE_KEYS = new Set([
-    'marker-color', 'marker-size', 'marker-symbol',
+const STYLE_KEYS = new Set([
+    'marker-color', 'marker-size',
     'stroke', 'stroke-width', 'stroke-opacity',
     'fill', 'fill-opacity',
 ]);
@@ -103,46 +102,6 @@ const styles: Record<string, React.CSSProperties> = {
     },
 };
 
-function plural(n: number, word: string): string {
-    return `${n} ${word}${n === 1 ? '' : 's'}`;
-}
-
-/**
- * What a feature's geometry is, in words.
- *
- * Counts rather than coordinates for anything but a lone point: a polygon's
- * vertices are not positions somebody reported, and listing them would say they
- * were.
- */
-export function shapeLine(feature: GeoJsonFeature): string {
-    if (feature.kind === 'none') {
-        return '';
-    }
-
-    const vertices = vertexCount(feature);
-    const rings = ringCount(feature);
-
-    if (feature.kind === 'Point' && vertices === 1) {
-        return '';
-    }
-    if (feature.kind === 'Polygon' || feature.kind === 'MultiPolygon') {
-        return `${plural(rings, 'ring')}, ${plural(vertices, 'point')}`;
-    }
-
-    return plural(vertices, 'point');
-}
-
-/**
- * What the geometry measures, as the server rendered it.
- *
- * Taken rather than computed, so the card and the panel cannot round the same
- * figure into two different answers. Both empty means the geometry has no such
- * measure, or the server would not stand behind the shape.
- */
-export function measureLine(feature: GeoJsonFeature): string {
-    return [feature.length, feature.area].filter((part) => part !== '').join(', ');
-}
-
 const Dot: React.FC<{color: string}> = ({color}) => {
     if (color === '') {
         return null;
@@ -162,7 +121,7 @@ const Feature: React.FC<{feature: GeoJsonFeature; onShow?: () => void}> = ({feat
     const body = (
         <>
             <span style={styles.featureHead}>
-                <Dot color={feature.color}/>
+                <Dot color={checkedColor(feature)}/>
                 <span style={styles.name}>{feature.name}</span>
             </span>
             {description !== '' && (
@@ -184,9 +143,9 @@ const Feature: React.FC<{feature: GeoJsonFeature; onShow?: () => void}> = ({feat
                     type='button'
                     style={styles.featureButton}
                     onClick={onShow}
-                    aria-label={`Show ${feature.name} on the map`}
                     data-testid='geojson-feature-show'
                 >
+                    <span style={SR_ONLY}>{SHOW_ON_MAP}</span>
                     {body}
                 </button>
             )}
@@ -195,16 +154,8 @@ const Feature: React.FC<{feature: GeoJsonFeature; onShow?: () => void}> = ({feat
 };
 
 export const GeoJsonCard: React.FC<Props> = ({payload}) => {
-    const [focus, setFocus] = useState<MapFocus | undefined>(undefined);
-    const clicks = useRef(0);
-
-    const show = (feature: GeoJsonFeature) => {
-        clicks.current += 1;
-        const next = focusFor(feature, clicks.current);
-        if (next !== null) {
-            setFocus(next);
-        }
-    };
+    const [focus, show] = useMapFocus(focusFor);
+    const mapShown = useInlineMapShown() && !payload.unplaceable;
 
     return (
         <div>
@@ -274,7 +225,7 @@ export const GeoJsonCard: React.FC<Props> = ({payload}) => {
                                 <Feature
                                     key={`${feature.name}-${index}`}
                                     feature={feature}
-                                    onShow={focusFor(feature, 0) === null ? undefined : () => show(feature)}
+                                    onShow={mapShown && focusFor(feature, 0) !== null ? () => show(feature) : undefined}
                                 />
                             ))}
                         </ul>
