@@ -182,3 +182,30 @@ func TestEveryTimedRowCarriesItsDateTimeQuery(t *testing.T) {
 		}
 	}
 }
+
+func TestATFRKeepsItsPlaceReferenceAndOperatingConditions(t *testing.T) {
+	report, err := Decode(tfrExample, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for label, want := range map[string]string{
+		"Place":      "SOME CITY, ST",
+		"Reference":  "SOME VORTAC 123 DEG RADIAL AT 15.2 nautical miles",
+		"Operations": "except AS SPECIFIED below AND/OR UNLESS authorized BY air traffic control: NO aircraft operations ARE authorized IN THE AREA EXCEPT...",
+	} {
+		if got := rowValue(report.Rows, label); got != want {
+			t.Errorf("%s = %q, want %q", label, got, want)
+		}
+	}
+	if report.Rows[0].Label != RestrictionLabel || report.Rows[1].Label != "Place" {
+		t.Errorf("the restriction and its place do not lead: %v, %v", report.Rows[0], report.Rows[1])
+	}
+
+	polygon, err := Decode(tfrPolygon, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hasRow(polygon, "Operations") || hasRow(polygon, "Reference") {
+		t.Errorf("rows were invented for a TFR that states none: %v", polygon.Rows)
+	}
+}

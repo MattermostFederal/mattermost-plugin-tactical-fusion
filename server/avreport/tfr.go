@@ -22,7 +22,8 @@ var (
 	tfrSectionPattern   = regexp.MustCompile(`14 CFR (?:SECTION|PART|SEC) (\d{2}\.\d+)`)
 	tfrEffectivePattern = regexp.MustCompile(`EFFECTIVE (?:(\d{10}) UTC|IMMEDIATELY)(?: UNTIL (?:(\d{10}) UTC|(FURTHER NOTICE)))?`)
 	tfrAltitudePattern  = regexp.MustCompile(`\b(SFC|\d+ ?FT (?:MSL|AGL))-(\d+ ?FT (?:MSL|AGL)|FL ?\d{3}|UNL)\b`)
-	tfrCirclePattern    = regexp.MustCompile(`(\d+(?:\.\d+)?) NM RADIUS OF ` + tfrCoordExpr)
+	tfrCirclePattern    = regexp.MustCompile(`(\d+(?:\.\d+)?) NM RADIUS OF ` + tfrCoordExpr + `(?: \(([^)]*)\))?`)
+	tfrPlacePattern     = regexp.MustCompile(`^(.+?)\. TEMPORARY FLIGHT RESTRICTION`)
 	tfrAreaStart        = regexp.MustCompile(`AREA DEFINED AS `)
 	tfrAreaVertex       = regexp.MustCompile(`^` + tfrCoordExpr + `(?: \([^)]*\))?`)
 	tfrAreaNext         = regexp.MustCompile(`^ TO (?:(?:THE )?POINT OF ORIGIN)?`)
@@ -34,9 +35,16 @@ func (r Report) IsRestriction() bool {
 }
 
 func readTFR(report *Report, body string) {
-	if restriction := restrictionText(body); restriction != "" {
-		report.Rows = append([]Row{{Label: RestrictionLabel, Value: restriction}}, report.Rows...)
+	restriction := restrictionText(body)
+	if restriction == "" {
+		return
 	}
+
+	lead := []Row{{Label: RestrictionLabel, Value: restriction}}
+	if m := tfrPlacePattern.FindStringSubmatch(body); m != nil {
+		lead = append(lead, Row{Label: "Place", Value: m[1]})
+	}
+	report.Rows = append(lead, report.Rows...)
 
 	if m := tfrAltitudePattern.FindStringSubmatch(body); m != nil {
 		report.Rows = append(report.Rows, Row{Label: "Altitudes", Value: altitudeText(m[1]) + " to " + altitudeText(m[2])})
@@ -47,6 +55,9 @@ func readTFR(report *Report, body string) {
 			report.Center = &center
 			report.RadiusNm = m[1]
 			report.Rows = append(report.Rows, Row{Label: "Radius", Value: m[1] + " NM"})
+			if m[3] != "" {
+				report.Rows = append(report.Rows, Row{Label: "Reference", Value: expandContractions(m[3])})
+			}
 		} else {
 			report.Unknown = append(report.Unknown, m[2])
 		}
@@ -59,6 +70,13 @@ func readTFR(report *Report, body string) {
 			report.Center = &center
 		}
 		report.Rows = append(report.Rows, Row{Label: "Area", Value: strconv.Itoa(len(ring)) + " points"})
+	}
+
+	if loc := tfrEffectivePattern.FindStringIndex(body); loc != nil {
+		operations := strings.TrimSpace(strings.TrimLeft(body[loc[1]:], ". "))
+		if operations != "" {
+			report.Rows = append(report.Rows, Row{Label: "Operations", Value: expandContractions(operations)})
+		}
 	}
 }
 
