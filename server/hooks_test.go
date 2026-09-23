@@ -354,6 +354,8 @@ func (a *fakeAPI) LoadPluginConfiguration(dest any) error {
 
 // newTestPlugin returns a plugin wired to a fake API, with the DTG decorator
 // registered so tests do not depend on OnActivate having run.
+const testCommandChannel = "channel1"
+
 func newTestPlugin(t *testing.T, siteURL string, enabled bool) *Plugin {
 	t.Helper()
 
@@ -362,7 +364,7 @@ func newTestPlugin(t *testing.T, siteURL string, enabled bool) *Plugin {
 	config.ServiceSettings.SiteURL = model.NewPointer(siteURL)
 
 	p := &Plugin{}
-	p.SetAPI(&fakeAPI{config: config})
+	p.SetAPI(&fakeAPI{config: config, channelsPermitted: map[string]bool{testCommandChannel: true}})
 	p.setConfiguration(&configuration{
 		EnableDTG:          enabled,
 		EnableDTGMilitary:  true,

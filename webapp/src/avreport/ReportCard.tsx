@@ -48,6 +48,8 @@ export const ReportCard: React.FC<{payload: ReportPayload; compactDisplay?: bool
         {payload.lead !== '' && <span style={styles.text}>{payload.lead}</span>}
         <div
             style={styles.card}
+            role='group'
+            aria-label={`Aviation report: ${headingOf(payload)}`}
             data-testid='avreport-card'
         >
             <div style={styles.header}>

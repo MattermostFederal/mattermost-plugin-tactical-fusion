@@ -20,6 +20,8 @@ export const MAX_REPORT_FLAGS = 8;
 
 export const MAX_AREA_POINTS = 64;
 
+export const MIN_AREA_POINTS = 3;
+
 export const RESTRICTION_LABEL = 'Restriction';
 
 export function isRestriction(report: Report): boolean {
@@ -218,7 +220,7 @@ export function fromWire(body: unknown): Report | null {
     const bodyPeriods = periods(blob, 'periods');
     const remarks = rows(blob, 'remarks');
     const unknown = strings(blob, 'unknown', MAX_REPORT_UNKNOWN);
-    const area = strings(blob, 'area', MAX_AREA_POINTS);
+    const area = (listOf(blob, 'area')?.length ?? 0) > MAX_AREA_POINTS ? [] : strings(blob, 'area', MAX_AREA_POINTS);
     if (flags === null || bodyRows === null || bodyPeriods === null || remarks === null || unknown === null || area === null) {
         return null;
     }

@@ -26,7 +26,12 @@ func (p *Plugin) avreportStamp(post *model.Post, ref time.Time) (*model.Post, bo
 func (p *Plugin) recognizeAvReport(post *model.Post, ref time.Time) (*model.Post, bool) {
 	api := p.API
 
+	formats, cardEnabled := p.avreportFormats(), p.avreportCardEnabled()
+
 	source, found := p.avreportSource(post)
+	if !found {
+		source, found = singleLineRestriction(post, ref, cardEnabled)
+	}
 	if !found || !p.avreportSurfaceEnabled(source) {
 		return nil, false
 	}
@@ -41,17 +46,17 @@ func (p *Plugin) recognizeAvReport(post *model.Post, ref time.Time) (*model.Post
 			"The aviation report you just posted could not be read, so it was left as ordinary text.")
 		return nil, false
 	}
-	if !avreport.KindEnabled(p.avreportFormats(), report.Kind) {
+	if !avreport.KindEnabled(formats, report.Kind) {
 		return nil, false
 	}
 
-	prefersCard := report.IsRestriction() && p.avreportCardEnabled()
-	if source.Kind == avreport.SourceMessage && p.avreportFormats().Table && !prefersCard {
+	prefersCard := report.IsRestriction() && cardEnabled
+	if source.Kind == avreport.SourceMessage && formats.Table && !prefersCard {
 		if expanded, ok := p.expandAvReport(post, report, ref); ok {
 			return expanded, true
 		}
 	}
-	if !p.avreportCardEnabled() {
+	if !cardEnabled {
 		return nil, false
 	}
 
@@ -128,6 +133,21 @@ func (p *Plugin) avreportSource(post *model.Post) (avreport.Source, bool) {
 		return avreport.Source{}, false
 	}
 
+	return avreport.Source{Kind: avreport.SourceMessage, Text: text}, true
+}
+
+func singleLineRestriction(post *model.Post, ref time.Time, cardEnabled bool) (avreport.Source, bool) {
+	text := strings.TrimSpace(post.Message)
+	if !cardEnabled || text == "" || strings.ContainsAny(text, "\r\n") || decorators.HasCodeSpan(post.Message) {
+		return avreport.Source{}, false
+	}
+	if !avreport.LooksLikeHeader(text) {
+		return avreport.Source{}, false
+	}
+	report, err := avreport.Decode(text, ref)
+	if err != nil || !report.IsRestriction() {
+		return avreport.Source{}, false
+	}
 	return avreport.Source{Kind: avreport.SourceMessage, Text: text}, true
 }
 

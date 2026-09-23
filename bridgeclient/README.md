@@ -78,6 +78,7 @@ link.Markdown // "[Rally point](/plugins/com.mattermost.plugin-tactical-fusion/d
 link.URL      // "/plugins/com.mattermost.plugin-tactical-fusion/decorate/location?f=mgrs&r=18S+UJ+23478+06483&v=18SUJ2347806483"
 link.Type     // "location"
 link.Label    // "Rally point"
+link.FitsPost // true: a long note's link can outgrow a post
 ```
 
 | Field | Required | Meaning |

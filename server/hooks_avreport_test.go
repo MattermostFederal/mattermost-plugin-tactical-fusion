@@ -888,3 +888,33 @@ func TestAnExpandedTFRIsStableUnderTheHook(t *testing.T) {
 		t.Errorf("the stored TFR table was rewritten again:\n%s", again.Message)
 	}
 }
+
+func TestAOneLineTFRIsACardWhileTheCardIsOnAndATableOtherwise(t *testing.T) {
+	oneLine := strings.Join(strings.Fields(reportTFR), " ")
+
+	p := newTestPlugin(t, "https://example.com", true)
+	card := p.decoratePost(&model.Post{Message: oneLine, UserId: testUserID}, hookRef)
+	if card == nil || card.Type != avreport.PostType || card.Message != oneLine {
+		t.Fatalf("a one-line TFR was not stamped as a card: %+v", card)
+	}
+	if blob := reportBlob(t, card); blob["radius_nm"] != "5" {
+		t.Errorf("the card does not carry the circle: %v", blob["radius_nm"])
+	}
+
+	withConfiguration(p, func(c *configuration) { c.EnableAvReportCard = false })
+	table := p.decoratePost(&model.Post{Message: oneLine, UserId: testUserID}, hookRef)
+	if table == nil || table.Type != "" || !strings.Contains(table.Message, "| Radius | 5 NM |") || !strings.Contains(table.Message, "/decorate/dtg?") {
+		t.Fatalf("a one-line TFR with the card off is not the linked table: %+v", table)
+	}
+	if again := p.decoratePost(&model.Post{Message: table.Message, UserId: testUserID}, hookRef); again != nil {
+		t.Errorf("the stored table was rewritten again:\n%s", again.Message)
+	}
+}
+
+func TestAOneLineNotamThatIsNotARestrictionStaysALinkedTable(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	updated := p.decoratePost(&model.Post{Message: "!HNL 09/123 HNL RWY 08L/26R CLSD 2609221200-2609232359", UserId: testUserID}, hookRef)
+	if updated == nil || updated.Type != "" || !strings.HasPrefix(updated.Message, "| NOTAM |") {
+		t.Fatalf("an ordinary one-line NOTAM is not the table: %+v", updated)
+	}
+}

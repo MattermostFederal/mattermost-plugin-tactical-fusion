@@ -171,6 +171,7 @@ function readLink(payload: unknown): DecoratorLink {
         url: field(wire, 'url', 'string'),
         type: field(wire, 'type', 'string'),
         label: field(wire, 'label', 'string'),
+        fitsPost: field(wire, 'fits_post', 'boolean'),
     };
 }
 

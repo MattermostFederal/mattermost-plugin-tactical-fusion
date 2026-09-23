@@ -112,6 +112,11 @@ type LinkResponse struct {
 
 	// Label is the link text before markdown escaping.
 	Label string `json:"label"`
+
+	// FitsPost reports whether Markdown alone fits the smallest post size limit
+	// any Mattermost server enforces (4,000 runes). A note's markdown travels
+	// URL-encoded, so its link can outgrow a post.
+	FitsPost bool `json:"fits_post"`
 }
 
 // InfoResponse describes what the installed plugin offers.

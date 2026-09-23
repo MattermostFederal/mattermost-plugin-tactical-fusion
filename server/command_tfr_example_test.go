@@ -24,7 +24,7 @@ func TestTheTFRExampleIsPostedAsACard(t *testing.T) {
 	if blob == nil {
 		t.Fatal("the TFR example was not posted as a card")
 	}
-	if blob["radius_nm"] != "3" || blob["value"] == "" {
+	if value, _ := blob["value"].(string); blob["radius_nm"] != "3" || value == "" {
 		t.Errorf("the card does not carry the circle: radius %v value %v", blob["radius_nm"], blob["value"])
 	}
 }

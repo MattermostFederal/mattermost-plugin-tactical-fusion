@@ -12,6 +12,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/note"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
@@ -133,4 +134,59 @@ func TestTheGlossaryExampleExpandsEveryAcronym(t *testing.T) {
 func noteExampleMessages(t *testing.T) []string {
 	t.Helper()
 	return newTestPlugin(t, "https://example.com", true).noteExampleMessages()
+}
+
+func TestCommandsThatPostRefuseAUserWhoCannotPost(t *testing.T) {
+	for _, command := range []string{"/tactical-fusion note Fuel | **12,400 lb**", "/tactical-fusion examples"} {
+		p := newTestPlugin(t, "https://example.com", true)
+		api := p.API.(*fakeAPI)
+		api.channelDenied = map[string]bool{model.PermissionCreatePost.Id: true}
+
+		response := runNoteCommand(t, p, command)
+		if !strings.Contains(response.Text, "(TF-"+strconv.Itoa(errcode.CommandPostNotPermitted)+")") {
+			t.Errorf("%q replied %q", command, response.Text)
+		}
+		if len(api.created) != 0 {
+			t.Errorf("%q posted %d messages", command, len(api.created))
+		}
+	}
+}
+
+func TestANoteFromAUserWithoutChannelMentionsCannotNotifyTheChannel(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	api := p.API.(*fakeAPI)
+
+	runNoteCommand(t, p, "/tactical-fusion note @channel | read me")
+	if api.created[0].GetProp(model.PostPropsMentionHighlightDisabled) != nil {
+		t.Error("a user allowed channel mentions had them disabled")
+	}
+
+	api.channelDenied = map[string]bool{model.PermissionUseChannelMentions.Id: true}
+	runNoteCommand(t, p, "/tactical-fusion note @channel | read me")
+	if api.created[0].GetProp(model.PostPropsMentionHighlightDisabled) != true {
+		t.Error("a user without channel mentions can notify the channel through a note")
+	}
+}
+
+func TestTheNoteCommandSaysWhenItCouldNotPost(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	api := p.API.(*fakeAPI)
+	api.createPostErr = model.NewAppError("CreatePost", "archived", nil, "", 403)
+
+	response := runNoteCommand(t, p, "/tactical-fusion note Fuel | **12,400 lb**")
+	if !strings.Contains(response.Text, "(TF-"+strconv.Itoa(errcode.CommandNotePostFailed)+")") {
+		t.Errorf("replied %q", response.Text)
+	}
+}
+
+func TestNotesPassThroughThePostHookUnchanged(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	messages := append(p.noteExampleMessages(), noteLink(&decorators.Tagger{URLPrefix: p.decorateURLPrefix()},
+		"tokens", "141200ZSEP26 at 21.3353, -157.9483, ICAO:PHNL on FREQ:121.5\n\n```\n18S UJ 23478 06483\n```"))
+	for _, message := range messages {
+		if changed := p.decoratePost(&model.Post{Message: message}, time.Now()); changed != nil {
+			t.Errorf("the post hook rewrote a note:\n%s\n=>\n%s", message, changed.Message)
+		}
+	}
 }

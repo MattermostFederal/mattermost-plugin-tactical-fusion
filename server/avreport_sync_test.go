@@ -25,6 +25,7 @@ func TestWebappAvReportPostTypeMatches(t *testing.T) {
 		"MAX_REPORT_UNKNOWN":     strconv.Itoa(avreport.MaxUnknown),
 		"MAX_REPORT_FLAGS":       strconv.Itoa(avreport.MaxFlags),
 		"MAX_AREA_POINTS":        strconv.Itoa(avreport.MaxAreaPoints),
+		"MIN_AREA_POINTS":        strconv.Itoa(avreport.MinAreaPoints),
 		"RESTRICTION_LABEL":      avreport.RestrictionLabel,
 	} {
 		pattern := regexp.MustCompile(`export const ` + name + ` = '?([^';]+)'?;`)

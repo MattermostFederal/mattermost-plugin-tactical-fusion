@@ -193,12 +193,14 @@ func (p *Plugin) buildLink(req bridgeclient.LinkRequest) (bridgeclient.LinkRespo
 	}
 
 	tagger := p.bridgeTagger()
+	markdown := tagger.LinkFor(decorator.Type(), label, params)
 
 	return bridgeclient.LinkResponse{
-		Markdown: tagger.LinkFor(decorator.Type(), label, params),
+		Markdown: markdown,
 		URL:      tagger.URLFor(decorator.Type(), params),
 		Type:     decorator.Type(),
 		Label:    label,
+		FitsPost: utf8.RuneCountInString(markdown) <= safePostRunes,
 	}, nil
 }
 

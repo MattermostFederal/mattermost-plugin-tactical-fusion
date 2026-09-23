@@ -27,7 +27,7 @@ window.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
     return {
         ok: true,
         status: 200,
-        json: async () => ({markdown: `[${label}](${url})`, url, type: 'dtg', label}),
+        json: async () => ({markdown: `[${label}](${url})`, url, type: 'dtg', label, fits_post: true}),
     } as Response;
 }) as typeof fetch;
 

@@ -1,5 +1,6 @@
 import React from 'react';
 
+import NoteHarness from './NoteHarness';
 import NoteHover from './NoteHover';
 import NotePanel from './NotePanel';
 
@@ -19,6 +20,45 @@ test('renders through the Mattermost markdown renderer when it is there', async 
 
     await expect(hover.getByTestId('note-markdown')).toContainText('component:formatted:**DCA**');
     await expect(hover.getByTestId('note-source-fallback')).toBeHidden();
+});
+
+test('proxies images exactly when the server has an image proxy', async ({mount, page}) => {
+    await page.evaluate(() => {
+        window.PostUtils = {
+            formatText: (_text: string, options?: {proxyImages?: boolean}) => `proxyImages=${String(options?.proxyImages)}`,
+            messageHtmlToComponent: (html: string) => html,
+        };
+    });
+
+    const proxied = await mount(
+        <NoteHarness
+            markdown='![](https://example.com/p.png)'
+            imageProxy={true}
+        />,
+    );
+    await expect(proxied.getByTestId('note-markdown')).toHaveText('proxyImages=true');
+    await proxied.unmount();
+
+    const direct = await mount(
+        <NoteHarness
+            markdown='![](https://example.com/p.png)'
+            imageProxy={false}
+        />,
+    );
+    await expect(direct.getByTestId('note-markdown')).toHaveText('proxyImages=false');
+});
+
+test('shows the source when the renderer returns nothing', async ({mount, page}) => {
+    await page.evaluate(() => {
+        window.PostUtils = {
+            formatText: (text: string) => text,
+            messageHtmlToComponent: () => undefined,
+        };
+    });
+
+    const hover = await mount(<NoteHover payload={{markdown}}/>);
+
+    await expect(hover.getByTestId('note-source-fallback')).toHaveText(markdown);
 });
 
 test('shows the source when the renderer is missing', async ({mount, page}) => {

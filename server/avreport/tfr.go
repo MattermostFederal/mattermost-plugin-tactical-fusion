@@ -12,7 +12,7 @@ import (
 const (
 	RestrictionLabel = "Restriction"
 	tfrHeading       = "Temporary flight restriction"
-	minAreaPoints    = 3
+	MinAreaPoints    = 3
 )
 
 const tfrCoordExpr = `(\d{6}[NS]\d{7}[EW]|\d{4}[NS]\d{5}[EW])`
@@ -22,7 +22,7 @@ var (
 	tfrSectionPattern   = regexp.MustCompile(`14 CFR (?:SECTION|PART|SEC) (\d{2}\.\d+)`)
 	tfrEffectivePattern = regexp.MustCompile(`EFFECTIVE (?:(\d{10}) UTC|IMMEDIATELY)(?: UNTIL (?:(\d{10}) UTC|(FURTHER NOTICE)))?`)
 	tfrAltitudePattern  = regexp.MustCompile(`\b(SFC|\d+ ?FT (?:MSL|AGL))-(\d+ ?FT (?:MSL|AGL)|FL ?\d{3}|UNL)\b`)
-	tfrCirclePattern    = regexp.MustCompile(`(\d+(?:\.\d+)?) NM RADIUS OF ` + tfrCoordExpr + `(?: \(([^)]*)\))?`)
+	tfrCirclePattern    = regexp.MustCompile(`\b(\d{1,3}(?:\.\d+)?) NM RADIUS OF ` + tfrCoordExpr + `(?: \(([^)]*)\))?`)
 	tfrPlacePattern     = regexp.MustCompile(`^(.+?)\. TEMPORARY FLIGHT RESTRICTION`)
 	tfrAreaStart        = regexp.MustCompile(`AREA DEFINED AS `)
 	tfrAreaVertex       = regexp.MustCompile(`^` + tfrCoordExpr + `(?: \([^)]*\))?`)
@@ -57,14 +57,18 @@ func readTFR(report *Report, body string) {
 	}
 
 	if m := tfrCirclePattern.FindStringSubmatch(body); m != nil {
-		if center, ok := tfrPoint(m[2]); ok {
+		center, ok := tfrPoint(m[2])
+		switch {
+		case !positiveRadius(m[1]):
+			report.Unknown = append(report.Unknown, m[1]+" NM")
+		case ok:
 			report.Center = &center
 			report.RadiusNm = m[1]
 			report.Rows = append(report.Rows, Row{Label: "Radius", Value: m[1] + " NM"})
 			if m[3] != "" {
 				report.Rows = append(report.Rows, Row{Label: "Reference", Value: strings.ToUpper(expandContractions(m[3]))})
 			}
-		} else {
+		default:
 			report.Unknown = append(report.Unknown, m[2])
 		}
 	}
@@ -184,20 +188,50 @@ func tfrArea(report *Report, body string) ([]Center, bool) {
 		}
 	}
 
-	if len(ring) < minAreaPoints || len(ring) > MaxAreaPoints {
+	if len(ring) < MinAreaPoints || len(ring) > MaxAreaPoints {
 		return nil, false
 	}
+	for _, point := range ring {
+		if _, ok := airport.DDToken(point.Lat, point.Lon); !ok {
+			return nil, false
+		}
+	}
 	return ring, true
+}
+
+func positiveRadius(text string) bool {
+	radius, err := strconv.ParseFloat(text, 64)
+	return err == nil && radius > 0
 }
 
 func centroid(ring []Center) Center {
 	var lat, lon float64
 	for _, point := range ring {
 		lat += point.Lat
-		lon += point.Lon
+		lon += unwrappedLongitude(point.Lon, ring[0].Lon)
 	}
 	n := float64(len(ring))
-	return Center{Lat: lat / n, Lon: lon / n}
+	return Center{Lat: lat / n, Lon: wrappedLongitude(lon / n)}
+}
+
+func unwrappedLongitude(lon, reference float64) float64 {
+	switch {
+	case lon-reference > 180:
+		return lon - 360
+	case reference-lon > 180:
+		return lon + 360
+	}
+	return lon
+}
+
+func wrappedLongitude(lon float64) float64 {
+	switch {
+	case lon > 180:
+		return lon - 360
+	case lon < -180:
+		return lon + 360
+	}
+	return lon
 }
 
 func areaTokens(ring []Center) []any {
@@ -206,9 +240,6 @@ func areaTokens(ring []Center) []any {
 		if token, ok := airport.DDToken(point.Lat, point.Lon); ok {
 			tokens = append(tokens, token)
 		}
-	}
-	if len(tokens) != len(ring) {
-		return []any{}
 	}
 	return tokens
 }

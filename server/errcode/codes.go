@@ -302,6 +302,8 @@ const (
 
 	CommandNotePostFailed = 16010
 
+	CommandPostNotPermitted = 16011
+
 	// server/decorators/ (17000-17999)
 
 	// DTGPageParamsInvalid is returned by the date-time group page for a link
@@ -467,6 +469,7 @@ var AllCodes = []int{
 	CommandNoteInvalid,
 	CommandNoteTooLong,
 	CommandNotePostFailed,
+	CommandPostNotPermitted,
 
 	DTGPageParamsInvalid,
 	LocationPageParamsInvalid,

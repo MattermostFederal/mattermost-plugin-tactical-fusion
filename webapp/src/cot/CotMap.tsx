@@ -338,9 +338,7 @@ const CotMap: React.FC<{
     const [box, setBox] = useState<HTMLDivElement | null>(null);
     const near = useNearViewport(box);
 
-    const wanted = surface === 'card' ?
-        isRowVisible(preferences.location.hiddenRows, INLINE_ID) :
-        isSectionVisible(preferences.cot.hiddenSections, 'map');
+    const wanted = surface === 'card' ? isRowVisible(preferences.location.hiddenRows, INLINE_ID) : isSectionVisible(preferences.cot.hiddenSections, 'map');
 
     // Both surfaces, one switch, deliberately: TestCotHasNoMapSettingOfItsOwn
     // is where it gets revisited. GeoJSON reads mapPanel for its panel

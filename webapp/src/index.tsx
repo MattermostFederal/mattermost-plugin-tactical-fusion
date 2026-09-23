@@ -129,6 +129,10 @@ export default class Plugin {
 declare global {
     interface Window {
         registerPlugin(pluginId: string, plugin: Plugin): void;
+        PostUtils?: {
+            formatText: (text: string, options?: {atMentions?: boolean; mentionHighlight?: boolean; markdown?: boolean; proxyImages?: boolean}) => string;
+            messageHtmlToComponent: (html: string, options?: {mentionHighlight?: boolean}) => React.ReactNode;
+        };
     }
 }
 

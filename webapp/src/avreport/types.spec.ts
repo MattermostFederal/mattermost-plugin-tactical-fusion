@@ -5,6 +5,7 @@ import {
     AVREPORT_POST_TYPE,
     AVREPORT_PROPS_KEY,
     AVREPORT_PROPS_VERSION,
+    MAX_AREA_POINTS,
     MAX_REPORT_FLAGS,
     MAX_REPORT_PERIODS,
     MAX_REPORT_ROWS,
@@ -148,6 +149,26 @@ test.describe('lists the plugin RPC boundary turned into null', () => {
         expect(payload?.rows).toEqual([]);
         expect(payload?.periods).toEqual([]);
         expect(payload?.area).toEqual([]);
+    });
+
+    test('a blob stored before date-time links and areas still reads', () => {
+        const wire = {...propsFor(HONOLULU_METAR).tactical_fusion_avreport as Record<string, unknown>};
+        delete wire.issued_query;
+        delete wire.area;
+        wire.rows = (wire.rows as Array<Record<string, unknown>>).map(({label, value}) => ({label, value}));
+
+        const payload = fromProps({tactical_fusion_avreport: wire});
+        expect(payload).not.toBeNull();
+        expect(payload?.issuedQuery).toBe('');
+        expect(payload?.area).toEqual([]);
+        expect(payload?.rows.every((row) => row.query === undefined)).toBe(true);
+    });
+
+    test('an area past the cap is not drawn rather than cut short', () => {
+        const wire = {...propsFor(HONOLULU_METAR).tactical_fusion_avreport as Record<string, unknown>};
+        wire.area = Array.from({length: MAX_AREA_POINTS + 1}, () => '21.3000,-157.9000');
+
+        expect(fromProps({tactical_fusion_avreport: wire})?.area).toEqual([]);
     });
 
     test('a list that is present and not a list is still refused', () => {

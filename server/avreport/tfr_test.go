@@ -255,3 +255,28 @@ func TestAnFDCNotamNamesItsIssuerAndHidesThePlaceholderLocation(t *testing.T) {
 		t.Errorf("the ZZZ placeholder or the old label survived: %v", report.Rows)
 	}
 }
+
+func TestATFRRadiusMustBePositiveAndAtMostThreeDigits(t *testing.T) {
+	for radius, drawn := range map[string]bool{"5": true, "2.5": true, "999": true, "0": false, "0.0": false, "1234": false} {
+		text := strings.Replace(tfrExample, "5 NM RADIUS", radius+" NM RADIUS", 1)
+		report, err := Decode(text, ref)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := report.RadiusNm != ""; got != drawn {
+			t.Errorf("radius %s drawn = %v (RadiusNm %q)", radius, got, report.RadiusNm)
+		}
+	}
+}
+
+func TestATFRAreaAcrossTheAntimeridianIsPlacedInsideIt(t *testing.T) {
+	text := "!FDC 6/9998 ZZZ AIRSPACE TEMPORARY FLIGHT RESTRICTIONS WI AN AREA DEFINED AS " +
+		"100000N1790000E TO 100000N1790000W TO 110000N1790000W TO 110000N1790000E TO POINT OF ORIGIN SFC-5000FT MSL"
+	report, err := Decode(text, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Center == nil || (report.Center.Lon < 179.9 && report.Center.Lon > -179.9) {
+		t.Errorf("the center is %v, on the far side of the world from the area", report.Center)
+	}
+}

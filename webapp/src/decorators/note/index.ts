@@ -1,13 +1,14 @@
 import NoteHover from './NoteHover';
 import NotePanel from './NotePanel';
 
+import {HOVER_MAX_WIDTH} from '../Tooltip';
 import type {Decorator} from '../types';
 
 export const PANEL_TITLE = 'Note';
 
 export const MAX_NOTE_RUNES = 1000;
 
-export const NOTE_HOVER_MAX_WIDTH = 432;
+export const NOTE_HOVER_MAX_WIDTH = Math.round(HOVER_MAX_WIDTH * 1.2);
 
 export interface NotePayload {
     markdown: string;

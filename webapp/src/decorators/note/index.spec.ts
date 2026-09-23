@@ -30,7 +30,7 @@ test('the summary is the first line of text with the markdown stripped', () => {
     expect(decorator.summary({markdown: '> Expect turbulence'})).toBe('Note: Expect turbulence');
 });
 
-test('the hover card is a fifth wider than the framework default', () => {
-    expect(NOTE_HOVER_MAX_WIDTH).toBe(HOVER_MAX_WIDTH * 1.2);
+test('the hover card asks for its own width', () => {
     expect(decorator.hoverMaxWidth).toBe(NOTE_HOVER_MAX_WIDTH);
+    expect(NOTE_HOVER_MAX_WIDTH).toBeGreaterThan(HOVER_MAX_WIDTH);
 });

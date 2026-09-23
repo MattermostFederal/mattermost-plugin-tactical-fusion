@@ -1,17 +1,7 @@
 import React from 'react';
 
-export interface PostUtils {
-    formatText: (text: string, options?: Record<string, unknown>) => string;
-    messageHtmlToComponent: (html: string, options?: Record<string, unknown>) => React.ReactNode;
-}
-
-declare global {
-    interface Window {
-        PostUtils?: PostUtils;
-    }
-}
-
-const FORMAT_OPTIONS = {atMentions: false, mentionHighlight: false, markdown: true};
+import ErrorBoundary from '../../components/ErrorBoundary';
+import {hasImageProxy} from '../selection';
 
 const RENDER_OPTIONS = {mentionHighlight: false};
 
@@ -31,29 +21,35 @@ function rendered(markdown: string): React.ReactNode | null {
         return null;
     }
     try {
-        return utils.messageHtmlToComponent(utils.formatText(markdown, FORMAT_OPTIONS), RENDER_OPTIONS);
+        const html = utils.formatText(markdown, {atMentions: false, mentionHighlight: false, markdown: true, proxyImages: hasImageProxy()});
+        const node = utils.messageHtmlToComponent(html, RENDER_OPTIONS);
+        return node === undefined || node === null || node === '' ? null : node;
     } catch {
         return null;
     }
 }
 
+const Source: React.FC<{markdown: string}> = ({markdown}) => (
+    <pre
+        style={styles.source}
+        data-testid='note-source-fallback'
+    >{markdown}</pre>
+);
+
 const NoteMarkdown: React.FC<{markdown: string}> = ({markdown}) => {
-    const node = React.useMemo(() => rendered(markdown), [markdown]);
+    const node = rendered(markdown);
 
     if (node === null) {
-        return (
-            <pre
-                style={styles.source}
-                data-testid='note-source-fallback'
-            >{markdown}</pre>
-        );
+        return <Source markdown={markdown}/>;
     }
 
     return (
-        <div
-            className='post-message__text'
-            data-testid='note-markdown'
-        >{node}</div>
+        <ErrorBoundary fallback={<Source markdown={markdown}/>}>
+            <div
+                className='post-message__text'
+                data-testid='note-markdown'
+            >{node}</div>
+        </ErrorBoundary>
     );
 };
 

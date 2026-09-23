@@ -1,5 +1,5 @@
 import type {Report} from './types';
-import {headingOf, isPlaced, isRestriction} from './types';
+import {MIN_AREA_POINTS, headingOf, isPlaced, isRestriction} from './types';
 
 import {positionPayload} from '../decorators/airport/map';
 import type {MapEllipse} from '../decorators/location/map/overlay';
@@ -40,13 +40,13 @@ export function radiusEllipse(report: Report): MapEllipse | undefined {
 }
 
 export function reportShapes(report: Report): MapShape[] {
-    if (report.area.length < 3) {
+    if (report.area.length < MIN_AREA_POINTS) {
         return [];
     }
     const ring: Array<{lat: number; lon: number}> = [];
     for (const vertex of report.area) {
         const coord = positionPayload({format: 'dd', value: vertex})?.coord;
-        if (!coord || !isRenderable(coord.lat.decimal)) {
+        if (!coord || !isRenderable(coord.lat.decimal) || !Number.isFinite(coord.lon.decimal)) {
             return [];
         }
         ring.push({lat: coord.lat.decimal, lon: coord.lon.decimal});

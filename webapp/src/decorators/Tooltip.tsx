@@ -14,7 +14,6 @@ export const HOVER_MAX_WIDTH = 360;
 
 const style: React.CSSProperties = {
     padding: '10px 12px',
-    maxWidth: `${HOVER_MAX_WIDTH}px`,
     background: 'var(--center-channel-bg, #ffffff)',
     color: 'var(--center-channel-color, #3f4350)',
     border: '1px solid rgba(var(--center-channel-color-rgb, 63, 67, 80), 0.16)',

@@ -49,6 +49,14 @@ export function openRhs(): void {
     }
 }
 
+interface ConfigState {
+    entities?: {general?: {config?: {HasImageProxy?: string}}};
+}
+
+export function hasImageProxy(): boolean {
+    return (store?.getState() as ConfigState | undefined)?.entities?.general?.config?.HasImageProxy === 'true';
+}
+
 /** @internal exported for tests */
 export function _resetForTesting(): void { // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
     current = null;

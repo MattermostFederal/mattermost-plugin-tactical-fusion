@@ -2,7 +2,6 @@ import React from 'react';
 
 import NoteMarkdown from './NoteMarkdown';
 
-import ErrorBoundary from '../../components/ErrorBoundary';
 import LinkButton from '../../components/LinkButton';
 import Disclosure from '../../cot/Disclosure';
 import {docsUrl} from '../../plugin_url';
@@ -12,11 +11,8 @@ import type {NotePayload} from './index';
 
 export const SOURCE_LABEL = 'As posted';
 
-export const RENDER_FAILED = 'This note could not be rendered.';
-
 const styles: Record<string, React.CSSProperties> = {
     body: {overflowX: 'auto', margin: '0 0 12px', color: 'var(--center-channel-color)'},
-    status: {fontSize: '13px', opacity: 0.8},
     posted: {
         fontFamily: 'monospace',
         fontSize: '0.85em',
@@ -31,11 +27,14 @@ const styles: Record<string, React.CSSProperties> = {
 
 const NotePanel: React.FC<{payload: NotePayload}> = ({payload}) => (
     <div data-testid='note-panel'>
-        <ErrorBoundary fallback={<p style={styles.status}>{RENDER_FAILED}</p>}>
-            <div style={styles.body}>
-                <NoteMarkdown markdown={payload.markdown}/>
-            </div>
-        </ErrorBoundary>
+        <div
+            style={styles.body}
+            tabIndex={0}
+            role='region'
+            aria-label='The note'
+        >
+            <NoteMarkdown markdown={payload.markdown}/>
+        </div>
 
         <Disclosure
             label={SOURCE_LABEL}

@@ -70,7 +70,7 @@ func tableHeadingDetail(links *decorators.Tagger, report Report) string {
 		return "[" + label + "](" + links.URLFor(airfieldPath, url.Values{"v": {report.Station}}) + ")"
 	case report.Station != "":
 		return decorators.TableCell(report.Station)
-	case hasRow(report, RestrictionLabel):
+	case report.IsRestriction():
 		return tfrHeading
 	}
 	return tableFallbackHeading

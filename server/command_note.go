@@ -43,6 +43,9 @@ func (p *Plugin) noteResponse(args *model.CommandArgs, text string) *model.Comma
 		RootId:    args.RootId,
 		Message:   message,
 	}
+	if !p.API.HasPermissionToChannel(args.UserId, args.ChannelId, model.PermissionUseChannelMentions) {
+		post.AddProp(model.PostPropsMentionHighlightDisabled, true)
+	}
 	if _, appErr := p.API.CreatePost(post); appErr != nil {
 		p.API.LogError("tactical-fusion: could not post a note",
 			"error_code", errcode.CommandNotePostFailed, "error", appErr.Error())

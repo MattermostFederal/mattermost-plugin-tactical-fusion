@@ -37,10 +37,16 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 
 	switch fields[1] {
 	case "examples":
+		if refusal := p.refuseUnlessCanPost(args); refusal != nil {
+			return refusal, nil
+		}
 		return p.examplesResponse(args), nil
 	case "check":
 		return p.checkResponse(argumentText(args.Command, fields[1])), nil
 	case "note":
+		if refusal := p.refuseUnlessCanPost(args); refusal != nil {
+			return refusal, nil
+		}
 		return p.noteResponse(args, argumentText(args.Command, fields[1])), nil
 	default:
 		return ephemeralResponse(errcode.WithCode(errcode.CommandUnknownSubcommand,
@@ -60,6 +66,14 @@ func argumentText(command, subcommand string) string {
 		return ""
 	}
 	return strings.TrimSpace(rest)
+}
+
+func (p *Plugin) refuseUnlessCanPost(args *model.CommandArgs) *model.CommandResponse {
+	if p.API.HasPermissionToChannel(args.UserId, args.ChannelId, model.PermissionCreatePost) {
+		return nil
+	}
+	return ephemeralResponse(errcode.WithCode(errcode.CommandPostNotPermitted,
+		"You cannot post in this channel, so this command cannot post for you."))
 }
 
 func ephemeralResponse(text string) *model.CommandResponse {
