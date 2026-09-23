@@ -27,6 +27,7 @@ var (
 	outDir    = flag.String("out", filepath.Join("build", "cyberdata", "out"), "where the release-asset datasets are written")
 	treeDir   = flag.String("tree", ".", "the repository root, for the committed outputs")
 	only      = flag.String("only", "", "build one dataset by name rather than all of them")
+	label     = flag.String("label", "", "what the stamp names as the source, in place of the source file")
 )
 
 type builder struct {
@@ -39,6 +40,11 @@ type builder struct {
 
 func main() {
 	flag.Parse()
+
+	if strings.ContainsAny(*label, "\t\r\n") {
+		fmt.Fprintln(os.Stderr, "-label may not contain a tab or a line break: the stamp is one tab-separated line")
+		os.Exit(2)
+	}
 
 	builders := []builder{
 		{
@@ -117,10 +123,15 @@ func run(b builder) error {
 		return err
 	}
 
+	stampSource := b.source
+	if *label != "" {
+		stampSource = *label
+	}
+
 	var b2 strings.Builder
 	if b.stamp {
 		fmt.Fprintf(&b2, "%s%d\t%s\t%s\t%s\n",
-			schemaPrefix, schemaVersion, b.name, time.Now().UTC().Format(time.RFC3339), b.source)
+			schemaPrefix, schemaVersion, b.name, time.Now().UTC().Format(time.RFC3339), stampSource)
 	} else {
 		b2.WriteString(strings.Join(headerFor(b.name), "\t") + "\n")
 	}
@@ -431,6 +442,7 @@ type nvdFeed struct {
 			Metrics struct {
 				V31 []nvdMetric `json:"cvssMetricV31"`
 				V30 []nvdMetric `json:"cvssMetricV30"`
+				V40 []nvdMetric `json:"cvssMetricV40"`
 				V2  []nvdMetric `json:"cvssMetricV2"`
 			} `json:"metrics"`
 			Weaknesses []struct {
@@ -492,7 +504,7 @@ func buildCVE(source string) ([][]string, error) {
 			}
 
 			score, severity, vector := "", "", ""
-			for _, metrics := range [][]nvdMetric{cve.Metrics.V31, cve.Metrics.V30, cve.Metrics.V2} {
+			for _, metrics := range [][]nvdMetric{cve.Metrics.V31, cve.Metrics.V30, cve.Metrics.V40, cve.Metrics.V2} {
 				if len(metrics) == 0 {
 					continue
 				}

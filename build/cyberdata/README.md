@@ -1,0 +1,76 @@
+# Cyber datasets
+
+Builds the files the cyber decorator reads: the two catalogs embedded in the
+plugin, the bundled known-exploited list, and the datasets an operator drops
+into the directory named by `CyberDatasetsDir`.
+
+Nothing here is a prerequisite of `make test`, and nothing here runs in CI. The
+pipeline needs the network. The plugin never does.
+
+## Running it
+
+The full set, from pinned upstream sources:
+
+```
+make cyber-sources
+make cyber-data
+```
+
+A small current example, the CVEs NVD published in the last seven days:
+
+```
+make cyber-recent DAYS=7
+```
+
+## The recent build
+
+`fetch-recent.sh` asks the NVD API for every CVE published in the window and
+writes the pages to `recent/nvd/`. The generator then turns them into
+`recent/cve.tsv` with the same transform the full build uses. Point
+`CyberDatasetsDir` at `build/cyberdata/recent` to try it; the plugin reads the
+`.tsv` there and ignores the pages beside it.
+
+`DAYS` defaults to 7 and may be anything from 1 to 120, the widest window NVD
+answers in one query. Without a key NVD allows five requests in thirty seconds,
+so the script waits six seconds between pages. Set `NVD_API_KEY` to raise the
+limit.
+
+Measured on 2026-09-23: a seven-day window held 3,065 CVEs, came back in two
+pages, and built in about 25 seconds. The pages were 11 MB and `cve.tsv` was
+920 KB.
+
+### It holds only its window
+
+A CVE published before the window is not in the file, so its panel says
+**"Not in the vulnerability dataset generated ..."**. That is true of the file
+and not of NVD: `CVE-2021-44228` reads that way against a seven-day build. Use
+the full build wherever that difference matters. The stamp's source field
+records the window, for example:
+
+```
+NVD API, published 2026-09-16T19:24:16Z to 2026-09-23T19:24:16Z, 3065 CVEs
+```
+
+### The window cannot be pinned
+
+The full build verifies its sources against `sources.lock`. A window ending now
+is different on every run, so it has nothing to pin to. The script checks what
+it can instead:
+
+- The window's end is fixed before the first request, so a CVE published while
+  the pages are fetched cannot shift the paging and produce a duplicate or a gap.
+- It counts the CVEs it received against the `totalResults` NVD reported, and
+  fails on any difference.
+
+Rejected CVEs are left out with NVD's `noRejected` filter.
+
+## What a recent CVE looks like
+
+Most CVEs in a recent window have not been analyzed by NVD yet. In the build
+above, 458 of 3,065 carried no score at all; those are kept, with empty score
+fields, so the panel still shows the summary and dates.
+
+278 were scored only under CVSS 4.0. The generator reads scores in the order
+3.1, 3.0, 4.0, 2.0, so a record carrying both 3.1 and 4.0 shows the 3.1 score
+it showed before 4.0 was read, and the vector's `CVSS:4.0/` prefix says which
+version a score came from.

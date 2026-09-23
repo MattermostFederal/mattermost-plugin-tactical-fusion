@@ -82,6 +82,22 @@ var spellingSkipDirs = map[string]bool{
 	"coverage-ct": true, "coverage-merged": true, "test-results": true,
 }
 
+var downloadedUpstreamDataDirs = []string{
+	"build/cyberdata/source",
+	"build/cyberdata/out",
+	"build/cyberdata/recent",
+}
+
+func isDownloadedUpstreamData(path string) bool {
+	slashed := filepath.ToSlash(path)
+	for _, dir := range downloadedUpstreamDataDirs {
+		if strings.HasSuffix(slashed, "/"+dir) {
+			return true
+		}
+	}
+	return false
+}
+
 func TestSourceUsesUSEnglish(t *testing.T) {
 	for _, root := range spellingRoots {
 		walkForSpelling(t, root)
@@ -101,7 +117,7 @@ func walkForSpelling(t *testing.T, root string) {
 			return err
 		}
 		if entry.IsDir() {
-			if spellingSkipDirs[entry.Name()] || strings.HasPrefix(entry.Name(), ".") {
+			if spellingSkipDirs[entry.Name()] || strings.HasPrefix(entry.Name(), ".") || isDownloadedUpstreamData(path) {
 				return filepath.SkipDir
 			}
 			return nil
