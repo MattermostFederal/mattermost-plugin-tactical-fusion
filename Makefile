@@ -639,6 +639,10 @@ MAP_PACKAGE_DIR ?= map-packages
 MAP_PACKAGE_HOST := docker/mattermost/data/$(MAP_PACKAGE_DIR)
 MAP_PACKAGE_PATH := /mattermost/data/$(MAP_PACKAGE_DIR)
 
+CYBER_DATA_DIR ?= cyber-datasets
+CYBER_DATA_HOST := docker/mattermost/data/$(CYBER_DATA_DIR)
+CYBER_DATA_PATH := /mattermost/data/$(CYBER_DATA_DIR)
+
 ## Start Mattermost and PostgreSQL containers
 .PHONY: docker-start
 docker-start:
@@ -782,9 +786,39 @@ docker-packages: docker-check
 		echo "LocationMapPackagesDir = $(MAP_PACKAGE_PATH), $$(ls $(MAP_PACKAGE_HOST)/*.pmtiles 2>/dev/null | wc -l | tr -d ' ') dropped-in areas"; \
 	fi
 
-## Deploys the plugin to Docker and drops in every built map area
+## Copies the gzipped cyber datasets in build/cyberdata/out into the Docker server's drop-in
+## directory and points CyberDatasetsDir at it. The plugin unpacks each archive beside itself
+## on the first lookup after, so the directory has to be writable by the server (a failure
+## is logged as TF-21006). Only archives whose source is newer are copied, so a redeploy is cheap.
+##
+## Drops the built cyber datasets into the Docker server for testing
+.PHONY: docker-cyberdata
+docker-cyberdata: docker-check
+	@if ! ls build/cyberdata/out/*.tsv.gz >/dev/null 2>&1; then \
+		echo "No gzipped datasets in build/cyberdata/out/. Build them with 'make cyber-data' and 'make cyber-package'."; \
+	else \
+		mkdir -p $(CYBER_DATA_HOST); \
+		n=0; \
+		for f in build/cyberdata/out/*.tsv.gz; do \
+			d="$(CYBER_DATA_HOST)/$$(basename $$f)"; \
+			if [ ! -f "$$d" ] || [ "$$f" -nt "$$d" ]; then \
+				cp "$$f" "$$d"; \
+				echo "  copied $$(basename $$f)"; \
+				n=$$((n + 1)); \
+			fi; \
+		done; \
+		if [ "$$n" -eq 0 ]; then echo "  datasets already current"; fi; \
+		printf '{"PluginSettings":{"Plugins":{"%s":{"cyberdatasetsdir":"%s"}}}}' \
+			"$(PLUGIN_ID)" "$(CYBER_DATA_PATH)" > docker/mattermost/data/.cyberdata-patch.json; \
+		$(DOCKER_COMPOSE) exec -T mattermost mmctl --local config patch \
+			/mattermost/data/.cyberdata-patch.json > /dev/null; \
+		rm -f docker/mattermost/data/.cyberdata-patch.json; \
+		echo "CyberDatasetsDir = $(CYBER_DATA_PATH), $$(ls $(CYBER_DATA_HOST)/*.tsv.gz 2>/dev/null | wc -l | tr -d ' ') dropped-in datasets"; \
+	fi
+
+## Deploys the plugin to Docker and drops in every built map area and cyber dataset
 .PHONY: deploy
-deploy: docker-deploy docker-packages
+deploy: docker-deploy docker-packages docker-cyberdata
 
 ## Build and deploy to a Mattermost server running at MM_LOCAL_SITEURL
 ## (default http://localhost:8065) via the bundled pluginctl tool. Unlike
