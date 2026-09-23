@@ -388,6 +388,11 @@ const (
 	MCPLinkDeclined       = 20006
 	MCPConvertInvalid     = 20007
 	MCPAirportInvalid     = 20008
+	MCPAvReportInvalid    = 20009
+	MCPCotInvalid         = 20010
+	MCPGeoJSONInvalid     = 20011
+	MCPFrequencyInvalid   = 20012
+	MCPDateTimeInvalid    = 20013
 )
 
 // AllCodes lists every code declared above. TestAllCodesComplete enforces that
@@ -508,4 +513,9 @@ var AllCodes = []int{
 	MCPLinkDeclined,
 	MCPConvertInvalid,
 	MCPAirportInvalid,
+	MCPAvReportInvalid,
+	MCPCotInvalid,
+	MCPGeoJSONInvalid,
+	MCPFrequencyInvalid,
+	MCPDateTimeInvalid,
 }

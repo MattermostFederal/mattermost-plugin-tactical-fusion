@@ -274,6 +274,12 @@ func TestEveryMCPToolAnswersWithoutAReader(t *testing.T) {
 		"link_token":         LinkTokenArgs{Type: airport.Type, Token: "PHIK"},
 		"convert_coordinate": ConvertCoordinateArgs{Format: "mgrs", Value: "18SUJ2347806483"},
 		"lookup_airfield":    LookupAirfieldArgs{Ident: "PHIK"},
+
+		"decode_aviation_report": DecodeAviationReportArgs{Text: mcpMETAR},
+		"decode_cot":             DecodeCotArgs{XML: cotExampleTarget},
+		"summarize_geojson":      SummarizeGeoJSONArgs{Document: geoJSONExample},
+		"describe_frequency":     DescribeFrequencyArgs{Frequency: "121.5"},
+		"read_date_time":         ReadDateTimeArgs{Text: "141200ZSEP26"},
 	}
 
 	names := toolNames(t, session)

@@ -575,7 +575,9 @@ declare global {
             The <strong>Mattermost Agents</strong> plugin discovers this plugin's operations as
             MCP tools and offers them to its
             agents, so an agent answering in a channel can decorate a message it is about to
-            post, build one link, convert a coordinate or look up an airfield. There is nothing to
+            post, build one link, convert a coordinate, look up an airfield, or read the same
+            things the cards read: an aviation report or TFR, a Cursor on Target event, a GeoJSON
+            document, a radio frequency or a date-time group. There is nothing to
             configure here: the tools register themselves when Tactical Fusion activates, and an
             administrator enables or disables them per tool in the Agents plugin's own
             <strong>Tools</strong> settings.
@@ -600,7 +602,7 @@ declare global {
                 <tr>
                     <td><code>link_token</code></td>
                     <td><code>type</code> and <code>token</code>, and optionally <code>label</code> and <code>reference_time</code></td>
-                    <td>One link, as markdown and as a URL</td>
+                    <td>One link, as markdown and as a URL, and whether it fits a post. Type <code>note</code> turns markdown into a link whose hover card renders it</td>
                 </tr>
                 <tr>
                     <td><code>convert_coordinate</code></td>
@@ -609,8 +611,33 @@ declare global {
                 </tr>
                 <tr>
                     <td><code>lookup_airfield</code></td>
-                    <td><code>ident</code>, an ICAO code</td>
-                    <td>The airfield's name, type, place, elevation and IATA code, and its position</td>
+                    <td><code>ident</code>, an ICAO identifier or IATA code</td>
+                    <td>The airfield's name, type, place, elevation, IATA code, position, runways and radio frequencies</td>
+                </tr>
+                <tr>
+                    <td><code>decode_aviation_report</code></td>
+                    <td><code>text</code>, a METAR, SPECI, TAF, FAA or ICAO NOTAM, and optionally <code>reference_time</code></td>
+                    <td>The decoded rows, forecast periods and remarks, what was not decoded, and where the report is. A temporary flight restriction also answers its effective times, altitudes, and its circle or polygon</td>
+                </tr>
+                <tr>
+                    <td><code>decode_cot</code></td>
+                    <td><code>xml</code>, one or more Cursor on Target events</td>
+                    <td>Each event in words: what its type means, its affiliation, how it was located, callsign, position, times and staleness, remarks, links and shapes</td>
+                </tr>
+                <tr>
+                    <td><code>summarize_geojson</code></td>
+                    <td><code>document</code>, a GeoJSON document</td>
+                    <td>Its name and description, how many points, lines and polygons it holds, and each feature's name, kind, properties, style and measured length or area</td>
+                </tr>
+                <tr>
+                    <td><code>describe_frequency</code></td>
+                    <td><code>frequency</code>, such as <code>121.5</code> or <code>8992 KHZ</code></td>
+                    <td>Megahertz and kilohertz, the band, the channel spacing and any known allocation</td>
+                </tr>
+                <tr>
+                    <td><code>read_date_time</code></td>
+                    <td><code>text</code>, a date-time group or RFC 3339 timestamp, and optionally <code>reference_time</code></td>
+                    <td>The one UTC instant it names, its zone letter or offset, and which parts were assumed</td>
                 </tr>
             </tbody>
         </table>
@@ -619,8 +646,10 @@ declare global {
             These are the same operations the rest of this page documents, answered by the same
             code, so everything under <a href="#rules">Rules worth knowing</a> applies to them
             too: the admin format switches still govern <code>link_token</code>, a link already
-            written keeps working after a format is switched off, and
-            <code>lookup_airfield</code> keeps resolving regardless. Refusals carry
+            written keeps working after a format is switched off, and the tools that read
+            rather than link (<code>lookup_airfield</code> and every <code>decode</code>,
+            <code>summarize</code>, <code>describe</code> and <code>read</code> tool) answer
+            regardless of the switches. Nothing is fetched and nothing is posted. Refusals carry
             <a href="error-codes.html#mcp">their own codes</a>.
         </p>
 

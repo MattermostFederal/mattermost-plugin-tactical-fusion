@@ -31,7 +31,7 @@ right-hand sidebar, and a standalone server-rendered page.
 | `api.go` | Authenticated JSON API: `/preferences`, `/convert`, `/features`, `/airport`, `/avreport`, `/decorate`, `/link` |
 | `mapairport.go` | `/map?airport=<ident>`: the airfield map page, rendered through the overlay shell |
 | `bridge.go` | The plugin bridge: `/bridge/v1/{decorate,link,info}` for other plugins, and the `decorate`/`link` operations `/api/v1` shares |
-| `mcp.go`, `mcp_tools.go` | The Agents MCP server: the `/mcp` endpoint, its lifecycle, and the four tools |
+| `mcp.go`, `mcp_tools.go`, `mcp_decode_tools.go` | The Agents MCP server: the `/mcp` endpoint, its lifecycle, the link and lookup tools, and the tools that decode reports, CoT, GeoJSON, frequencies and date-time groups |
 | `preferences.go`, `preferences_cache.go` | Per-reader KV store and its cluster-aware cache |
 | `command*.go` | The `/tactical-fusion` slash command and its example builders |
 | `errcode/` | The `TF-NNNN` catalog |

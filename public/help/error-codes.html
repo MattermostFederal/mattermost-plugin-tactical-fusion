@@ -726,7 +726,32 @@
                 <tr>
                     <td><code>TF-20008</code></td>
                     <td><code>MCPAirportInvalid</code> <span class="level">Tool error</span></td>
-                    <td><code>That is not an airfield code this plugin issued.</code> The <code>lookup_airfield</code> tool was given a value that is not the shape of an ICAO identifier. A well-shaped code the database does not hold is not this: that answers <code>found: false</code>.</td>
+                    <td><code>That is not an airfield code this plugin issued.</code> The <code>lookup_airfield</code> tool was given a value that is not the shape of an ICAO identifier or an IATA code. A well-shaped code the database does not hold is not this: that answers <code>found: false</code>.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-20009</code></td>
+                    <td><code>MCPAvReportInvalid</code> <span class="level">Tool error</span></td>
+                    <td><code>That is not a METAR, SPECI, TAF or NOTAM this plugin reads.</code> The <code>decode_aviation_report</code> tool was given text that does not start like a report, holds more than one, or is longer than a report can be.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-20010</code></td>
+                    <td><code>MCPCotInvalid</code> <span class="level">Tool error</span></td>
+                    <td><code>That is not a Cursor on Target event this plugin reads: ...</code> The <code>decode_cot</code> tool was given XML the event reader refused. The message ends with the reason, such as a missing uid or an event too large.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-20011</code></td>
+                    <td><code>MCPGeoJSONInvalid</code> <span class="level">Tool error</span></td>
+                    <td><code>That is not a GeoJSON document this plugin reads: ...</code> The <code>summarize_geojson</code> tool was given JSON that is not GeoJSON, or a document past this build's size, feature or position limits. The message ends with the reason.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-20012</code></td>
+                    <td><code>MCPFrequencyInvalid</code> <span class="level">Tool error</span></td>
+                    <td><code>That is not a frequency between 2 MHz and 1,300 MHz this plugin reads.</code> The <code>describe_frequency</code> tool was given something that is not a frequency, or one outside that range once its unit is applied.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-20013</code></td>
+                    <td><code>MCPDateTimeInvalid</code> <span class="level">Tool error</span></td>
+                    <td><code>That is not a date-time group or RFC 3339 timestamp this plugin reads.</code> The <code>read_date_time</code> tool was given text in neither form.</td>
                 </tr>
             </tbody>
         </table>
