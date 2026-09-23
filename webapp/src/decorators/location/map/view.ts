@@ -67,6 +67,12 @@ export function mapPageHref(payload: LocationPayload): string {
     return withTheme(`${pluginBaseUrl()}/map?${params.toString()}`);
 }
 
+export function airportMapPageHref(ident: string): string {
+    const params = new URLSearchParams({airport: ident});
+
+    return withTheme(`${pluginBaseUrl()}/map?${params.toString()}`);
+}
+
 export function overlayPageHref(postId: string): string {
     const params = new URLSearchParams({post: postId});
 

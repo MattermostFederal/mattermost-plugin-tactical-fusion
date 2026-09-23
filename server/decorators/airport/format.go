@@ -7,26 +7,29 @@ import (
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 )
 
-// coordinateDigits is what build/airportdata rounds to, and what the token
-// below is built at. Four is the coarsest FormatDD accepts.
 const coordinateDigits = 4
 
-// Details is everything both surfaces show, already rendered.
-//
-// Strings rather than fields, for the reason Conversion is strings: the
-// rendering rules live in Go, and handing the webapp raw fields would put two
-// implementations of them in one repository.
-//
-// It carries the coordinate as a (format, token) PAIR rather than as a set of
-// readings. An airfield surface shows the field and links to the coordinate
-// rather than reprinting eleven rows the location decorator already renders, so
-// what both surfaces need is the identity of that link and nothing else.
-//
-// The pair comes from here rather than being rebuilt in TypeScript because the
-// two languages do not agree about formatting a float: Go rounds ties away from
-// zero and JavaScript's toFixed is famously not exact, so a token built in the
-// webapp could differ in the last digit and be refused by the very page it
-// points at.
+type Coordinate struct {
+	Format string
+	Token  string
+}
+
+type Runway struct {
+	Designation string
+	Length      string
+	Width       string
+	Surface     string
+	Lighted     string
+	Closed      string
+	Ends        *[2]Coordinate
+}
+
+type Frequency struct {
+	Type        string
+	Description string
+	MHz         string
+}
+
 type Details struct {
 	Ident     string
 	Name      string
@@ -34,31 +37,19 @@ type Details struct {
 	Place     string
 	Elevation string
 	IATA      string
+	Military  string
 
-	// Format and Token are the location decorator's own (f, v) pair.
+	Runways     []Runway
+	Frequencies []Frequency
+
 	Format string
 	Token  string
 
-	// Region is the country the position falls in, already carrying its own
-	// citation. It reaches the map's accessible label and nothing else, which
-	// is the only place the country reaches a reader who cannot see the map.
 	Region string
 
-	// HasPosition is false when the coordinate will not convert, which no row
-	// in the shipped data does. It is still represented, because a surface must
-	// never offer a link to a page that would refuse it.
 	HasPosition bool
 }
 
-// Describe is the one lookup-and-render both the page and the API go through.
-// A conversion that accepted an airfield the page refuses, or the other way
-// round, would be two doors with different locks on them.
-// DescribeFields is the airfield's own fields and nothing derived.
-//
-// Separate from Describe because Describe also runs position(), which projects
-// the coordinate and looks the country up in the compiled-in polygons. Callers
-// on the post path want the fields alone, and Parse's contract says that path
-// must be cheap.
 func DescribeFields(ident string) (Details, bool) {
 	a, ok := Lookup(ident)
 	if !ok {
@@ -70,12 +61,15 @@ func DescribeFields(ident string) (Details, bool) {
 
 func fieldsOf(a Airport) Details {
 	return Details{
-		Ident:     a.Ident,
-		Name:      a.Name,
-		Type:      typeText(a.Type),
-		Place:     placeText(a),
-		Elevation: elevationText(a),
-		IATA:      a.IATA,
+		Ident:       a.Ident,
+		Name:        a.Name,
+		Type:        typeText(a.Type),
+		Place:       placeText(a),
+		Elevation:   elevationText(a),
+		IATA:        a.IATA,
+		Military:    a.Military,
+		Runways:     runwayDetails(runwaysOf(a.Ident)),
+		Frequencies: frequencyDetails(frequenciesOf(a.Ident)),
 	}
 }
 
@@ -92,22 +86,8 @@ func Describe(ident string) (Details, bool) {
 	return d, true
 }
 
-// position renders the airfield's coordinates as a signed decimal degrees token
-// and checks that the location decorator accepts it.
-//
-// No space after the comma. Convert routes through validateParams, which
-// requires the token to reproduce its own canonical form, and canonicalString
-// writes the separator as a bare comma. A space makes this fail for every
-// airfield, silently, and every surface would then offer no coordinate link at
-// all.
-//
-// Only the region is kept from the conversion. The rest is discarded, and
-// running it anyway is the point: it is the same gate the coordinate page
-// applies, so a token that survives here cannot be refused by the surface it
-// reaches.
 func position(a Airport) (token, region string, ok bool) {
-	token = strconv.FormatFloat(a.Lat, 'f', coordinateDigits, 64) +
-		"," + strconv.FormatFloat(a.Lon, 'f', coordinateDigits, 64)
+	token = ddToken(a.Lat, a.Lon)
 
 	conversion, ok := location.Convert(location.FormatDD, token, "")
 	if !ok {
@@ -115,6 +95,107 @@ func position(a Airport) (token, region string, ok bool) {
 	}
 
 	return token, conversion.Region, true
+}
+
+func ddToken(lat, lon float64) string {
+	return strconv.FormatFloat(lat, 'f', coordinateDigits, 64) +
+		"," + strconv.FormatFloat(lon, 'f', coordinateDigits, 64)
+}
+
+func DDToken(lat, lon float64) (string, bool) {
+	token := ddToken(lat, lon)
+	parsed, ok := location.Parse(location.FormatDD, token)
+	if !ok || parsed.Canonical() != token {
+		return "", false
+	}
+	return token, true
+}
+
+func endCoordinate(lat, lon float64) (Coordinate, bool) {
+	token, ok := DDToken(lat, lon)
+	if !ok {
+		return Coordinate{}, false
+	}
+	return Coordinate{Format: string(location.FormatDD), Token: token}, true
+}
+
+func runwayDetails(records []runwayRecord) []Runway {
+	if len(records) == 0 {
+		return nil
+	}
+
+	out := make([]Runway, 0, len(records))
+	for _, r := range records {
+		runway := Runway{
+			Designation: designationText(r),
+			Length:      feetText(r.LengthFt),
+			Width:       feetText(r.WidthFt),
+			Surface:     r.Surface,
+		}
+		if r.Lighted {
+			runway.Lighted = "Lighted"
+		}
+		if r.Closed {
+			runway.Closed = "Closed"
+		}
+		if r.HasEnds {
+			low, lowOK := endCoordinate(r.LowLat, r.LowLon)
+			high, highOK := endCoordinate(r.HighLat, r.HighLon)
+			if lowOK && highOK {
+				runway.Ends = &[2]Coordinate{low, high}
+			}
+		}
+		out = append(out, runway)
+	}
+	return out
+}
+
+func designationText(r runwayRecord) string {
+	if r.HighIdent == "" {
+		return r.LowIdent
+	}
+	return r.LowIdent + "/" + r.HighIdent
+}
+
+func RunwayLine(r Runway) string {
+	var parts []string
+	switch {
+	case r.Length != "" && r.Width != "":
+		parts = append(parts, strings.TrimSuffix(r.Length, " ft")+" x "+r.Width)
+	case r.Length != "":
+		parts = append(parts, r.Length)
+	case r.Width != "":
+		parts = append(parts, r.Width+" wide")
+	}
+	if r.Surface != "" {
+		parts = append(parts, r.Surface)
+	}
+	if r.Lighted != "" {
+		parts = append(parts, strings.ToLower(r.Lighted))
+	}
+	if r.Closed != "" {
+		parts = append(parts, strings.ToLower(r.Closed))
+	}
+	return strings.Join(parts, ", ")
+}
+
+func frequencyDetails(records []frequencyRecord) []Frequency {
+	if len(records) == 0 {
+		return nil
+	}
+
+	out := make([]Frequency, 0, len(records))
+	for _, r := range records {
+		out = append(out, Frequency(r))
+	}
+	return out
+}
+
+func feetText(feet *int) string {
+	if feet == nil {
+		return ""
+	}
+	return WithThousands(*feet) + " ft"
 }
 
 func typeText(raw string) string {
@@ -132,9 +213,6 @@ func typeText(raw string) string {
 	return strings.Join(words, " ")
 }
 
-// placeText is municipality, subdivision and country, skipping whichever the
-// record does not carry. The ISO region is "US-IN", and only the subdivision
-// half is worth printing beside a country that follows it.
 func placeText(a Airport) string {
 	var parts []string
 	if a.Municipality != "" {
@@ -154,13 +232,10 @@ func placeText(a Airport) string {
 }
 
 func elevationText(a Airport) string {
-	if a.ElevationFt == nil {
-		return ""
-	}
-	return withThousands(*a.ElevationFt) + " ft"
+	return feetText(a.ElevationFt)
 }
 
-func withThousands(n int) string {
+func WithThousands(n int) string {
 	sign := ""
 	if n < 0 {
 		sign = "-"

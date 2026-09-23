@@ -36,7 +36,7 @@ test('publishes a frozen API naming every decorator', () => {
     expect(Object.isFrozen(api)).toBe(true);
     expect(api?.apiVersion).toBe(BRIDGE_API_VERSION);
     expect(api?.version).toBe(manifest.version);
-    expect(api?.types).toEqual(['dtg', 'location', 'airport', 'cyber']);
+    expect(api?.types).toEqual(['dtg', 'location', 'airport', 'avreport', 'frequency', 'note', 'cyber']);
     expect(api?.decorate).toBe(decorate);
     expect(api?.link).toBe(link);
     expect(api?.Link).toBe(Link);

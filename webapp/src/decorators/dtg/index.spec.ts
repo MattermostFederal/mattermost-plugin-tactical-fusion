@@ -90,20 +90,16 @@ test('rejects an absent t even when every other param is valid', () => {
     expect(fromParams(withoutT)).toBeNull();
 });
 
-// The sidebar header names the category, not the value. The canonical DTG is
-// already the first line of the panel. This must match pageTitle in
-// server/decorators/dtg/dtg.go so the sidebar and the standalone page agree.
-test('the sidebar header is the category, not the value', () => {
+test('the sidebar header names the category and the DTG', () => {
     const payload = fromParams(params());
 
-    expect(decorator.summary(payload!)).toBe('Date/Time');
+    expect(decorator.summary(payload!)).toBe('Date/Time: 091630ZAUG26');
 });
 
-test('the header is the same for every DTG', () => {
-    const long = fromParams(params())!;
+test('the header carries the canonical token, so the short form reads as written', () => {
     const short = fromParams(params({dtg: '091630Z', a: 'my'}))!;
 
-    expect(decorator.summary(short)).toBe(decorator.summary(long));
+    expect(decorator.summary(short)).toBe('Date/Time: 091630Z');
 });
 
 /** The params the server emits for an RFC 3339 timestamp. */

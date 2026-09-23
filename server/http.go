@@ -115,6 +115,11 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 			return
 		}
 
+		if ident := r.URL.Query().Get(airportParam); ident != "" {
+			p.serveAirportMapPage(w, r, ident)
+			return
+		}
+
 		location.RenderMapPage(w, r.URL.Query(), p.packageNames())
 		return
 	}

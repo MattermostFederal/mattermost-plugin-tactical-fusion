@@ -10,11 +10,14 @@ import (
 	"unicode/utf8"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/bridgeclient"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/avreport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/cyber"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/frequency"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/note"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
@@ -175,7 +178,7 @@ func (p *Plugin) buildLink(req bridgeclient.LinkRequest) (bridgeclient.LinkRespo
 
 	params, parsed := decorator.Parse(token, ref)
 	switch {
-	case parsed && p.formatEnabled(decorator.Type(), params):
+	case parsed && p.formatEnabled(decorator.Type(), params, ref):
 	case parsed || parsesWithEveryFormat(decorator.Type(), token, ref):
 		return bridgeclient.LinkResponse{}, &refusedDisabled
 	default:
@@ -185,19 +188,24 @@ func (p *Plugin) buildLink(req bridgeclient.LinkRequest) (bridgeclient.LinkRespo
 	label := req.Label
 	if label == "" {
 		label = token
+		if strings.ContainsAny(label, "\r\n") {
+			return bridgeclient.LinkResponse{}, &refusedLabel
+		}
 	}
 
 	tagger := p.bridgeTagger()
+	markdown := tagger.LinkFor(decorator.Type(), label, params)
 
 	return bridgeclient.LinkResponse{
-		Markdown: tagger.LinkFor(decorator.Type(), label, params),
+		Markdown: markdown,
 		URL:      tagger.URLFor(decorator.Type(), params),
 		Type:     decorator.Type(),
 		Label:    label,
+		FitsPost: utf8.RuneCountInString(markdown) <= safePostRunes,
 	}, nil
 }
 
-func (p *Plugin) formatEnabled(typ string, params url.Values) bool {
+func (p *Plugin) formatEnabled(typ string, params url.Values, ref time.Time) bool {
 	switch typ {
 	case dtg.Type:
 		formats := p.dtgFormats()
@@ -206,7 +214,15 @@ func (p *Plugin) formatEnabled(typ string, params url.Values) bool {
 		}
 		return formats.Military
 	case airport.Type:
-		return p.airportFormats().Airfield
+		formats := p.airportFormats()
+		if params.Has(airport.ParamIATA) {
+			return formats.IATA
+		}
+		return formats.Airfield
+	case frequency.Type:
+		return p.frequencyFormats().Frequency
+	case avreport.Type:
+		return avreport.KindEnabled(p.avreportFormats(), avreport.KindOf(params.Get(avreport.ParamValue), ref))
 	case cyber.Type:
 		return cyberKindEnabled(p.cyberFormats(), params)
 	}
@@ -223,6 +239,12 @@ func parsesWithEveryFormat(typ, token string, ref time.Time) bool {
 		unrestricted = &location.Decorator{}
 	case airport.Type:
 		unrestricted = &airport.Decorator{}
+	case avreport.Type:
+		unrestricted = &avreport.Decorator{}
+	case frequency.Type:
+		unrestricted = &frequency.Decorator{}
+	case note.Type:
+		unrestricted = &note.Decorator{}
 	case cyber.Type:
 		unrestricted = &cyber.Decorator{}
 	default:
@@ -236,10 +258,13 @@ func parsesWithEveryFormat(typ, token string, ref time.Time) bool {
 func (p *Plugin) bridgeInfo() bridgeclient.InfoResponse {
 	config := p.getConfiguration()
 	enabled := map[string]bool{
-		dtg.Type:      config.EnableDTG,
-		location.Type: config.EnableLocation,
-		airport.Type:  config.EnableAirport,
-		cyber.Type:    config.EnableCyber,
+		dtg.Type:       config.EnableDTG,
+		location.Type:  config.EnableLocation,
+		airport.Type:   config.EnableAirport,
+		avreport.Type:  config.EnableAvReport,
+		frequency.Type: config.EnableFrequency,
+		note.Type:      true,
+		cyber.Type:     config.EnableCyber,
 	}
 
 	info := bridgeclient.InfoResponse{

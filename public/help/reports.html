@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aviation Reports - Tactical Fusion</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="copy.js" defer></script>
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <h2>Tactical Fusion</h2>
+            <span class="version">Plugin Documentation</span>
+        </div>
+        <nav>
+            <span class="nav-section">Documentation</span>
+            <a href="help.html">Overview</a>
+            <span class="nav-section">Decorators</span>
+            <a href="dtg.html">Date-Time Groups</a>
+            <a href="location.html">Coordinates</a>
+            <a href="airfields.html">Airfields</a>
+            <a href="cyber.html">Cyber Context</a>
+            <a href="cot.html">Cursor on Target</a>
+            <a href="geojson.html">GeoJSON</a>
+            <a href="reports.html" class="active">Aviation Reports</a>
+            <a href="frequencies.html">Frequencies</a>
+            <a href="notes.html">Notes</a>
+            <span class="nav-section">Guides</span>
+            <a href="formats.html">Recognized Formats</a>
+            <a href="panel.html">The Sidebar Panel</a>
+            <a href="admin.html">Admin Settings</a>
+            <a href="commands.html">Slash Commands</a>
+            <a href="integration.html">Plugin Integration</a>
+            <span class="nav-section">Reference</span>
+            <a href="troubleshooting.html">Troubleshooting</a>
+            <a href="error-codes.html">Error Codes</a>
+        </nav>
+    </aside>
+
+    <main class="content">
+        <div class="breadcrumb">
+            <a href="help.html">Docs</a>
+            <span class="separator">/</span>
+            Aviation Reports
+        </div>
+
+        <h1>Aviation Reports</h1>
+        <p class="tagline">A METAR, SPECI, TAF or NOTAM pasted into a message is decoded into plain language: a link inside a message, a table when the report is the whole message, a card when it is fenced. Nothing is fetched.</p>
+
+        <div class="alert alert-info">
+            <p>
+                Settings: <a href="admin.html#enable-avreport"><code>EnableAvReport</code></a>,
+                one switch per kind, and
+                <a href="admin.html#enable-avreport-card"><code>EnableAvReportCard</code></a> for
+                the card. To see what your own server does, run
+                <a href="commands.html#examples"><code>/tactical-fusion examples</code></a>.
+                Every example below is one of that command's own rows.
+            </p>
+        </div>
+
+        <h2 id="reports">What is read</h2>
+
+        <p>
+            Air operations channels paste weather and notices exactly as the wire carries them,
+            and a reader who does not decode <code>07012G18KT</code> in their head has to leave
+            the channel to find out what it said. This decorator reads four kinds of report and
+            renders each group in words, beside the report as it was written.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Kind</th><th>Recognized by</th><th>Example</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>METAR and SPECI</td>
+                    <td>The keyword, or a station and a time group followed by a wind group</td>
+                    <td><code class="copyable">METAR PHNL 221651Z 07012G18KT 10SM FEW025 SCT045 27/19 A3010</code></td>
+                </tr>
+                <tr>
+                    <td>TAF</td>
+                    <td>The keyword, a station, a time group and a validity period</td>
+                    <td><code class="copyable">TAF PGUA 221720Z 2218/2324 07012KT P6SM SCT025</code></td>
+                </tr>
+                <tr>
+                    <td>NOTAM, FAA domestic form</td>
+                    <td>An exclamation mark, the accountability location, the number and the affected location</td>
+                    <td><code class="copyable">!HNL 09/123 HNL RWY 08L/26R CLSD 2609221200-2609232359</code></td>
+                </tr>
+                <tr>
+                    <td>Temporary flight restriction</td>
+                    <td>An FDC NOTAM, whose number carries a one-digit year, citing a TFR section of 14 CFR</td>
+                    <td><code>!FDC 6/1234 ZZZ AIRSPACE ... TEMPORARY FLIGHT RESTRICTIONS</code>, on several lines</td>
+                </tr>
+                <tr>
+                    <td>NOTAM, ICAO form</td>
+                    <td>The series and number header, then the <code>Q)</code> to <code>G)</code> fields</td>
+                    <td><code>A1234/26 NOTAMN</code>, on several lines</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>
+            <strong>Nothing is fetched.</strong> There is no weather source, no NOTAM feed and no
+            outbound request of any kind. The plugin decodes what somebody pasted, which is what
+            makes it usable on a network with no route to the internet, and it means a report
+            is only as current as the person who pasted it.
+        </p>
+
+        <h2 id="reports-link">A report on one line becomes a link</h2>
+
+        <p>
+            A report that fits on one line is rewritten into a link, exactly as a
+            <a href="dtg.html">date-time group</a> is. The link's label is the report as you
+            wrote it. Hover it and the card names the station and gives a one-line summary; click it
+            and <a href="#reports-panel">the panel</a> shows every decoded group.
+        </p>
+
+        <p>
+            The link carries the report text and the instant its time group resolved to, and
+            nothing else. The panel and the page decode the text again on every open and refuse
+            a link whose instant does not reproduce the report's own day, hour and minute, so a
+            link edited by hand cannot show a decode the report does not support.
+        </p>
+
+        <p>
+            A <code>METAR</code> written without its keyword is admitted when the time group is
+            followed by a wind group: <code>PHNL 221651Z 07012G18KT</code> is four letters, six
+            digits, a <code>Z</code> and a group ending in <code>KT</code> or <code>MPS</code>,
+            which do not occur together in prose. The keyword form is read anywhere on a line;
+            the bare form is read only at the start of one.
+        </p>
+
+        <p>
+            A terminating <code>=</code> stays outside the link, as the <code>//</code> on a
+            USMTF set line stays outside an airfield link. A time group inside a report is
+            never linked on its own: the report is the longer match and wins. When the report
+            around it does not decode, the time group is linked as a date-time group, exactly
+            as it was before this decorator existed.
+        </p>
+
+        <h2 id="reports-table">A report posted on its own becomes a table</h2>
+
+        <p>
+            When the message is nothing but one report, on one line or several, the message
+            is rewritten into a table of the decode: every decoded group, and a last row, <em>Details</em>, whose link opens
+            <a href="#reports-panel">the panel</a>. The report as you wrote it is not in the
+            table; the panel and <a href="#reports-link">the link's page</a> show it
+            verbatim. The header names the station, and when the build holds that airfield
+            the name is a link to <a href="airfields.html#airfield-panel">its panel</a>.
+            Every time in the table, the issued or effective time and a NOTAM's expiry, is a
+            <a href="dtg.html">date-time link</a>, so hovering it gives the reader's zones.
+            The table is markdown in the message itself, exactly as the
+            <a href="airfields.html#airfield-table">airfield table</a> is, so the post keeps
+            its search matches, the table is in every export, and it renders on every client
+            whether or not it runs this plugin.
+        </p>
+
+        <p>
+            A report inside a longer message gets the link alone, and a message that carries
+            several reports one per line gets a link on each. What the table says is what
+            this build decoded at the moment of posting; the panel decodes the report again
+            every time it opens. Setting:
+            <a href="admin.html#enable-avreport-table"><code>EnableAvReportTable</code></a>.
+        </p>
+
+        <h2 id="reports-card">A fenced report, or a flight restriction, becomes a card</h2>
+
+        <p>
+            A report in a fenced code block labeled <code>metar</code>, <code>speci</code>,
+            <code>taf</code> or <code>notam</code>, whether or not the report inside it is one
+            line, is rendered as a card under the message, with the message itself left
+            exactly as written. A fence is never rewritten, and the label is your statement
+            of what it holds. A report on several lines posted on its own without a fence
+            gets <a href="#reports-table">the table</a> instead, and the card only while
+            that is turned off.
+        </p>
+
+        <p>
+            A temporary flight restriction is the exception. What it says is mostly where, so
+            one posted on its own is rendered as a card with its circle or polygon drawn on the
+            map under the message, the way a <a href="cot.html">Cursor on Target</a> event is,
+            and the table is used only while the card is turned off. Its times link to the
+            date-time panel, and its full wording is left to <strong>As posted</strong>, since
+            every part of it that matters is already a row.
+        </p>
+
+        <p>
+            The card shows the decoded groups, each TAF period under its own heading, the
+            remarks, anything not decoded, and the station on a map. The report as you wrote it
+            is under <strong>As posted</strong> in the sidebar, which <strong>Open details</strong>
+            opens; the card shows it only in compact display, or when the decoded groups had to
+            be left out to fit the size limit.
+        </p>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">A card costs the post its search matches.</p>
+            <p>
+                Rendering a card marks the post with a custom type, which excludes it from
+                Elasticsearch and OpenSearch results and Recent Mentions and drops its link
+                previews and automatic translation, exactly as the
+                <a href="cot.html#cot-card">Cursor on Target</a> and
+                <a href="geojson.html">GeoJSON</a> cards do. A report that became a link or a
+                table is never affected, and stays searchable. Turn
+                <a href="admin.html#enable-avreport-card"><code>EnableAvReportCard</code></a>
+                off to keep fenced reports as ordinary text.
+            </p>
+        </div>
+
+        <p>
+            <strong>One report per message.</strong> A message carrying several reports one per
+            line gets a link on each line rather than a card, because each line is independently
+            linkable and searchable. A multi-line report pasted inside a longer message is
+            neither linked nor rendered: linking its first line alone would store a truncated
+            report. Put it in a fence, or post it on its own.
+        </p>
+
+        <h2 id="reports-instant">The month and year are taken from the post</h2>
+
+        <p>
+            A METAR's <code>221651Z</code> is a day, an hour and a minute. The month and year
+            come from the moment the message was posted, exactly as the
+            <a href="dtg.html#dtg-assumed">short date-time group</a> resolves, so a report
+            pasted long after it was issued shows the month it was posted in rather than the
+            month it was issued. A TAF's validity period and a NOTAM's effective times carry
+            their own dates and need no inference.
+        </p>
+
+        <h2 id="reports-declined">Deliberately declined</h2>
+
+        <table>
+            <thead>
+                <tr><th>Input</th><th>Why</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>metar phnl 221651z ...</code></td><td>Lower case. Reports are upper case on every wire that carries them.</td></tr>
+                <tr><td><code>PHNL 221651Z ready for departure</code></td><td>No wind group after the time. The time group is linked as a date-time group instead.</td></tr>
+                <tr><td><code>the METAR is late</code></td><td>The keyword alone is a word. A station and a time group have to follow it.</td></tr>
+                <tr><td><code>wx:METAR PHNL ...</code></td><td>A colon touching the keyword fails the <a href="formats.html#boundaries">clean-edge rule</a>. Put a space after the label.</td></tr>
+                <tr><td>A METAR inside a fenced or inline code span</td><td>Code is <a href="formats.html#protected">never rewritten</a>. Label the fence <code>metar</code> to get a card.</td></tr>
+                <tr><td>A three-line TAF in the middle of a longer message</td><td>Neither linked nor rendered; see <a href="#reports-card">above</a>.</td></tr>
+                <tr><td>A report over 2,048 characters or 64 lines</td><td>Longer than any report a station issues, so refused rather than read.</td></tr>
+                <tr><td>SNOWTAM, PIREP, SIGMET, AIRMET</td><td>Not read by this build. A group the vocabulary lacks inside a report that is read is kept verbatim under <em>Not decoded</em>, never guessed at.</td></tr>
+            </tbody>
+        </table>
+
+        <h2 id="reports-panel">What the panel shows</h2>
+
+        <p>
+            The heading is the kind and the station, with the station's name linked to the
+            <a href="airfields.html#airfield-panel">airfield panel</a> when the build's database
+            holds it. Under it, one row
+            per decoded group in report order: wind, visibility, runway visual range, present
+            weather, sky, temperature and dew point, altimeter, trends and wind shear for an
+            observation; the base forecast and each <code>FM</code>, <code>TEMPO</code>,
+            <code>BECMG</code> and <code>PROB</code> period for a forecast; the issuing office, the affected location,
+            the keyword, effective and expiry times and the text with its contractions expanded for
+            a NOTAM, plus the <code>Q)</code> line's subject, condition, limits, center and
+            radius for the ICAO form. A temporary flight restriction adds the restriction and the
+            section of 14 CFR it cites, the <code>EFFECTIVE ... UNTIL</code> times, the altitude
+            band, and its area: a radius around a point, or the points of a polygon. Remarks are decoded where the vocabulary knows them, and
+            anything else is listed under <em>Not decoded</em> exactly as written. Below the
+            rows comes the map, and under it <strong>As posted</strong> holds the report
+            exactly as it was written, collapsed, with a button to copy it, as the Cursor on
+            Target and GeoJSON panels do.
+        </p>
+
+        <p>
+            The values are rendered on the server, once, so the hover, the panel, the card, the
+            page and the API cannot disagree about the same report. See
+            <a href="panel.html#panel">the sidebar panel</a> for the shared mechanics.
+        </p>
+
+        <h2 id="reports-map">The map</h2>
+
+        <p>
+            The station's airfield is drawn when the database holds it. An ICAO NOTAM whose
+            <code>Q)</code> line carries a center and a radius draws that instead, as a circle
+            of that many nautical miles. A temporary flight restriction draws its area the same
+            way: a circle for <code>5 NM RADIUS OF 433700N1161200W</code>, or the polygon for
+            <code>AREA DEFINED AS ... TO ... TO POINT OF ORIGIN</code>, with the marker at its
+            center. A coordinate that does not read as one draws nothing and is listed under
+            <em>Not decoded</em>. A station outside the database draws nothing and the
+            panel says nothing about position. The map under a card reads the same
+            <a href="admin.html#enable-location-map-inline">map under a post</a> switch the
+            coordinate map does, and the panel map the
+            <a href="admin.html#enable-location-map-panel">sidebar</a> one.
+        </p>
+
+        <h2 id="reports-data">Where the vocabulary comes from</h2>
+
+        <p>
+            The weather groups follow the WMO code tables as the FAA Aviation Weather Handbook
+            reproduces them. The NOTAM contractions are the FAA's own list, and the
+            <code>Q)</code> line's subject and condition codes are the ICAO tables the FAA NOTAM
+            manual carries. Every table is compiled into the plugin, with its provenance recorded
+            beside the data in the repository. A code the tables lack is kept verbatim rather
+            than guessed.
+        </p>
+
+        <h2 id="reports-settings">Settings and troubleshooting</h2>
+
+        <table>
+            <thead>
+                <tr><th>Setting</th><th>Governs</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><a href="admin.html#enable-avreport"><code>EnableAvReport</code></a></td><td>The whole decorator: links and cards alike.</td></tr>
+                <tr><td><a href="admin.html#enable-avreport-metar"><code>EnableAvReportMETAR</code></a></td><td>METAR and SPECI, in both spellings.</td></tr>
+                <tr><td><a href="admin.html#enable-avreport-taf"><code>EnableAvReportTAF</code></a></td><td>TAF.</td></tr>
+                <tr><td><a href="admin.html#enable-avreport-notam"><code>EnableAvReportNOTAM</code></a></td><td>NOTAM, both forms.</td></tr>
+                <tr><td><a href="admin.html#enable-avreport-table"><code>EnableAvReportTable</code></a></td><td><a href="#reports-table">The table</a> under a report posted on its own.</td></tr>
+                <tr><td><a href="admin.html#enable-avreport-card"><code>EnableAvReportCard</code></a></td><td><a href="#reports-card">The card</a>. Links and tables are unaffected.</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            If a report you expected to be decoded was not, see
+            <a href="troubleshooting.html#report-not-decoded">Troubleshooting</a>.
+        </p>
+
+    </main>
+</div>
+</body>
+</html>

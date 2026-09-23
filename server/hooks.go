@@ -95,6 +95,13 @@ func (p *Plugin) decoratePost(post *model.Post, ref time.Time) *model.Post {
 		result = geoResult
 	}
 
+	if reportResult, reportStamped := p.avreportStamp(post, ref); reportStamped {
+		return reportResult
+	} else if reportResult != nil {
+		post = reportResult
+		result = reportResult
+	}
+
 	// decorateMessage answers nil for "nothing changed", so the strip has to be
 	// handed back itself when decoration finds nothing. Returning its nil would
 	// mean "no change" to the hook and put the forged type straight back on.
@@ -145,6 +152,9 @@ func (p *Plugin) decorateMessage(post *model.Post, ref time.Time) (result *model
 		// author the decoration as well.
 		expanded := decorators.StandaloneExpansion(
 			p.decorators.Get(found.Type), tagger.URLFor(found.Type, found.Params), found.Trail, found.Params)
+		if expanded != "" {
+			expanded = tagger.Decorate(expanded, ref)
+		}
 		if expanded != "" && utf8.RuneCountInString(expanded) <= safePostRunes {
 			message = expanded
 		}
@@ -177,10 +187,45 @@ func (p *Plugin) decorateMessage(post *model.Post, ref time.Time) (result *model
 	// Nothing forces the two optional interfaces apart today beyond no
 	// decorator implementing both, which is a convention rather than a rule.
 	if message == decorated {
-		stampStandalonePost(updated, p.decorators, found)
+		p.stampDecoratedPost(updated, found)
 	}
 
 	return updated
+}
+
+func (p *Plugin) stampDecoratedPost(post *model.Post, found decorators.Result) {
+	if post.Type != "" {
+		return
+	}
+
+	if found.SoleToken {
+		stampStandalonePost(post, p.decorators, found)
+	}
+	if post.Type == "" {
+		p.stampMultiTokenPost(post, found)
+	}
+}
+
+func (p *Plugin) stampMultiTokenPost(post *model.Post, found decorators.Result) {
+	if !found.Covers || found.OnlyType == "" {
+		return
+	}
+
+	decorator := p.decorators.Get(found.OnlyType)
+	postType, propsKey := decorators.MultiPostType(decorator)
+	if postType == "" {
+		return
+	}
+
+	blob, ok := decorators.MultiPostProps(decorator, found.Tokens)
+	if !ok {
+		return
+	}
+
+	p.commitStamped(post, postType, propsKey, []stampRung{{blob: blob}}, stampCodes{
+		propsUnmeasurable: errcode.HooksAirfieldsPropsUnmeasurable,
+		propsTooLarge:     errcode.HooksAirfieldsPropsTooLarge,
+	})
 }
 
 func stampStandalonePost(post *model.Post, registry *decorators.Registry, found decorators.Result) {

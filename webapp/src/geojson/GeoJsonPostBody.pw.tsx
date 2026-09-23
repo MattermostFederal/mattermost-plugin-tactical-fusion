@@ -15,22 +15,73 @@ test('renders the card for a well formed post', async ({mount}) => {
     );
 
     await expect(component.getByTestId('geojson-card')).toBeVisible();
-    await expect(component.getByTestId('geojson-heading')).toContainText('1 feature');
     await expect(component).toContainText('Depot');
-    await expect(component).toContainText('34.0561, -118.25');
+    await expect(component).not.toContainText('34.0561');
 });
 
-test('counts and the geometry mix read as a sentence', async ({mount}) => {
+test('names and describes the document, and never counts its features', async ({mount}) => {
     const component = await mount(
         <GeoJsonPostBodyHarness
             features={[{name: 'A'}, {name: 'B'}, {name: 'C'}]}
             counts={{features: 3, points: 1, lines: 1, polygons: 1}}
+            name='Operating area'
+            description='Tonight&apos;s overlay'
         />,
     );
 
-    await expect(component.getByTestId('geojson-heading')).toContainText('3 features');
-    await expect(component.getByTestId('geojson-summary')).
-        toContainText('1 point, 1 line and 1 polygon');
+    await expect(component.getByTestId('geojson-kind')).toHaveText('GeoJSON: Operating area');
+    await expect(component.getByTestId('geojson-heading')).toHaveCount(0);
+    await expect(component.getByTestId('geojson-description')).toHaveText("Tonight's overlay");
+    await expect(component.getByTestId('geojson-summary')).toHaveCount(0);
+    await expect(component).not.toContainText('3 features');
+    await expect(component).not.toContainText('1 point');
+});
+
+test('falls back to the file name and otherwise heads the card with nothing', async ({mount}) => {
+    const named = await mount(<GeoJsonPostBodyHarness fileName='overlay.geojson'/>);
+    await expect(named.getByTestId('geojson-kind')).toHaveText('GeoJSON');
+    await expect(named.getByTestId('geojson-heading')).toHaveText('overlay.geojson');
+    await named.unmount();
+
+    const bare = await mount(<GeoJsonPostBodyHarness/>);
+    await expect(bare.getByTestId('geojson-kind')).toHaveText('GeoJSON');
+    await expect(bare.getByTestId('geojson-heading')).toHaveCount(0);
+    await expect(bare.getByTestId('geojson-description')).toHaveCount(0);
+});
+
+test('draws a feature its color as a dot before its name', async ({mount}) => {
+    const component = await mount(
+        <GeoJsonPostBodyHarness features={[{name: 'Red', color: '#ff0000'}, {name: 'Plain'}]}/>,
+    );
+
+    const dots = component.getByTestId('geojson-dot');
+    await expect(dots).toHaveCount(1);
+    await expect(dots).toHaveCSS('background-color', 'rgb(255, 0, 0)');
+});
+
+test('shows a feature nothing but its name, whatever properties it carries', async ({mount}) => {
+    const component = await mount(
+        <GeoJsonPostBodyHarness
+            features={[{
+                name: 'Operating area',
+                color: '#ff0000',
+                properties: [
+                    {key: 'fill', value: '#ff0000'},
+                    {key: 'fill-opacity', value: '0.25'},
+                    {key: 'name', value: 'Operating area'},
+                    {key: 'stroke', value: '#ff0000'},
+                    {key: 'stroke-opacity', value: '0.8'},
+                    {key: 'stroke-width', value: '3'},
+                    {key: 'status', value: 'active'},
+                ],
+            }]}
+        />,
+    );
+
+    await expect(component.getByText('Operating area', {exact: true})).toHaveCount(1);
+    await Promise.all(['fill', 'fill-opacity', 'stroke', 'stroke-opacity', 'stroke-width', '0.25', '0.8', 'status', 'active'].map(
+        (hidden) => expect(component.getByText(hidden, {exact: true})).toHaveCount(0),
+    ));
 });
 
 test('keeps the text the author wrote around the document, in reading order', async ({mount}) => {
@@ -46,7 +97,7 @@ test('keeps the text the author wrote around the document, in reading order', as
     await expect(component.getByTestId('geojson-card')).toBeVisible();
 });
 
-test('shows each feature the properties it carries', async ({mount}) => {
+test('leaves a feature\'s other properties to the sidebar', async ({mount}) => {
     const component = await mount(
         <GeoJsonPostBodyHarness
             features={[{
@@ -59,10 +110,9 @@ test('shows each feature the properties it carries', async ({mount}) => {
         />,
     );
 
-    await expect(component).toContainText('status');
-    await expect(component).toContainText('active');
-    await expect(component).toContainText('capacity');
-    await expect(component).toContainText('240');
+    await expect(component).toContainText('Depot');
+    await expect(component).not.toContainText('status');
+    await expect(component).not.toContainText('capacity');
 });
 
 /*
@@ -75,19 +125,19 @@ test('renders author markup in a property as text, never as markup', async ({mou
         <GeoJsonPostBodyHarness
             features={[{
                 name: '<img src=x onerror=alert(1)>',
-                properties: [{key: '<b>k</b>', value: '<script>alert(1)</script>'}],
+                properties: [{key: 'description', value: '<script>alert(1)</script><b>k</b>'}],
             }]}
         />,
     );
 
-    await expect(component).toContainText('<script>alert(1)</script>');
+    await expect(component).toContainText('<script>alert(1)</script><b>k</b>');
     await expect(component).toContainText('<img src=x onerror=alert(1)>');
     await expect(component.locator('script')).toHaveCount(0);
     await expect(component.locator('img')).toHaveCount(0);
     await expect(component.locator('b')).toHaveCount(0);
 });
 
-test('states the geometry of a feature that is not a lone point', async ({mount}) => {
+test('says nothing about the geometry of a feature that is not a lone point', async ({mount}) => {
     const component = await mount(
         <GeoJsonPostBodyHarness
             features={[{
@@ -105,7 +155,9 @@ test('states the geometry of a feature that is not a lone point', async ({mount}
         />,
     );
 
-    await expect(component).toContainText('2 rings, 8 points');
+    await expect(component).toContainText('Area');
+    await expect(component).not.toContainText('2 rings, 8 points');
+    await expect(component).not.toContainText('Polygon');
 });
 
 test('names a feature the document gave no geometry', async ({mount}) => {
@@ -120,7 +172,8 @@ test('names a feature the document gave no geometry', async ({mount}) => {
         />,
     );
 
-    await expect(component).toContainText('no geometry');
+    await expect(component).toContainText('Unlocated');
+    await expect(component).not.toContainText('no geometry');
     await expect(component).toContainText('The document states no position for this feature.');
 });
 
@@ -275,46 +328,21 @@ test('draws no map when the server says nothing can be placed', async ({mount}) 
     await expect(component.getByTestId('geojson-note')).toBeVisible();
 });
 
-/*
- * The measurement is the server's, verbatim.
- *
- * Rendered there rather than here so the card and the panel cannot round the
- * same figure into two different answers.
- */
-test.describe('measurements', () => {
-    test('shows a line its length and a polygon its area', async ({mount}) => {
-        const component = await mount(
-            <GeoJsonPostBodyHarness
-                features={[
-                    {name: 'Route', kind: 'LineString', length: '12.3 km'},
-                    {name: 'Area', kind: 'Polygon', area: '4.5 km²'},
-                ]}
-            />,
-        );
+test('leaves measurements and geometry types to the sidebar', async ({mount}) => {
+    const component = await mount(
+        <GeoJsonPostBodyHarness
+            features={[
+                {name: 'Route', kind: 'LineString', length: '12.3 km'},
+                {name: 'Area', kind: 'Polygon', area: '4.5 km²'},
+            ]}
+        />,
+    );
 
-        await expect(component).toContainText('12.3 km');
-        await expect(component).toContainText('4.5 km²');
-    });
-
-    test('shows both when a collection carries both', async ({mount}) => {
-        const component = await mount(
-            <GeoJsonPostBodyHarness
-                features={[{name: 'Mixed', kind: 'GeometryCollection', length: '800 m', area: '250 m²'}]}
-            />,
-        );
-
-        await expect(component.getByTestId('geojson-measure')).toContainText('800 m, 250 m²');
-    });
-
-    // A geometry with no such measure, and a feature the server would not stand
-    // behind, both carry nothing rather than a zero.
-    test('shows nothing for a geometry that has no measure', async ({mount}) => {
-        const component = await mount(
-            <GeoJsonPostBodyHarness features={[{name: 'Depot', kind: 'Point'}]}/>,
-        );
-
-        await expect(component.getByTestId('geojson-measure')).toHaveCount(0);
-    });
+    await expect(component).toContainText('Route');
+    await expect(component).toContainText('Area');
+    await expect(component.getByTestId('geojson-measure')).toHaveCount(0);
+    await expect(component).not.toContainText('12.3 km');
+    await expect(component).not.toContainText('LineString');
 });
 
 /*
@@ -341,4 +369,70 @@ test.describe('Open larger', () => {
         await expect(component.getByTestId('geojson-map')).toBeVisible();
         await expect(component.getByText('Open larger')).toHaveCount(0);
     });
+});
+
+test('renders a feature\'s description as a line under its name, not as a property', async ({mount}) => {
+    const component = await mount(
+        <GeoJsonPostBodyHarness
+            features={[{
+                name: 'Operating area',
+                properties: [
+                    {key: 'description', value: 'Restricted to exercise traffic.'},
+                    {key: 'status', value: 'active'},
+                ],
+            }]}
+        />,
+    );
+
+    await expect(component.getByTestId('geojson-feature-description')).toHaveText('Restricted to exercise traffic.');
+    await expect(component.getByText('description', {exact: true})).toHaveCount(0);
+    await expect(component).not.toContainText('status');
+});
+
+test('a drawn feature is a button that shows it on the map, and an undrawn one is not', async ({mount}) => {
+    const component = await mount(
+        <GeoJsonPostBodyHarness
+            features={[
+                {name: 'Depot', kind: 'Point'},
+                {name: 'Unlocated', kind: 'none', note: 'The document states no position for this feature.', parts: []},
+            ]}
+        />,
+    );
+
+    await expect(component.getByRole('button', {name: /^Show on the map: Depot/})).toBeVisible();
+    await expect(component.getByTestId('geojson-feature-show')).toHaveCount(1);
+});
+
+test('the whole feature row, description included, is the button', async ({mount}) => {
+    const component = await mount(
+        <GeoJsonPostBodyHarness
+            features={[{name: 'Depot', kind: 'Point', properties: [{key: 'description', value: 'Issue point'}]}]}
+        />,
+    );
+
+    const show = component.getByRole('button', {name: /^Show on the map: Depot/});
+    await expect(show.getByTestId('geojson-feature-description')).toHaveText('Issue point');
+    await expect(show).toHaveAccessibleName(/Issue point/);
+});
+
+test('a color that is not a hex triple draws no dot', async ({mount}) => {
+    const component = await mount(
+        <GeoJsonPostBodyHarness features={[{name: 'Forged', color: 'url(https://example.com/x)'}, {name: 'Red', color: '#ff0000'}]}/>,
+    );
+
+    await expect(component.getByTestId('geojson-dot')).toHaveCount(1);
+    await expect(component.getByTestId('geojson-dot')).toHaveCSS('background-color', 'rgb(255, 0, 0)');
+});
+
+test('an unplaceable document offers no map buttons, because it draws no map', async ({mount}) => {
+    const component = await mount(
+        <GeoJsonPostBodyHarness
+            features={[{name: 'Depot', kind: 'Point'}]}
+            note='The document states a coordinate reference system whose axis order this build cannot confirm, so nothing is drawn.'
+            unplaceable={true}
+        />,
+    );
+
+    await expect(component).toContainText('Depot');
+    await expect(component.getByTestId('geojson-feature-show')).toHaveCount(0);
 });

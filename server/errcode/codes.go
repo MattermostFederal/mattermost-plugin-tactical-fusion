@@ -114,6 +114,15 @@ const (
 	HooksGeoJSONFileUnreadable    = 11014
 	HooksGeoJSONFileNotOwned      = 11015
 
+	HooksAirfieldsPropsUnmeasurable = 11016
+	HooksAirfieldsPropsTooLarge     = 11017
+
+	HooksAvReportPanic             = 11018
+	HooksAvReportUnreadable        = 11019
+	HooksAvReportPropsUnmeasurable = 11020
+	HooksAvReportPropsTooLarge     = 11021
+	HooksAvReportRowsDropped       = 11022
+
 	// server/http.go (12000-12999)
 
 	// HTTPMethodNotAllowed is returned for anything other than GET on the
@@ -150,6 +159,8 @@ const (
 	HTTPPackageUnreadable = 12007
 
 	HTTPMapPostUnavailable = 12008
+
+	HTTPMapAirportUnavailable = 12009
 
 	// server/api.go (13000-13999)
 
@@ -197,19 +208,23 @@ const (
 	// naming a retired code into a permanent failure.
 	APIAirportInvalid = 13009
 
+	APIAirportParamsConflict = 13010
+
+	APIAvReportInvalid = 13011
+
 	// APICyberInvalid is returned when the cyber endpoint is given a kind and
 	// value that do not reproduce each other. An indicator no dataset holds is
 	// not this: that answers 200 saying so, exactly as the page does.
-	APICyberInvalid = 13010
+	APICyberInvalid = 13012
 
 	// APICyberTeamInvalid is returned when the prior-mentions endpoint is
 	// given no team, or one that is not a Mattermost id. An empty team never
 	// means every team: the search is scoped to one and says which.
-	APICyberTeamInvalid = 13011
+	APICyberTeamInvalid = 13013
 
 	// APICyberSearchFailed reports that the search a reader's prior-mentions
 	// request ran came back as an error. The rest of the panel still renders.
-	APICyberSearchFailed = 13012
+	APICyberSearchFailed = 13014
 
 	// server/preferences.go (14000-14999)
 
@@ -294,6 +309,16 @@ const (
 	// examples messages could not be posted to the channel.
 	CommandExamplesPostFailed = 16006
 
+	CommandNoteUsage = 16007
+
+	CommandNoteInvalid = 16008
+
+	CommandNoteTooLong = 16009
+
+	CommandNotePostFailed = 16010
+
+	CommandPostNotPermitted = 16011
+
 	// server/decorators/ (17000-17999)
 
 	// DTGPageParamsInvalid is returned by the date-time group page for a link
@@ -311,10 +336,18 @@ const (
 	// hold renders at 200 with a note instead.
 	AirportPageInvalid = 17002
 
+	AirportPageParamsConflict = 17003
+
+	AvReportPageInvalid = 17004
+
+	FrequencyPageInvalid = 17005
+
+	NotePageInvalid = 17006
+
 	// CyberPageInvalid is returned by the cyber page for a link whose kind and
 	// value do not reproduce each other. An indicator no dataset describes
 	// renders at 200 with a note instead.
-	CyberPageInvalid = 17003
+	CyberPageInvalid = 17007
 
 	// server/packages.go (18000-18999)
 
@@ -366,15 +399,22 @@ const (
 	BridgeFormatDisabled     = 19007
 	BridgePanic              = 19008
 
-	MCPInitFailed         = 20000
-	MCPManifestIncomplete = 20001
-	MCPRegistrationFailed = 20002
-	MCPUnregisterFailed   = 20003
-	MCPNotReady           = 20004
-	MCPToolPanic          = 20005
-	MCPLinkDeclined       = 20006
-	MCPConvertInvalid     = 20007
-	MCPAirportInvalid     = 20008
+	MCPInitFailed           = 20000
+	MCPManifestIncomplete   = 20001
+	MCPRegistrationFailed   = 20002
+	MCPUnregisterFailed     = 20003
+	MCPNotReady             = 20004
+	MCPToolPanic            = 20005
+	MCPLinkDeclined         = 20006
+	MCPConvertInvalid       = 20007
+	MCPAirportInvalid       = 20008
+	MCPAvReportInvalid      = 20009
+	MCPCotInvalid           = 20010
+	MCPGeoJSONInvalid       = 20011
+	MCPFrequencyInvalid     = 20012
+	MCPDateTimeInvalid      = 20013
+	MCPCreateCotInvalid     = 20014
+	MCPCreateGeoJSONInvalid = 20015
 
 	// server/cyberdata.go (21000-21999)
 
@@ -433,6 +473,13 @@ var AllCodes = []int{
 	HooksGeoJSONPropertiesDropped,
 	HooksGeoJSONFileUnreadable,
 	HooksGeoJSONFileNotOwned,
+	HooksAirfieldsPropsUnmeasurable,
+	HooksAirfieldsPropsTooLarge,
+	HooksAvReportPanic,
+	HooksAvReportUnreadable,
+	HooksAvReportPropsUnmeasurable,
+	HooksAvReportPropsTooLarge,
+	HooksAvReportRowsDropped,
 
 	HTTPMethodNotAllowed,
 	HTTPDecoratePathInvalid,
@@ -443,6 +490,7 @@ var AllCodes = []int{
 	HTTPPackageUnknown,
 	HTTPPackageUnreadable,
 	HTTPMapPostUnavailable,
+	HTTPMapAirportUnavailable,
 
 	APINotAuthorized,
 	APINotFound,
@@ -454,6 +502,8 @@ var AllCodes = []int{
 	APIPreferencesClearFailed,
 	APIConvertInvalid,
 	APIAirportInvalid,
+	APIAirportParamsConflict,
+	APIAvReportInvalid,
 	APICyberInvalid,
 	APICyberTeamInvalid,
 	APICyberSearchFailed,
@@ -477,10 +527,19 @@ var AllCodes = []int{
 	CommandExamplesNothingEnabled,
 	CommandExamplesTooLong,
 	CommandExamplesPostFailed,
+	CommandNoteUsage,
+	CommandNoteInvalid,
+	CommandNoteTooLong,
+	CommandNotePostFailed,
+	CommandPostNotPermitted,
 
 	DTGPageParamsInvalid,
 	LocationPageParamsInvalid,
 	AirportPageInvalid,
+	AirportPageParamsConflict,
+	AvReportPageInvalid,
+	FrequencyPageInvalid,
+	NotePageInvalid,
 	CyberPageInvalid,
 
 	PackagesNoBundlePath,
@@ -512,6 +571,13 @@ var AllCodes = []int{
 	MCPLinkDeclined,
 	MCPConvertInvalid,
 	MCPAirportInvalid,
+	MCPAvReportInvalid,
+	MCPCotInvalid,
+	MCPGeoJSONInvalid,
+	MCPFrequencyInvalid,
+	MCPDateTimeInvalid,
+	MCPCreateCotInvalid,
+	MCPCreateGeoJSONInvalid,
 
 	CyberDataNoBundlePath,
 	CyberDataUnreadable,

@@ -2,12 +2,14 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/mattermost/mattermost/server/public/model"
 
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/avreport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
@@ -65,6 +67,8 @@ const (
 	// the client builds the archive URL the same way it builds the global one,
 	// so no URL crosses the wire to be got wrong.
 	packagesPathAPI = apiPath + "/packages"
+
+	avreportPath = apiPath + "/avreport"
 )
 
 // airportResponse is what the airfield endpoint answers.
@@ -84,6 +88,7 @@ const (
 type airportResponse struct {
 	Found      bool               `json:"found"`
 	Ident      string             `json:"ident"`
+	IATA       string             `json:"iata"`
 	Airport    *airportDetails    `json:"airport,omitempty"`
 	Coordinate *airportCoordinate `json:"coordinate,omitempty"`
 }
@@ -117,11 +122,36 @@ type airportCoordinate struct {
 // that says where a border lookup came from, and it is what keeps it from
 // reading as a determination.
 type airportDetails struct {
-	Name      string `json:"name"`
-	Type      string `json:"type"`
-	Place     string `json:"place"`
-	Elevation string `json:"elevation"`
-	IATA      string `json:"iata"`
+	Name        string             `json:"name"`
+	Type        string             `json:"type"`
+	Place       string             `json:"place"`
+	Elevation   string             `json:"elevation"`
+	IATA        string             `json:"iata"`
+	Military    string             `json:"military"`
+	Runways     []airportRunway    `json:"runways"`
+	Frequencies []airportFrequency `json:"frequencies"`
+}
+
+type airportRunway struct {
+	Designation string         `json:"designation"`
+	Summary     string         `json:"summary"`
+	Length      string         `json:"length"`
+	Width       string         `json:"width"`
+	Surface     string         `json:"surface"`
+	Lighted     string         `json:"lighted"`
+	Closed      string         `json:"closed"`
+	Ends        *[2]airportEnd `json:"ends,omitempty"`
+}
+
+type airportEnd struct {
+	Format string `json:"format"`
+	Value  string `json:"value"`
+}
+
+type airportFrequency struct {
+	Type        string `json:"type"`
+	Description string `json:"description"`
+	MHz         string `json:"mhz"`
 }
 
 // featuresResponse is what a reader's browser is told about this install.
@@ -170,6 +200,11 @@ func (p *Plugin) serveAPI(w http.ResponseWriter, r *http.Request) {
 
 	if r.URL.Path == featuresPath {
 		p.serveFeatures(w, r)
+		return
+	}
+
+	if r.URL.Path == avreportPath {
+		p.serveAvReport(w, r)
 		return
 	}
 
@@ -324,20 +359,25 @@ func (p *Plugin) serveAirport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The shape check, before anything echoes the value back. An ident this
-	// build does not hold is a different answer entirely, below.
-	ident := r.URL.Query().Get("v")
-	if !airport.MatchesIdentShape(ident) {
+	ref, err := airport.ReferenceFromParams(r.URL.Query())
+	if errors.Is(err, airport.ErrParamsConflict) {
+		writeAPIError(w, http.StatusBadRequest,
+			errcode.WithCode(errcode.APIAirportParamsConflict, "An airfield link names exactly one code."))
+		return
+	}
+	if err != nil {
 		writeAPIError(w, http.StatusBadRequest,
 			errcode.WithCode(errcode.APIAirportInvalid, "That is not an airfield code this plugin issued."))
 		return
 	}
 
-	// Constant for the life of a build, and private because the URL and the
-	// body both name a place somebody looked up. The five minutes is not about
-	// the answer changing; it bounds how long a browser keeps one across a
-	// plugin upgrade.
 	w.Header().Set("Cache-Control", "private, max-age=300")
+
+	ident, found := ref.Resolve()
+	if !found {
+		writeAPIJSON(w, http.StatusOK, airportResponse{Found: false, Ident: ref.Ident, IATA: ref.IATA})
+		return
+	}
 
 	writeAPIJSON(w, http.StatusOK, describeAirport(ident))
 }
@@ -351,12 +391,16 @@ func describeAirport(ident string) airportResponse {
 	body := airportResponse{
 		Found: true,
 		Ident: details.Ident,
+		IATA:  details.IATA,
 		Airport: &airportDetails{
-			Name:      details.Name,
-			Type:      details.Type,
-			Place:     details.Place,
-			Elevation: details.Elevation,
-			IATA:      details.IATA,
+			Name:        details.Name,
+			Type:        details.Type,
+			Place:       details.Place,
+			Elevation:   details.Elevation,
+			IATA:        details.IATA,
+			Military:    details.Military,
+			Runways:     airportRunways(details.Runways),
+			Frequencies: airportFrequencies(details.Frequencies),
 		},
 	}
 	if details.HasPosition {
@@ -368,6 +412,37 @@ func describeAirport(ident string) airportResponse {
 	}
 
 	return body
+}
+
+func airportRunways(runways []airport.Runway) []airportRunway {
+	out := make([]airportRunway, 0, len(runways))
+	for _, r := range runways {
+		wire := airportRunway{
+			Designation: r.Designation,
+			Summary:     airport.RunwayLine(r),
+			Length:      r.Length,
+			Width:       r.Width,
+			Surface:     r.Surface,
+			Lighted:     r.Lighted,
+			Closed:      r.Closed,
+		}
+		if r.Ends != nil {
+			wire.Ends = &[2]airportEnd{
+				{Format: r.Ends[0].Format, Value: r.Ends[0].Token},
+				{Format: r.Ends[1].Format, Value: r.Ends[1].Token},
+			}
+		}
+		out = append(out, wire)
+	}
+	return out
+}
+
+func airportFrequencies(frequencies []airport.Frequency) []airportFrequency {
+	out := make([]airportFrequency, 0, len(frequencies))
+	for _, f := range frequencies {
+		out = append(out, airportFrequency{Type: f.Type, Description: f.Description, MHz: f.MHz})
+	}
+	return out
 }
 
 func (p *Plugin) handleGetPreferences(w http.ResponseWriter, userID string) {
@@ -545,4 +620,22 @@ func (p *Plugin) servePackageAdmin(w http.ResponseWriter, r *http.Request, userI
 		writeAPIError(w, http.StatusMethodNotAllowed,
 			errcode.WithCode(errcode.APIMethodNotAllowed, "Method not allowed."))
 	}
+}
+
+func (p *Plugin) serveAvReport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeAPIError(w, http.StatusMethodNotAllowed,
+			errcode.WithCode(errcode.APIMethodNotAllowed, "Method not allowed."))
+		return
+	}
+
+	report, ok := avreport.Validate(r.URL.Query())
+	if !ok {
+		writeAPIError(w, http.StatusBadRequest,
+			errcode.WithCode(errcode.APIAvReportInvalid, "That is not an aviation report this plugin issued."))
+		return
+	}
+
+	w.Header().Set("Cache-Control", "private, max-age=300")
+	writeAPIJSON(w, http.StatusOK, avreport.Blob(report))
 }

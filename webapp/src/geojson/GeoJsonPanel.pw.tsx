@@ -21,24 +21,30 @@ test('the card opens the sidebar on the document', async ({mount, page}) => {
     await expect(component.getByTestId('rhs')).toContainText('Route');
 });
 
-test('the sidebar title names the document by its feature count', async ({mount, page}) => {
+test('the sidebar title names the document, and never counts its features', async ({mount, page}) => {
     await stubPreferencesRoute(page);
 
     const component = await mount(
-        <GeoJsonPanelHarness features={[{name: 'A'}, {name: 'B'}]}/>,
+        <GeoJsonPanelHarness
+            features={[{name: 'A'}, {name: 'B'}]}
+            name='Operating area'
+            description='Tonight&apos;s overlay'
+        />,
     );
     await component.getByRole('button', {name: 'Open details'}).click();
 
-    await expect(component.getByTestId('rhs-title')).toContainText('GeoJSON: 2 features');
+    await expect(component.getByTestId('rhs-title')).toHaveText('GeoJSON: Operating area');
+    await expect(component.getByTestId('geojson-panel-summary')).toContainText("Tonight's overlay");
+    await expect(component.getByTestId('rhs')).not.toContainText('2 features');
 });
 
-test('one feature is singular in the title', async ({mount, page}) => {
+test('an unnamed document gets the bare title', async ({mount, page}) => {
     await stubPreferencesRoute(page);
 
     const component = await mount(<GeoJsonPanelHarness features={[{name: 'A'}]}/>);
     await component.getByRole('button', {name: 'Open details'}).click();
 
-    await expect(component.getByTestId('rhs-title')).toContainText('GeoJSON: 1 feature');
+    await expect(component.getByTestId('rhs-title')).toHaveText('GeoJSON');
 });
 
 test.describe('a point row', () => {
@@ -137,7 +143,12 @@ test.describe('hidden sections', () => {
     test('hiding the features section leaves the summary', async ({mount, page}) => {
         await stubPreferencesRoute(page, {storedGeoJsonSections: ['features']});
 
-        const component = await mount(<GeoJsonPanelHarness features={[{name: 'Depot'}]}/>);
+        const component = await mount(
+            <GeoJsonPanelHarness
+                features={[{name: 'Depot'}]}
+                name='Operating area'
+            />,
+        );
         await component.getByRole('button', {name: 'Open details'}).click();
 
         await expect(component.getByTestId('geojson-panel-summary')).toBeVisible();
@@ -200,7 +211,7 @@ test.describe('the editor', () => {
 
         await component.getByTestId('second-card').getByRole('button', {name: 'Open details'}).click();
 
-        await expect(component.getByTestId('rhs-title')).toContainText('GeoJSON: 2 features');
+        await expect(component.getByTestId('rhs-title')).toHaveText('GeoJSON');
         await expect(component.getByTestId('rhs')).toContainText('Other');
     });
 });
@@ -245,4 +256,46 @@ test.describe('the document as posted', () => {
         await expect(pane).toBeVisible();
         await expect(rhs).toContainText('Copy the document as posted: copied');
     });
+});
+
+test('the panel states each feature its geometry and measure', async ({mount, page}) => {
+    await stubPreferencesRoute(page);
+
+    const component = await mount(
+        <GeoJsonPanelHarness
+            features={[
+                {name: 'Route', kind: 'LineString', length: '12.3 km'},
+                {name: 'Area', kind: 'Polygon', area: '4.5 km²'},
+            ]}
+        />,
+    );
+    await component.getByRole('button', {name: 'Open details'}).click();
+
+    const rhs = component.getByTestId('rhs');
+    await expect(rhs).toContainText('LineString');
+    await expect(rhs).toContainText('12.3 km');
+    await expect(rhs).toContainText('4.5 km²');
+});
+
+test('the panel keeps the style keys out of a feature\'s properties', async ({mount, page}) => {
+    await stubPreferencesRoute(page);
+
+    const component = await mount(
+        <GeoJsonPanelHarness
+            features={[{
+                name: 'Area',
+                properties: [
+                    {key: 'fill', value: '#ff0000'},
+                    {key: 'stroke-width', value: '3'},
+                    {key: 'status', value: 'active'},
+                ],
+            }]}
+        />,
+    );
+    await component.getByRole('button', {name: 'Open details'}).click();
+
+    const rhs = component.getByTestId('rhs');
+    await expect(rhs).toContainText('status');
+    await expect(rhs).not.toContainText('stroke-width');
+    await expect(rhs.getByText('fill', {exact: true})).toHaveCount(0);
 });

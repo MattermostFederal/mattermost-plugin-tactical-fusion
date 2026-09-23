@@ -6,6 +6,8 @@ import {loadBasemap, loadPackages} from './basemap';
 import {centerOf, degenerate, frameBounds, openingAnchor} from './bounds';
 import type {Camera} from './camera';
 import {hashForCamera} from './camera';
+import type {MapFocus} from './focus';
+import {POINT_FOCUS_ZOOM} from './focus';
 import {outsideMercator, positionNote} from './label';
 import {
     SEAM_CAPPED_LAYERS,
@@ -103,6 +105,8 @@ export interface MapProps extends View {
     inline?: boolean;
 
     openAt?: Camera;
+
+    focus?: MapFocus;
 
     /**
      * A picture and nothing else: no controls, no gestures, no readout.
@@ -209,7 +213,7 @@ export interface MapProps extends View {
  */
 export function useMapInstance({
     lat, lon, cellDegLat, cellDegLon, pending, preview, accuracyMeters,
-    markers, ellipse, geometries, openAt,
+    markers, ellipse, geometries, openAt, focus,
 }: MapProps): {
     container: React.RefObject<HTMLDivElement | null>;
     applyView: () => void;
@@ -297,6 +301,9 @@ export function useMapInstance({
 
     const openAtRef = useRef<Camera | undefined>(openAt);
 
+    const focusRef = useRef<MapFocus | undefined>(focus);
+    const appliedFocusSeq = useRef<number | null>(null);
+
     // Pending readiness deadlines, so unmounting cannot leave one to fire
     // against a component that is gone.
     const deadlines = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
@@ -332,6 +339,22 @@ export function useMapInstance({
         // shapes together: a shape larger than its own <point> would otherwise
         // open half off screen, or at a zoom chosen for a point inside it.
         const frame = (fallback: {lat: number; lon: number} | null) => {
+            const pending = focusRef.current;
+            if (pending !== undefined && pending.seq !== appliedFocusSeq.current) {
+                appliedFocusSeq.current = pending.seq;
+                openAtRef.current = undefined;
+                if (pending.box === null) {
+                    instance.jumpTo({center: [pending.center.lon, pending.center.lat], zoom: POINT_FOCUS_ZOOM});
+                } else {
+                    instance.fitBounds(pending.box, {
+                        padding: fitPadding(width, height, !previewRef.current),
+                        animate: false,
+                        maxZoom: MAX_ZOOM,
+                    });
+                }
+                return;
+            }
+
             const start = openAtRef.current;
             if (start !== undefined) {
                 openAtRef.current = undefined;
@@ -401,6 +424,11 @@ export function useMapInstance({
         outline?.setData(drawableOverlay(shape.current, shapes.current, current.lat, current.lon));
         paintGeometry(instance);
     }, []);
+
+    useEffect(() => {
+        focusRef.current = focus;
+        applyView();
+    }, [focus, applyView]);
 
     // What the overlays ARE, rather than the objects carrying them.
     //

@@ -11,12 +11,13 @@ import (
 
 const commandTrigger = "tactical-fusion"
 
-const subcommandList = "examples, check"
+const subcommandList = "examples, check, note"
 
 func getCommand() *model.Command {
 	autocomplete := model.NewAutocompleteData(commandTrigger, "[command]", "Tactical Fusion commands")
 	autocomplete.AddCommand(model.NewAutocompleteData("examples", "", "Post a demonstration to this channel, one message per format, for everybody to see"))
 	autocomplete.AddCommand(model.NewAutocompleteData("check", "[text]", "Show what would be decorated in some text, and what would not"))
+	autocomplete.AddCommand(model.NewAutocompleteData("note", "[label] | [markdown]", "Post a link whose hover card renders your markdown"))
 
 	return &model.Command{
 		Trigger:          commandTrigger,
@@ -36,9 +37,17 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 
 	switch fields[1] {
 	case "examples":
+		if refusal := p.refuseUnlessCanPost(args); refusal != nil {
+			return refusal, nil
+		}
 		return p.examplesResponse(args), nil
 	case "check":
 		return p.checkResponse(argumentText(args.Command, fields[1])), nil
+	case "note":
+		if refusal := p.refuseUnlessCanPost(args); refusal != nil {
+			return refusal, nil
+		}
+		return p.noteResponse(args, argumentText(args.Command, fields[1])), nil
 	default:
 		return ephemeralResponse(errcode.WithCode(errcode.CommandUnknownSubcommand,
 			"Unknown subcommand. Available: "+subcommandList)), nil
@@ -57,6 +66,14 @@ func argumentText(command, subcommand string) string {
 		return ""
 	}
 	return strings.TrimSpace(rest)
+}
+
+func (p *Plugin) refuseUnlessCanPost(args *model.CommandArgs) *model.CommandResponse {
+	if p.API.HasPermissionToChannel(args.UserId, args.ChannelId, model.PermissionCreatePost) {
+		return nil
+	}
+	return ephemeralResponse(errcode.WithCode(errcode.CommandPostNotPermitted,
+		"You cannot post in this channel, so this command cannot post for you."))
 }
 
 func ephemeralResponse(text string) *model.CommandResponse {

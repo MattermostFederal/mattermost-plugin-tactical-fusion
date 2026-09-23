@@ -16,11 +16,14 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/avreport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/cyber"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/frequency"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/note"
 )
 
 var hookRef = time.Date(2026, time.August, 9, 12, 0, 0, 0, time.UTC)
@@ -401,6 +404,8 @@ func (a *fakeAPI) LoadPluginConfiguration(dest any) error {
 
 // newTestPlugin returns a plugin wired to a fake API, with the DTG decorator
 // registered so tests do not depend on OnActivate having run.
+const testCommandChannel = "channel1"
+
 func newTestPlugin(t *testing.T, siteURL string, enabled bool) *Plugin {
 	t.Helper()
 
@@ -409,7 +414,7 @@ func newTestPlugin(t *testing.T, siteURL string, enabled bool) *Plugin {
 	config.ServiceSettings.SiteURL = model.NewPointer(siteURL)
 
 	p := &Plugin{}
-	p.SetAPI(&fakeAPI{config: config})
+	p.SetAPI(&fakeAPI{config: config, channelsPermitted: map[string]bool{testCommandChannel: true}})
 	p.setConfiguration(&configuration{
 		EnableDTG:          enabled,
 		EnableDTGMilitary:  true,
@@ -433,7 +438,18 @@ func newTestPlugin(t *testing.T, siteURL string, enabled bool) *Plugin {
 		EnableLocationMapPage:   true,
 
 		EnableAirport:      enabled,
+		EnableAirportIATA:  enabled,
 		EnableAirportTable: enabled,
+		EnableAirportRoute: enabled,
+
+		EnableAvReport:      enabled,
+		EnableAvReportMETAR: enabled,
+		EnableAvReportTAF:   enabled,
+		EnableAvReportNOTAM: enabled,
+		EnableAvReportTable: enabled,
+		EnableAvReportCard:  enabled,
+
+		EnableFrequency: enabled,
 
 		EnableCot:     enabled,
 		EnableCotFile: enabled,
@@ -466,6 +482,9 @@ func registerDecoratorsForTest(t *testing.T, p *Plugin) {
 		&dtg.Decorator{Enabled: p.dtgFormats},
 		&location.Decorator{Enabled: p.locationFormats, Maps: p.locationMaps},
 		&airport.Decorator{Enabled: p.airportFormats},
+		&avreport.Decorator{Enabled: p.avreportFormats},
+		&frequency.Decorator{Enabled: p.frequencyFormats},
+		&note.Decorator{},
 		&cyber.Decorator{Enabled: p.cyberFormats, Intel: p.cyberIntel},
 	)
 	if err != nil {
@@ -1229,6 +1248,7 @@ func TestDecoratePostExpandsAnAirfieldOnlyMessage(t *testing.T) {
 
 	for _, want := range []string{
 		"| Airfield | [Indianapolis International Airport](/plugins/",
+		"| Details | [Open details](/plugins/",
 		"/decorate/airport?v=KIND) |",
 		"|:--|:--|",
 		"| Code | KIND |",
@@ -1265,10 +1285,8 @@ func TestDecoratePostKeepsTheSetTerminatorInTheCodeRow(t *testing.T) {
 		t.Errorf("the set terminator was lost:\n%s", got.Message)
 	}
 
-	// One destination in the message, on the name. The old shape repeated it on
-	// a line above the table.
-	if n := strings.Count(got.Message, "/decorate/airport?v=KIND"); n != 1 {
-		t.Errorf("the destination appears %d times, want once:\n%s", n, got.Message)
+	if n := strings.Count(got.Message, "/decorate/airport?v=KIND"); n != 2 {
+		t.Errorf("the destination appears %d times, want the name and the Details row:\n%s", n, got.Message)
 	}
 }
 

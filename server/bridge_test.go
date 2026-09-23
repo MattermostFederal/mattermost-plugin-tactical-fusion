@@ -14,6 +14,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/mattermost/mattermost/server/public/plugin"
 
@@ -298,6 +299,7 @@ func TestBridgeLinkOpensAPageThatRenders(t *testing.T) {
 		{Type: dtg.Type, Token: "091630ZAUG26"},
 		{Type: "location", Token: "18S UJ 23478 06483"},
 		{Type: "airport", Token: "PHIK"},
+		{Type: "note", Token: "| Tail | Fuel |\n|:--|--:|\n| 101 | 12,400 lb |", Label: "fuel"},
 	} {
 		t.Run(req.Type, func(t *testing.T) {
 			link := mustLink(t, p, req)
@@ -348,6 +350,35 @@ func TestBridgeLinkRefusesALabelWithALineBreak(t *testing.T) {
 		t.Fatalf("status = %d, want 400", rec.Code)
 	}
 	assertCode(t, rec.Body.String(), errcode.BridgeInvalidBody)
+}
+
+func TestBridgeLinkRefusesAMultiLineNoteWithNoLabel(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	rec := bridgeLink(t, p, bridgeclient.LinkRequest{Type: "note", Token: "**DCA**\n\nDefensive Counter Air"})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rec.Code)
+	}
+	assertCode(t, rec.Body.String(), errcode.BridgeInvalidBody)
+
+	link := mustLink(t, p, bridgeclient.LinkRequest{Type: "note", Token: "**DCA**: Defensive Counter Air"})
+	if !strings.HasPrefix(link.Markdown, `[\*\*DCA\*\*: Defensive Counter Air](`) {
+		t.Errorf("a one-line note is its own label: %q", link.Markdown)
+	}
+}
+
+func TestBridgeLinkSaysWhenANoteOutgrowsAPost(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	short := mustLink(t, p, bridgeclient.LinkRequest{Type: "note", Token: "**DCA**", Label: "DCA"})
+	if !short.FitsPost {
+		t.Error("a short note does not fit a post")
+	}
+
+	long := mustLink(t, p, bridgeclient.LinkRequest{Type: "note", Token: strings.Repeat("é", 1000), Label: "long"})
+	if long.FitsPost || utf8.RuneCountInString(long.Markdown) <= safePostRunes {
+		t.Errorf("a %d-rune link reported fits_post %v", utf8.RuneCountInString(long.Markdown), long.FitsPost)
+	}
 }
 
 func TestBridgeLinkTrimsTheToken(t *testing.T) {
@@ -454,8 +485,8 @@ func TestBridgeInfoListsTypesAndWhichAreOn(t *testing.T) {
 	want := bridgeclient.InfoResponse{
 		PluginVersion: manifest.Version,
 		APIVersion:    bridgeclient.APIVersion,
-		Types:         []string{"dtg", "location", "airport", "cyber"},
-		EnabledTypes:  []string{"dtg", "airport", "cyber"},
+		Types:         []string{"dtg", "location", "airport", "avreport", "frequency", "note", "cyber"},
+		EnabledTypes:  []string{"dtg", "airport", "avreport", "frequency", "note", "cyber"},
 	}
 	if !reflect.DeepEqual(info, want) {
 		t.Fatalf("info = %+v, want %+v", info, want)
@@ -537,13 +568,14 @@ func TestTheGoClientRoundTripsThroughTheBridge(t *testing.T) {
 func TestBridgeClientTypesAreTheRegisteredDecorators(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 
-	for _, typ := range []string{bridgeclient.TypeDTG, bridgeclient.TypeLocation, bridgeclient.TypeAirport, bridgeclient.TypeCyber} {
+	named := []string{bridgeclient.TypeDTG, bridgeclient.TypeLocation, bridgeclient.TypeAirport, bridgeclient.TypeAvReport, bridgeclient.TypeFrequency, bridgeclient.TypeNote, bridgeclient.TypeCyber}
+	for _, typ := range named {
 		if p.decorators.Get(typ) == nil {
 			t.Errorf("bridgeclient names type %q, which is not registered", typ)
 		}
 	}
-	if got := len(p.decorators.All()); got != 4 {
-		t.Errorf("%d decorators are registered and bridgeclient names 4", got)
+	if got := len(p.decorators.All()); got != len(named) {
+		t.Errorf("%d decorators are registered and bridgeclient names %d", got, len(named))
 	}
 }
 

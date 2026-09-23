@@ -10,13 +10,10 @@ import {HOVER_CARD_CLASS, get, parseDecoratorHref} from './registry';
  * renders transparent over the post behind it. Each variable carries a fallback
  * for the same reason: an unstyled card is worse than a slightly off-theme one.
  */
+export const HOVER_MAX_WIDTH = 360;
+
 const style: React.CSSProperties = {
     padding: '10px 12px',
-
-    // Wide enough for the location hover's map, which is the widest thing any
-    // decorator puts in here. A max rather than a width, so the DTG countdown
-    // still shrinks to the size of its own line.
-    maxWidth: '360px',
     background: 'var(--center-channel-bg, #ffffff)',
     color: 'var(--center-channel-color, #3f4350)',
     border: '1px solid rgba(var(--center-channel-color-rgb, 63, 67, 80), 0.16)',
@@ -81,7 +78,7 @@ export const DecoratorHoverCard: React.FC<{href: string}> = ({href}) => {
     return (
         <div
             className={HOVER_CARD_CLASS}
-            style={style}
+            style={{...style, maxWidth: `${decorator.hoverMaxWidth ?? HOVER_MAX_WIDTH}px`}}
         >
             <Hover payload={payload}/>
         </div>

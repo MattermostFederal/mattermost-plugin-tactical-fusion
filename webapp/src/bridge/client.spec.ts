@@ -39,7 +39,10 @@ const PHIK = {
     url: '/plugins/com.mattermost.plugin-tactical-fusion/decorate/airport?v=PHIK',
     type: 'airport',
     label: 'PHIK',
+    fits_post: true,
 };
+
+const PHIK_LINK = {markdown: PHIK.markdown, url: PHIK.url, type: PHIK.type, label: PHIK.label, fitsPost: true};
 
 test.beforeEach(() => {
     _resetForTesting();
@@ -72,7 +75,7 @@ test('link sends the type, token and label', async () => {
 
     const result = await link('airport', 'PHIK', {label: 'Hickam'});
 
-    expect(result).toEqual(PHIK);
+    expect(result).toEqual(PHIK_LINK);
     expect(sent[0].url).toBe(`/plugins/${manifest.id}/api/v1/link`);
     expect(JSON.parse(String(sent[0].init.body))).toEqual({type: 'airport', token: 'PHIK', label: 'Hickam'});
 });
@@ -133,7 +136,7 @@ test('a decline is cached and a failure is not', async () => {
     answer = Promise.reject(new Error('offline'));
     await link('airport', 'KIND').catch(() => null);
     answer = reply(200, PHIK);
-    await expect(link('airport', 'KIND')).resolves.toEqual(PHIK);
+    await expect(link('airport', 'KIND')).resolves.toEqual(PHIK_LINK);
     expect(sent).toHaveLength(3);
 });
 

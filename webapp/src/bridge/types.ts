@@ -31,6 +31,7 @@ export interface LinkResponse {
     url: string;
     type: string;
     label: string;
+    fits_post: boolean;
 }
 
 export interface ErrorResponse {
@@ -61,6 +62,7 @@ export interface DecoratorLink {
     url: string;
     type: string;
     label: string;
+    fitsPost: boolean;
 }
 
 export interface LinkProps {

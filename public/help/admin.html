@@ -24,6 +24,9 @@
             <a href="cyber.html">Cyber Context</a>
             <a href="cot.html">Cursor on Target</a>
             <a href="geojson.html">GeoJSON</a>
+            <a href="reports.html">Aviation Reports</a>
+            <a href="frequencies.html">Frequencies</a>
+            <a href="notes.html">Notes</a>
             <span class="nav-section">Guides</span>
             <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
@@ -44,7 +47,7 @@
         </div>
 
         <h1>Admin Settings</h1>
-        <p class="tagline">System Console, Plugins, Tactical Fusion. Seven sections and thirty-one switches. Twenty-nine are on by default; <code>EnableLocationUTM</code> and <code>EnableGeoJSONUnlabeled</code> are the two that are not.</p>
+        <p class="tagline">System Console, Plugins, Tactical Fusion. Nine sections and forty switches. Thirty-eight are on by default; <code>EnableLocationUTM</code> and <code>EnableGeoJSONUnlabeled</code> are the two that are not.</p>
 
         <h2>How the date-time group switches relate</h2>
 
@@ -895,8 +898,8 @@
             Recognizes an ICAO airfield code written behind one of the four USMTF field
             labels that introduce one: <code>ICAO:</code>, <code>LOC:</code>,
             <code>DEPLOC:</code> and <code>ARRLOC:</code>. The panel names the airfield,
-            where it is, its elevation and its IATA code, and derives every coordinate
-            reading from the position in the built-in database.
+            where it is, its elevation, its IATA code, its runways and its frequencies, and
+            draws its position and runways from the built-in database.
         </p>
 
         <p>
@@ -909,7 +912,7 @@
         <p>
             <strong>The label is required, and it must be upper case.</strong> That is not
             strictness for its own sake. An airfield code is four letters, which is what
-            ordinary words are made of: 343 of the codes in the database are English
+            ordinary words are made of: 349 of the codes in the database are English
             dictionary words, including <code>FACT</code> (Cape Town International) and
             <code>FAST</code> (Somerset East). <code>USCG</code> is an airfield in Russia
             and <code>LIMA</code> is one in Italy. Matching four bare letters would rewrite
@@ -943,6 +946,25 @@
 
         <h2>Checking the current behavior</h2>
 
+        <h3 id="enable-airport-iata" data-setting="EnableAirportIATA">Decorate IATA codes behind their label <code>EnableAirportIATA</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>New messages stop having <code>IATA:</code> codes linked. Links already written keep working, and the panel and page keep resolving them.</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-airport"><code>EnableAirport</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Recognizes a three-letter IATA airport code written behind <code>IATA:</code>,
+            in upper case, such as <code class="copyable">IATA:HNL</code>. It opens the same
+            Airfield panel the ICAO code does. Three letters collide with ordinary words even
+            more often than four do, so the label is required and a bare code is never read;
+            there is no switch that produces one.
+        </p>
+
         <h3 id="enable-airport-table" data-setting="EnableAirportTable">Show the airfield details under a labeled code on its own <code>EnableAirportTable</code></h3>
 
         <table class="field-table">
@@ -958,8 +980,8 @@
             When a message contains nothing but one <em>labeled</em> airfield reference,
             such as <code>ICAO:PHNL</code> or a set line ending <code>DEPLOC:PHNL//</code>,
             it is replaced with a small table of the field's details: its name, the code the author typed, where
-            it is, what kind of field it is, its elevation and its IATA code. The name is
-            the link that opens the panel, which is where the map and the coordinate
+            it is, what kind of field it is, its elevation and its IATA code. The name and
+            the last row both open the panel, which is where the map and the coordinate
             readings are. The code the author typed stays in the table, so searching for
             it still finds the message.
         </p>
@@ -995,6 +1017,35 @@
             the same question about one specific message, which is what to reach for when
             somebody reports that a coordinate was not linked.
         </p>
+
+        <h3 id="enable-airport-route" data-setting="EnableAirportRoute">Draw a map under a message of nothing but airfield codes <code>EnableAirportRoute</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>New messages of nothing but airfield codes are decorated and get no map. Posts already stamped keep their map.</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-airport"><code>EnableAirport</code></a>, <a href="#enable-location-map-inline"><code>EnableLocationMapInline</code></a> and its parents</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            When a message is nothing but labeled airfield references, such as
+            <code class="copyable">DEPLOC:PHIK ARRLOC:PGUA//</code>, every airfield is drawn on
+            one map under the post, numbered in message order with a leg between each pair,
+            and the links stay in the message. A message of one code gets the
+            <a href="#enable-airport-table">table</a> instead while that is on.
+        </p>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">This sets the post's type.</p>
+            <p>
+                A post with a custom type is excluded from Elasticsearch and OpenSearch results
+                and from Recent Mentions, is not auto-translated, and loses its link previews.
+                The map under a lone coordinate and the Cursor on Target card pay the same cost,
+                and this switch is how an install declines it for routes.
+            </p>
+        </div>
 
         <h2 id="cot-switches">The Cursor on Target switches</h2>
 
@@ -1129,6 +1180,138 @@
             fenced as code is never read. Only a block labeled <code>geojson</code> gets a
             message explaining a refusal; the ambiguous spellings fail silently, because a
             notice on every one of them would fire constantly on ordinary posts.
+        </p>
+
+        <h2 id="avreport-switches">The aviation report switches</h2>
+
+        <p>
+            One parent, three kind switches under it, one for the table and one for the card. The parent is
+            ANDed in code, as every other parent is: a kind switch left on under a parent
+            turned off decodes nothing. Every switch governs decoration of <em>new</em>
+            messages; a link, a table or a card already written keeps working after its
+            switch is turned off, which is what lets an admin turn a kind off without breaking
+            a channel's history.
+        </p>
+
+        <h3 id="enable-avreport" data-setting="EnableAvReport">Decode aviation reports <code>EnableAvReport</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>No new message has a report linked, expanded or rendered, whatever the five switches below it say. Links, tables and cards already written keep working.</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            The <a href="reports.html">aviation report</a> decorator as a whole. Nothing here
+            fetches: the plugin decodes what was pasted and never contacts a weather or NOTAM
+            service, so there is no source URL to configure and no switch for one.
+        </p>
+
+        <h3 id="enable-avreport-metar" data-setting="EnableAvReportMETAR">Decode METAR and SPECI observations <code>EnableAvReportMETAR</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>No new observation is linked or rendered, in either spelling. A time group inside one is linked as a date-time group, as it was before.</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-avreport"><code>EnableAvReport</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Covers the keyword forms and the bare form that a wind group makes unambiguous:
+            see <a href="reports.html#reports-link">what is read</a>.
+        </p>
+
+        <h3 id="enable-avreport-taf" data-setting="EnableAvReportTAF">Decode TAF forecasts <code>EnableAvReportTAF</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>No new forecast is linked or rendered.</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-avreport"><code>EnableAvReport</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <h3 id="enable-avreport-notam" data-setting="EnableAvReportNOTAM">Decode NOTAMs <code>EnableAvReportNOTAM</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>No new NOTAM is linked or rendered, in either form.</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-avreport"><code>EnableAvReport</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <h3 id="enable-avreport-table" data-setting="EnableAvReportTable">Show the decode under a report posted on its own <code>EnableAvReportTable</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>New messages that are nothing but a one-line report get the link alone, and ones that are nothing but a multi-line report get <a href="#enable-avreport-card">the card</a>. Messages already posted keep the table they were given.</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-avreport"><code>EnableAvReport</code></a>, and the kind's own switch</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            When a message is nothing but one report, on one line or several, the message is
+            rewritten into a markdown table of the decode: every decoded group, with its
+            times as date-time links, and a last row that opens the
+            full details, where the report itself is shown as written.
+            See <a href="reports.html#reports-table">the table</a>. It is the same shape the
+            <a href="#enable-airport-table">airfield table</a> takes, for the same reasons:
+            it goes into the stored message, so the post keeps its search matches and the
+            table is in every export, and it is frozen at the moment of posting. A report
+            inside a longer message gets the link alone.
+        </p>
+
+        <h3 id="enable-avreport-card" data-setting="EnableAvReportCard">Render a fenced report as a card <code>EnableAvReportCard</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>A report in a labeled fence is posted as ordinary text, and a multi-line report posted on its own gets the table or nothing. Posts already rendered keep their card. A report that becomes a link or a table is never affected.</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-avreport"><code>EnableAvReport</code></a>, and the kind's own switch</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            This is the one report switch that costs something, and it carries the same
+            warning <a href="#enable-cot"><code>EnableCot</code></a> does. Rendering a card
+            marks the post with a custom type, which excludes it from Elasticsearch and
+            OpenSearch results and Recent Mentions, drops its link previews and image embeds,
+            and turns off its automatic translation. The message text is left exactly as
+            written, so an export still carries the report. The map under the card reads
+            <a href="#enable-location-map-inline"><code>EnableLocationMapInline</code></a>, and
+            a report that became a link or a table is never affected by this switch. A
+            multi-line report posted on its own is a card only while
+            <a href="#enable-avreport-table"><code>EnableAvReportTable</code></a> is off.
+        </p>
+
+        <h2 id="frequency-switches">The frequency switch</h2>
+
+        <h3 id="enable-frequency" data-setting="EnableFrequency">Decorate frequencies behind their label <code>EnableFrequency</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>No new message has a frequency decorated. Links already written keep working.</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            The <a href="frequencies.html">frequency</a> decorator as a whole. One switch, not
+            two: the grammar is label-only by construction, so a separate label switch would
+            turn the same thing off under another name. Nothing here fetches, and there is no
+            dataset behind it: the band and the allocation are derived from the token in the
+            reader's browser.
         </p>
 
         <h2 id="cyber">Cyber context</h2>

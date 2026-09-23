@@ -24,6 +24,9 @@
             <a href="cyber.html">Cyber Context</a>
             <a href="cot.html">Cursor on Target</a>
             <a href="geojson.html">GeoJSON</a>
+            <a href="reports.html">Aviation Reports</a>
+            <a href="frequencies.html">Frequencies</a>
+            <a href="notes.html">Notes</a>
             <span class="nav-section">Guides</span>
             <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
@@ -131,7 +134,7 @@
                     <td><code>type</code></td>
                     <td>string</td>
                     <td>yes</td>
-                    <td><code>dtg</code>, <code>location</code> or <code>airport</code></td>
+                    <td><code>dtg</code>, <code>location</code>, <code>airport</code>, <code>avreport</code>, <code>frequency</code> or <code>note</code></td>
                 </tr>
                 <tr>
                     <td><code>token</code></td>
@@ -163,6 +166,7 @@
                 <tr><td><code>url</code></td><td>string</td><td>The link destination alone. Root-relative, carrying the server's subpath if it has one</td></tr>
                 <tr><td><code>type</code></td><td>string</td><td>The decorator type that built it</td></tr>
                 <tr><td><code>label</code></td><td>string</td><td>The link text, before markdown escaping</td></tr>
+                <tr><td><code>fits_post</code></td><td>boolean</td><td>Whether <code>markdown</code> alone fits 4,000 characters, the smallest post limit any Mattermost server enforces. Only a long <code>note</code> can fail it, since its markdown travels URL-encoded</td></tr>
             </tbody>
         </table>
 
@@ -253,6 +257,21 @@
                     <td><code>PHIK</code>, <code>KIND</code>: four upper-case letters naming a field in the plugin's database</td>
                     <td><a href="airfields.html">Airfields</a></td>
                 </tr>
+                <tr>
+                    <td><code>frequency</code></td>
+                    <td><code>121.5</code>, <code>118.300 MHZ</code>, <code>8992 KHZ</code>: a frequency as an author writes it behind <code>FREQ:</code>, from 2 MHz to 1,300 MHz</td>
+                    <td><a href="frequencies.html">Frequencies</a></td>
+                </tr>
+                <tr>
+                    <td><code>note</code></td>
+                    <td><code>**DCA**: Defensive Counter Air</code>, or a markdown table: any markdown up to 1,000 characters, line breaks included. Always pass a <code>label</code>, or the link text is the whole markdown</td>
+                    <td><a href="notes.html">Notes</a></td>
+                </tr>
+                <tr>
+                    <td><code>avreport</code></td>
+                    <td>A METAR, SPECI, TAF or FAA-format NOTAM on one line, exactly as written; the reference time supplies the month and year</td>
+                    <td><a href="reports.html">Aviation Reports</a></td>
+                </tr>
             </tbody>
         </table>
 
@@ -327,7 +346,7 @@ default:
                 <tr><td><code>ErrPluginNotActive</code></td><td>Tactical Fusion is not installed, not enabled, or gave an answer that is not its own</td></tr>
                 <tr><td><code>ErrNotRecognized</code></td><td>The token is not a value of that type</td></tr>
                 <tr><td><code>ErrDisabled</code></td><td>The token is valid but its format is switched off</td></tr>
-                <tr><td><code>ErrUnknownType</code></td><td>The type is not <code>dtg</code>, <code>location</code> or <code>airport</code></td></tr>
+                <tr><td><code>ErrUnknownType</code></td><td>The type is not <code>dtg</code>, <code>location</code>, <code>airport</code>, <code>avreport</code>, <code>frequency</code> or <code>note</code></td></tr>
             </tbody>
         </table>
 
@@ -418,8 +437,8 @@ Content-Type: application/json
             <tbody>
                 <tr><td><code>apiVersion</code></td><td><code>1</code></td></tr>
                 <tr><td><code>version</code></td><td>The installed Tactical Fusion version</td></tr>
-                <tr><td><code>types</code></td><td><code>["dtg", "location", "airport"]</code></td></tr>
-                <tr><td><code>link(type, token, options?)</code></td><td>A promise of <code>{markdown, url, type, label}</code>. Options: <code>label</code>, <code>referenceTime</code> (a <code>Date</code> or milliseconds), <code>signal</code></td></tr>
+                <tr><td><code>types</code></td><td><code>["dtg", "location", "airport", "avreport", "frequency", "note"]</code></td></tr>
+                <tr><td><code>link(type, token, options?)</code></td><td>A promise of <code>{markdown, url, type, label, fitsPost}</code>. Options: <code>label</code>, <code>referenceTime</code> (a <code>Date</code> or milliseconds), <code>signal</code></td></tr>
                 <tr><td><code>decorate(message, options?)</code></td><td>A promise of <code>{message, changed, fitsPost}</code>. Options: <code>referenceTime</code>, <code>signal</code></td></tr>
                 <tr><td><code>Link</code></td><td>A React component rendering one link with its hover card. Props: <code>type</code>, <code>token</code>, <code>label?</code>, <code>referenceTime?</code>, <code>fallback?</code></td></tr>
             </tbody>
@@ -557,10 +576,20 @@ declare global {
             The <strong>Mattermost Agents</strong> plugin discovers this plugin's operations as
             MCP tools and offers them to its
             agents, so an agent answering in a channel can decorate a message it is about to
-            post, build one link, convert a coordinate or look up an airfield. There is nothing to
+            post, build one link, convert a coordinate, look up an airfield, or read the same
+            things the cards read: an aviation report or TFR, a Cursor on Target event, a GeoJSON
+            document, a radio frequency or a date-time group. There is nothing to
             configure here: the tools register themselves when Tactical Fusion activates, and an
             administrator enables or disables them per tool in the Agents plugin's own
             <strong>Tools</strong> settings.
+        </p>
+
+        <p>
+            This needs <strong>Agents 2.4 or later</strong>, which in turn needs Mattermost
+            11.9 or later. An older Agents plugin has no route for other plugins to register
+            tools on, so the registration is refused with <code>401</code>, logged once as
+            <code>pluginmcp: registration with Agents plugin failed permanently</code>, and
+            the tools never appear. Upgrading Agents and restarting Tactical Fusion registers them.
         </p>
 
         <p>
@@ -582,7 +611,7 @@ declare global {
                 <tr>
                     <td><code>link_token</code></td>
                     <td><code>type</code> and <code>token</code>, and optionally <code>label</code> and <code>reference_time</code></td>
-                    <td>One link, as markdown and as a URL</td>
+                    <td>One link, as markdown and as a URL, and whether it fits a post. Type <code>note</code> turns markdown into a link whose hover card renders it</td>
                 </tr>
                 <tr>
                     <td><code>convert_coordinate</code></td>
@@ -591,8 +620,43 @@ declare global {
                 </tr>
                 <tr>
                     <td><code>lookup_airfield</code></td>
-                    <td><code>ident</code>, an ICAO code</td>
-                    <td>The airfield's name, type, place, elevation and IATA code, and its position</td>
+                    <td><code>ident</code>, an ICAO identifier or IATA code</td>
+                    <td>The airfield's name, type, place, elevation, IATA code, position, runways and radio frequencies</td>
+                </tr>
+                <tr>
+                    <td><code>decode_aviation_report</code></td>
+                    <td><code>text</code>, a METAR, SPECI, TAF, FAA or ICAO NOTAM, and optionally <code>reference_time</code></td>
+                    <td>The decoded rows, forecast periods and remarks, what was not decoded, and where the report is. A temporary flight restriction also answers its effective times, altitudes, and its circle or polygon</td>
+                </tr>
+                <tr>
+                    <td><code>decode_cot</code></td>
+                    <td><code>xml</code>, one or more Cursor on Target events</td>
+                    <td>Each event in words: what its type means, its affiliation, how it was located, callsign, position, times and staleness, remarks, links and shapes</td>
+                </tr>
+                <tr>
+                    <td><code>summarize_geojson</code></td>
+                    <td><code>document</code>, a GeoJSON document</td>
+                    <td>Its name and description, how many points, lines and polygons it holds, and each feature's name, kind, properties, style and measured length or area</td>
+                </tr>
+                <tr>
+                    <td><code>describe_frequency</code></td>
+                    <td><code>frequency</code>, such as <code>121.5</code> or <code>8992 KHZ</code></td>
+                    <td>Megahertz and kilohertz, the band, the channel spacing and any known allocation</td>
+                </tr>
+                <tr>
+                    <td><code>read_date_time</code></td>
+                    <td><code>text</code>, a date-time group or RFC 3339 timestamp, and optionally <code>reference_time</code></td>
+                    <td>The one UTC instant it names, its zone letter or offset, and which parts were assumed</td>
+                </tr>
+                <tr>
+                    <td><code>create_cot</code></td>
+                    <td><code>callsign</code>, <code>lat</code>, <code>lon</code>, and either an exact <code>type</code> or an <code>affiliation</code> and <code>dimension</code>; optionally <code>remarks</code>, <code>stale_minutes</code>, <code>hae</code>, <code>ce</code></td>
+                    <td>The event as XML, a <code>cot</code> fenced message that renders as a card when posted on its own, and the event read back in words</td>
+                </tr>
+                <tr>
+                    <td><code>create_geojson</code></td>
+                    <td><code>features</code>, each a named point, line or polygon of <code>{lat, lon}</code> positions with an optional <code>color</code> and <code>properties</code>; optionally a document <code>name</code> and <code>description</code></td>
+                    <td>The document, a <code>geojson</code> fenced message that renders as a card with a map when posted on its own, and its summary with measured lengths and areas</td>
                 </tr>
             </tbody>
         </table>
@@ -601,8 +665,13 @@ declare global {
             These are the same operations the rest of this page documents, answered by the same
             code, so everything under <a href="#rules">Rules worth knowing</a> applies to them
             too: the admin format switches still govern <code>link_token</code>, a link already
-            written keeps working after a format is switched off, and
-            <code>lookup_airfield</code> keeps resolving regardless. Refusals carry
+            written keeps working after a format is switched off, and the tools that read
+            rather than link (<code>lookup_airfield</code> and every <code>decode</code>,
+            <code>summarize</code>, <code>describe</code> and <code>read</code> tool) answer
+            regardless of the switches. Nothing is fetched and nothing is posted: the two
+            <code>create</code> tools hand back a message, and the agent decides whether to post it.
+            Positions are always given as <code>lat</code> and <code>lon</code> by name, so an
+            agent cannot swap GeoJSON's longitude-first order by accident. Refusals carry
             <a href="error-codes.html#mcp">their own codes</a>.
         </p>
 

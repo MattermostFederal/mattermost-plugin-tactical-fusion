@@ -258,7 +258,7 @@ func TestParseReturnsOnlyTheIdent(t *testing.T) {
 
 func TestParseDeclinesAnythingNotFourUpperCaseLetters(t *testing.T) {
 	d := &Decorator{}
-	for _, value := range []string{"", "KIN", "KINDD", "kind", "K1ND", "KIND ", "K-ND"} {
+	for _, value := range []string{"", "KI", "KINDD", "kind", "K1ND", "KIND ", "K-ND", "kin", "K1N"} {
 		if params, ok := d.Parse(value, time.Now()); ok {
 			t.Errorf("Parse(%q) = %v, want a refusal", value, params)
 		}

@@ -76,8 +76,9 @@ func TestLookupPins(t *testing.T) {
 		{"KIND", "Indianapolis International Airport", "Indianapolis, IN, US", "797 ft", "IND"},
 		{"KLAX", "Los Angeles International Airport", "Los Angeles, CA, US", "125 ft", "LAX"},
 		{"EGLL", "London Heathrow Airport", "London, ENG, GB", "83 ft", "LHR"},
-		{"PHIK", "Hickam Air Force Base", "Honolulu, HI, US", "13 ft", "HIK"},
+		{"PHIK", "Hickam Air Force Base", "Honolulu, HI, US", "13 ft", ""},
 		{"USCG", "Chelyabinsk Shagol Airport", "CHE, RU", "830 ft", ""},
+		{"PHNL", "Daniel K. Inouye International Airport", "Honolulu, Oahu, HI, US", "13 ft", "HNL"},
 	}
 
 	for _, tc := range tests {
@@ -114,8 +115,8 @@ func TestThePoleStillYieldsACoordinate(t *testing.T) {
 	if !d.HasPosition {
 		t.Fatal("the pole yields no coordinate, so the panel would offer no link")
 	}
-	if d.Token != "-90.0000,0.0000" {
-		t.Errorf("token = %q, want -90.0000,0.0000", d.Token)
+	if d.Token != "-90.0000,-1.0000" {
+		t.Errorf("token = %q, want -90.0000,-1.0000", d.Token)
 	}
 	if d.Format != "dd" {
 		t.Errorf("format = %q, want dd", d.Format)
@@ -177,7 +178,7 @@ func TestTypeTextIsTitleCase(t *testing.T) {
 }
 
 func TestParseAirfieldsRefusesMalformedData(t *testing.T) {
-	const header = "ident,type,name,municipality,country,region,iata,elevation_ft,lat,lon\n"
+	const header = "ident,type,name,municipality,country,region,iata,elevation_ft,lat,lon,military\n"
 
 	tests := []struct {
 		name   string
@@ -186,7 +187,7 @@ func TestParseAirfieldsRefusesMalformedData(t *testing.T) {
 	}{
 		{
 			name:   "a ragged record",
-			source: header + "KIND,large_airport,Indianapolis,Indianapolis,US,US-IN,IND,797\n",
+			source: header + "KIND,large_airport,Indianapolis,Indianapolis,US,US-IN,IND,797,\"\n",
 			want:   "reading the airfield data",
 		},
 		{
@@ -202,28 +203,28 @@ func TestParseAirfieldsRefusesMalformedData(t *testing.T) {
 		{
 			name:   "a record of the wrong width",
 			source: "ident,name,lat\nKIND,Indianapolis,39.7173\n",
-			want:   "a record has 3 fields, want 10",
+			want:   "a airfield record has 3 fields, want 11",
 		},
 		{
 			name:   "an unreadable latitude",
-			source: header + "KIND,large_airport,Indianapolis,Indianapolis,US,US-IN,IND,797,north,-86.2944\n",
+			source: header + "KIND,large_airport,Indianapolis,Indianapolis,US,US-IN,IND,797,north,-86.2944,\n",
 			want:   "KIND: latitude",
 		},
 		{
 			name:   "an unreadable longitude",
-			source: header + "KIND,large_airport,Indianapolis,Indianapolis,US,US-IN,IND,797,39.7173,west\n",
+			source: header + "KIND,large_airport,Indianapolis,Indianapolis,US,US-IN,IND,797,39.7173,west,\n",
 			want:   "KIND: longitude",
 		},
 		{
 			name:   "an unreadable elevation",
-			source: header + "KIND,large_airport,Indianapolis,Indianapolis,US,US-IN,IND,high,39.7173,-86.2944\n",
+			source: header + "KIND,large_airport,Indianapolis,Indianapolis,US,US-IN,IND,high,39.7173,-86.2944,\n",
 			want:   "KIND: elevation",
 		},
 		{
 			name: "the same ident twice",
 			source: header +
-				"KIND,large_airport,Indianapolis,Indianapolis,US,US-IN,IND,797,39.7173,-86.2944\n" +
-				"KIND,large_airport,Indianapolis,Indianapolis,US,US-IN,IND,797,39.7173,-86.2944\n",
+				"KIND,large_airport,Indianapolis,Indianapolis,US,US-IN,IND,797,39.7173,-86.2944,\n" +
+				"KIND,large_airport,Indianapolis,Indianapolis,US,US-IN,IND,797,39.7173,-86.2944,\n",
 			want: `duplicate ident "KIND"`,
 		},
 	}

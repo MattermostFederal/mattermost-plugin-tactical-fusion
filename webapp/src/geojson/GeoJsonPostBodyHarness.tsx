@@ -23,6 +23,8 @@ interface Props {
     counts?: Partial<GeoJsonCounts>;
     fileId?: string;
     fileName?: string;
+    name?: string;
+    description?: string;
 
     message?: string;
     editAt?: number;
@@ -55,6 +57,8 @@ const GeoJsonPostBodyHarness: React.FC<Props> = ({
     counts = {},
     fileId = '',
     fileName = '',
+    name = '',
+    description = '',
     message = '',
     editAt = 0,
     fileIds = [],
@@ -72,6 +76,8 @@ const GeoJsonPostBodyHarness: React.FC<Props> = ({
             ...(unplaceable ? {unplaceable: '1'} : {}),
             file_id: fileId,
             file_name: fileName,
+            name,
+            description,
             counts: {
                 features: features.length,
                 points: features.length,

@@ -31,7 +31,7 @@ function hoverFor(withHover: boolean, emptyHover: boolean): Decorator<{value: st
     return emptyHover ? EmptyHover : HoverCard;
 }
 
-function fixture(type: string, withHover: boolean, emptyHover: boolean): Decorator<{value: string}> {
+function fixture(type: string, withHover: boolean, emptyHover: boolean, hoverMaxWidth?: number): Decorator<{value: string}> {
     return {
         type,
         fromParams: (params) => {
@@ -42,6 +42,7 @@ function fixture(type: string, withHover: boolean, emptyHover: boolean): Decorat
         style: {color: '#000', background: '#fff'},
         Panel,
         Hover: hoverFor(withHover, emptyHover),
+        hoverMaxWidth,
     };
 }
 
@@ -58,6 +59,8 @@ interface Props {
 
     /** Whether that hover card renders nothing when it is asked to. */
     emptyHover?: boolean;
+
+    hoverMaxWidth?: number;
 }
 
 /**
@@ -67,10 +70,10 @@ interface Props {
  * browser, so the registry has to be populated in here, driven by plain
  * serializable props.
  */
-const TooltipHarness: React.FC<Props> = ({href, show = true, withHover = true, emptyHover = false}) => {
+const TooltipHarness: React.FC<Props> = ({href, show = true, withHover = true, emptyHover = false, hoverMaxWidth}) => {
     useState(() => {
         resetRegistry();
-        register(fixture('fix', withHover, emptyHover));
+        register(fixture('fix', withHover, emptyHover, hoverMaxWidth));
 
         // The chrome hides itself through the plugin's stylesheet rather than
         // through an inline style, since `:empty` is a selector and an inline

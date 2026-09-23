@@ -175,6 +175,7 @@ var labelEscaper = strings.NewReplacer(
 	`_`, `\_`,
 	"`", "\\`",
 	`~`, `\~`,
+	`|`, `\|`,
 )
 
 // Tagger rewrites tokens in a message into decorator links.
@@ -216,20 +217,21 @@ type candidate struct {
 	label string
 }
 
+type Token struct {
+	Type   string
+	Params url.Values
+	Trail  string
+}
+
 type Result struct {
 	SoleToken bool
 	Type      string
 	Params    url.Values
+	Trail     string
 
-	// Trail is what the pattern matched past the span it rewrote, which is the
-	// airfield grammar's "//" and nothing else today.
-	//
-	// Carried because the tagger has both spans in hand here and the only other
-	// way to recover it is to parse the decorated message back apart, which
-	// couples the reader to labelEscaper and to how buildURL encodes a
-	// destination. Whitespace around the token is NOT in it: match.end is
-	// already the trimmed end.
-	Trail string
+	Tokens   []Token
+	Covers   bool
+	OnlyType string
 }
 
 // Decorate returns the message with every recognized token replaced by a
@@ -273,29 +275,53 @@ func (t *Tagger) DecorateWithResult(message string, ref time.Time) (string, Resu
 		return message, Result{}
 	}
 
-	result := soleTokenResult(message, accepted)
+	result := resultOf(message, accepted)
 
 	return t.applyReplacements(message, accepted), result
 }
 
-func soleTokenResult(message string, accepted []candidate) Result {
-	if len(accepted) != 1 {
-		return Result{}
+func resultOf(message string, accepted []candidate) Result {
+	ordered := slices.Clone(accepted)
+	sort.SliceStable(ordered, func(i, j int) bool { return ordered[i].match.start < ordered[j].match.start })
+
+	result := Result{Covers: len(ordered) > 0}
+	cursor := len(message) - len(strings.TrimLeft(message, tokenSurroundingSpace))
+	mixed := false
+
+	for _, c := range ordered {
+		if c.match.start > cursor && strings.Trim(message[cursor:c.match.start], tokenSurroundingSpace) != "" {
+			result.Covers = false
+		}
+		cursor = max(cursor, c.match.end)
+
+		result.Tokens = append(result.Tokens, Token{
+			Type:   c.typ,
+			Params: c.params,
+			Trail:  message[c.replace.end:c.match.end],
+		})
+		if result.OnlyType == "" && !mixed {
+			result.OnlyType = c.typ
+		} else if c.typ != result.OnlyType {
+			mixed = true
+		}
 	}
 
-	only := accepted[0]
-	start := len(message) - len(strings.TrimLeft(message, tokenSurroundingSpace))
-	end := len(strings.TrimRight(message, tokenSurroundingSpace))
-	if only.match.start != start || only.match.end != end {
-		return Result{}
+	if mixed {
+		result.OnlyType = ""
+	}
+	if cursor < len(strings.TrimRight(message, tokenSurroundingSpace)) {
+		result.Covers = false
 	}
 
-	return Result{
-		SoleToken: true,
-		Type:      only.typ,
-		Params:    only.params,
-		Trail:     message[only.replace.end:only.match.end],
+	if result.Covers && len(result.Tokens) == 1 {
+		only := result.Tokens[0]
+		result.SoleToken = true
+		result.Type = only.Type
+		result.Params = only.Params
+		result.Trail = only.Trail
 	}
+
+	return result
 }
 
 const tokenSurroundingSpace = " \t\r\n\v\f"
@@ -874,4 +900,8 @@ func elementEnd(message, name string, start int) (int, bool) {
 	}
 
 	return 0, false
+}
+
+func HasCodeSpan(message string) bool {
+	return len(codeRanges(message)) > 0
 }

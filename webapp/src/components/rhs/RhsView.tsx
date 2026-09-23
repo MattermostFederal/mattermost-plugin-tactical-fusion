@@ -68,14 +68,6 @@ export const RhsView: React.FC = () => {
     );
 };
 
-/**
- * The RHS header. Null-safe: the header button opens with no selection.
- *
- * A decorator whose panel has more than one view can declare a `Title`
- * component to follow it, since this is rendered separately from the body and
- * `summary` cannot see which view the panel is on. Everything else gets
- * `summary`.
- */
 export const RhsTitle: React.FC = () => {
     const selection = useSelection();
     const entry = selection ? getPanel(selection.type) : undefined;

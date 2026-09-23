@@ -139,7 +139,7 @@ const CyberHarness: React.FC<{
 
         teamListeners.clear();
         currentTeam = team;
-        initRhs(testStore as never, null, null);
+        initRhs(testStore as never, null);
 
         onRequest = () => setRequests((n) => n + 1);
         onMentionsRequest = () => setMentionRequests((n) => n + 1);

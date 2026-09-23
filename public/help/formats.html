@@ -24,6 +24,9 @@
             <a href="cyber.html">Cyber Context</a>
             <a href="cot.html">Cursor on Target</a>
             <a href="geojson.html">GeoJSON</a>
+            <a href="reports.html">Aviation Reports</a>
+            <a href="frequencies.html">Frequencies</a>
+            <a href="notes.html">Notes</a>
             <span class="nav-section">Guides</span>
             <a href="formats.html" class="active">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
@@ -56,7 +59,7 @@
             </p>
         </div>
 
-        <h2 id="index">The decorators</h2>
+        <h2 id="index">What is recognized</h2>
 
         <table>
             <thead>
@@ -75,7 +78,7 @@
                 </tr>
                 <tr>
                     <td><a href="airfields.html">Airfields</a></td>
-                    <td>ICAO codes behind a field label</td>
+                    <td>ICAO and IATA codes behind a field label</td>
                     <td><code class="copyable">ICAO:PHNL</code></td>
                 </tr>
                 <tr>
@@ -92,6 +95,16 @@
                     <td><a href="geojson.html">GeoJSON</a></td>
                     <td>Whole documents, rendered as a card with a map</td>
                     <td><code>```geojson</code></td>
+                </tr>
+                <tr>
+                    <td><a href="frequencies.html">Frequencies</a></td>
+                    <td>A radio frequency behind <code>FREQ:</code></td>
+                    <td><code class="copyable">FREQ:121.5</code></td>
+                </tr>
+                <tr>
+                    <td><a href="reports.html">Aviation Reports</a></td>
+                    <td>METAR, SPECI, TAF and NOTAM: a link inside a message, a table when the report is the whole message, a card when it is fenced</td>
+                    <td><code class="copyable">METAR PHNL 221651Z 07012G18KT 10SM FEW025 SCT045 27/19 A3010</code></td>
                 </tr>
             </tbody>
         </table>
@@ -118,8 +131,9 @@
 
         <p>
             Every decorator here accepts field labels: <code>DTG:</code> for times, the USMTF
-            labels for coordinates, and <code>ICAO:</code>, <code>LOC:</code>,
-            <code>DEPLOC:</code> and <code>ARRLOC:</code> for airfields. The label is
+            labels for coordinates, <code>ICAO:</code>, <code>LOC:</code>,
+            <code>DEPLOC:</code> and <code>ARRLOC:</code> for airfields, and
+            <code>IATA:</code> for their three letter codes. The label is
             <strong>matched and then dropped</strong>, so the link text is the token alone.
             The <a href="cyber.html#cyber-kept">hash labels</a> <code>md5:</code>,
             <code>sha1:</code> and <code>sha256:</code> are the exception: they are matched and

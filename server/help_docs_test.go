@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
@@ -36,6 +37,9 @@ var helpPages = []string{
 	"cyber.html",
 	"cot.html",
 	"geojson.html",
+	"reports.html",
+	"frequencies.html",
+	"notes.html",
 	"formats.html",
 	"panel.html",
 	"admin.html",
@@ -565,7 +569,7 @@ func spellNumber(t *testing.T, n int) string {
 		31: "thirty-one", 32: "thirty-two", 33: "thirty-three",
 		34: "thirty-four", 35: "thirty-five", 36: "thirty-six",
 		37: "thirty-seven", 38: "thirty-eight", 39: "thirty-nine", 40: "forty",
-		4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight",
+		4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight", 9: "nine",
 	}
 	word, ok := words[n]
 	if !ok {
@@ -573,4 +577,29 @@ func spellNumber(t *testing.T, n int) string {
 	}
 
 	return word
+}
+
+func TestTheStatedDataCountsMatchTheData(t *testing.T) {
+	readme, err := os.ReadFile(filepath.Join("decorators", "airport", "data", "README.md"))
+	if err != nil {
+		t.Fatalf("read the data README: %v", err)
+	}
+	airfieldsPage := readHelpFile(t, "airfields.html")
+
+	for name, claim := range map[string]struct {
+		count int
+		pages []string
+	}{
+		"airfields":   {airport.Count(), []string{airfieldsPage, string(readme)}},
+		"runways":     {airport.RunwayCount(), []string{airfieldsPage, string(readme)}},
+		"frequencies": {airport.FrequencyCount(), []string{airfieldsPage, string(readme)}},
+		"designators": {airport.MilitaryCount(), []string{string(readme)}},
+	} {
+		want := airport.WithThousands(claim.count)
+		for i, page := range claim.pages {
+			if !strings.Contains(page, want) {
+				t.Errorf("%s: page %d does not state %s; the data has changed and the prose has not", name, i, want)
+			}
+		}
+	}
 }
