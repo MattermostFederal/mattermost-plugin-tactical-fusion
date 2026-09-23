@@ -82,9 +82,6 @@ const styles: Record<string, React.CSSProperties> = {
     },
     featureHead: {alignItems: 'baseline', display: 'flex', flexWrap: 'wrap', gap: '0.5em'},
     name: {fontWeight: 600},
-    kindLabel: {fontFamily: 'monospace', fontSize: '0.85em', opacity: 0.9},
-    shape: {opacity: 0.85, fontSize: '0.9em'},
-    measure: {fontWeight: 600, fontSize: '0.9em'},
     coord: {fontFamily: 'monospace', fontSize: '0.9em'},
     featureNote: {opacity: 0.9, fontSize: '0.9em', margin: '2px 0 0'},
     properties: {
@@ -163,8 +160,6 @@ const Dot: React.FC<{color: string}> = ({color}) => {
 
 const Feature: React.FC<{feature: GeoJsonFeature}> = ({feature}) => {
     const position = solePosition(feature);
-    const shape = shapeLine(feature);
-    const measure = measureLine(feature);
     const properties = shownProperties(feature);
 
     return (
@@ -172,18 +167,8 @@ const Feature: React.FC<{feature: GeoJsonFeature}> = ({feature}) => {
             <div style={styles.featureHead}>
                 <Dot color={feature.color}/>
                 <span style={styles.name}>{feature.name}</span>
-                <span style={styles.kindLabel}>{feature.kind === 'none' ? 'no geometry' : feature.kind}</span>
                 {position !== null && (
                     <span style={styles.coord}>{`${position.lat}, ${position.lon}`}</span>
-                )}
-                {shape !== '' && <span style={styles.shape}>{shape}</span>}
-                {measure !== '' && (
-                    <span
-                        style={styles.measure}
-                        data-testid='geojson-measure'
-                    >
-                        {measure}
-                    </span>
                 )}
             </div>
             {feature.note !== '' && <p style={styles.featureNote}>{feature.note}</p>}

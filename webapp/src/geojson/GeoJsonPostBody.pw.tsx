@@ -137,7 +137,7 @@ test('renders author markup in a property as text, never as markup', async ({mou
     await expect(component.locator('b')).toHaveCount(0);
 });
 
-test('states the geometry of a feature that is not a lone point', async ({mount}) => {
+test('says nothing about the geometry of a feature that is not a lone point', async ({mount}) => {
     const component = await mount(
         <GeoJsonPostBodyHarness
             features={[{
@@ -155,7 +155,9 @@ test('states the geometry of a feature that is not a lone point', async ({mount}
         />,
     );
 
-    await expect(component).toContainText('2 rings, 8 points');
+    await expect(component).toContainText('Area');
+    await expect(component).not.toContainText('2 rings, 8 points');
+    await expect(component).not.toContainText('Polygon');
 });
 
 test('names a feature the document gave no geometry', async ({mount}) => {
@@ -170,7 +172,8 @@ test('names a feature the document gave no geometry', async ({mount}) => {
         />,
     );
 
-    await expect(component).toContainText('no geometry');
+    await expect(component).toContainText('Unlocated');
+    await expect(component).not.toContainText('no geometry');
     await expect(component).toContainText('The document states no position for this feature.');
 });
 
@@ -325,46 +328,21 @@ test('draws no map when the server says nothing can be placed', async ({mount}) 
     await expect(component.getByTestId('geojson-note')).toBeVisible();
 });
 
-/*
- * The measurement is the server's, verbatim.
- *
- * Rendered there rather than here so the card and the panel cannot round the
- * same figure into two different answers.
- */
-test.describe('measurements', () => {
-    test('shows a line its length and a polygon its area', async ({mount}) => {
-        const component = await mount(
-            <GeoJsonPostBodyHarness
-                features={[
-                    {name: 'Route', kind: 'LineString', length: '12.3 km'},
-                    {name: 'Area', kind: 'Polygon', area: '4.5 km²'},
-                ]}
-            />,
-        );
+test('leaves measurements and geometry types to the sidebar', async ({mount}) => {
+    const component = await mount(
+        <GeoJsonPostBodyHarness
+            features={[
+                {name: 'Route', kind: 'LineString', length: '12.3 km'},
+                {name: 'Area', kind: 'Polygon', area: '4.5 km²'},
+            ]}
+        />,
+    );
 
-        await expect(component).toContainText('12.3 km');
-        await expect(component).toContainText('4.5 km²');
-    });
-
-    test('shows both when a collection carries both', async ({mount}) => {
-        const component = await mount(
-            <GeoJsonPostBodyHarness
-                features={[{name: 'Mixed', kind: 'GeometryCollection', length: '800 m', area: '250 m²'}]}
-            />,
-        );
-
-        await expect(component.getByTestId('geojson-measure')).toContainText('800 m, 250 m²');
-    });
-
-    // A geometry with no such measure, and a feature the server would not stand
-    // behind, both carry nothing rather than a zero.
-    test('shows nothing for a geometry that has no measure', async ({mount}) => {
-        const component = await mount(
-            <GeoJsonPostBodyHarness features={[{name: 'Depot', kind: 'Point'}]}/>,
-        );
-
-        await expect(component.getByTestId('geojson-measure')).toHaveCount(0);
-    });
+    await expect(component).toContainText('Route');
+    await expect(component).toContainText('Area');
+    await expect(component.getByTestId('geojson-measure')).toHaveCount(0);
+    await expect(component).not.toContainText('12.3 km');
+    await expect(component).not.toContainText('LineString');
 });
 
 /*

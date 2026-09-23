@@ -257,3 +257,45 @@ test.describe('the document as posted', () => {
         await expect(rhs).toContainText('Copy the document as posted: copied');
     });
 });
+
+test('the panel states each feature its geometry and measure', async ({mount, page}) => {
+    await stubPreferencesRoute(page);
+
+    const component = await mount(
+        <GeoJsonPanelHarness
+            features={[
+                {name: 'Route', kind: 'LineString', length: '12.3 km'},
+                {name: 'Area', kind: 'Polygon', area: '4.5 km²'},
+            ]}
+        />,
+    );
+    await component.getByRole('button', {name: 'Open details'}).click();
+
+    const rhs = component.getByTestId('rhs');
+    await expect(rhs).toContainText('LineString');
+    await expect(rhs).toContainText('12.3 km');
+    await expect(rhs).toContainText('4.5 km²');
+});
+
+test('the panel keeps the style keys out of a feature\'s properties', async ({mount, page}) => {
+    await stubPreferencesRoute(page);
+
+    const component = await mount(
+        <GeoJsonPanelHarness
+            features={[{
+                name: 'Area',
+                properties: [
+                    {key: 'fill', value: '#ff0000'},
+                    {key: 'stroke-width', value: '3'},
+                    {key: 'status', value: 'active'},
+                ],
+            }]}
+        />,
+    );
+    await component.getByRole('button', {name: 'Open details'}).click();
+
+    const rhs = component.getByTestId('rhs');
+    await expect(rhs).toContainText('status');
+    await expect(rhs).not.toContainText('stroke-width');
+    await expect(rhs.getByText('fill', {exact: true})).toHaveCount(0);
+});

@@ -2,7 +2,7 @@ import React, {useEffect, useLayoutEffect, useRef} from 'react';
 
 import Customize from './Customize';
 import {setEditing, useEditing} from './editing';
-import {measureLine, shapeLine} from './GeoJsonCard';
+import {measureLine, shapeLine, shownProperties} from './GeoJsonCard';
 import GeoJsonMap from './GeoJsonMap';
 import {isSectionVisible, sectionLabel} from './sections';
 import type {GeoJsonFeature, GeoJsonPayload} from './types';
@@ -91,6 +91,7 @@ const Feature: React.FC<{feature: GeoJsonFeature; showProperties: boolean}> = ({
 }) => {
     const shape = shapeLine(feature);
     const measure = measureLine(feature);
+    const properties = shownProperties(feature);
 
     return (
         <li style={styles.item}>
@@ -102,9 +103,9 @@ const Feature: React.FC<{feature: GeoJsonFeature; showProperties: boolean}> = ({
                 {measure !== '' && <span style={styles.measure}>{measure}</span>}
             </div>
             {feature.note !== '' && <p style={styles.featureNote}>{feature.note}</p>}
-            {showProperties && feature.properties.length > 0 && (
+            {showProperties && properties.length > 0 && (
                 <dl style={styles.rows}>
-                    {feature.properties.map((property) => (
+                    {properties.map((property) => (
                         <React.Fragment key={property.key}>
                             <dt style={styles.term}>{property.key}</dt>
                             <dd style={styles.value}>{property.value}</dd>
