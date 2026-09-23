@@ -584,6 +584,14 @@ declare global {
         </p>
 
         <p>
+            This needs <strong>Agents 2.4 or later</strong>, which in turn needs Mattermost
+            11.9 or later. An older Agents plugin has no route for other plugins to register
+            tools on, so the registration is refused with <code>401</code>, logged once as
+            <code>pluginmcp: registration with Agents plugin failed permanently</code>, and
+            the tools never appear. Upgrading Agents and restarting Tactical Fusion registers them.
+        </p>
+
+        <p>
             Tool names are namespaced with this plugin's id, so an agent sees
             <code>com_mattermost_plugin-tactical-fusion__decorate_text</code> for the tool listed
             below as <code>decorate_text</code>.
