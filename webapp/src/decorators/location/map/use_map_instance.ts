@@ -6,6 +6,8 @@ import {loadBasemap, loadPackages} from './basemap';
 import {centerOf, degenerate, frameBounds, openingAnchor} from './bounds';
 import type {Camera} from './camera';
 import {hashForCamera} from './camera';
+import type {MapFocus} from './focus';
+import {POINT_FOCUS_ZOOM} from './focus';
 import {outsideMercator, positionNote} from './label';
 import {
     SEAM_CAPPED_LAYERS,
@@ -103,6 +105,8 @@ export interface MapProps extends View {
     inline?: boolean;
 
     openAt?: Camera;
+
+    focus?: MapFocus;
 
     /**
      * A picture and nothing else: no controls, no gestures, no readout.
@@ -209,7 +213,7 @@ export interface MapProps extends View {
  */
 export function useMapInstance({
     lat, lon, cellDegLat, cellDegLon, pending, preview, accuracyMeters,
-    markers, ellipse, geometries, openAt,
+    markers, ellipse, geometries, openAt, focus,
 }: MapProps): {
     container: React.RefObject<HTMLDivElement | null>;
     applyView: () => void;
@@ -401,6 +405,27 @@ export function useMapInstance({
         outline?.setData(drawableOverlay(shape.current, shapes.current, current.lat, current.lon));
         paintGeometry(instance);
     }, []);
+
+    useEffect(() => {
+        const instance = map.current;
+        if (!focus || !instance || !ready.current) {
+            return;
+        }
+
+        const width = container.current?.clientWidth || DEFAULT_WIDTH_PX;
+        const height = container.current?.clientHeight || MAP_MIN_HEIGHT_PX;
+
+        if (focus.box !== null && !degenerate(focus.box)) {
+            instance.fitBounds(focus.box, {
+                padding: fitPadding(width, height, !previewRef.current),
+                animate: false,
+                maxZoom: MAX_ZOOM,
+            });
+            return;
+        }
+
+        instance.jumpTo({center: [focus.center.lon, focus.center.lat], zoom: POINT_FOCUS_ZOOM});
+    }, [focus]);
 
     // What the overlays ARE, rather than the objects carrying them.
     //

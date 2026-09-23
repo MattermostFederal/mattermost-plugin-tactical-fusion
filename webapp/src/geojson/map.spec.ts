@@ -1,6 +1,6 @@
 import {expect, test} from '@playwright/test';
 
-import {mapLabel, markersFor, shapesFor} from './GeoJsonMap';
+import {focusFor, mapLabel, markersFor, shapesFor} from './GeoJsonMap';
 import type {GeoJsonFeature, GeoJsonPart} from './types';
 
 function feature(over: Partial<GeoJsonFeature>): GeoJsonFeature {
@@ -221,4 +221,22 @@ test('a color that is not a hex triple falls back on both channels', () => {
         parts: [part('Polygon', [[['0', '0'], ['1', '0'], ['1', '1'], ['0', '0']]])],
     })]);
     expect(shape.color).toBeUndefined();
+});
+
+test('a lone point focuses on its position with no box', () => {
+    const focus = focusFor(feature({kind: 'Point', parts: [part('Point', [[['-157.9483', '21.3353']]])]}), 1);
+
+    expect(focus).toEqual({seq: 1, box: null, center: {lat: 21.3353, lon: -157.9483}});
+});
+
+test('a line or polygon focuses on the box around every vertex', () => {
+    const focus = focusFor(feature({kind: 'LineString', parts: [part('LineString', [[['-157.95', '21.33'], ['-157.90', '21.37']]])]}), 2);
+
+    expect(focus?.box).toEqual([[-157.95, 21.33], [-157.90, 21.37]]);
+});
+
+test('a feature the server noted, or one with no usable position, cannot be focused', () => {
+    expect(focusFor(feature({note: 'not drawn', parts: [part('Point', [[['0', '0']]])]}), 1)).toBeNull();
+    expect(focusFor(feature({parts: [part('Point', [[['', '']]])]}), 1)).toBeNull();
+    expect(focusFor(feature({parts: []}), 1)).toBeNull();
 });

@@ -389,3 +389,19 @@ test('renders a feature\'s description as a line under its name, not as a proper
     await expect(component.getByText('description', {exact: true})).toHaveCount(0);
     await expect(component).not.toContainText('status');
 });
+
+test('a drawn feature is a button that shows it on the map, and an undrawn one is not', async ({mount}) => {
+    const component = await mount(
+        <GeoJsonPostBodyHarness
+            features={[
+                {name: 'Depot', kind: 'Point'},
+                {name: 'Unlocated', kind: 'none', note: 'The document states no position for this feature.', parts: []},
+            ]}
+        />,
+    );
+
+    const show = component.getByRole('button', {name: 'Show Depot on the map'});
+    await expect(show).toBeVisible();
+    await show.click();
+    await expect(component.getByRole('button', {name: 'Show Unlocated on the map'})).toHaveCount(0);
+});

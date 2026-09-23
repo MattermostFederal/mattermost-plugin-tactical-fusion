@@ -1890,3 +1890,53 @@ test('a stated style survives the extent-only write path', async ({mount, page})
     await expect(component.getByTestId('shape-style')).toHaveText('#ff0000|rgba(255, 0, 0, 0.25)');
     await expect(component.getByTestId('shape-stroke')).toHaveText('3|0.8');
 });
+
+test.describe('focusing on one feature', () => {
+    test('a point focus jumps the camera to it at street level', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness/>);
+        await expectDrawn(component);
+
+        await component.getByRole('button', {name: 'focus on a point'}).click();
+        await readMap(component);
+
+        await expect(component.getByTestId('camera')).toHaveText('38.890,-77.035');
+        await expect(component.getByTestId('zoom')).toHaveText('14');
+    });
+
+    test('a box focus frames the box', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness/>);
+        await expectDrawn(component);
+
+        await component.getByRole('button', {name: 'focus on a box'}).click();
+        await readMap(component);
+
+        const [lat, lon] = (await component.getByTestId('camera').textContent() ?? '').split(',').map(Number);
+        expect(lat).toBeGreaterThan(38.85);
+        expect(lat).toBeLessThan(38.95);
+        expect(lon).toBeGreaterThan(-77.1);
+        expect(lon).toBeLessThan(-76.95);
+        const zoom = Number(await component.getByTestId('zoom').textContent());
+        expect(zoom).toBeGreaterThan(9);
+        expect(zoom).toBeLessThan(14);
+    });
+
+    test('focusing the same feature again brings the camera back', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const component = await mount(<LocationMapHarness/>);
+        await expectDrawn(component);
+
+        await component.getByRole('button', {name: 'focus on a point'}).click();
+        await component.getByRole('button', {name: 'zoom past the data'}).click();
+        await readMap(component);
+        await expect(component.getByTestId('zoom')).not.toHaveText('14');
+
+        await component.getByRole('button', {name: 'focus on a point'}).click();
+        await readMap(component);
+        await expect(component.getByTestId('zoom')).toHaveText('14');
+    });
+});

@@ -4,6 +4,8 @@ import {isSectionVisible} from './sections';
 import type {GeoJsonFeature, GeoJsonPart, GeoJsonPayload, GeoJsonPosition} from './types';
 
 import type {Camera} from '../decorators/location/map/camera';
+import type {MapFocus} from '../decorators/location/map/focus';
+import {focusOn} from '../decorators/location/map/focus';
 import LocationMap, {INLINE_MAP_HEIGHT, MAP_HEIGHT} from '../decorators/location/map/LocationMap';
 import {useNearViewport} from '../decorators/location/map/near_viewport';
 import type {MapMarker} from '../decorators/location/map/overlay';
@@ -90,6 +92,26 @@ function usable(position: {lat: string; lon: string}): {lat: number; lon: number
     }
 
     return {lat, lon};
+}
+
+export function focusFor(feature: GeoJsonFeature, seq: number): MapFocus | null {
+    if (feature.note !== '') {
+        return null;
+    }
+
+    const positions: Array<{lat: number; lon: number}> = [];
+    for (const part of feature.parts) {
+        for (const ring of part.rings) {
+            for (const position of ring) {
+                const point = usable(position);
+                if (point !== null) {
+                    positions.push(point);
+                }
+            }
+        }
+    }
+
+    return focusOn(positions, seq);
 }
 
 /** Whether a part is drawn as a marker rather than as a shape. */
@@ -265,7 +287,8 @@ export const GeoJsonMapCanvas: React.FC<{
     fill?: boolean;
     inline?: boolean;
     openAt?: Camera;
-}> = ({payload, pageEnabled, fill, inline, openAt}) => {
+    focus?: MapFocus;
+}> = ({payload, pageEnabled, fill, inline, openAt, focus}) => {
     const markers = markersFor(payload.features);
     const shapes = shapesFor(payload.features);
 
@@ -291,6 +314,7 @@ export const GeoJsonMapCanvas: React.FC<{
             fill={fill}
             inline={inline}
             openAt={openAt}
+            focus={focus}
         />
     );
 };
@@ -320,7 +344,7 @@ export const GeoJsonMapCanvas: React.FC<{
  * live WebGL contexts at roughly sixteen and a channel of overlays is exactly
  * the shape that reaches it.
  */
-const GeoJsonMap: React.FC<{payload: GeoJsonPayload; surface: 'card' | 'panel'}> = ({payload, surface}) => {
+const GeoJsonMap: React.FC<{payload: GeoJsonPayload; surface: 'card' | 'panel'; focus?: MapFocus}> = ({payload, surface, focus}) => {
     const {preferences} = usePreferences();
     const {features} = useFeatures();
     const [box, setBox] = useState<HTMLDivElement | null>(null);
@@ -352,6 +376,7 @@ const GeoJsonMap: React.FC<{payload: GeoJsonPayload; surface: 'card' | 'panel'}>
                     payload={payload}
                     pageEnabled={features.mapPage}
                     inline={surface === 'card'}
+                    focus={focus}
                 />
             ) : <div style={surface === 'card' ? styles.reservedInline : styles.reserved}/>}
         </div>

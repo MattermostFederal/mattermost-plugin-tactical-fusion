@@ -1,11 +1,12 @@
-import React from 'react';
+import React, {useRef, useState} from 'react';
 
-import GeoJsonMap from './GeoJsonMap';
+import GeoJsonMap, {focusFor} from './GeoJsonMap';
 import {showGeoJsonDocument} from './panel';
 import type {GeoJsonFeature, GeoJsonPayload, GeoJsonProperty} from './types';
 import {ringCount, vertexCount} from './types';
 
 import ErrorBoundary from '../components/ErrorBoundary';
+import type {MapFocus} from '../decorators/location/map/focus';
 
 interface Props {
     payload: GeoJsonPayload;
@@ -87,6 +88,7 @@ const styles: Record<string, React.CSSProperties> = {
         padding: '6px 0',
     },
     featureHead: {alignItems: 'baseline', display: 'flex', flexWrap: 'wrap', gap: '0.5em'},
+    featureButton: {background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', font: 'inherit', padding: 0, textAlign: 'left'},
     name: {fontWeight: 600},
     featureNote: {opacity: 0.9, fontSize: '0.9em', margin: '2px 0 0'},
     featureDescription: {opacity: 0.9, fontSize: '0.9em', margin: '2px 0 0', whiteSpace: 'pre-wrap'},
@@ -155,15 +157,30 @@ const Dot: React.FC<{color: string}> = ({color}) => {
     );
 };
 
-const Feature: React.FC<{feature: GeoJsonFeature}> = ({feature}) => {
+const Feature: React.FC<{feature: GeoJsonFeature; onShow?: () => void}> = ({feature, onShow}) => {
     const description = descriptionOf(feature);
+    const head = (
+        <>
+            <Dot color={feature.color}/>
+            <span style={styles.name}>{feature.name}</span>
+        </>
+    );
 
     return (
         <li style={styles.listItem}>
-            <div style={styles.featureHead}>
-                <Dot color={feature.color}/>
-                <span style={styles.name}>{feature.name}</span>
-            </div>
+            {onShow === undefined ? (
+                <div style={styles.featureHead}>{head}</div>
+            ) : (
+                <button
+                    type='button'
+                    style={{...styles.featureHead, ...styles.featureButton}}
+                    onClick={onShow}
+                    aria-label={`Show ${feature.name} on the map`}
+                    data-testid='geojson-feature-show'
+                >
+                    {head}
+                </button>
+            )}
             {description !== '' && (
                 <p
                     style={styles.featureDescription}
@@ -178,6 +195,17 @@ const Feature: React.FC<{feature: GeoJsonFeature}> = ({feature}) => {
 };
 
 export const GeoJsonCard: React.FC<Props> = ({payload}) => {
+    const [focus, setFocus] = useState<MapFocus | undefined>(undefined);
+    const clicks = useRef(0);
+
+    const show = (feature: GeoJsonFeature) => {
+        clicks.current += 1;
+        const next = focusFor(feature, clicks.current);
+        if (next !== null) {
+            setFocus(next);
+        }
+    };
+
     return (
         <div>
             {payload.lead !== '' && <span style={styles.text}>{payload.lead}</span>}
@@ -232,6 +260,7 @@ export const GeoJsonCard: React.FC<Props> = ({payload}) => {
                     <GeoJsonMap
                         payload={payload}
                         surface='card'
+                        focus={focus}
                     />
                 </ErrorBoundary>
 
@@ -245,6 +274,7 @@ export const GeoJsonCard: React.FC<Props> = ({payload}) => {
                                 <Feature
                                     key={`${feature.name}-${index}`}
                                     feature={feature}
+                                    onShow={focusFor(feature, 0) === null ? undefined : () => show(feature)}
                                 />
                             ))}
                         </ul>
