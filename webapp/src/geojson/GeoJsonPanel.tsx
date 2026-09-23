@@ -2,7 +2,7 @@ import React, {useEffect, useLayoutEffect, useRef} from 'react';
 
 import Customize from './Customize';
 import {setEditing, useEditing} from './editing';
-import {measureLine, shapeLine, summaryLine} from './GeoJsonCard';
+import {measureLine, shapeLine} from './GeoJsonCard';
 import GeoJsonMap from './GeoJsonMap';
 import {isSectionVisible, sectionLabel} from './sections';
 import type {GeoJsonFeature, GeoJsonPayload} from './types';
@@ -144,17 +144,15 @@ export const GeoJsonPanel: React.FC<{payload: GeoJsonPayload}> = ({payload}) => 
     }
 
     const hidden = preferences.geojson.hiddenSections;
-    const summary = summaryLine(payload);
+    const heading = payload.name === '' ? payload.fileName : payload.name;
 
     return (
         <div>
             <ErrorBoundary fallback={<p style={styles.subhead}>{SECTION_FAILED}</p>}>
                 {isSectionVisible(hidden, 'summary') && (
                     <div data-testid='geojson-panel-summary'>
-                        <p style={styles.heading}>
-                            {`${payload.counts.features} feature${payload.counts.features === 1 ? '' : 's'}`}
-                        </p>
-                        {summary !== '' && <p style={styles.subhead}>{summary}</p>}
+                        {heading !== '' && <p style={styles.heading}>{heading}</p>}
+                        {payload.description !== '' && <p style={styles.subhead}>{payload.description}</p>}
                         {payload.note !== '' && <p style={styles.note}>{payload.note}</p>}
                         {payload.propertiesDropped && (
                             <p style={styles.note}>
@@ -242,8 +240,8 @@ export const GeoJsonTitle: React.FC<{payload: GeoJsonPayload}> = ({payload}) => 
         return <span>{EDITOR_TITLE}</span>;
     }
 
-    const {features} = payload.counts;
-    return <span>{`${PANEL_TITLE}: ${features} feature${features === 1 ? '' : 's'}`}</span>;
+    const name = payload.name === '' ? payload.fileName : payload.name;
+    return <span>{name === '' ? PANEL_TITLE : `${PANEL_TITLE}: ${name}`}</span>;
 };
 
 export default GeoJsonPanel;

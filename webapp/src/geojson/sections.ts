@@ -21,7 +21,7 @@ export interface SectionSpec {
 /** Every hideable section, in the order the panel draws them. */
 export const SECTIONS: readonly SectionSpec[] = [
     {id: 'map', label: 'Map', hint: 'Every feature drawn together, fitted to all of them'},
-    {id: 'summary', label: 'What the document holds', hint: 'How many features, of what geometry, and anything not drawn'},
+    {id: 'summary', label: 'What the document holds', hint: 'Its name and description, and anything not drawn'},
     {id: 'features', label: 'Features', hint: 'Each feature by name, with its geometry and size'},
     {id: 'properties', label: 'Feature properties', hint: 'The keys and values each feature carries'},
     {id: 'source', label: 'As posted', hint: 'The document exactly as it was posted, collapsed'},

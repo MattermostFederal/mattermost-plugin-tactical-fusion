@@ -29,6 +29,8 @@ interface Props {
     propertiesDropped?: boolean;
     src?: string;
     counts?: Partial<GeoJsonPayload['counts']>;
+    name?: string;
+    description?: string;
 
     /**
      * A second card over its own payload.
@@ -80,6 +82,8 @@ function build(over: Partial<GeoJsonFeature>, index: number): GeoJsonFeature {
  * defaults, which is every section shown.
  */
 const GeoJsonPanelHarness: React.FC<Props> = ({
+    name = '',
+    description = '',
     features = [{}],
     note = '',
     propertiesDropped = false,
@@ -104,8 +108,8 @@ const GeoJsonPanelHarness: React.FC<Props> = ({
         src,
         fileId: '',
         fileName: '',
-        name: '',
-        description: '',
+        name,
+        description,
         note,
         unplaceable: false,
         propertiesDropped,

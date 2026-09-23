@@ -107,49 +107,8 @@ const styles: Record<string, React.CSSProperties> = {
     },
 };
 
-/** The geometry mix, as a sentence rather than a table of zeroes. */
-export function summaryLine(payload: GeoJsonPayload): string {
-    const {counts} = payload;
-
-    const parts: string[] = [];
-    if (counts.points > 0) {
-        parts.push(plural(counts.points, 'point'));
-    }
-    if (counts.lines > 0) {
-        parts.push(plural(counts.lines, 'line'));
-    }
-    if (counts.polygons > 0) {
-        parts.push(plural(counts.polygons, 'polygon'));
-    }
-    if (counts.collections > 0) {
-        parts.push(plural(counts.collections, 'collection'));
-    }
-
-    const tail: string[] = [];
-    if (counts.unlocated > 0) {
-        tail.push(`${counts.unlocated} with no position`);
-    }
-    if (counts.undrawable > 0) {
-        tail.push(`${counts.undrawable} not drawn`);
-    }
-
-    const mix = parts.length === 0 ? '' : joinWords(parts);
-    if (tail.length === 0) {
-        return mix;
-    }
-
-    return mix === '' ? joinWords(tail) : `${mix}, ${joinWords(tail)}`;
-}
-
 function plural(n: number, word: string): string {
     return `${n} ${word}${n === 1 ? '' : 's'}`;
-}
-
-function joinWords(parts: readonly string[]): string {
-    if (parts.length < 2) {
-        return parts.join('');
-    }
-    return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
 }
 
 /**
