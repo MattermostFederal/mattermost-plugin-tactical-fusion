@@ -30,6 +30,8 @@ import (
 // on a server with a smaller limit.
 const geoJSONExample = `{
   "type": "FeatureCollection",
+  "name": "Pearl Harbor resupply",
+  "description": "Supply point, route in and operating area for the exercise.",
   "features": [
     {
       "type": "Feature",

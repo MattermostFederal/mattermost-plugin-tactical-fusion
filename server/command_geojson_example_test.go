@@ -173,3 +173,13 @@ func TestAFenceSourcedBlobNamesNoFile(t *testing.T) {
 		t.Error("a fence-sourced blob names a file, which would 404 its map page")
 	}
 }
+
+func TestTheGeoJSONExampleNamesAndDescribesItself(t *testing.T) {
+	document, err := geojson.Parse([]byte(geoJSONExample))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if document.Name == "" || document.Description == "" {
+		t.Fatalf("the example carries no name or description: %q / %q", document.Name, document.Description)
+	}
+}
