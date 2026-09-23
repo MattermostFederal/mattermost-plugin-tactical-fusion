@@ -23,6 +23,9 @@
             <a href="airfields.html">Airfields</a>
             <a href="cot.html">Cursor on Target</a>
             <a href="geojson.html">GeoJSON</a>
+            <a href="reports.html">Aviation Reports</a>
+            <a href="frequencies.html">Frequencies</a>
+            <a href="notes.html">Notes</a>
             <span class="nav-section">Guides</span>
             <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
@@ -46,14 +49,25 @@
         <p class="tagline">Enriches conversations with mission-relevant context, in place, as people write.</p>
 
         <p>
-            Today the plugin recognizes five kinds of thing. Three of them become
+            Today the plugin recognizes seven kinds of thing. Five of them become
             <strong>links</strong> in the message you wrote. Write a date-time group and it
             becomes a link that opens a panel showing that instant in every timezone you
             care about, with a countdown to it. Write a coordinate in any of the recognized
             notations and it becomes a link showing the same position in the others,
             including its <a href="location.html#location-grid">military grid reference</a>.
             Write an <a href="airfields.html#airfield">ICAO airfield code</a> behind a USMTF
-            field label and it becomes a link naming the field and where it is.
+            field label and it becomes a link naming the field and where it is. Paste a
+            <a href="reports.html">METAR, TAF or NOTAM</a> on one line and it becomes a link
+            that decodes every group into plain language. Write a
+            <a href="frequencies.html">frequency behind <code>FREQ:</code></a> and it becomes
+            a link naming its band and any known allocation.
+        </p>
+
+        <p>
+            A <a href="notes.html">note</a> is a link you write on purpose, with
+            <a href="commands.html#note"><code>/tactical-fusion note</code></a>: it carries its
+            own markdown, and its hover card renders that markdown as Mattermost renders a
+            post, tables and all. Nothing in an ordinary message becomes one.
         </p>
 
         <p>
@@ -63,7 +77,8 @@
             is, where it is and how long it is good for. Post a
             <a href="geojson.html">GeoJSON</a> document and the card says what the document
             holds and draws its features on a map. Both read an attachment as readily as a
-            fenced code block.
+            fenced code block. An aviation report that spans several lines becomes a card
+            too, since no link can hold it.
         </p>
 
         <p>
@@ -174,6 +189,18 @@ DZ is [2120N15757W](/plugins/com.mattermost.plugin-tactical-fusion/decorate/loca
                 <h3>GeoJSON</h3>
                 <p>The overlay format every GIS tool writes, what this build draws and refuses, and why only a <code>geojson</code> fence is read.</p>
             </a>
+            <a href="reports.html" class="nav-card">
+                <h3>Aviation Reports</h3>
+                <p>METAR, SPECI, TAF and NOTAM decoded into plain language: a link on one line, a card on several, and the station on a map. Nothing is fetched.</p>
+            </a>
+            <a href="frequencies.html" class="nav-card">
+                <h3>Frequencies</h3>
+                <p>A frequency behind <code>FREQ:</code>, its band, its channel spacing and any known allocation, derived in your browser with nothing fetched.</p>
+            </a>
+            <a href="notes.html" class="nav-card">
+                <h3>Notes</h3>
+                <p>A link that carries its own markdown, rendered in the hover card by Mattermost's own renderer: definitions, tables, checklists.</p>
+            </a>
             <a href="formats.html" class="nav-card">
                 <h3>Recognized Formats</h3>
                 <p>The rules every decorator shares: clean edges, consumed labels, and the spans that are never rewritten.</p>
@@ -184,7 +211,7 @@ DZ is [2120N15757W](/plugins/com.mattermost.plugin-tactical-fusion/decorate/loca
             </a>
             <a href="admin.html" class="nav-card">
                 <h3>Admin Settings</h3>
-                <p>The twenty-five switches in the System Console, in six sections, what each governs, and what turning one off does and does not do. Two of them, UTM and unlabeled GeoJSON, ship off.</p>
+                <p>The thirty-four switches in the System Console, in eight sections, what each governs, and what turning one off does and does not do. Two of them, UTM and unlabeled GeoJSON, ship off.</p>
             </a>
             <a href="commands.html" class="nav-card">
                 <h3>Slash Commands</h3>

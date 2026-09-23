@@ -6,9 +6,9 @@ Mattermost Tactical Fusion enriches conversations with mission-relevant context:
 geospatial data, CoT, time zones, IP intelligence, CVEs, and other operational
 information. The server is Go, the webapp TypeScript/React.
 
-Shipped today: the decorator framework and three decorators, DTG, Location and
-Airfields, plus the bundled offline map, the Cursor on Target renderer and the
-GeoJSON renderer. The rest is not implemented.
+Shipped today: the decorator framework and five decorators, DTG, Location,
+Airfields, Aviation reports and Frequencies, plus the bundled offline map, the
+Cursor on Target renderer and the GeoJSON renderer. The rest is not implemented.
 
 A decorator finds a token in a posted message, rewrites it in
 `MessageWillBePosted` into a markdown link whose query string carries the
@@ -25,18 +25,23 @@ right-hand sidebar, and a standalone server-rendered page.
 | `plugin.go` | The `Plugin` struct, `OnActivate`, `OnPluginClusterEvent` |
 | `configuration.go` | Config struct and `OnConfigurationChange`, plus `dtgFormats`/`locationFormats`/`locationMaps` |
 | `hooks.go` | `MessageWillBePosted`, `decoratePost`, `stampStandalonePost`, the post size constants |
-| `hooks_stamp.go` | The forged-type strip, the props ladder, the attachment ownership check |
+| `hooks_stamp.go` | The forged-type strip, `runStamper`, the props ladder, the attachment ownership check |
+| `hooks_avreport.go` | The aviation report stamper: the fence and bare sources, the attachment gate, the two rungs |
 | `http.go` | `ServeHTTP`: `/decorate/<type>`, `/map`, `/api/v1/*`, and the session gate |
-| `api.go` | Authenticated JSON API: `/preferences`, `/convert`, `/features`, `/airport`, `/decorate`, `/link` |
+| `api.go` | Authenticated JSON API: `/preferences`, `/convert`, `/features`, `/airport`, `/avreport`, `/decorate`, `/link` |
+| `mapairport.go` | `/map?airport=<ident>`: the airfield map page, rendered through the overlay shell |
 | `bridge.go` | The plugin bridge: `/bridge/v1/{decorate,link,info}` for other plugins, and the `decorate`/`link` operations `/api/v1` shares |
-| `mcp.go`, `mcp_tools.go` | The Agents MCP server: the `/mcp` endpoint, its lifecycle, and the four tools |
+| `mcp.go`, `mcp_tools.go`, `mcp_decode_tools.go`, `mcp_create_tools.go` | The Agents MCP server: the `/mcp` endpoint, its lifecycle, the link and lookup tools, the tools that decode reports, CoT, GeoJSON, frequencies and date-time groups, and the two that build CoT and GeoJSON |
 | `preferences.go`, `preferences_cache.go` | Per-reader KV store and its cluster-aware cache |
 | `command*.go` | The `/tactical-fusion` slash command and its example builders |
 | `errcode/` | The `TF-NNNN` catalog |
 | `decorators/` | Framework: registry, tagger, boundary guard, shared page shell |
 | `decorators/dtg/` | Date-time groups and RFC 3339 timestamps |
 | `decorators/location/` | Coordinate grammars, geodesy, MGRS, rendering, conversion; `mapdata/` holds the generated country polygons |
-| `decorators/airport/` | ICAO airfields; `data/` holds the embedded CSV and its provenance |
+| `decorators/airport/` | ICAO and IATA airfields, their runways and frequencies; `data/` holds the three embedded CSVs and their provenance |
+| `decorators/frequency/` | Radio frequencies behind `FREQ:`: the grammar, the band and allocation tables, the page |
+| `decorators/note/` | Notes: a link whose `v` is markdown, built by `/tactical-fusion note` or the bridge and never matched in message text; the page shows the source |
+| `avreport/` | Aviation reports: the METAR, TAF and NOTAM decoders, the decorator, the table, the page, the props; `data/` holds the contraction and Q-code tables |
 | `cot/` | Cursor on Target: the bounded XML parse, the type tables, the post props |
 | `geojson/` | GeoJSON: the bounded JSON walk, the parts/rings shape, the post props |
 
@@ -46,9 +51,10 @@ right-hand sidebar, and a standalone server-rendered page.
 |---|---|
 | `src/index.tsx` | `initialize()`, registration, the disposer list run by `uninitialize()` |
 | `src/decorators/` | Framework: registry, click handler, styles, selection store, theme, `Tooltip` |
-| `src/decorators/{dtg,location,airport}/` | Panels, hovers, and per-decorator clients |
+| `src/decorators/{dtg,location,airport,frequency,note}/` | Panels, hovers, and per-decorator clients; `frequency/bands.ts` is the band table the Go side is held to; `note/NoteMarkdown.tsx` renders through Mattermost's `window.PostUtils` and falls back to the source |
 | `src/cot/` | The Cursor on Target post body, its card and its map |
 | `src/geojson/` | The GeoJSON post body, its card, its map, its panel and its reader |
+| `src/avreport/` | The aviation report reader, client, card, post body, panel, hover and map; `src/decorators/avreport/` is the link's decorator entry |
 | `src/decorators/location/map/` | `LocationMap` (presentation) and `use_map_instance.ts` (the MapLibre lifecycle); `paint.ts` (the simplestyle gate), `overlay.ts` (what is drawn), `bounds.ts` (framing), `label.ts` (the accessible text); MapLibre loading, the basemap reader, span arithmetic |
 | `src/page/` | Standalone pages' entry point, built by a second webpack config into `public/app/page.js` |
 | `src/components/rhs/` | `RhsView` and `RhsTitle` |
@@ -134,16 +140,18 @@ bytes do not, and a browser revalidating a cached byte range then gets the whole
 its auto-translation, its embeds and its slack-style message attachments. Its
 FILE attachments survive: they are drawn outside `PostBodyAdditionalContent`.
 This line said "file attachment list" and a card grew a download link on the
-strength of it. The inline map,
-the Cursor on Target card and the GeoJSON card are the only three things that do
-it; `EnableLocationMapInline`, `EnableCot` and `EnableGeoJSON` are how an install
-opts out of each.
+strength of it. The inline map, the airfield route map,
+the Cursor on Target card, the GeoJSON card and the aviation report card are
+the only five things that do it; `EnableLocationMapInline`, `EnableAirportRoute`,
+`EnableCot`, `EnableGeoJSON` and `EnableAvReportCard` are how an install opts
+out of each.
 
-**A stamped post is never decorated, and the stamp is atomic.** Two formats
-stamp: Cursor on Target, then GeoJSON. Each declares its own recover as its
-first statement, spanning its own source-finding, filestore call and parse,
-because `decoratePost` calls them from outside `decorateMessage`'s recover and
-there is no other one on that path.
+**A stamped post is never decorated, and the stamp is atomic.** Three formats
+stamp: Cursor on Target, then GeoJSON, then aviation reports. All three run
+through `runStamper`, which declares the recover as its first statement and
+spans the strip, the source-finding, any filestore call, the parse and the
+commit, because `decoratePost` calls them from outside `decorateMessage`'s
+recover and there is no other one on that path.
 
 CoT is tried first and wins, because the card renders the text around an event
 as plain text and a decorator link written into that text could not render
@@ -188,7 +196,9 @@ this has to change a test rather than slip through.
 **The strip clears every stamped props key on every post, not just the one
 matching the post's type.** The commit copies existing props forward, so a
 forged sibling blob would otherwise reach stored props permanently.
-`custom_tf_location` is deliberately outside the table.
+`custom_tf_location` is deliberately outside the table; `custom_tf_airfields`,
+which the route stamp writes from decoration, is inside it because `/map?post=`
+finds a blob through the same table.
 
 **`/bridge/v1` is gated only on `Mattermost-Plugin-ID`, so it may never answer
 with per-user or per-channel data.** A plugin request carries no reader. Every
@@ -238,7 +248,8 @@ side moves alone. Change both halves together.
 | The row catalog: ids, labels, order | `TestWebappRowCatalogMatches` |
 | The format id list | `TestWebappFormatListMatches` |
 | The `/features` payload | `TestWebappFeatureShapeMatches` |
-| The `/airport` payload | `TestWebappAirportShapeMatches` |
+| The `/airport` payload, walked through every nested interface | `TestWebappAirportShapeMatches` |
+| The ident and IATA shapes, and the airfield map kind | `TestWebappAirportIdentShapeMatches`, `TestWebappAirportMapKindMatches` |
 | The 30 minute cache TTL | `TestWebappCacheLifetimeMatches` |
 | The `data-maps` attribute and its tokens | `TestWebappMapSurfaceAttributeMatches` |
 | The seam zoom: `seamZoom` and `SEAM_ZOOM` in `map/span.ts` | `TestSeamZoomMatchesTheWebapp`, `TestDetailPackagesStartAtTheSeam` |
@@ -248,6 +259,11 @@ side moves alone. Change both halves together.
 | The `data-packages` attribute and its separator | `TestWebappPackagesAttributeMatches` |
 | The CoT post type, props key and props version | `TestWebappCotPostTypeMatches` |
 | The GeoJSON post type, props key, props version and source kinds | `TestWebappGeoJSONPostTypeMatches` |
+| The aviation report post type, props key, version, source kinds, caps and decorator type | `TestWebappAvReportPostTypeMatches` |
+| The aviation report kinds and their order | `TestWebappAvReportKindsMatch` |
+| The aviation report props shape, walked rather than scraped | `TestWebappAvReportShapeMatches` |
+| The frequency token shape, range and the band and allocation tables | `TestWebappFrequencyTokenShapeMatches`, `TestWebappFrequencyBandsMatch` |
+| The note type, its param and `MaxNoteRunes`/`MAX_NOTE_RUNES` | `TestWebappNoteShapeMatches` |
 | The GeoJSON `kind` vocabulary and its order | `TestWebappGeoJSONKindsMatch` |
 | The GeoJSON panel's hideable sections: ids, labels, order | `TestWebappGeoJSONSectionCatalogMatches` |
 | The GeoJSON props shape, walked rather than scraped | `TestWebappGeoJSONShapeMatches` |

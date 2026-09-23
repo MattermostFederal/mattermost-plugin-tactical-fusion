@@ -52,7 +52,7 @@ func TestAirfieldTableEscapesWhatTheDatabaseCarries(t *testing.T) {
 	// The body rows carry no markdown of their own, so anything unescaped in
 	// them came from the database.
 	for line := range strings.SplitSeq(table, "\n") {
-		if strings.HasPrefix(line, "| Airfield |") || line == "|:--|:--|" {
+		if strings.HasPrefix(line, "| Airfield |") || strings.HasPrefix(line, "| Details |") || line == "|:--|:--|" {
 			continue
 		}
 		for _, ch := range []byte{'`', '*', '_', '[', ']', '~'} {
@@ -62,9 +62,7 @@ func TestAirfieldTableEscapesWhatTheDatabaseCarries(t *testing.T) {
 		}
 	}
 
-	// The name is escaped inside the link label, where an unescaped bracket
-	// would end the label early and break the link.
-	if !strings.Contains(table, "[Sant\\`anna \\| Heliport]("+HREF+")") {
+	if !strings.HasPrefix(table, "| Airfield | [Sant\\`anna \\| Heliport]("+HREF+") |\n") {
 		t.Errorf("the name was not escaped inside the link label:\n%s", table)
 	}
 
@@ -139,17 +137,20 @@ func TestAirfieldTableShowsSeaLevel(t *testing.T) {
 // is in the message either way. The Code row is what is not conceded: without
 // it the string the author typed appears nowhere, and searching for the code
 // stops finding the post.
-func TestAirfieldTableLinksTheNameAndKeepsTheCode(t *testing.T) {
+func TestAirfieldTableNamesTheFieldAndEndsWithTheDetailsLink(t *testing.T) {
 	table := airfieldTable(HREF, "", Details{Ident: "KIND", Name: "Indianapolis International Airport", Place: "y"})
 
-	if !strings.Contains(table, "| Airfield | [Indianapolis International Airport]("+HREF+") |") {
-		t.Errorf("the name is not the link:\n%s", table)
+	if !strings.HasPrefix(table, "| Airfield | [Indianapolis International Airport]("+HREF+") |\n|:--|:--|\n") {
+		t.Errorf("the header is not the linked name:\n%s", table)
+	}
+	if !strings.HasSuffix(table, "\n| Details | [Open details]("+HREF+` "Open details") |`) {
+		t.Errorf("the details link is not the last row:\n%s", table)
 	}
 	if !strings.Contains(table, "| Code | KIND |") {
 		t.Errorf("the author's own token is missing:\n%s", table)
 	}
-	if strings.Count(table, HREF) != 1 {
-		t.Errorf("the destination appears %d times, want once:\n%s", strings.Count(table, HREF), table)
+	if strings.Count(table, HREF) != 2 {
+		t.Errorf("the destination appears %d times, want the name and the Details row:\n%s", strings.Count(table, HREF), table)
 	}
 }
 
@@ -163,12 +164,14 @@ func TestAirfieldTableKeepsTheSetTerminatorWithTheCode(t *testing.T) {
 	}
 }
 
-// An unnamed airfield has nothing to label the link with but its own code.
-func TestAirfieldTableLinksTheIdentWhenThereIsNoName(t *testing.T) {
+func TestAirfieldTableHeadsAnUnnamedFieldWithItsIdent(t *testing.T) {
 	table := airfieldTable(HREF, "", Details{Ident: "KIND", Place: "y"})
 
-	if !strings.Contains(table, "| Airfield | [KIND]("+HREF+") |") {
-		t.Errorf("an unnamed airfield lost its link:\n%s", table)
+	if !strings.HasPrefix(table, "| Airfield | [KIND]("+HREF+") |\n") {
+		t.Errorf("an unnamed airfield is not headed by its linked code:\n%s", table)
+	}
+	if strings.Count(table, HREF) != 2 {
+		t.Errorf("the destination appears %d times, want the name and the Details row:\n%s", strings.Count(table, HREF), table)
 	}
 }
 
@@ -223,7 +226,7 @@ func TestTheShippedDatabaseCarriesNothingTheTableCannotEscape(t *testing.T) {
 // caught against values that exist rather than only against invented ones.
 func TestTheShippedHostileRowsStillRender(t *testing.T) {
 	for ident, want := range map[string]string{
-		"LIMN": `Cameri Air Base \[MIL\]`,
+		"KFLR": `\[Delete\] Homestead East Airstrip`,
 		"SDCP": "Hotel Sant\\`anna Heliport",
 	} {
 		d, ok := DescribeFields(ident)

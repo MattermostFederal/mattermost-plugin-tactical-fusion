@@ -23,6 +23,9 @@
             <a href="airfields.html">Airfields</a>
             <a href="cot.html">Cursor on Target</a>
             <a href="geojson.html" class="active">GeoJSON</a>
+            <a href="reports.html">Aviation Reports</a>
+            <a href="frequencies.html">Frequencies</a>
+            <a href="notes.html">Notes</a>
             <span class="nav-section">Guides</span>
             <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
@@ -71,18 +74,27 @@
         <pre class="copyable" tabindex="0"><code>```geojson
 {
   "type": "FeatureCollection",
+  "name": "Pearl Harbor resupply",
+  "description": "Supply point, route in and operating area for the exercise.",
   "features": [
     {
       "type": "Feature",
       "geometry": {"type": "Point", "coordinates": [-157.9483, 21.3353]},
-      "properties": {"name": "Forward supply point", "status": "active"}
+      "properties": {
+        "name": "Forward supply point",
+        "description": "Class I and III issue point, open 0600 to 2200 local.",
+        "status": "active"
+      }
     },
     {
       "type": "Feature",
       "geometry": {"type": "LineString", "coordinates": [
         [-157.9483, 21.3353], [-157.9300, 21.3400]
       ]},
-      "properties": {"name": "Primary route"}
+      "properties": {
+        "name": "Primary route",
+        "description": "Convoy route from the pier to the supply point."
+      }
     }
   ]
 }
@@ -209,8 +221,11 @@
         <h2 id="geojson-card">What the card shows</h2>
 
         <p>
-            A heading counting the features, then the geometry mix and anything not drawn. Then one
-            row per feature:
+            The collection's own <code>name</code> and <code>description</code> when it states
+            them, or the file's name for an attachment, then anything the document says about
+            itself. Then one row per feature, with its color as a dot before its name when it
+            asked for one. Click a feature to put it on the map: a point is centered at street
+            level, and a line or an area is framed.
         </p>
 
         <table>
@@ -219,10 +234,7 @@
             </thead>
             <tbody>
                 <tr><td>Name</td><td>From <code>properties.name</code>, then <code>title</code>, then <code>label</code>, then the feature's <code>id</code>, and otherwise "Feature 1", "Feature 2" and so on.</td></tr>
-                <tr><td>Geometry</td><td>The type, verbatim.</td></tr>
-                <tr><td>Position</td><td>For a lone point only. A polygon's corners are not positions anybody reported.</td></tr>
-                <tr><td>Size</td><td>Rings and points, for anything that is not a lone point.</td></tr>
-                <tr><td>Properties</td><td>Every key and value the feature carries, as text.</td></tr>
+                <tr><td>Description</td><td>From <code>properties.description</code>, as a line under the name.</td></tr>
                 <tr><td>Note</td><td>Only when the feature is not drawn, saying why.</td></tr>
             </tbody>
         </table>
@@ -317,7 +329,7 @@
             <p>
                 A symbol name points into an icon set. This plugin ships an offline basemap with
                 no icon set in it, so there is nothing for a name to point at. The property is
-                shown among the feature's properties like any other, so nothing is lost, but no
+                listed among the feature's properties in the sidebar, so nothing is lost, but no
                 icon is drawn for it.
             </p>
         </div>
@@ -332,8 +344,8 @@
         </p>
 
         <p>
-            Anything outside those is <strong>refused, not adjusted</strong>: the value is shown
-            as text among the feature's properties and that part of the shape is drawn in the
+            Anything outside those is <strong>refused, not adjusted</strong>: the value stays in
+            the document under <strong>As posted</strong> and that part of the shape is drawn in the
             theme's own style. Clamping a width of 4000 down to 10 would draw something the
             document did not ask for while claiming to honor it, and a value handed to the map
             unchecked is a value the browser will interpret.
@@ -350,7 +362,9 @@
 
         <p>
             <strong>Open details</strong> on the card opens the sidebar on the document. It
-            carries the same summary and feature list the card does, and it is where a point's
+            carries the same name, description and feature list the card does, adds each
+            feature's geometry type, its size in rings and points, its length or area and its
+            other properties, less the simplestyle keys, and it is where a point's
             position becomes a link into the
             <a href="location.html">coordinate tools</a>.
         </p>

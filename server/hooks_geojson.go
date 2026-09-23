@@ -33,35 +33,18 @@ var geoJSONFileSuffixes = []string{".geojson"}
 
 var geoJSONLooseFileSuffixes = []string{".json"}
 
-func (p *Plugin) geoJSONStamp(post *model.Post) (result *model.Post, stamped bool) {
+func (p *Plugin) geoJSONStamp(post *model.Post) (*model.Post, bool) {
+	return p.runStamper(post, p.geoJSONEnabled, errcode.HooksGeoJSONPanic,
+		"tactical-fusion: recovered from panic while reading a GeoJSON document; post left unmodified",
+		p.recognizeGeoJSON)
+}
+
+func (p *Plugin) recognizeGeoJSON(post *model.Post) (*model.Post, bool) {
 	api := p.API
-
-	var stripped *model.Post
-
-	// First statement, for the reason cotStamp's is: the span has to cover
-	// geoJSONSource, which calls the filestore, and geojson.Parse. There is no
-	// other recover on this path.
-	defer func() {
-		if r := recover(); r != nil {
-			result, stamped = stripped, false
-			if api != nil {
-				api.LogWarn("tactical-fusion: recovered from panic while reading a GeoJSON document; post left unmodified",
-					"error_code", errcode.HooksGeoJSONPanic, "panic", r)
-			}
-		}
-	}()
-
-	if stripped = stripStampedTypes(post); stripped != nil {
-		post = stripped
-	}
-
-	if !p.geoJSONEnabled() || post.Type != "" {
-		return stripped, false
-	}
 
 	source, found := p.geoJSONSource(post)
 	if !found {
-		return stripped, false
+		return nil, false
 	}
 
 	document, err := geojson.Parse([]byte(source.Text))
@@ -77,7 +60,7 @@ func (p *Plugin) geoJSONStamp(post *model.Post) (result *model.Post, stamped boo
 		}
 		p.reportGeoJSONRefusal(post, source, errcode.HooksGeoJSONUnreadable,
 			"The GeoJSON document you just posted could not be read, so it was left as ordinary text.")
-		return stripped, false
+		return nil, false
 	}
 
 	rungs := []stampRung{
@@ -93,7 +76,7 @@ func (p *Plugin) geoJSONStamp(post *model.Post) (result *model.Post, stamped boo
 	})
 	if updated == nil {
 		p.reportGeoJSONRefusal(post, source, code, geoJSONRefusalMessage(code))
-		return stripped, false
+		return nil, false
 	}
 
 	return updated, true
@@ -167,6 +150,10 @@ func (p *Plugin) geoJSONFileSource(post *model.Post) (geojson.Source, bool) {
 	// Reading on the union of the formats' switches would make an install with
 	// both file switches off ask the store about every one-attachment post.
 	if p.API == nil || !p.geoJSONFilesEnabled() || len(post.FileIds) != 1 {
+		return geojson.Source{}, false
+	}
+
+	if p.messageShowsAvReport(post) {
 		return geojson.Source{}, false
 	}
 

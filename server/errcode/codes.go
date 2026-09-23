@@ -113,6 +113,15 @@ const (
 	HooksGeoJSONFileUnreadable    = 11014
 	HooksGeoJSONFileNotOwned      = 11015
 
+	HooksAirfieldsPropsUnmeasurable = 11016
+	HooksAirfieldsPropsTooLarge     = 11017
+
+	HooksAvReportPanic             = 11018
+	HooksAvReportUnreadable        = 11019
+	HooksAvReportPropsUnmeasurable = 11020
+	HooksAvReportPropsTooLarge     = 11021
+	HooksAvReportRowsDropped       = 11022
+
 	// server/http.go (12000-12999)
 
 	// HTTPMethodNotAllowed is returned for anything other than GET on the
@@ -149,6 +158,8 @@ const (
 	HTTPPackageUnreadable = 12007
 
 	HTTPMapPostUnavailable = 12008
+
+	HTTPMapAirportUnavailable = 12009
 
 	// server/api.go (13000-13999)
 
@@ -195,6 +206,10 @@ const (
 	// the page does, because a refreshed database must not turn every link
 	// naming a retired code into a permanent failure.
 	APIAirportInvalid = 13009
+
+	APIAirportParamsConflict = 13010
+
+	APIAvReportInvalid = 13011
 
 	// server/preferences.go (14000-14999)
 
@@ -279,6 +294,16 @@ const (
 	// examples messages could not be posted to the channel.
 	CommandExamplesPostFailed = 16006
 
+	CommandNoteUsage = 16007
+
+	CommandNoteInvalid = 16008
+
+	CommandNoteTooLong = 16009
+
+	CommandNotePostFailed = 16010
+
+	CommandPostNotPermitted = 16011
+
 	// server/decorators/ (17000-17999)
 
 	// DTGPageParamsInvalid is returned by the date-time group page for a link
@@ -295,6 +320,14 @@ const (
 	// parameter is not four upper-case letters. An ident this build does not
 	// hold renders at 200 with a note instead.
 	AirportPageInvalid = 17002
+
+	AirportPageParamsConflict = 17003
+
+	AvReportPageInvalid = 17004
+
+	FrequencyPageInvalid = 17005
+
+	NotePageInvalid = 17006
 
 	// server/packages.go (18000-18999)
 
@@ -346,15 +379,22 @@ const (
 	BridgeFormatDisabled     = 19007
 	BridgePanic              = 19008
 
-	MCPInitFailed         = 20000
-	MCPManifestIncomplete = 20001
-	MCPRegistrationFailed = 20002
-	MCPUnregisterFailed   = 20003
-	MCPNotReady           = 20004
-	MCPToolPanic          = 20005
-	MCPLinkDeclined       = 20006
-	MCPConvertInvalid     = 20007
-	MCPAirportInvalid     = 20008
+	MCPInitFailed           = 20000
+	MCPManifestIncomplete   = 20001
+	MCPRegistrationFailed   = 20002
+	MCPUnregisterFailed     = 20003
+	MCPNotReady             = 20004
+	MCPToolPanic            = 20005
+	MCPLinkDeclined         = 20006
+	MCPConvertInvalid       = 20007
+	MCPAirportInvalid       = 20008
+	MCPAvReportInvalid      = 20009
+	MCPCotInvalid           = 20010
+	MCPGeoJSONInvalid       = 20011
+	MCPFrequencyInvalid     = 20012
+	MCPDateTimeInvalid      = 20013
+	MCPCreateCotInvalid     = 20014
+	MCPCreateGeoJSONInvalid = 20015
 )
 
 // AllCodes lists every code declared above. TestAllCodesComplete enforces that
@@ -381,6 +421,13 @@ var AllCodes = []int{
 	HooksGeoJSONPropertiesDropped,
 	HooksGeoJSONFileUnreadable,
 	HooksGeoJSONFileNotOwned,
+	HooksAirfieldsPropsUnmeasurable,
+	HooksAirfieldsPropsTooLarge,
+	HooksAvReportPanic,
+	HooksAvReportUnreadable,
+	HooksAvReportPropsUnmeasurable,
+	HooksAvReportPropsTooLarge,
+	HooksAvReportRowsDropped,
 
 	HTTPMethodNotAllowed,
 	HTTPDecoratePathInvalid,
@@ -391,6 +438,7 @@ var AllCodes = []int{
 	HTTPPackageUnknown,
 	HTTPPackageUnreadable,
 	HTTPMapPostUnavailable,
+	HTTPMapAirportUnavailable,
 
 	APINotAuthorized,
 	APINotFound,
@@ -402,6 +450,8 @@ var AllCodes = []int{
 	APIPreferencesClearFailed,
 	APIConvertInvalid,
 	APIAirportInvalid,
+	APIAirportParamsConflict,
+	APIAvReportInvalid,
 
 	PreferencesZoneNameTooLong,
 	PreferencesZoneNameControlCharacters,
@@ -422,10 +472,19 @@ var AllCodes = []int{
 	CommandExamplesNothingEnabled,
 	CommandExamplesTooLong,
 	CommandExamplesPostFailed,
+	CommandNoteUsage,
+	CommandNoteInvalid,
+	CommandNoteTooLong,
+	CommandNotePostFailed,
+	CommandPostNotPermitted,
 
 	DTGPageParamsInvalid,
 	LocationPageParamsInvalid,
 	AirportPageInvalid,
+	AirportPageParamsConflict,
+	AvReportPageInvalid,
+	FrequencyPageInvalid,
+	NotePageInvalid,
 
 	PackagesNoBundlePath,
 	PackagesBadName,
@@ -456,4 +515,11 @@ var AllCodes = []int{
 	MCPLinkDeclined,
 	MCPConvertInvalid,
 	MCPAirportInvalid,
+	MCPAvReportInvalid,
+	MCPCotInvalid,
+	MCPGeoJSONInvalid,
+	MCPFrequencyInvalid,
+	MCPDateTimeInvalid,
+	MCPCreateCotInvalid,
+	MCPCreateGeoJSONInvalid,
 }

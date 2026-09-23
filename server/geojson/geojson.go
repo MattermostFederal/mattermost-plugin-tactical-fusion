@@ -10,7 +10,9 @@ import (
 
 const (
 	maxFieldRunes = 128
-	maxNoteRunes  = 65536
+
+	maxDescriptionRunes = 1024
+	maxNoteRunes        = 65536
 
 	// maxInlineSrcRunes covers everything Parse read, for the same reason cot's
 	// does: the disclosure is what a reader opens to check the card against, so
@@ -50,6 +52,9 @@ func props(document *Document, src Source, withProperties bool) map[string]any {
 		"lead":    sanitizeText(src.Lead, maxNoteRunes),
 		"trail":   sanitizeText(src.Trail, maxNoteRunes),
 		"note":    document.Note,
+
+		"name":        document.Name,
+		"description": document.Description,
 
 		// A presence key, like properties_dropped: absent is the ordinary case,
 		// so only a document that cannot be placed carries anything.

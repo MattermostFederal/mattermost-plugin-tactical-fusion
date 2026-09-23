@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frequencies - Tactical Fusion</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="copy.js" defer></script>
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <h2>Tactical Fusion</h2>
+            <span class="version">Plugin Documentation</span>
+        </div>
+        <nav>
+            <span class="nav-section">Documentation</span>
+            <a href="help.html">Overview</a>
+            <span class="nav-section">Decorators</span>
+            <a href="dtg.html">Date-Time Groups</a>
+            <a href="location.html">Coordinates</a>
+            <a href="airfields.html">Airfields</a>
+            <a href="cot.html">Cursor on Target</a>
+            <a href="geojson.html">GeoJSON</a>
+            <a href="reports.html">Aviation Reports</a>
+            <a href="frequencies.html" class="active">Frequencies</a>
+            <a href="notes.html">Notes</a>
+            <span class="nav-section">Guides</span>
+            <a href="formats.html">Recognized Formats</a>
+            <a href="panel.html">The Sidebar Panel</a>
+            <a href="admin.html">Admin Settings</a>
+            <a href="commands.html">Slash Commands</a>
+            <a href="integration.html">Plugin Integration</a>
+            <span class="nav-section">Reference</span>
+            <a href="troubleshooting.html">Troubleshooting</a>
+            <a href="error-codes.html">Error Codes</a>
+        </nav>
+    </aside>
+
+    <main class="content">
+        <div class="breadcrumb">
+            <a href="help.html">Docs</a>
+            <span class="separator">/</span>
+            Frequencies
+        </div>
+
+        <h1>Frequencies</h1>
+        <p class="tagline">A radio frequency behind <code>FREQ:</code> becomes a link that names its band and any known allocation. The label is required, because a bare number is any decimal.</p>
+
+        <div class="alert alert-info">
+            <p>
+                Setting: <a href="admin.html#enable-frequency"><code>EnableFrequency</code></a>. To
+                see what your own server does, run
+                <a href="commands.html#examples"><code>/tactical-fusion examples</code></a>.
+                Every example below is one of that command's own rows.
+            </p>
+        </div>
+
+        <h2 id="frequency">The grammar</h2>
+
+        <p>
+            Write <code>FREQ:</code> in upper case, then the frequency. A decimal is megahertz
+            and a whole number is kilohertz, and either may carry its own unit:
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Write</th><th>Read as</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code class="copyable">FREQ:121.5</code></td><td>121.500 MHz, the aeronautical emergency frequency</td></tr>
+                <tr><td><code class="copyable">FREQ:118.3</code></td><td>118.300 MHz, VHF air band, a 25 kHz channel</td></tr>
+                <tr><td><code class="copyable">FREQ:243.0</code></td><td>243.000 MHz, the UHF military emergency frequency</td></tr>
+                <tr><td><code class="copyable">FREQ:118.300 MHZ</code></td><td>The same as <code>FREQ:118.300</code>; the unit stays in the link's label because it is what you wrote</td></tr>
+                <tr><td><code class="copyable">FREQ:8992 KHZ</code></td><td>8.992 MHz, HF aeronautical</td></tr>
+                <tr><td><code class="copyable">FREQ:8992</code></td><td>The same: a whole number is kilohertz</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            The label is <strong>consumed</strong>, as the airfield labels are: <code>FREQ:121.5</code>
+            becomes a link whose text is <code>121.5</code>. A <code>//</code> after the token,
+            the USMTF set terminator, stays outside the link. Two frequencies on one line both
+            link. Anything below 2 MHz or above 1,300 MHz is left alone, which covers every
+            aeronautical band and nothing that is only a number.
+        </p>
+
+        <h2 id="frequency-declined">Deliberately declined</h2>
+
+        <table>
+            <thead>
+                <tr><th>Input</th><th>Why</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>121.5</code> on its own</td><td>There is no bare grammar, permanently. A decimal is any decimal, and rewriting one is corruption.</td></tr>
+                <tr><td><code>freq:121.5</code></td><td>Lower case. The label is read in upper case only, as every other label is.</td></tr>
+                <tr><td><code>FREQ: 121.5</code></td><td>Nothing may follow the colon, for the reason the <a href="airfields.html#airfield-declined">airfield labels</a> give.</td></tr>
+                <tr><td><code>FREQ:121.5 GHZ</code></td><td>A unit this plugin does not read. The unit is consumed and the whole token refused, rather than linking <code>121.5</code> and leaving <code>GHZ</code> outside to contradict it.</td></tr>
+                <tr><td><code>FREQ:121.5 KHZ</code>, <code>FREQ:8992 MHZ</code></td><td>Outside 2 MHz to 1,300 MHz once the unit is applied.</td></tr>
+                <tr><td><code>FREQ:121.5678</code></td><td>Four decimals is finer than any channel plan. Refused whole rather than truncated to three.</td></tr>
+                <tr><td><code>FREQ:1090</code></td><td>1,090 kHz, below the range. Write <code>FREQ:1090.0</code> for 1,090 MHz, which links and is named as outside the aviation bands.</td></tr>
+            </tbody>
+        </table>
+
+        <h2 id="frequency-panel">What the hover and the panel show</h2>
+
+        <p>
+            Hover the link and the card says the frequency in megahertz and its band, and the
+            allocation when it is one the plugin names. Click it and the panel shows the token
+            as written, the band, the frequency in megahertz and in kilohertz with a copy button
+            on each, the channel spacing inside the VHF air band (25 kHz, or 8.33 kHz for a
+            frequency that is not a multiple of 25), and the allocation. Everything is derived
+            from the token in your browser; nothing is fetched and there is no API route. See
+            <a href="panel.html#panel">the sidebar panel</a> for the shared mechanics.
+        </p>
+
+        <h2 id="frequency-bands">The bands and the allocations</h2>
+
+        <table>
+            <thead>
+                <tr><th>Band</th><th>Range</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>HF aeronautical</td><td>2 to 30 MHz</td></tr>
+                <tr><td>VHF navigation</td><td>108 to 117.975 MHz</td></tr>
+                <tr><td>VHF air band</td><td>118 to 136.975 MHz</td></tr>
+                <tr><td>VHF marine</td><td>156 to 162.025 MHz</td></tr>
+                <tr><td>UHF military air band</td><td>225 to 400 MHz</td></tr>
+                <tr><td>Distress beacons</td><td>406 to 406.1 MHz</td></tr>
+            </tbody>
+        </table>
+
+        <table>
+            <thead>
+                <tr><th>Frequency</th><th>Allocation</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>121.500 MHz</td><td>Aeronautical emergency</td></tr>
+                <tr><td>123.100 MHz</td><td>Search and rescue on-scene</td></tr>
+                <tr><td>122.750 MHz</td><td>Air-to-air, fixed wing</td></tr>
+                <tr><td>123.450 MHz</td><td>Air-to-air</td></tr>
+                <tr><td>243.000 MHz</td><td>UHF military emergency</td></tr>
+                <tr><td>156.800 MHz</td><td>Marine channel 16, distress and calling</td></tr>
+                <tr><td>406.000 MHz</td><td>Distress beacon, COSPAS-SARSAT</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            A frequency inside no band is linked and named as outside the aviation bands this
+            plugin names, so the link still gives the readings. The bands follow the ITU Radio
+            Regulations' aeronautical allocations and the FAA Aeronautical Information Manual,
+            and the same table is held on both the server and the web app by a test.
+        </p>
+
+        <h2 id="frequency-settings">Settings and troubleshooting</h2>
+
+        <table>
+            <thead>
+                <tr><th>Setting</th><th>Governs</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><a href="admin.html#enable-frequency"><code>EnableFrequency</code></a></td><td>The whole decorator. There is no separate label switch, because the grammar is label-only by construction.</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            If a frequency you expected to be linked was not, see
+            <a href="troubleshooting.html#frequency-not-linked">Troubleshooting</a>.
+        </p>
+
+    </main>
+</div>
+</body>
+</html>

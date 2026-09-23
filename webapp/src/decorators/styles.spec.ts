@@ -2,7 +2,7 @@ import {expect, test} from '@playwright/test';
 import manifest from 'manifest';
 
 import {HOVER_CARD_CLASS, register, _resetForTesting} from './registry';
-import {buildDecoratorStyles} from './styles';
+import {DETAILS_LINK_LABEL, buildDecoratorStyles} from './styles';
 import type {Decorator} from './types';
 
 function fixture(type: string, color: string): Decorator<unknown> {
@@ -83,4 +83,18 @@ test('hides a hover card that renders nothing', () => {
 
     expect(css).toContain(`.${HOVER_CARD_CLASS}:empty`);
     expect(css).toContain('display: none;');
+});
+
+// A table's Details row points at whichever decorator owns the table, so its
+// link would otherwise take that decorator's color. One rule keyed on the link's
+// title gives every Details link the theme's button color instead.
+test('styles every Details link alike, whatever decorator it opens', () => {
+    register(fixture('alpha', '#111111'));
+
+    const css = buildDecoratorStyles();
+    const rule = css.slice(css.indexOf(`[title="${DETAILS_LINK_LABEL}"]`));
+
+    expect(css).toContain(`a[href^="/plugins/${manifest.id}/decorate/"][title="${DETAILS_LINK_LABEL}"]`);
+    expect(rule).toContain('color: var(--button-bg);');
+    expect(css.indexOf('#111111')).toBeLessThan(css.indexOf(`[title="${DETAILS_LINK_LABEL}"]`));
 });

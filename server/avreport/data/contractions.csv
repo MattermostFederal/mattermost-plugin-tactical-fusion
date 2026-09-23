@@ -1,0 +1,139 @@
+contraction,expansion
+ABV,above
+ACFT,aircraft
+ACT,active
+ACTV,active
+ADJ,adjacent
+AFLD,airfield
+AGL,above ground level
+ALS,approach lighting system
+ALT,altitude
+ALTN,alternate
+AP,airport
+APCH,approach
+APP,approach control
+ARPT,airport
+ARR,arrival
+ATC,air traffic control
+ATIS,automatic terminal information service
+AUTH,authorized
+AVBL,available
+AWOS,automated weather observing system
+BLW,below
+BTN,between
+BYD,beyond
+CAT,category
+CL,centerline
+CLSD,closed
+CNL,cancel
+COM,communications
+CONC,concrete
+CONST,construction
+CTC,contact
+CTL,control
+DEP,departure
+DIST,distance
+DLA,delay
+DLY,daily
+DME,distance measuring equipment
+DP,departure procedure
+DRCT,direct
+E,east
+EB,eastbound
+EFF,effective
+ELEV,elevation
+ENG,engine
+EQPT,equipment
+EXC,except
+FAC,facility
+FREQ,frequency
+FT,feet
+FTHR,further
+GND,ground
+GP,glide path
+GPS,global positioning system
+GS,glide slope
+HR,hour
+HRS,hours
+IAP,instrument approach procedure
+IFR,instrument flight rules
+ILS,instrument landing system
+IM,inner marker
+INOP,inoperative
+INST,instrument
+INTST,intensity
+LDG,landing
+LGT,light
+LGTD,lighted
+LGTS,lights
+LOC,localizer
+LTD,limited
+MAINT,maintenance
+MALS,medium intensity approach lighting system
+MAX,maximum
+MIN,minimum
+MM,middle marker
+MNM,minimum
+MSL,mean sea level
+N,north
+NAV,navigation
+NB,northbound
+NDB,non-directional beacon
+NE,northeast
+NM,nautical miles
+NW,northwest
+OBST,obstruction
+OM,outer marker
+OPN,open
+OPS,operations
+OTS,out of service
+PAPI,precision approach path indicator
+PARL,parallel
+PERM,permanent
+PJE,parachute jumping exercise
+PPR,prior permission required
+PROC,procedure
+RCLL,runway centerline lights
+REIL,runway end identifier lights
+RLLS,runway lead-in lighting system
+RMK,remark
+RSTD,restricted
+RTE,route
+RVR,runway visual range
+RWY,runway
+S,south
+SB,southbound
+SE,southeast
+SFC,surface
+SKED,scheduled
+SN,snow
+SR,sunrise
+SS,sunset
+SVC,service
+SW,southwest
+TDZ,touchdown zone
+TFC,traffic
+TFR,temporary flight restriction
+THR,threshold
+TIL,until
+TKOF,takeoff
+TWR,tower
+TWY,taxiway
+UNAVBL,unavailable
+UNLGTD,unlighted
+UNMNT,unmonitored
+UNREL,unreliable
+UNUSBL,unusable
+U/S,unserviceable
+VASI,visual approach slope indicator
+VFR,visual flight rules
+VOR,VHF omnidirectional range
+W,west
+WB,westbound
+WEF,with effect from
+WI,within
+WIE,with immediate effect
+WIP,work in progress
+WKDAYS,weekdays
+WKEND,weekend
+WX,weather

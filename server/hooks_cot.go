@@ -12,39 +12,18 @@ import (
 
 var cotFileSuffixes = []string{".xml", ".cot"}
 
-func (p *Plugin) cotStamp(post *model.Post) (result *model.Post, stamped bool) {
+func (p *Plugin) cotStamp(post *model.Post) (*model.Post, bool) {
+	return p.runStamper(post, p.cotEnabled, errcode.HooksCotPanic,
+		"tactical-fusion: recovered from panic while reading a Cursor on Target event; post left unmodified",
+		p.recognizeCot)
+}
+
+func (p *Plugin) recognizeCot(post *model.Post) (*model.Post, bool) {
 	api := p.API
-
-	// Declared before the defer so the recover can return it. A panic must not
-	// hand back a post still wearing a type this hook did not write, which is
-	// what returning nil from here would do.
-	var stripped *model.Post
-
-	// First statement on purpose. The span has to cover cotSource, which calls
-	// the filestore, and cot.Parse, not just the commit: decoratePost calls
-	// this from outside decorateMessage's recover, so there is no other one on
-	// the hook path.
-	defer func() {
-		if r := recover(); r != nil {
-			result, stamped = stripped, false
-			if api != nil {
-				api.LogWarn("tactical-fusion: recovered from panic while reading a Cursor on Target event; post left unmodified",
-					"error_code", errcode.HooksCotPanic, "panic", r)
-			}
-		}
-	}()
-
-	if stripped = stripStampedTypes(post); stripped != nil {
-		post = stripped
-	}
-
-	if !p.cotEnabled() || post.Type != "" {
-		return stripped, false
-	}
 
 	source, found := p.cotSource(post)
 	if !found {
-		return stripped, false
+		return nil, false
 	}
 
 	events, err := cot.Parse([]byte(source.Text))
@@ -55,7 +34,7 @@ func (p *Plugin) cotStamp(post *model.Post) (result *model.Post, stamped bool) {
 		}
 		p.reportCotRefusal(post, source, errcode.HooksCotUnreadable,
 			"The Cursor on Target event you just posted could not be read, so it was left as ordinary text.")
-		return stripped, false
+		return nil, false
 	}
 
 	// The ladder, widest rung first. Dropping the extension keys leaves exactly
@@ -74,7 +53,7 @@ func (p *Plugin) cotStamp(post *model.Post) (result *model.Post, stamped bool) {
 	})
 	if updated == nil {
 		p.reportCotRefusal(post, source, code, cotRefusalMessage(code))
-		return stripped, false
+		return nil, false
 	}
 
 	return updated, true
@@ -124,7 +103,7 @@ func (p *Plugin) cotFileSource(post *model.Post) (cot.Source, bool) {
 	}
 
 	// The visible message wins. See messageShowsGeoJSON.
-	if p.messageShowsGeoJSON(post) {
+	if p.messageShowsGeoJSON(post) || p.messageShowsAvReport(post) {
 		return cot.Source{}, false
 	}
 

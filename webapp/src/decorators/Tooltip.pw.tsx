@@ -1,6 +1,8 @@
 import React from 'react';
 
+import {NOTE_HOVER_MAX_WIDTH} from './note';
 import {HOVER_CARD_CLASS} from './registry';
+import {HOVER_MAX_WIDTH} from './Tooltip';
 import TooltipHarness from './TooltipHarness';
 
 import {expect, test} from '../../playwright/ct-coverage';
@@ -34,6 +36,22 @@ test('renders as an opaque card', async ({mount, page}) => {
     expect(style.radius).toBe('8px');
     expect(style.borderWidth).toBe('1px');
     expect(style.shadow).not.toBe('none');
+});
+
+test('caps the card at the framework width unless the decorator asks for more', async ({mount, page}) => {
+    const maxWidth = () => page.getByTestId('fixture-hover').locator('..').evaluate((el) => getComputedStyle(el).maxWidth);
+
+    const standard = await mount(<TooltipHarness href={`${PREFIX}fix?v=hello`}/>);
+    expect(await maxWidth()).toBe(`${HOVER_MAX_WIDTH}px`);
+    await standard.unmount();
+
+    await mount(
+        <TooltipHarness
+            href={`${PREFIX}fix?v=hello`}
+            hoverMaxWidth={NOTE_HOVER_MAX_WIDTH}
+        />,
+    );
+    expect(await maxWidth()).toBe(`${NOTE_HOVER_MAX_WIDTH}px`);
 });
 
 // Mattermost offers every link in a post, not just ours.

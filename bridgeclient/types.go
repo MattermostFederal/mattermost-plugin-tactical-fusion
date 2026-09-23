@@ -25,6 +25,18 @@ const (
 
 	// TypeAirport is a four-letter ICAO airfield ident, such as "PHIK".
 	TypeAirport = "airport"
+
+	// TypeAvReport is a METAR, SPECI, TAF or FAA-format NOTAM on one line,
+	// exactly as written.
+	TypeAvReport = "avreport"
+
+	// TypeFrequency is a radio frequency as an author writes it behind FREQ:,
+	// such as "121.5", "118.300 MHZ" or "8992 KHZ".
+	TypeFrequency = "frequency"
+
+	// TypeNote is markdown, up to 1,000 characters, that the link's hover card
+	// and sidebar render with Mattermost's own markdown renderer.
+	TypeNote = "note"
 )
 
 // Reasons a Link request is declined, carried in ErrorResponse.Reason.
@@ -69,7 +81,7 @@ type DecorateResponse struct {
 
 // LinkRequest asks for one decorator link for a token of a known type.
 type LinkRequest struct {
-	// Type is TypeDTG, TypeLocation or TypeAirport.
+	// Type is TypeDTG, TypeLocation, TypeAirport, TypeAvReport or TypeFrequency.
 	Type string `json:"type"`
 
 	// Token is the value alone, with no field label: "PHIK" rather than
@@ -100,6 +112,11 @@ type LinkResponse struct {
 
 	// Label is the link text before markdown escaping.
 	Label string `json:"label"`
+
+	// FitsPost reports whether Markdown alone fits the smallest post size limit
+	// any Mattermost server enforces (4,000 runes). A note's markdown travels
+	// URL-encoded, so its link can outgrow a post.
+	FitsPost bool `json:"fits_post"`
 }
 
 // InfoResponse describes what the installed plugin offers.

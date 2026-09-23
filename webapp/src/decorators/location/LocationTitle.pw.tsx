@@ -9,7 +9,7 @@ test('names the coordinate while the panel is showing it', async ({mount, page})
     await stubPreferencesRoute(page);
     await mount(<TitleHarness/>);
 
-    await expect(page.getByTestId('rhs-title')).toHaveText('Location');
+    await expect(page.getByTestId('rhs-title')).toHaveText('Location: 34.0561,-118.2500');
 });
 
 // The editor takes the panel over, so a header still reading "Location" would
@@ -32,5 +32,5 @@ test('follows it back out again', async ({mount, page}) => {
 
     await page.getByRole('button', {name: 'Back'}).click();
 
-    await expect(page.getByTestId('rhs-title')).toHaveText('Location');
+    await expect(page.getByTestId('rhs-title')).toHaveText('Location: 34.0561,-118.2500');
 });

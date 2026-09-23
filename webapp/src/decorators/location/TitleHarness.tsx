@@ -30,7 +30,7 @@ const TitleHarness: React.FC = () => {
 
     return (
         <div>
-            <h1 data-testid='rhs-title'><LocationTitle/></h1>
+            <h1 data-testid='rhs-title'><LocationTitle payload={payload}/></h1>
             <LocationPanel payload={payload}/>
         </div>
     );

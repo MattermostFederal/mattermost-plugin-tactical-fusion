@@ -37,10 +37,10 @@ func TestExamplesPostOneMessagePerSet(t *testing.T) {
 
 	messages := runExamplePosts(t, p)
 
-	want := len(exampleSetOrder) + len(cotExampleOrder) + p.geoJSONExampleCount()
+	want := len(exampleSetOrder) + len(cotExampleOrder) + p.geoJSONExampleCount() + p.tfrExampleCount() + len(noteExamples)
 	if len(messages) != want {
-		t.Fatalf("got %d messages for %d sets plus %d Cursor on Target events plus %d GeoJSON documents",
-			len(messages), len(exampleSetOrder), len(cotExampleOrder), p.geoJSONExampleCount())
+		t.Fatalf("got %d messages for %d sets plus %d Cursor on Target events plus %d GeoJSON documents plus %d TFRs plus %d notes",
+			len(messages), len(exampleSetOrder), len(cotExampleOrder), p.geoJSONExampleCount(), p.tfrExampleCount(), len(noteExamples))
 	}
 
 	for i, key := range exampleSetOrder {
@@ -62,18 +62,18 @@ func TestExamplesPostOneMessagePerSet(t *testing.T) {
 	}
 }
 
-// Read from the registry rather than listed, so a decorator added without a set
-// fails here rather than being quietly left out of the demonstration.
 func TestExamplesCoverEveryRegisteredDecorator(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 	joined := strings.Join(runExamplePosts(t, p), "\n")
+	formatted := strings.Join(p.formatExampleMessages(), "\n")
 
 	for _, d := range p.decorators.All() {
-		if !strings.Contains(joined, "/decorate/"+d.Type()+"?") {
+		link := "/decorate/" + d.Type() + "?"
+		if !strings.Contains(joined, link) {
 			t.Errorf("no example links to the %q decorator", d.Type())
 		}
-		if _, ok := exampleSets[d.Type()]; !ok {
-			t.Errorf("the %q decorator has no example set", d.Type())
+		if _, ok := exampleSets[d.Type()]; !ok && !strings.Contains(formatted, link) {
+			t.Errorf("the %q decorator has neither an example set nor a formatted example", d.Type())
 		}
 	}
 

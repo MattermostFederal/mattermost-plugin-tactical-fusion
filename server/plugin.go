@@ -8,10 +8,13 @@ import (
 	"github.com/mattermost/mattermost/server/public/plugin"
 	"github.com/pkg/errors"
 
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/avreport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/frequency"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/note"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
@@ -106,11 +109,44 @@ func (p *Plugin) airportFormats() airport.Formats {
 
 	return airport.Formats{
 		Airfield: config.EnableAirport,
+		IATA:     config.EnableAirport && config.EnableAirportIATA,
 
 		// ANDed with the parent, the way locationMaps is: a message is only
 		// ever expanded for an airfield code this plugin decorated.
 		Table: config.EnableAirport && config.EnableAirportTable,
+		Route: config.EnableAirport && config.EnableAirportRoute && p.locationMaps().Inline,
 	}
+}
+
+func (p *Plugin) avreportFormats() avreport.Formats {
+	config := p.getConfiguration()
+
+	return avreport.Formats{
+		METAR: config.EnableAvReport && config.EnableAvReportMETAR,
+		TAF:   config.EnableAvReport && config.EnableAvReportTAF,
+		NOTAM: config.EnableAvReport && config.EnableAvReportNOTAM,
+		Table: config.EnableAvReport && config.EnableAvReportTable,
+	}
+}
+
+func (p *Plugin) frequencyFormats() frequency.Formats {
+	return frequency.Formats{Frequency: p.getConfiguration().EnableFrequency}
+}
+
+func (p *Plugin) avreportCardEnabled() bool {
+	config := p.getConfiguration()
+	return config.EnableAvReport && config.EnableAvReportCard
+}
+
+func (p *Plugin) avreportRendersEnabled() bool {
+	return p.avreportCardEnabled() || p.avreportFormats().Table
+}
+
+func (p *Plugin) avreportSurfaceEnabled(source avreport.Source) bool {
+	if source.Kind == avreport.SourceMessage {
+		return p.avreportRendersEnabled()
+	}
+	return p.avreportCardEnabled()
 }
 
 // locationMaps reports which surfaces the admin has left drawing a map.
@@ -184,6 +220,9 @@ func (p *Plugin) OnActivate() error {
 		&dtg.Decorator{Enabled: p.dtgFormats},
 		&location.Decorator{Enabled: p.locationFormats, Maps: p.locationMaps, Packages: p.packageNames},
 		&airport.Decorator{Enabled: p.airportFormats},
+		&avreport.Decorator{Enabled: p.avreportFormats},
+		&frequency.Decorator{Enabled: p.frequencyFormats},
+		&note.Decorator{},
 	)
 	// Expected to stay uncovered: Register only rejects a duplicate or empty
 	// type, and there is one decorator here with a constant one. It is what

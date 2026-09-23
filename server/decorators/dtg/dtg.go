@@ -217,8 +217,8 @@ var isoCanonicalRe = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|
 // Sane bounds for the "t" parameter: 1970 through 2200. Wide enough for any
 // real DTG, narrow enough that a garbage value cannot reach time formatting.
 const (
-	minInstantMillis int64 = 0
-	maxInstantMillis int64 = 7_258_118_400_000
+	MinInstantMillis int64 = 0
+	MaxInstantMillis int64 = 7_258_118_400_000
 )
 
 // RenderPage renders the timezone table for these params.
@@ -283,7 +283,7 @@ type pageData struct {
 // class rather than the individual combinations.
 func validateParams(params url.Values) (pageData, bool) {
 	millis, err := strconv.ParseInt(params.Get("t"), 10, 64)
-	if err != nil || millis < minInstantMillis || millis > maxInstantMillis {
+	if err != nil || millis < MinInstantMillis || millis > MaxInstantMillis {
 		return pageData{}, false
 	}
 	instant := time.UnixMilli(millis).UTC()

@@ -1,7 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react';
 
 import {decoratePathPrefix} from './decorators/registry';
-import {getSelection, setSelection, subscribe} from './decorators/selection';
+import {subscribe} from './decorators/selection';
 
 /**
  * Harness for the plugin entry point.
@@ -29,11 +29,6 @@ export type Recorded = {
     tooltipComponentName?: string;
     postTypes?: string[];
     postBodyComponentNames?: string[];
-    headerIconName?: string;
-    headerDropdownText?: string;
-    headerTooltip?: string;
-    dispatched?: unknown[];
-    selectionAtDispatch?: unknown[];
     error?: string;
 };
 
@@ -104,9 +99,6 @@ const IndexHarness: React.FC = () => {
 
                 const called: string[] = [];
                 const order: string[] = [];
-                const dispatched: unknown[] = [];
-                const selectionAtDispatch: unknown[] = [];
-                let headerAction: (() => void) | undefined;
 
                 // Every registration hands back an id, as the real registry
                 // does, so uninitialize has something to give back. The ids are
@@ -138,19 +130,6 @@ const IndexHarness: React.FC = () => {
                     unregisterPostTypeComponent: ((componentId: string) => {
                         setUnregistered((ids) => [...ids, componentId]);
                     }) as never,
-                    registerChannelHeaderButtonAction: ((
-                        icon: unknown,
-                        action: () => void,
-                        dropdownText: string,
-                        tooltipText: string,
-                    ) => {
-                        order.push('header');
-                        headerAction = action;
-                        result.headerIconName = componentName(icon);
-                        result.headerDropdownText = dropdownText;
-                        result.headerTooltip = tooltipText;
-                        return 'header-id';
-                    }) as never,
 
                     // Mattermost does not remove a plugin's components when it
                     // re-registers, so what lands here is the whole of the
@@ -170,15 +149,7 @@ const IndexHarness: React.FC = () => {
                 });
 
                 const recordingStore = {
-                    dispatch: (action: unknown) => {
-                        dispatched.push(action);
-
-                        // What the selection was at the moment of dispatch. The
-                        // header action clears before it toggles, so a null here
-                        // is what proves the order.
-                        selectionAtDispatch.push(getSelection());
-                        return action;
-                    },
+                    dispatch: (action: unknown) => action,
                 };
 
                 registry.current = recordingRegistry;
@@ -186,14 +157,8 @@ const IndexHarness: React.FC = () => {
 
                 await instance.initialize(recordingRegistry, recordingStore);
 
-                // Something to clear, so "cleared before toggling" is visible.
-                setSelection({type: 'dtg', payload: {}});
-                headerAction?.();
-
                 result.called = called;
                 result.order = order;
-                result.dispatched = dispatched;
-                result.selectionAtDispatch = selectionAtDispatch;
             } catch (err) {
                 result.error = (err as Error)?.message ?? String(err);
             }

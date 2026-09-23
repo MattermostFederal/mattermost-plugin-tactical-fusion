@@ -5,6 +5,8 @@ import type {CotEvent} from './types';
 import {accuracyMeters, affiliationColor, affiliationWord, isLinkable, statedColor} from './types';
 
 import type {Camera} from '../decorators/location/map/camera';
+import type {MapFocus} from '../decorators/location/map/focus';
+import {focusOn} from '../decorators/location/map/focus';
 import LocationMap, {INLINE_MAP_HEIGHT, MAP_HEIGHT} from '../decorators/location/map/LocationMap';
 import {useNearViewport} from '../decorators/location/map/near_viewport';
 import type {MapEllipse} from '../decorators/location/map/overlay';
@@ -227,6 +229,23 @@ export function _shapeForTesting( // eslint-disable-line no-underscore-dangle, @
     return shapeFor(event);
 }
 
+export function focusFor(event: CotEvent, seq: number): MapFocus | null {
+    if (drawableEvents([event]).length === 0) {
+        return null;
+    }
+
+    const lat = Number(event.lat);
+    const lon = Number(event.lon);
+    if (event.lon === '' || !Number.isFinite(lat) || !Number.isFinite(lon)) {
+        return null;
+    }
+
+    const outline = outlineOf(event);
+    const positions = outline === undefined ? [{lat, lon}] : [...outline.points, {lat, lon}];
+
+    return focusOn(positions, seq);
+}
+
 export function drawsNothing(events: readonly CotEvent[]): boolean {
     return markersFor(drawableEvents(events)).length === 0;
 }
@@ -245,8 +264,9 @@ export const CotMapCanvas: React.FC<{
     fill?: boolean;
     inline?: boolean;
     openAt?: Camera;
+    focus?: MapFocus;
 }> = ({
-    events, pageEnabled, postId, fill, inline, openAt,
+    events, pageEnabled, postId, fill, inline, openAt, focus,
 }) => {
     const drawn = drawableEvents(events);
     const markers = markersFor(drawn);
@@ -283,6 +303,7 @@ export const CotMapCanvas: React.FC<{
             fill={fill}
             inline={inline}
             openAt={openAt}
+            focus={focus}
         />
     );
 };
@@ -310,15 +331,14 @@ const CotMap: React.FC<{
     events: readonly CotEvent[];
     surface: 'card' | 'panel';
     postId?: string;
-}> = ({events, surface, postId}) => {
+    focus?: MapFocus;
+}> = ({events, surface, postId, focus}) => {
     const {preferences} = usePreferences();
     const {features} = useFeatures();
     const [box, setBox] = useState<HTMLDivElement | null>(null);
     const near = useNearViewport(box);
 
-    const wanted = surface === 'card' ?
-        isRowVisible(preferences.location.hiddenRows, INLINE_ID) :
-        isSectionVisible(preferences.cot.hiddenSections, 'map');
+    const wanted = surface === 'card' ? isRowVisible(preferences.location.hiddenRows, INLINE_ID) : isSectionVisible(preferences.cot.hiddenSections, 'map');
 
     // Both surfaces, one switch, deliberately: TestCotHasNoMapSettingOfItsOwn
     // is where it gets revisited. GeoJSON reads mapPanel for its panel
@@ -339,6 +359,7 @@ const CotMap: React.FC<{
                     pageEnabled={features.mapPage}
                     postId={postId}
                     inline={surface === 'card'}
+                    focus={focus}
                 />
             ) : <div style={surface === 'card' ? styles.reservedInline : styles.reserved}/>}
         </div>

@@ -12,92 +12,87 @@ import (
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 )
 
-// The airfield payload is a worse seam to get wrong than the conversion one.
-// Every field is read by its literal spelling, so a drifted name reads
-// undefined and the panel renders a blank row where an airfield name should be,
-// with nothing logged on either side.
+var webappFieldPattern = regexp.MustCompile(`(?m)^\s+(\w+)(\??):\s*([^;]+);`)
+
 func TestWebappAirportShapeMatches(t *testing.T) {
-	block := webappInterface(t, "AirportDetails")
+	assertWebappInterfaceMatches(t, reflect.TypeFor[airportResponse](), map[reflect.Type]bool{})
+}
+
+func assertWebappInterfaceMatches(t *testing.T, goType reflect.Type, seen map[reflect.Type]bool) {
+	t.Helper()
+
+	if seen[goType] {
+		return
+	}
+	seen[goType] = true
+
+	name := webappInterfaceName(goType)
+	block := webappInterface(t, name)
 
 	var webapp []string
-	for _, m := range regexp.MustCompile(`(?m)^\s+(\w+):\s*(\w+);`).FindAllStringSubmatch(block, -1) {
-		webapp = append(webapp, m[1]+" "+m[2])
+	for _, m := range webappFieldPattern.FindAllStringSubmatch(block, -1) {
+		webapp = append(webapp, m[1]+m[2]+" "+strings.Join(strings.Fields(m[3]), " "))
 	}
 
 	var server []string
-	for field := range reflect.TypeFor[airportDetails]().Fields() {
+	for field := range goType.Fields() {
 		tag, ok := field.Tag.Lookup("json")
 		if !ok {
-			t.Fatalf("airportDetails.%s has no json tag, so the webapp cannot read it", field.Name)
+			t.Fatalf("%s.%s has no json tag, so the webapp cannot read it", goType.Name(), field.Name)
 		}
-		if field.Type.Kind() != reflect.String {
-			t.Fatalf("airportDetails.%s is a %s; every field here is already rendered and "+
-				"the webapp reads them all as strings", field.Name, field.Type.Kind())
+		key := strings.Split(tag, ",")[0]
+		optional := ""
+		if strings.Contains(tag, ",omitempty") {
+			optional = "?"
 		}
-		server = append(server, strings.Split(tag, ",")[0]+" string")
+		tsType, nested := webappTypeOf(t, goType.Name()+"."+field.Name, field.Type)
+		server = append(server, key+optional+" "+tsType)
+		for _, n := range nested {
+			assertWebappInterfaceMatches(t, n, seen)
+		}
 	}
 
 	if !slices.Equal(server, webapp) {
-		t.Errorf("the airfield payload is %v here and %v in the webapp.\n"+
-			"They must agree field for field, type for type, and in order.",
-			server, webapp)
+		t.Errorf("%s is %v here and %v in the webapp.\n"+
+			"They must agree field for field, type for type, optionality for optionality, and in order.",
+			name, server, webapp)
 	}
 }
 
-// The coordinate is what every airfield surface draws and links with, so a
-// rename on either side alone would leave the map undrawn with nothing logged.
-func TestWebappAirportCoordinateShapeMatches(t *testing.T) {
-	block := webappInterface(t, "AirportCoordinate")
-
-	var webapp []string
-	for _, m := range regexp.MustCompile(`(?m)^\s+(\w+):\s*(\w+);`).FindAllStringSubmatch(block, -1) {
-		webapp = append(webapp, m[1]+" "+m[2])
-	}
-
-	var server []string
-	for field := range reflect.TypeFor[airportCoordinate]().Fields() {
-		tag, ok := field.Tag.Lookup("json")
-		if !ok {
-			t.Fatalf("airportCoordinate.%s has no json tag", field.Name)
-		}
-		if field.Type.Kind() != reflect.String {
-			t.Fatalf("airportCoordinate.%s is a %s, and the webapp reads them all as strings",
-				field.Name, field.Type.Kind())
-		}
-		server = append(server, strings.Split(tag, ",")[0]+" string")
-	}
-
-	if !slices.Equal(server, webapp) {
-		t.Errorf("the airfield coordinate is %v here and %v in the webapp", server, webapp)
-	}
+func webappInterfaceName(goType reflect.Type) string {
+	name := goType.Name()
+	return strings.ToUpper(name[:1]) + name[1:]
 }
 
-// The discriminated shape is what keeps an unknown ident from drawing at Null
-// Island, so the discriminator and the two optional halves have to survive a
-// rename on either side.
-func TestWebappAirportResponseShapeMatches(t *testing.T) {
-	block := webappInterface(t, "AirportResponse")
+func webappTypeOf(t *testing.T, where string, goType reflect.Type) (string, []reflect.Type) {
+	t.Helper()
 
-	var webapp []string
-	for _, m := range regexp.MustCompile(`(?m)^\s+(\w+)\??:\s*(\w+);`).FindAllStringSubmatch(block, -1) {
-		webapp = append(webapp, m[1])
-	}
-
-	var server []string
-	for field := range reflect.TypeFor[airportResponse]().Fields() {
-		tag, ok := field.Tag.Lookup("json")
-		if !ok {
-			t.Fatalf("airportResponse.%s has no json tag", field.Name)
+	switch goType.Kind() {
+	case reflect.String:
+		return "string", nil
+	case reflect.Bool:
+		return "boolean", nil
+	case reflect.Struct:
+		return webappInterfaceName(goType), []reflect.Type{goType}
+	case reflect.Pointer:
+		return webappTypeOf(t, where, goType.Elem())
+	case reflect.Slice:
+		inner, nested := webappTypeOf(t, where, goType.Elem())
+		return inner + "[]", nested
+	case reflect.Array:
+		inner, nested := webappTypeOf(t, where, goType.Elem())
+		parts := make([]string, goType.Len())
+		for i := range parts {
+			parts[i] = inner
 		}
-		server = append(server, strings.Split(tag, ",")[0])
+		return "[" + strings.Join(parts, ", ") + "]", nested
 	}
 
-	if !slices.Equal(server, webapp) {
-		t.Errorf("the airfield response is %v here and %v in the webapp", server, webapp)
-	}
+	t.Fatalf("%s is a %s, which the webapp has no reading for", where, goType.Kind())
+	return "", nil
+}
 
-	// The two derived halves must be omitempty, or an ident this build does not
-	// hold ships a zeroed coordinate and the webapp builds a link from it.
+func TestTheDerivedHalvesOfTheAirportResponseCanBeAbsent(t *testing.T) {
 	for _, name := range []string{"Airport", "Coordinate"} {
 		field, ok := reflect.TypeFor[airportResponse]().FieldByName(name)
 		if !ok {
@@ -111,6 +106,11 @@ func TestWebappAirportResponseShapeMatches(t *testing.T) {
 			t.Errorf("airportResponse.%s is a %s, not a pointer, so it cannot be absent",
 				name, field.Type.Kind())
 		}
+	}
+
+	ends, _ := reflect.TypeFor[airportRunway]().FieldByName("Ends")
+	if ends.Type.Kind() != reflect.Pointer || !strings.Contains(ends.Tag.Get("json"), ",omitempty") {
+		t.Error("airportRunway.Ends must be absent rather than zeroed when an end is unknown")
 	}
 }
 
@@ -133,7 +133,6 @@ func webappInterface(t *testing.T, name string) string {
 	return block[1]
 }
 
-// The decorator type is the URL path segment, so the two sides cannot differ.
 func TestWebappAirportTypeMatches(t *testing.T) {
 	path := filepath.Join("..", "webapp", "src", "decorators", "airport", "index.ts")
 	raw, err := os.ReadFile(path) // #nosec G304 -- fixed, repo-relative source path
@@ -146,26 +145,25 @@ func TestWebappAirportTypeMatches(t *testing.T) {
 	}
 }
 
-// The ident shape is written in both languages and nothing held the two
-// together, which is the drift that is silent by construction: fromParams
-// returns null, the click handler reads that as "not one of ours" and stands
-// aside, the browser opens the standalone page, which renders correctly, and
-// nothing is logged on either side. The only symptom is that clicking an
-// airfield code opens a page instead of the sidebar.
 func TestWebappAirportIdentShapeMatches(t *testing.T) {
-	path := filepath.Join("..", "webapp", "src", "decorators", "airport", "airport.ts")
-	raw, err := os.ReadFile(path) // #nosec G304 -- fixed, repo-relative source path
-	if err != nil {
-		t.Fatalf("could not read %s: %v", path, err)
-	}
+	raw := readWebappFile(t, "decorators", "airport", "airport.ts")
 
-	found := regexp.MustCompile(`export const IDENT = /\^(.+)\$/;`).FindStringSubmatch(string(raw))
-	if found == nil {
-		t.Fatalf("no `export const IDENT = /^...$/;` in the webapp's airport/airport.ts; if it " +
-			"was renamed, point this test at the new name rather than deleting it")
+	for name, want := range map[string]string{"IDENT": airport.IdentBodyExpr(), "IATA": airport.IATABodyExpr()} {
+		found := regexp.MustCompile(`export const ` + name + ` = /\^(.+)\$/;`).FindStringSubmatch(raw)
+		if found == nil {
+			t.Fatalf("no `export const %s = /^...$/;` in the webapp's airport/airport.ts; if it "+
+				"was renamed, point this test at the new name rather than deleting it", name)
+		}
+		if found[1] != want {
+			t.Errorf("the %s shape is %q here and %q in the webapp", name, want, found[1])
+		}
 	}
+}
 
-	if found[1] != airport.IdentBodyExpr() {
-		t.Errorf("the ident shape is %q here and %q in the webapp", airport.IdentBodyExpr(), found[1])
+func TestWebappAirportMapKindMatches(t *testing.T) {
+	raw := readWebappFile(t, "decorators", "airport", "map.ts")
+
+	if want := "AIRPORT_MAP_KIND = '" + airport.MapKind + "'"; !strings.Contains(raw, want) {
+		t.Errorf("the webapp does not declare %s", want)
 	}
 }

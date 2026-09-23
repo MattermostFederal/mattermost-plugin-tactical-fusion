@@ -23,6 +23,9 @@
             <a href="airfields.html">Airfields</a>
             <a href="cot.html">Cursor on Target</a>
             <a href="geojson.html">GeoJSON</a>
+            <a href="reports.html">Aviation Reports</a>
+            <a href="frequencies.html">Frequencies</a>
+            <a href="notes.html">Notes</a>
             <span class="nav-section">Guides</span>
             <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
@@ -141,6 +144,41 @@
                     <td>Something already attached to the post could not be converted to JSON, so the size of the post's properties could not be checked and nothing was rendered. This is not caused by the event and cannot be fixed by posting a smaller one: look for another integration writing a value it cannot serialize.</td>
                 </tr>
                 <tr>
+                    <td><code>TF-11016</code></td>
+                    <td><code>HooksAirfieldsPropsUnmeasurable</code> <span class="level">warn</span></td>
+                    <td><code>the post's props could not be measured; posting unstamped</code> A message of nothing but airfield codes was about to get its route map, but something already on the post's props would not encode, so the size gate could not run. The links are written and the map is not. Not the author's doing: the value that will not encode came from elsewhere on the post.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-11017</code></td>
+                    <td><code>HooksAirfieldsPropsTooLarge</code> <span class="level">warn</span></td>
+                    <td><code>the parsed document would exceed the maximum post props size; posting unstamped</code> The route's props, added to what the post already carried, would cross the props budget. The links are written and the map is not. A route of up to 64 airfields fits on its own; this fires when another integration has already filled most of the budget.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-11018</code></td>
+                    <td><code>HooksAvReportPanic</code> <span class="level">warn</span></td>
+                    <td><code>recovered from panic while reading an aviation report; post left unmodified</code> The report decoder panicked. The post goes out with the message as written and no card, and decoration of the rest of the message still runs. The recover is the one all three card formats share; a panic here is a bug, so report the log line.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-11019</code></td>
+                    <td><code>HooksAvReportUnreadable</code> <span class="level">warn</span></td>
+                    <td><code>an aviation report could not be read; posting unstamped</code> A fenced block labeled <code>metar</code>, <code>speci</code>, <code>taf</code> or <code>notam</code> did not decode. The author is told the same in a message only they see. A multi-line message with no label that fails to decode is left alone silently and logs nothing, because ordinary text reaches that reader constantly.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-11020</code></td>
+                    <td><code>HooksAvReportPropsUnmeasurable</code> <span class="level">warn</span></td>
+                    <td><code>the post's props could not be measured; posting unstamped</code> A report was about to get its card, but something already on the post's props would not encode, so the size gate could not run. The author is told. The value that will not encode came from elsewhere on the post.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-11021</code></td>
+                    <td><code>HooksAvReportPropsTooLarge</code> <span class="level">warn</span></td>
+                    <td><code>the parsed document would exceed the maximum post props size; posting unstamped</code> Even with the decoded rows dropped, the report's props would cross the props budget, so the post goes out as ordinary text and the author is told. A report on its own always fits; this fires when another integration has already filled most of the budget.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-11022</code></td>
+                    <td><code>HooksAvReportRowsDropped</code> <span class="level">warn</span></td>
+                    <td><code>the decoded report carried more rows than the post props map has room for; stamping without them</code> The card was rendered on its lower rung: the report as posted, its summary and its station are kept, and the decoded rows, periods, remarks and undecoded groups are dropped. The card says so.</td>
+                </tr>
+                <tr>
                     <td><code>TF-11009</code></td>
                     <td><code>HooksGeoJSONPanic</code> <span class="level">Warn</span></td>
                     <td>Reading a GeoJSON document panicked. The post was created unchanged, so nothing was lost, but the document was not rendered. Please report it with the message that caused it.</td>
@@ -226,6 +264,11 @@
                     <td><code>Not found.</code> A package was discovered and then could not be opened, which usually means it moved or its permissions changed between the two.</td>
                 </tr>
                 <tr>
+                    <td><code>TF-12009</code></td>
+                    <td><code>HTTPMapAirportUnavailable</code> <span class="level">404</span></td>
+                    <td><code>There is no map here.</code> The one answer <code>/map?airport=</code> gives for every way it can decline: a value that is not four upper-case letters, and an airfield code this build's database does not hold. One code, as the post address has one, so the address cannot be used to probe the database a code at a time.</td>
+                </tr>
+                <tr>
                     <td><code>TF-12008</code></td>
                     <td><code>HTTPMapPostUnavailable</code> <span class="level">404</span></td>
                     <td><code>There is no map here.</code> The one answer <code>/map?post=</code> gives for every way it can decline: no such post, a post in a channel you may not read, a post this plugin never rendered, and a post whose card has stood down because it was edited or its attachment is gone. They are deliberately one code, so the address cannot be used to find out which.</td>
@@ -295,7 +338,17 @@
                 <tr>
                     <td><code>TF-13009</code></td>
                     <td><code>APIAirportInvalid</code> <span class="level">400</span></td>
-                    <td><code>That is not an airfield code this plugin issued.</code> The airfield endpoint was given something that is not four upper-case letters. An airfield code this build's database simply does not hold is <em>not</em> this: that answers normally and says the code is not in the database, so that refreshing the data cannot turn every message naming a retired code into a broken link.</td>
+                    <td><code>That is not an airfield code this plugin issued.</code> The airfield endpoint was given a <code>v</code> that is not four upper-case letters or an <code>i</code> that is not three. An airfield code this build's database simply does not hold is <em>not</em> this: that answers normally and says the code is not in the database, so that refreshing the data cannot turn every message naming a retired code into a broken link.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-13010</code></td>
+                    <td><code>APIAirportParamsConflict</code> <span class="level">400</span></td>
+                    <td><code>An airfield link names exactly one code.</code> The request carried both <code>v</code> (an ICAO ident) and <code>i</code> (an IATA code), or neither. A link this plugin writes carries one of the two, so a request with both was assembled by hand and the two could disagree about which airfield is meant.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-13011</code></td>
+                    <td><code>APIAvReportInvalid</code> <span class="level">400</span></td>
+                    <td><code>That is not an aviation report this plugin issued.</code> The report endpoint was given a <code>v</code> that does not decode as a report, or a <code>t</code> that does not reproduce the report's own day, hour and minute. A link this plugin writes always does both, so the link was edited by hand.</td>
                 </tr>
             </tbody>
         </table>
@@ -417,6 +470,31 @@
                     <td><code>CommandExamplesPostFailed</code></td>
                     <td><code>Could not post the examples to this channel.</code> or <code>N of M messages could not be posted, so the examples are incomplete.</code> The first means nothing was written; the second means some messages landed and others did not. Both are also logged. A read-only or archived channel is the usual cause.</td>
                 </tr>
+                <tr>
+                    <td><code>TF-16007</code></td>
+                    <td><code>CommandNoteUsage</code></td>
+                    <td><code>Usage: /tactical-fusion note &lt;label&gt; | &lt;markdown&gt;.</code> <a href="commands.html#note"><code>note</code></a> needs a label, a <code>|</code>, and some markdown. The label is one line and may not contain <code>|</code>, since the first <code>|</code> is where the markdown starts.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-16008</code></td>
+                    <td><code>CommandNoteInvalid</code></td>
+                    <td><code>A note is up to 1000 characters of markdown.</code> The markdown is longer than a <a href="notes.html">note</a> may carry. Split it into two notes, or post it as a message.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-16009</code></td>
+                    <td><code>CommandNoteTooLong</code></td>
+                    <td><code>That note does not fit in a post once it is written into a link.</code> The markdown travels URL-encoded, which can triple its length, and non-Latin text grows more. Nothing was posted.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-16010</code></td>
+                    <td><code>CommandNotePostFailed</code></td>
+                    <td><code>Could not post the note to this channel.</code> Also logged. A read-only or archived channel is the usual cause.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-16011</code></td>
+                    <td><code>CommandPostNotPermitted</code></td>
+                    <td><code>You cannot post in this channel, so this command cannot post for you.</code> <a href="commands.html#examples"><code>examples</code></a> and <a href="commands.html#note"><code>note</code></a> post as you, so each first checks that you may post in the channel. A read-only or moderated channel is the usual cause. Nothing was posted.</td>
+                </tr>
             </tbody>
         </table>
 
@@ -440,7 +518,27 @@
                 <tr>
                     <td><code>TF-17002</code></td>
                     <td><code>AirportPageInvalid</code> <span class="level">400</span></td>
-                    <td><code>That is not an airfield code this plugin issued.</code> The airfield page was given a <code>v</code> parameter that is not four upper-case letters, which means the link was not written by this plugin. A code that is well formed but absent from this build's database renders the page with a note instead.</td>
+                    <td><code>That is not an airfield code this plugin issued.</code> The airfield page was given a <code>v</code> parameter that is not four upper-case letters or an <code>i</code> parameter that is not three, which means the link was not written by this plugin. A code that is well formed but absent from this build's database renders the page with a note instead.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-17003</code></td>
+                    <td><code>AirportPageParamsConflict</code> <span class="level">400</span></td>
+                    <td><code>An airfield link names exactly one code.</code> The page was asked for both an ICAO ident and an IATA code, or for neither. The same rule <code>TF-13010</code> applies on the API: a link carries one code, so two of them cannot be trusted to agree.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-17004</code></td>
+                    <td><code>AvReportPageInvalid</code> <span class="level">400</span></td>
+                    <td><code>That is not an aviation report this plugin issued.</code> The report page was given a <code>v</code> that does not decode or a <code>t</code> that does not reproduce the report's time group. The same rule <code>TF-13011</code> applies on the API.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-17005</code></td>
+                    <td><code>FrequencyPageInvalid</code> <span class="level">400</span></td>
+                    <td><code>That is not a frequency this plugin issued.</code> The frequency page was given a <code>v</code> the grammar would not have produced, or one outside 2 MHz to 1,300 MHz once its unit is applied. A link this plugin writes always passes both, so the link was edited by hand.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-17006</code></td>
+                    <td><code>NotePageInvalid</code> <span class="level">400</span></td>
+                    <td><code>That is not a note this plugin issued.</code> The note page was given no <code>v</code>, a blank one, or one longer than 1,000 characters. A link this plugin writes always passes, so the link was edited by hand.</td>
                 </tr>
             </tbody>
         </table>
@@ -628,7 +726,42 @@
                 <tr>
                     <td><code>TF-20008</code></td>
                     <td><code>MCPAirportInvalid</code> <span class="level">Tool error</span></td>
-                    <td><code>That is not an airfield code this plugin issued.</code> The <code>lookup_airfield</code> tool was given a value that is not the shape of an ICAO identifier. A well-shaped code the database does not hold is not this: that answers <code>found: false</code>.</td>
+                    <td><code>That is not an airfield code this plugin issued.</code> The <code>lookup_airfield</code> tool was given a value that is not the shape of an ICAO identifier or an IATA code. A well-shaped code the database does not hold is not this: that answers <code>found: false</code>.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-20009</code></td>
+                    <td><code>MCPAvReportInvalid</code> <span class="level">Tool error</span></td>
+                    <td><code>That is not a METAR, SPECI, TAF or NOTAM this plugin reads.</code> The <code>decode_aviation_report</code> tool was given text that does not start like a report, holds more than one, or is longer than a report can be.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-20010</code></td>
+                    <td><code>MCPCotInvalid</code> <span class="level">Tool error</span></td>
+                    <td><code>That is not a Cursor on Target event this plugin reads: ...</code> The <code>decode_cot</code> tool was given XML the event reader refused. The message ends with the reason, such as a missing uid or an event too large.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-20011</code></td>
+                    <td><code>MCPGeoJSONInvalid</code> <span class="level">Tool error</span></td>
+                    <td><code>That is not a GeoJSON document this plugin reads: ...</code> The <code>summarize_geojson</code> tool was given JSON that is not GeoJSON, or a document past this build's size, feature or position limits. The message ends with the reason.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-20012</code></td>
+                    <td><code>MCPFrequencyInvalid</code> <span class="level">Tool error</span></td>
+                    <td><code>That is not a frequency between 2 MHz and 1,300 MHz this plugin reads.</code> The <code>describe_frequency</code> tool was given something that is not a frequency, or one outside that range once its unit is applied.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-20013</code></td>
+                    <td><code>MCPDateTimeInvalid</code> <span class="level">Tool error</span></td>
+                    <td><code>That is not a date-time group or RFC 3339 timestamp this plugin reads.</code> The <code>read_date_time</code> tool was given text in neither form.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-20014</code></td>
+                    <td><code>MCPCreateCotInvalid</code> <span class="level">Tool error</span></td>
+                    <td><code>Could not build that event: ...</code> The <code>create_cot</code> tool was missing a callsign, given a position off the globe, an affiliation or dimension it does not know, a malformed type, a stale time over a week, or remarks over 256 characters. The message ends with which.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-20015</code></td>
+                    <td><code>MCPCreateGeoJSONInvalid</code> <span class="level">Tool error</span></td>
+                    <td><code>Could not build that document: ...</code> The <code>create_geojson</code> tool was given no features or too many, a feature with no name, the wrong number of positions for its kind, a position off the globe, or a color that is not <code>#rrggbb</code>. The message ends with which feature and why.</td>
                 </tr>
             </tbody>
         </table>

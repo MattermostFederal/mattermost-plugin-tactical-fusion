@@ -23,6 +23,9 @@
             <a href="airfields.html">Airfields</a>
             <a href="cot.html">Cursor on Target</a>
             <a href="geojson.html">GeoJSON</a>
+            <a href="reports.html">Aviation Reports</a>
+            <a href="frequencies.html">Frequencies</a>
+            <a href="notes.html">Notes</a>
             <span class="nav-section">Guides</span>
             <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
@@ -232,7 +235,7 @@
             <tbody>
                 <tr>
                     <td><code>KIND</code> on its own did nothing</td>
-                    <td>There is no bare grammar, permanently. Of the airfield codes this plugin ships, 343 are ordinary English words: <code>FACT</code> is Cape Town International, <code>USCG</code> is an airfield in Russia, <code>LIMA</code> is in Turin. Reading them bare would rewrite ordinary prose.</td>
+                    <td>There is no bare grammar, permanently. Of the airfield codes this plugin ships, 349 are ordinary English words: <code>FACT</code> is Cape Town International, <code>USCG</code> is an airfield in Russia, <code>LIMA</code> is in Turin. Reading them bare would rewrite ordinary prose.</td>
                     <td>Write a <a href="airfields.html#airfield">USMTF field label</a> in front: <code>ICAO:PHNL</code>, <code>LOC:</code>, <code>DEPLOC:</code> or <code>ARRLOC:</code>.</td>
                 </tr>
                 <tr>
@@ -252,8 +255,8 @@
                 </tr>
                 <tr>
                     <td><code>ICAO:PHN</code> or <code>ICAO:PHNLX</code> did nothing</td>
-                    <td>An ICAO ident is exactly four letters. Three is an IATA code, which this plugin does not read.</td>
-                    <td>Write the four-letter ICAO ident. The IATA code is shown in the panel for a field that has one.</td>
+                    <td>An ICAO ident is exactly four letters behind <code>ICAO:</code>, <code>LOC:</code>, <code>DEPLOC:</code> or <code>ARRLOC:</code>. Three letters is an IATA code, which is read only behind its own <code>IATA:</code> label.</td>
+                    <td>Write the four-letter ICAO ident behind one of its labels, or the three-letter code behind <code>IATA:</code>. Either opens the same panel.</td>
                 </tr>
                 <tr>
                     <td><code>logs/ICAO:PHNL</code> did nothing</td>
@@ -434,6 +437,104 @@
                     <td>One feature is listed with a note and is missing from the map</td>
                     <td>That feature carries a coordinate outside the range of the earth, or a ring that does not close. The rest of the document is unaffected.</td>
                     <td>Fix that feature in the source. The note on the card says which of the two it was.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="report-not-decoded">An aviation report was not linked or rendered</h2>
+
+        <p>
+            A report that cannot be decoded is never refused: the post goes out with the text
+            as you typed it. When the report was in a block you labeled <code>metar</code>,
+            <code>speci</code>, <code>taf</code> or <code>notam</code> the plugin also sends
+            you a message, visible only to you, saying what happened. A multi-line message
+            with no label that does not decode is left alone in silence.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>The time group in the middle of a METAR is linked, and the rest is plain text</td>
+                    <td>The report did not decode as a report, so the date-time decorator took the time group as it did before. The usual causes are lower case, a keyword touching a colon, or no wind group after the time in a report written without its keyword.</td>
+                    <td>Check the <a href="reports.html#reports-declined">declined list</a>. Write the report in upper case with a space after any label.</td>
+                </tr>
+                <tr>
+                    <td>A TAF on several lines was posted as plain text with no table and no card</td>
+                    <td>It was not the whole message, or it was inside a fence with no label, or both <a href="admin.html#enable-avreport-table"><code>EnableAvReportTable</code></a> and <a href="admin.html#enable-avreport-card"><code>EnableAvReportCard</code></a> are off.</td>
+                    <td>Post the report on its own, or fence it and label the fence <code>taf</code>.</td>
+                </tr>
+                <tr>
+                    <td>A METAR, TAF or NOTAM posted on its own came back as a table</td>
+                    <td>By design: a report that is the whole message is expanded into a table whose last row opens the details, and the message stays searchable. To get the card instead, put the report in a fence labeled with its kind. <a href="admin.html#enable-avreport-table"><code>EnableAvReportTable</code></a> governs it.</td>
+                    <td>Nothing to do, or write the report inside a sentence to get the link alone.</td>
+                </tr>
+                <tr>
+                    <td>Several METARs one per line were linked but got no card</td>
+                    <td>By design. Each line is a report of its own, and a link on each keeps every one searchable.</td>
+                    <td>Nothing to do. Click any of the links.</td>
+                </tr>
+                <tr>
+                    <td>A METAR or TAF shows the wrong month</td>
+                    <td>Its time group carries only the day, hour and minute; the month and year are taken from when the message was posted, so a report pasted long after it was issued lands in the posting month.</td>
+                    <td>Nothing to do. Post reports close to when they were issued.</td>
+                </tr>
+                <tr>
+                    <td>A group appears under <em>Not decoded</em></td>
+                    <td>This build's vocabulary does not cover it. It is kept exactly as written rather than guessed at.</td>
+                    <td>Read it as you would on the wire. Report the group if it is one a station issues routinely.</td>
+                </tr>
+                <tr>
+                    <td>The card has no map</td>
+                    <td>The station is not in this build's airfield database, or the map under a post is off.</td>
+                    <td>See <a href="#no-map">the map is missing</a>. A station outside the database draws nothing, by design.</td>
+                </tr>
+                <tr>
+                    <td>No report in any message links or renders</td>
+                    <td>The decorator is off.</td>
+                    <td>Check <a href="admin.html#avreport-switches">the admin settings</a>: the parent, the kind's switch, and the card's.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="frequency-not-linked">A frequency was not turned into a link</h2>
+
+        <table>
+            <thead>
+                <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>121.5</code> on its own was not linked</td>
+                    <td>There is no bare grammar, permanently. A decimal is any decimal.</td>
+                    <td>Write <code>FREQ:121.5</code>. The label is consumed and the link reads <code>121.5</code>.</td>
+                </tr>
+                <tr>
+                    <td><code>freq:121.5</code> or <code>FREQ: 121.5</code> was not linked</td>
+                    <td>The label is upper case only and nothing may follow the colon, as with every other label.</td>
+                    <td>Write <code>FREQ:121.5</code>.</td>
+                </tr>
+                <tr>
+                    <td><code>FREQ:1090</code> was not linked</td>
+                    <td>A whole number is kilohertz, and 1,090 kHz is below the 2 MHz floor.</td>
+                    <td>Write <code>FREQ:1090.0</code> for 1,090 MHz, or add the unit.</td>
+                </tr>
+                <tr>
+                    <td><code>FREQ:121.5 GHZ</code> was not linked</td>
+                    <td>A unit this plugin does not read refuses the whole token rather than linking the number and leaving the unit outside.</td>
+                    <td>Write the frequency in megahertz or kilohertz.</td>
+                </tr>
+                <tr>
+                    <td>The panel says the frequency is outside the aviation bands</td>
+                    <td>It is inside none of the six bands the plugin names. The readings are still shown.</td>
+                    <td>Nothing to do. See <a href="frequencies.html#frequency-bands">the bands</a>.</td>
+                </tr>
+                <tr>
+                    <td>No frequency in any message links</td>
+                    <td>The decorator is off.</td>
+                    <td>Check <a href="admin.html#enable-frequency">the admin setting</a>.</td>
                 </tr>
             </tbody>
         </table>

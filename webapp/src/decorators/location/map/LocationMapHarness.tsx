@@ -2,6 +2,7 @@ import type {GeoJSONSource, Map as MapLibreMap} from 'maplibre-gl';
 import React, {useEffect, useRef, useState} from 'react';
 
 import type {Camera} from './camera';
+import type {MapFocus} from './focus';
 import LocationMap from './LocationMap';
 import type {MapEllipse} from './overlay';
 import type {MapShape} from './paint';
@@ -361,12 +362,14 @@ interface Props {
      * sitting through the real twenty seconds.
      */
     readyDeadlineMs?: number;
+
+    focus?: MapFocus;
 }
 
 const LocationMapHarness: React.FC<Props> = ({
     start = 'Los Angeles', region = '', pending = false, pageHref, fill, openAt, noWebGL, preview, markers,
     markerLabel, accuracyMeters, accuracyLabel, ellipse, geometries,
-    extentLabel, readyDeadlineMs,
+    extentLabel, readyDeadlineMs, focus: startFocus,
 }) => {
     // Set during render, before the child's effects construct a map, and
     // restored on unmount so one test cannot shorten another's.
@@ -382,6 +385,8 @@ const LocationMapHarness: React.FC<Props> = ({
     webgl2Allowed = !noWebGL;
 
     const [name, setName] = useState<ViewName>(start);
+    const [focus, setFocus] = useState<MapFocus | undefined>(startFocus);
+    const focusSeq = useRef(0);
     const [mounted, setMounted] = useState(true);
     const [live, setLive] = useState(false);
     const [created, setCreated] = useState(0);
@@ -480,8 +485,23 @@ removed: false,
                     ellipse={ellipse}
                     geometries={geometries}
                     extentLabel={extentLabel}
+                    focus={focus}
                 />
             )}
+            <button
+                type='button'
+                onClick={() => {
+                    focusSeq.current += 1;
+                    setFocus({seq: focusSeq.current, box: null, center: {lat: 38.89, lon: -77.035}});
+                }}
+            >{'focus on a point'}</button>
+            <button
+                type='button'
+                onClick={() => {
+                    focusSeq.current += 1;
+                    setFocus({seq: focusSeq.current, box: [[-77.1, 38.85], [-76.95, 38.95]], center: {lat: 38.9, lon: -77.025}});
+                }}
+            >{'focus on a box'}</button>
             {Object.keys(VIEWS).map((key) => (
                 <button
                     key={key}

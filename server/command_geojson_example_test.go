@@ -96,15 +96,24 @@ func TestTheExampleDrawsIrregularShapes(t *testing.T) {
 
 	var ring geojson.Ring
 	var route geojson.Ring
+	var area geojson.Part
 	for _, feature := range document.Features {
 		for _, part := range feature.Geometry.Parts {
 			switch part.Kind {
-			case geojson.KindPolygon:
+			case geojson.KindMultiPoly:
+				area = part
 				ring = part.Rings[0]
 			case geojson.KindLineString:
 				route = part.Rings[0]
 			}
 		}
+	}
+
+	if len(area.RingCounts) != 1 || area.RingCounts[0] != 2 {
+		t.Errorf("the area's polygons carry %v rings, want one polygon with a hole", area.RingCounts)
+	}
+	if len(area.Rings) == 2 && len(area.Rings[1]) < 8 {
+		t.Errorf("the hole has %d positions, so it is a box rather than an organic shape", len(area.Rings[1]))
 	}
 
 	if len(ring) < 16 {
@@ -141,13 +150,15 @@ func TestTheExampleCarriesTheStyleItDemonstrates(t *testing.T) {
 		t.Fatalf("the example does not parse: %v", err)
 	}
 
-	var area, point geojson.Style
+	var area, point, route geojson.Style
 	for _, feature := range document.Features {
 		switch feature.Geometry.Kind {
-		case geojson.KindPolygon:
+		case geojson.KindMultiPoly:
 			area = feature.Style
 		case geojson.KindPoint:
 			point = feature.Style
+		case geojson.KindLineString:
+			route = feature.Style
 		}
 	}
 
@@ -156,6 +167,9 @@ func TestTheExampleCarriesTheStyleItDemonstrates(t *testing.T) {
 	}
 	if point.Color == "" || point.MarkerSize == "" {
 		t.Errorf("the supply point states no marker style: %+v", point)
+	}
+	if route.Color == "" || route.Color == point.Color || route.Color == area.Color {
+		t.Errorf("the three features do not show three colors: point %q, route %q, area %q", point.Color, route.Color, area.Color)
 	}
 }
 
@@ -171,5 +185,33 @@ func TestAFenceSourcedBlobNamesNoFile(t *testing.T) {
 	blob := geojson.Props(document, geojson.Source{Kind: geojson.SourceFence, Text: geoJSONExample})
 	if _, named := blob["file_id"]; named {
 		t.Error("a fence-sourced blob names a file, which would 404 its map page")
+	}
+}
+
+func TestTheGeoJSONExampleNamesAndDescribesItself(t *testing.T) {
+	document, err := geojson.Parse([]byte(geoJSONExample))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if document.Name == "" || document.Description == "" {
+		t.Fatalf("the example carries no name or description: %q / %q", document.Name, document.Description)
+	}
+}
+
+func TestEveryExampleFeatureDescribesItself(t *testing.T) {
+	document, err := geojson.Parse([]byte(geoJSONExample))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, feature := range document.Features {
+		described := false
+		for _, property := range feature.Properties {
+			if property.Key == "description" && property.Value != "" {
+				described = true
+			}
+		}
+		if !described {
+			t.Errorf("%q carries no description", feature.Name)
+		}
 	}
 }

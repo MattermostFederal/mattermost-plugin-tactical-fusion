@@ -46,3 +46,32 @@ export function soleDecoratorLink(message: string): SoleDecoratorLink | null {
 function unescapeLabel(label: string): string {
     return label.replace(/\\(.)/g, '$1');
 }
+
+const ANY_LINK = /\[((?:\\.|[^\\[\]])*)\]\(([^()\s]+)\)/g;
+
+export interface DecoratorLink {
+    type: string;
+    params: URLSearchParams;
+    href: string;
+    label: string;
+    start: number;
+    end: number;
+}
+
+export function decoratorLinks(message: string): DecoratorLink[] {
+    const links: DecoratorLink[] = [];
+    for (const match of message.matchAll(ANY_LINK)) {
+        const parsed = parseDecoratorHref(match[2]);
+        if (parsed === null) {
+            continue;
+        }
+        links.push({
+            ...parsed,
+            href: match[2],
+            label: unescapeLabel(match[1]),
+            start: match.index,
+            end: match.index + match[0].length,
+        });
+    }
+    return links;
+}

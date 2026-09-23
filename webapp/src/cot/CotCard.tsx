@@ -1,12 +1,13 @@
 import React from 'react';
 
-import CotMap from './CotMap';
+import CotMap, {focusFor} from './CotMap';
 import {ClassSummary, chatReading} from './summary';
 import type {CotEvent, CotPayload} from './types';
 import {affiliationColor, isLinkable, validFor} from './types';
 
 import ErrorBoundary from '../components/ErrorBoundary';
 import HoverLink from '../decorators/HoverLink';
+import {SHOW_ON_MAP, SR_ONLY, useInlineMapShown, useMapFocus} from '../decorators/location/map/use_map_focus';
 import {pluginBaseUrl} from '../plugin_url';
 
 import {showCotEvent} from './index';
@@ -47,6 +48,7 @@ const styles: Record<string, React.CSSProperties> = {
     actions: {display: 'flex', gap: '12px', padding: '0 12px 8px'},
     list: {listStyle: 'none', margin: 0, padding: '0 12px 8px'},
     listItem: {alignItems: 'baseline', display: 'flex', flexWrap: 'wrap', gap: '0.5em', padding: '3px 0'},
+    showButton: {alignItems: 'baseline', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', display: 'inline-flex', flexWrap: 'wrap', font: 'inherit', gap: '0.5em', padding: 0, textAlign: 'left'},
     button: {
         background: 'none',
         border: 'none',
@@ -85,27 +87,12 @@ function Row({label, children}: {label: string; children: React.ReactNode}) {
     );
 }
 
-function PositionValue({event}: {event: CotEvent}) {
-    const reading = `${event.lat}, ${event.lon}`;
-
-    if (!isLinkable(event)) {
-        return <span>{reading}</span>;
-    }
-
-    const params = new URLSearchParams({f: event.format, v: event.value});
-    return (
-        <HoverLink href={`${pluginBaseUrl()}/decorate/location?${params.toString()}`}>
-            {reading}
-        </HoverLink>
-    );
-}
-
 const FILE_ID = /^[a-z0-9]{26}$/;
 
 /**
  * A time, linked to the date-time group tools when the server could spell it.
  *
- * The anchor is a plain one, exactly as the position row's is: the stylesheet's
+ * The anchor is a plain one: the stylesheet's
  * href rule and the document-level click handler both key off the path, so the
  * chip and the sidebar come back without either of them knowing this card
  * exists.
@@ -162,6 +149,24 @@ function Degraded({event}: {event: CotEvent}) {
     return <p style={styles.note}>{'Some detail was too large to store. Open details to read the event as posted.'}</p>;
 }
 
+function ShowOnMap({event, onShow, children}: {event: CotEvent; onShow?: (event: CotEvent) => void; children: React.ReactNode}) {
+    if (onShow === undefined || focusFor(event, 0) === null) {
+        return <>{children}</>;
+    }
+
+    return (
+        <button
+            type='button'
+            style={styles.showButton}
+            onClick={() => onShow(event)}
+            data-testid='cot-event-show'
+        >
+            <span style={SR_ONLY}>{SHOW_ON_MAP}</span>
+            {children}
+        </button>
+    );
+}
+
 function Naming({event}: {event: CotEvent}) {
     return (
         <>
@@ -192,12 +197,7 @@ function EventDetail({event}: {event: CotEvent}) {
                 role='group'
                 aria-label={`Details of the Cursor on Target event ${event.callsign === '' ? event.uid : event.callsign}`}
             >
-                {event.lat !== '' && <Row label='Position'><PositionValue event={event}/></Row>}
-                {event.hae !== '' && <Row label='Altitude (HAE)'>{event.hae}</Row>}
-                <Row label='Accuracy'>
-                    {event.ce === '' ? 'Not stated' : `${event.ce} circular`}
-                    {event.le !== '' && `, ${event.le} vertical`}
-                </Row>
+                {event.lat !== '' && <Row label='Position'>{`${event.lat}, ${event.lon}`}</Row>}
                 {event.speed !== '' && (
                     <Row label='Track'>
                         {event.speed}
@@ -209,14 +209,6 @@ function EventDetail({event}: {event: CotEvent}) {
                         <TimeValue
                             reading={event.time}
                             query={event.timeQuery}
-                        />
-                    </Row>
-                )}
-                {event.start !== '' && event.start !== event.time && (
-                    <Row label='Valid from'>
-                        <TimeValue
-                            reading={event.start}
-                            query={event.startQuery}
                         />
                     </Row>
                 )}
@@ -235,10 +227,6 @@ function EventDetail({event}: {event: CotEvent}) {
                         {event.role !== '' && `, ${event.role}`}
                     </Row>
                 )}
-                {event.parent !== '' && <Row label='Sent by'>{event.parent}</Row>}
-                {event.related !== '' && <Row label='Relates to'>{event.related}</Row>}
-                {event.howLabel !== '' && <Row label='Source'>{event.howLabel}</Row>}
-                <Row label='UID'>{event.uid}</Row>
                 {showRemarks && <Row label='Remarks'>{event.remarks}</Row>}
             </dl>
         </>
@@ -249,10 +237,10 @@ function EventDetail({event}: {event: CotEvent}) {
  * Several events, one line each.
  *
  * A post is one post. Rendering every event in full would put N maps and N
- * tables in the channel, so the list names each track and links its position,
- * and the panel behind "Open details" carries the rest.
+ * tables in the channel, so the list names each track, a click on one shows it
+ * on the map, and the panel behind "Open details" carries the rest.
  */
-function EventList({events}: {events: readonly CotEvent[]}) {
+function EventList({events, onShow}: {events: readonly CotEvent[]; onShow?: (event: CotEvent) => void}) {
     return (
         <ul
             style={styles.list}
@@ -267,8 +255,12 @@ function EventList({events}: {events: readonly CotEvent[]}) {
                     key={`${event.uid}-${index}`}
                     style={styles.listItem}
                 >
-                    <Naming event={event}/>
-                    {event.lat !== '' && <PositionValue event={event}/>}
+                    <ShowOnMap
+                        event={event}
+                        onShow={onShow}
+                    >
+                        <Naming event={event}/>
+                    </ShowOnMap>
                 </li>
             ))}
         </ul>
@@ -278,6 +270,9 @@ function EventList({events}: {events: readonly CotEvent[]}) {
 export const CotCard: React.FC<Props> = ({payload, compactDisplay}) => {
     const {events} = payload;
     const only = events.length === 1 ? events[0] : undefined;
+    const [focus, show] = useMapFocus(focusFor);
+    const mapShown = useInlineMapShown() && !compactDisplay && events.some(isLinkable);
+    const onShow = mapShown ? show : undefined;
 
     return (
         <div>
@@ -292,7 +287,16 @@ export const CotCard: React.FC<Props> = ({payload, compactDisplay}) => {
                 </p>
 
                 <ErrorBoundary fallback={<p style={styles.note}>{DETAIL_FAILED}</p>}>
-                    {only && <div style={styles.header}><Naming event={only}/></div>}
+                    {only && (
+                        <div style={styles.header}>
+                            <ShowOnMap
+                                event={only}
+                                onShow={onShow}
+                            >
+                                <Naming event={only}/>
+                            </ShowOnMap>
+                        </div>
+                    )}
                     {only && <ClassSummary event={only}/>}
                     {only && <Degraded event={only}/>}
                 </ErrorBoundary>
@@ -303,6 +307,7 @@ export const CotCard: React.FC<Props> = ({payload, compactDisplay}) => {
                             events={events}
                             surface='card'
                             postId={payload.postId}
+                            focus={focus}
                         />
                     </ErrorBoundary>
                 )}
@@ -310,7 +315,12 @@ export const CotCard: React.FC<Props> = ({payload, compactDisplay}) => {
                 <ErrorBoundary fallback={<p style={styles.note}>{DETAIL_FAILED}</p>}>
                     {only ? (
                         <EventDetail event={only}/>
-                    ) : <EventList events={events}/>}
+                    ) : (
+                        <EventList
+                            events={events}
+                            onShow={onShow}
+                        />
+                    )}
                 </ErrorBoundary>
 
                 <div style={styles.actions}>

@@ -2,6 +2,8 @@ import {HOVER_CARD_CLASS, all, decoratePathPrefix} from './registry';
 
 const STYLE_ELEMENT_ID = 'tactical-fusion-decorator-styles';
 
+export const DETAILS_LINK_LABEL = 'Open details';
+
 /**
  * Hides the hover card's chrome when the decorator's Hover renders nothing.
  *
@@ -61,7 +63,15 @@ export function buildDecoratorStyles(): string {
         ].join('\n');
     });
 
-    return [...rules, EMPTY_HOVER_RULE].join('\n\n');
+    const details = `a[href^="${cssEscape(prefix)}"][title="${DETAILS_LINK_LABEL}"]`;
+    const detailsRule = [
+        `${details} {`,
+        '    color: var(--button-bg);',
+        '    background: rgba(var(--button-bg-rgb), 0.12);',
+        '}',
+    ].join('\n');
+
+    return [...rules, ...(rules.length === 0 ? [] : [detailsRule]), EMPTY_HOVER_RULE].join('\n\n');
 }
 
 /**

@@ -2,8 +2,14 @@ import React from 'react';
 
 import type {OverlayPageData} from './payload';
 
+import {ReportMapCanvas, drawsNothing as reportDrawsNothing, mapLabel as reportLabel} from '../avreport/ReportMap';
+import {AVREPORT_POST_TYPE, fromProps as reportFromProps} from '../avreport/types';
 import {CotMapCanvas, drawsNothing as cotDrawsNothing} from '../cot/CotMap';
 import {COT_POST_TYPE, fromProps as cotFromProps} from '../cot/types';
+import {AirfieldsMapCanvas} from '../decorators/airport/AirfieldsMap';
+import {AirportMapCanvas} from '../decorators/airport/AirportMapCanvas';
+import {AIRPORT_MAP_KIND, airportMapFromBlob, positionPayload, runwayLabel, runwayShapes} from '../decorators/airport/map';
+import {AIRFIELDS_POST_TYPE, airfieldsFromProps, drawsNothing as airfieldsDrawNothing, routeLabel} from '../decorators/airport/route';
 import {openingCamera} from '../decorators/location/map/camera';
 import {GeoJsonMapCanvas, drawsNothing as geoJsonDrawsNothing, mapLabel, markersFor, shapesFor} from '../geojson/GeoJsonMap';
 import {GEOJSON_POST_TYPE, fromProps as geoJsonFromProps} from '../geojson/types';
@@ -63,6 +69,61 @@ export const OverlayPageView: React.FC<{data: OverlayPageData}> = ({data}) => {
  * empty basemap that looks like a document with nothing in it.
  */
 function drawingFor(data: OverlayPageData): {canvas: React.ReactNode; label: string} | null {
+    if (data.kind === AIRPORT_MAP_KIND) {
+        const payload = airportMapFromBlob(data.props);
+        if (payload === null || positionPayload(payload.coordinate) === null) {
+            return null;
+        }
+
+        return {
+            canvas: (
+                <AirportMapCanvas
+                    payload={payload}
+                    fill={true}
+                    openAt={openingCamera() ?? undefined}
+                />
+            ),
+            label: `${payload.name || payload.ident} (${payload.ident}), ${runwayLabel(runwayShapes(payload.runways).length)}`,
+        };
+    }
+
+    if (data.kind === AIRFIELDS_POST_TYPE) {
+        const payload = airfieldsFromProps(data.props);
+        if (payload === null || airfieldsDrawNothing(payload)) {
+            return null;
+        }
+
+        return {
+            canvas: (
+                <AirfieldsMapCanvas
+                    payload={payload}
+                    fill={true}
+                    openAt={openingCamera() ?? undefined}
+                />
+            ),
+            label: routeLabel(payload),
+        };
+    }
+
+    if (data.kind === AVREPORT_POST_TYPE) {
+        const payload = reportFromProps(data.props);
+        if (payload === null || reportDrawsNothing(payload)) {
+            return null;
+        }
+
+        return {
+            canvas: (
+                <ReportMapCanvas
+                    report={payload}
+                    pageEnabled={false}
+                    fill={true}
+                    openAt={openingCamera() ?? undefined}
+                />
+            ),
+            label: reportLabel(payload),
+        };
+    }
+
     if (data.kind === COT_POST_TYPE) {
         const payload = cotFromProps(data.props);
         if (payload === null) {

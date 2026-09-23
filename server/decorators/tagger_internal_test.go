@@ -257,3 +257,29 @@ func TestDecorateReturnsWhatDecorateWithResultReturns(t *testing.T) {
 		}
 	}
 }
+
+type terminatedDecorator struct{ monikerDecorator }
+
+func (*terminatedDecorator) Type() string { return "terminated" }
+
+func (*terminatedDecorator) Patterns() []Pattern {
+	return []Pattern{{Regexp: regexp.MustCompile(`\b(\d{4})\b[ \t]*=?`), ReplaceGroup: 1}}
+}
+
+func TestSoleTokenSurvivesAPatternThatConsumesTrailingSpace(t *testing.T) {
+	registry := NewRegistry()
+	if err := registry.Register(&terminatedDecorator{}); err != nil {
+		t.Fatalf("Register() = %v, want nil", err)
+	}
+	tagger := &Tagger{Registry: registry, URLPrefix: "/plugins/test/decorate"}
+
+	for _, message := range []string{"1234", "1234=", "  1234  ", "  1234 =  \n"} {
+		_, got := tagger.DecorateWithResult(message, time.Now().UTC())
+		if !got.SoleToken {
+			t.Errorf("SoleToken = false for %q", message)
+		}
+	}
+	if _, got := tagger.DecorateWithResult("1234 = done", time.Now().UTC()); got.SoleToken {
+		t.Error("SoleToken = true with prose after the terminator")
+	}
+}

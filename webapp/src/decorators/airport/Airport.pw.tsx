@@ -191,7 +191,7 @@ test.describe('the panel', () => {
                 reply='unknown'
             />);
 
-        await expect(panel.getByText('QZQZ', {exact: true})).toBeVisible();
+        await expect(panel.getByText('QZQZ', {exact: true})).toHaveCount(0);
         await expect(panel.getByText('not in this build', {exact: false})).toBeVisible();
         await expect(panel.getByText(NOT_A_CODE)).toBeHidden();
     });
@@ -235,7 +235,7 @@ test.describe('the panel', () => {
         await expect(panel.getByText(NOT_A_CODE)).toBeHidden();
     });
 
-    test('shows the code while the lookup is in flight', async ({mount}) => {
+    test('says the lookup is in flight and shows nothing else', async ({mount}) => {
         const panel = await mount(
             <AirportHarness
                 surface='panel'
@@ -243,7 +243,8 @@ test.describe('the panel', () => {
                 reply='hold'
             />);
 
-        await expect(panel.getByText('KIND', {exact: true})).toBeVisible();
+        await expect(panel.getByText('Looking up this airfield…')).toBeVisible();
+        await expect(panel.getByText('KIND', {exact: true})).toHaveCount(0);
         await expect(panel.getByText(NAME)).toBeHidden();
     });
 
@@ -343,10 +344,10 @@ test.describe('the panel', () => {
                 reply='hold'
             />);
 
-        await expect(panel.getByText('KIND', {exact: true})).toBeVisible();
+        await expect(panel.getByText('Looking up this airfield…')).toBeVisible();
         await panel.unmount();
 
-        await expect(page.getByText('KIND', {exact: true})).toHaveCount(0);
+        await expect(page.getByText('Looking up this airfield…')).toHaveCount(0);
         expect(errors, 'unmounting mid-request must not throw').toEqual([]);
     });
 
@@ -492,4 +493,119 @@ test.describe('the hover card', () => {
             await expect(page.getByTestId('card')).toBeEmpty();
         });
     }
+});
+
+test.describe('the airfield details', () => {
+    test('lists the runways and the frequencies', async ({mount}) => {
+        const panel = await mount(
+            <AirportHarness
+                surface='panel'
+                ident='KIND'
+                reply='found'
+                features={{mapPanel: false, mapInline: false, mapPage: false}}
+            />);
+
+        await expect(panel.getByText('Runways', {exact: true})).toBeVisible();
+        await expect(panel.getByText('05L/23R', {exact: true})).toBeVisible();
+        await expect(panel.getByText('11,200 x 150 ft, Concrete, lighted', {exact: true})).toBeVisible();
+        await expect(panel.getByText('Frequencies', {exact: true})).toBeVisible();
+        await expect(panel.getByText('120.900', {exact: true})).toBeVisible();
+        await expect(panel.getByRole('button', {name: 'Copy TWR 120.900'})).toBeVisible();
+        await expect(panel.getByText('ATIS Arrival', {exact: true})).toBeVisible();
+    });
+
+    test('omits both sections for an airfield the database lists neither for', async ({mount}) => {
+        const panel = await mount(
+            <AirportHarness
+                surface='panel'
+                ident='KIND'
+                reply='bare'
+                features={{mapPanel: false, mapInline: false, mapPage: false}}
+            />);
+
+        await expect(panel.getByText(NAME)).toBeVisible();
+        await expect(panel.getByText('Runways', {exact: true})).toBeHidden();
+        await expect(panel.getByText('Frequencies', {exact: true})).toBeHidden();
+    });
+
+    test('shows the military designator as a use, with no copy button', async ({mount}) => {
+        const panel = await mount(
+            <AirportHarness
+                surface='panel'
+                ident='KIND'
+                reply='military'
+                features={{mapPanel: false, mapInline: false, mapPage: false}}
+            />);
+
+        await expect(panel.getByText('Military (Air Force Base)', {exact: true})).toBeVisible();
+        await expect(panel.getByRole('button', {name: 'Copy Use'})).toBeHidden();
+    });
+
+    test('hides the use row for a civil airfield', async ({mount}) => {
+        const panel = await mount(
+            <AirportHarness
+                surface='panel'
+                ident='KIND'
+                reply='found'
+                features={{mapPanel: false, mapInline: false, mapPage: false}}
+            />);
+
+        await expect(panel.getByText(NAME)).toBeVisible();
+        await expect(panel.getByText('Use', {exact: true})).toBeHidden();
+    });
+
+    test('resolves an IATA link and heads the panel with the ICAO ident', async ({mount}) => {
+        const panel = await mount(
+            <AirportHarness
+                surface='panel'
+                ident='IND'
+                lookup='iata'
+                reply='found'
+                features={{mapPanel: false, mapInline: false, mapPage: false}}
+            />);
+
+        await expect(panel.getByText(NAME)).toBeVisible();
+        await expect(panel.getByText('KIND', {exact: true})).toHaveCount(2);
+        await expect(panel.getByText('IND', {exact: true})).toBeVisible();
+    });
+
+    test('says so for an IATA code this build does not hold', async ({mount}) => {
+        const panel = await mount(
+            <AirportHarness
+                surface='panel'
+                ident='QQQ'
+                lookup='iata'
+                reply='unknown'
+            />);
+
+        await expect(panel.getByText('QQQ', {exact: true})).toHaveCount(0);
+        await expect(panel.getByText('not in this build', {exact: false})).toBeVisible();
+    });
+
+    test('the larger view opens the airfield map page', async ({mount, page}) => {
+        await serveMapAssets(page);
+
+        const panel = await mount(
+            <AirportHarness
+                surface='panel'
+                ident='KIND'
+                reply='found'
+            />);
+
+        const larger = panel.getByRole('link', {name: 'Open larger'});
+        await expect(larger).toBeVisible();
+        await expect(larger).toHaveAttribute('href', /\/map\?airport=KIND/);
+    });
+
+    test('the hover resolves an IATA link too', async ({mount}) => {
+        const card = await mount(
+            <AirportHarness
+                surface='hover'
+                ident='IND'
+                lookup='iata'
+                reply='found'
+            />);
+
+        await expect(card.getByText(NAME)).toBeVisible();
+    });
 });

@@ -35,16 +35,12 @@ export function subscribe(listener: Listener): () => void {
     };
 }
 
-// Redux is only needed to dispatch the RHS show/toggle actions the registry
-// hands back. Nothing else here needs a store, so there is no reducer.
 let store: Store | null = null;
 let showAction: unknown = null;
-let toggleAction: unknown = null;
 
-export function initRhs(reduxStore: Store, show: unknown, toggle: unknown): void {
+export function initRhs(reduxStore: Store, show: unknown): void {
     store = reduxStore;
     showAction = show;
-    toggleAction = toggle;
 }
 
 export function openRhs(): void {
@@ -53,10 +49,12 @@ export function openRhs(): void {
     }
 }
 
-export function toggleRhs(): void {
-    if (store && toggleAction) {
-        store.dispatch(toggleAction as never);
-    }
+interface ConfigState {
+    entities?: {general?: {config?: {HasImageProxy?: string}}};
+}
+
+export function hasImageProxy(): boolean {
+    return (store?.getState() as ConfigState | undefined)?.entities?.general?.config?.HasImageProxy === 'true';
 }
 
 /** @internal exported for tests */
@@ -65,5 +63,4 @@ export function _resetForTesting(): void { // eslint-disable-line no-underscore-
     listeners.clear();
     store = null;
     showAction = null;
-    toggleAction = null;
 }

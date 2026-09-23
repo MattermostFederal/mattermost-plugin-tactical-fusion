@@ -1,11 +1,11 @@
 import React from 'react';
 
-import GeoJsonMap from './GeoJsonMap';
+import GeoJsonMap, {checkedColor, focusFor} from './GeoJsonMap';
 import {showGeoJsonDocument} from './panel';
-import type {GeoJsonFeature, GeoJsonPayload} from './types';
-import {ringCount, solePosition, vertexCount} from './types';
+import type {GeoJsonFeature, GeoJsonPayload, GeoJsonProperty} from './types';
 
 import ErrorBoundary from '../components/ErrorBoundary';
+import {SHOW_ON_MAP, SR_ONLY, useInlineMapShown, useMapFocus} from '../decorators/location/map/use_map_focus';
 
 interface Props {
     payload: GeoJsonPayload;
@@ -13,6 +13,29 @@ interface Props {
 }
 
 export const CARD_KIND = 'GeoJSON';
+
+const STYLE_KEYS = new Set([
+    'marker-color', 'marker-size',
+    'stroke', 'stroke-width', 'stroke-opacity',
+    'fill', 'fill-opacity',
+]);
+
+const NAME_KEYS = new Set(['name', 'title', 'label']);
+
+const DESCRIPTION_KEY = 'description';
+
+export function descriptionOf(feature: GeoJsonFeature): string {
+    return feature.properties.find((property) => property.key === DESCRIPTION_KEY)?.value ?? '';
+}
+
+export function shownProperties(feature: GeoJsonFeature): GeoJsonProperty[] {
+    return feature.properties.filter((property) => {
+        if (STYLE_KEYS.has(property.key) || property.key === DESCRIPTION_KEY) {
+            return false;
+        }
+        return !(NAME_KEYS.has(property.key) && property.value === feature.name);
+    });
+}
 
 /**
  * What a boundary says when it catches something.
@@ -49,8 +72,9 @@ const styles: Record<string, React.CSSProperties> = {
         padding: '2px 12px 8px',
     },
     heading: {fontWeight: 600},
-    summary: {opacity: 0.85},
+    description: {opacity: 0.9, margin: 0, padding: '0 12px 8px', whiteSpace: 'pre-wrap'},
     note: {opacity: 0.9, padding: '0 12px 8px'},
+    dot: {borderRadius: '50%', display: 'inline-block', height: 10, width: 10, flex: 'none', alignSelf: 'center'},
     list: {
         listStyle: 'none',
         margin: 0,
@@ -63,21 +87,10 @@ const styles: Record<string, React.CSSProperties> = {
         padding: '6px 0',
     },
     featureHead: {alignItems: 'baseline', display: 'flex', flexWrap: 'wrap', gap: '0.5em'},
+    featureButton: {background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', display: 'block', font: 'inherit', padding: 0, textAlign: 'left', width: '100%'},
     name: {fontWeight: 600},
-    kindLabel: {fontFamily: 'monospace', fontSize: '0.85em', opacity: 0.9},
-    shape: {opacity: 0.85, fontSize: '0.9em'},
-    measure: {fontWeight: 600, fontSize: '0.9em'},
-    coord: {fontFamily: 'monospace', fontSize: '0.9em'},
-    featureNote: {opacity: 0.9, fontSize: '0.9em', margin: '2px 0 0'},
-    properties: {
-        display: 'grid',
-        gridTemplateColumns: 'max-content 1fr',
-        gap: '1px 12px',
-        margin: '4px 0 0',
-        fontSize: '0.9em',
-    },
-    term: {opacity: 0.85},
-    value: {margin: 0, wordBreak: 'break-word'},
+    featureNote: {display: 'block', opacity: 0.9, fontSize: '0.9em', margin: '2px 0 0'},
+    featureDescription: {display: 'block', opacity: 0.9, fontSize: '0.9em', margin: '2px 0 0', whiteSpace: 'pre-wrap'},
     actions: {display: 'flex', gap: '12px', padding: '0 12px 8px'},
     button: {
         background: 'none',
@@ -89,127 +102,60 @@ const styles: Record<string, React.CSSProperties> = {
     },
 };
 
-/** The geometry mix, as a sentence rather than a table of zeroes. */
-export function summaryLine(payload: GeoJsonPayload): string {
-    const {counts} = payload;
-
-    const parts: string[] = [];
-    if (counts.points > 0) {
-        parts.push(plural(counts.points, 'point'));
-    }
-    if (counts.lines > 0) {
-        parts.push(plural(counts.lines, 'line'));
-    }
-    if (counts.polygons > 0) {
-        parts.push(plural(counts.polygons, 'polygon'));
-    }
-    if (counts.collections > 0) {
-        parts.push(plural(counts.collections, 'collection'));
+const Dot: React.FC<{color: string}> = ({color}) => {
+    if (color === '') {
+        return null;
     }
 
-    const tail: string[] = [];
-    if (counts.unlocated > 0) {
-        tail.push(`${counts.unlocated} with no position`);
-    }
-    if (counts.undrawable > 0) {
-        tail.push(`${counts.undrawable} not drawn`);
-    }
+    return (
+        <span
+            aria-hidden={true}
+            style={{...styles.dot, background: color}}
+            data-testid='geojson-dot'
+        />
+    );
+};
 
-    const mix = parts.length === 0 ? '' : joinWords(parts);
-    if (tail.length === 0) {
-        return mix;
-    }
-
-    return mix === '' ? joinWords(tail) : `${mix}, ${joinWords(tail)}`;
-}
-
-function plural(n: number, word: string): string {
-    return `${n} ${word}${n === 1 ? '' : 's'}`;
-}
-
-function joinWords(parts: readonly string[]): string {
-    if (parts.length < 2) {
-        return parts.join('');
-    }
-    return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
-}
-
-/**
- * What a feature's geometry is, in words.
- *
- * Counts rather than coordinates for anything but a lone point: a polygon's
- * vertices are not positions somebody reported, and listing them would say they
- * were.
- */
-export function shapeLine(feature: GeoJsonFeature): string {
-    if (feature.kind === 'none') {
-        return '';
-    }
-
-    const vertices = vertexCount(feature);
-    const rings = ringCount(feature);
-
-    if (feature.kind === 'Point' && vertices === 1) {
-        return '';
-    }
-    if (feature.kind === 'Polygon' || feature.kind === 'MultiPolygon') {
-        return `${plural(rings, 'ring')}, ${plural(vertices, 'point')}`;
-    }
-
-    return plural(vertices, 'point');
-}
-
-/**
- * What the geometry measures, as the server rendered it.
- *
- * Taken rather than computed, so the card and the panel cannot round the same
- * figure into two different answers. Both empty means the geometry has no such
- * measure, or the server would not stand behind the shape.
- */
-export function measureLine(feature: GeoJsonFeature): string {
-    return [feature.length, feature.area].filter((part) => part !== '').join(', ');
-}
-
-const Feature: React.FC<{feature: GeoJsonFeature}> = ({feature}) => {
-    const position = solePosition(feature);
-    const shape = shapeLine(feature);
-    const measure = measureLine(feature);
+const Feature: React.FC<{feature: GeoJsonFeature; onShow?: () => void}> = ({feature, onShow}) => {
+    const description = descriptionOf(feature);
+    const body = (
+        <>
+            <span style={styles.featureHead}>
+                <Dot color={checkedColor(feature)}/>
+                <span style={styles.name}>{feature.name}</span>
+            </span>
+            {description !== '' && (
+                <span
+                    style={styles.featureDescription}
+                    data-testid='geojson-feature-description'
+                >
+                    {description}
+                </span>
+            )}
+            {feature.note !== '' && <span style={styles.featureNote}>{feature.note}</span>}
+        </>
+    );
 
     return (
         <li style={styles.listItem}>
-            <div style={styles.featureHead}>
-                <span style={styles.name}>{feature.name}</span>
-                <span style={styles.kindLabel}>{feature.kind === 'none' ? 'no geometry' : feature.kind}</span>
-                {position !== null && (
-                    <span style={styles.coord}>{`${position.lat}, ${position.lon}`}</span>
-                )}
-                {shape !== '' && <span style={styles.shape}>{shape}</span>}
-                {measure !== '' && (
-                    <span
-                        style={styles.measure}
-                        data-testid='geojson-measure'
-                    >
-                        {measure}
-                    </span>
-                )}
-            </div>
-            {feature.note !== '' && <p style={styles.featureNote}>{feature.note}</p>}
-            {feature.properties.length > 0 && (
-                <dl style={styles.properties}>
-                    {feature.properties.map((property) => (
-                        <React.Fragment key={property.key}>
-                            <dt style={styles.term}>{property.key}</dt>
-                            <dd style={styles.value}>{property.value}</dd>
-                        </React.Fragment>
-                    ))}
-                </dl>
+            {onShow === undefined ? body : (
+                <button
+                    type='button'
+                    style={styles.featureButton}
+                    onClick={onShow}
+                    data-testid='geojson-feature-show'
+                >
+                    <span style={SR_ONLY}>{SHOW_ON_MAP}</span>
+                    {body}
+                </button>
             )}
         </li>
     );
 };
 
 export const GeoJsonCard: React.FC<Props> = ({payload}) => {
-    const summary = summaryLine(payload);
+    const [focus, show] = useMapFocus(focusFor);
+    const mapShown = useInlineMapShown() && !payload.unplaceable;
 
     return (
         <div>
@@ -218,23 +164,30 @@ export const GeoJsonCard: React.FC<Props> = ({payload}) => {
                 style={styles.card}
                 data-testid='geojson-card'
             >
-                <p style={styles.kind}>{CARD_KIND}</p>
-                <div style={styles.header}>
-                    <span
-                        style={styles.heading}
-                        data-testid='geojson-heading'
-                    >
-                        {plural(payload.counts.features, 'feature')}
-                    </span>
-                    {summary !== '' && (
+                <p
+                    style={styles.kind}
+                    data-testid='geojson-kind'
+                >
+                    {payload.name === '' ? CARD_KIND : `${CARD_KIND}: ${payload.name}`}
+                </p>
+                {payload.name === '' && payload.fileName !== '' && (
+                    <div style={styles.header}>
                         <span
-                            style={styles.summary}
-                            data-testid='geojson-summary'
+                            style={styles.heading}
+                            data-testid='geojson-heading'
                         >
-                            {summary}
+                            {payload.fileName}
                         </span>
-                    )}
-                </div>
+                    </div>
+                )}
+                {payload.description !== '' && (
+                    <p
+                        style={styles.description}
+                        data-testid='geojson-description'
+                    >
+                        {payload.description}
+                    </p>
+                )}
 
                 {payload.note !== '' && (
                     <p
@@ -258,6 +211,7 @@ export const GeoJsonCard: React.FC<Props> = ({payload}) => {
                     <GeoJsonMap
                         payload={payload}
                         surface='card'
+                        focus={focus}
                     />
                 </ErrorBoundary>
 
@@ -271,6 +225,7 @@ export const GeoJsonCard: React.FC<Props> = ({payload}) => {
                                 <Feature
                                     key={`${feature.name}-${index}`}
                                     feature={feature}
+                                    onShow={mapShown && focusFor(feature, 0) !== null ? () => show(feature) : undefined}
                                 />
                             ))}
                         </ul>

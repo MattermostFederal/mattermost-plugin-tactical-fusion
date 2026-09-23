@@ -11,7 +11,7 @@ test('names the DTG while the panel is showing it', async ({mount, page}) => {
     await stubPreferencesRoute(page);
     await mount(<TitleHarness instantMs={INSTANT_MS}/>);
 
-    await expect(page.getByTestId('rhs-title')).toHaveText('Date/Time');
+    await expect(page.getByTestId('rhs-title')).toHaveText('Date/Time: 091630ZAUG26');
 });
 
 // The editor takes the panel over, so a header still reading "Date/Time" would
@@ -34,7 +34,7 @@ test('follows it back out again', async ({mount, page}) => {
 
     await page.getByRole('button', {name: 'Back'}).click();
 
-    await expect(page.getByTestId('rhs-title')).toHaveText('Date/Time');
+    await expect(page.getByTestId('rhs-title')).toHaveText('Date/Time: 091630ZAUG26');
 });
 
 test('follows it back out after a save', async ({mount, page}) => {
@@ -44,8 +44,8 @@ test('follows it back out after a save', async ({mount, page}) => {
     await page.getByRole('button', {name: 'Customize your view'}).click();
     await page.getByRole('button', {name: 'Save'}).click();
 
-    await expect(page.getByTestId('rhs-title')).toHaveText('Date/Time');
-    await expect(page.getByText('091630ZAUG26')).toBeVisible();
+    await expect(page.getByTestId('rhs-title')).toHaveText('Date/Time: 091630ZAUG26');
+    await expect(page.getByText('091630ZAUG26', {exact: true})).toBeVisible();
 });
 
 // The editor state outlives a change of selection, since React keeps the panel
@@ -60,7 +60,7 @@ test('a different DTG closes the editor', async ({mount, page}) => {
 
     await component.update(<TitleHarness instantMs={INSTANT_MS + (3600 * 1000)}/>);
 
-    await expect(page.getByTestId('rhs-title')).toHaveText('Date/Time');
+    await expect(page.getByTestId('rhs-title')).toHaveText('Date/Time: 091630ZAUG26');
     await expect(page.locator('table')).toHaveCount(1);
 });
 

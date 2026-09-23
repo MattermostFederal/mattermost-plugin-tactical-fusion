@@ -8,9 +8,11 @@ import (
 
 	"github.com/mattermost/mattermost/server/public/model"
 
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/avreport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/frequency"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
@@ -34,7 +36,7 @@ type exampleSet struct {
 	rows      []exampleRow
 }
 
-var exampleSetOrder = []string{dtg.Type, location.Type, airport.Type}
+var exampleSetOrder = []string{dtg.Type, location.Type, airport.Type, avreport.Type, frequency.Type}
 
 var exampleSets = map[string]exampleSet{
 	dtg.Type: {
@@ -77,6 +79,27 @@ var exampleSets = map[string]exampleSet{
 			{label: "ICAO", text: "ICAO:PHNL", note: "the label is required, in upper case"},
 			{label: "Location", text: "LOC:PGUM"},
 			{label: "Departure", text: "DEPLOC:PHTO"},
+			{label: "IATA", text: "IATA:HNL", note: "the three-letter code behind its own label"},
+		},
+	},
+
+	avreport.Type: {
+		decorator: avreport.Type,
+		name:      "Aviation reports",
+		rows: []exampleRow{
+			{label: "METAR", text: "METAR PHNL 221651Z 07012G18KT 10SM FEW025 SCT045 27/19 A3010", note: "hover for the plain-language summary; posted on its own it becomes a table"},
+			{label: "TAF", text: "TAF PGUA 221720Z 2218/2324 07012KT P6SM SCT025", note: "one line; a multi-line forecast posted on its own gets a table too, and a fenced one a card"},
+			{label: "NOTAM", text: "!HNL 09/123 HNL RWY 08L/26R CLSD 2609221200-2609232359", note: "the FAA domestic form"},
+		},
+	},
+
+	frequency.Type: {
+		decorator: frequency.Type,
+		name:      "Frequencies",
+		rows: []exampleRow{
+			{label: "Guard", text: "FREQ:121.5", note: "the label is required; hover for the band and the allocation"},
+			{label: "Tower", text: "FREQ:118.3", note: "VHF air band, no known allocation"},
+			{label: "UHF guard", text: "FREQ:243.0", note: "the military emergency frequency"},
 		},
 	},
 }
@@ -120,11 +143,12 @@ func (p *Plugin) examplesResponse(args *model.CommandArgs) *model.CommandRespons
 // formatExampleMessages is every message the format commands will write, so the
 // size gate above can measure them alongside the decorator sets.
 func (p *Plugin) formatExampleMessages() []string {
-	return append(p.cotExampleMessages(), p.geoJSONExampleMessages()...)
+	messages := append(append(p.cotExampleMessages(), p.geoJSONExampleMessages()...), p.tfrExampleMessages()...)
+	return append(messages, p.noteExampleMessages()...)
 }
 
 func (p *Plugin) postExamples(args *model.CommandArgs, messages []string) *model.CommandResponse {
-	failed, total := 0, len(messages)+p.cotExampleCount()+p.geoJSONExampleCount()
+	failed, total := 0, len(messages)+p.cotExampleCount()+p.geoJSONExampleCount()+p.tfrExampleCount()+len(noteExamples)
 
 	for _, message := range messages {
 		if _, appErr := p.API.CreatePost(examplePost(args, message)); appErr != nil {
@@ -136,6 +160,8 @@ func (p *Plugin) postExamples(args *model.CommandArgs, messages []string) *model
 
 	failed += p.postCotExamples(args)
 	failed += p.postGeoJSONExamples(args)
+	failed += p.postTFRExample(args)
+	failed += p.postNoteExamples(args)
 
 	if failed == total {
 		return ephemeralResponse(errcode.WithCode(errcode.CommandExamplesPostFailed,
