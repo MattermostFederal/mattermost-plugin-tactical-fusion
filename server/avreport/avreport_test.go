@@ -204,7 +204,7 @@ func TestDecodesAnFAANotam(t *testing.T) {
 		t.Errorf("report = %+v", report)
 	}
 	for label, want := range map[string]string{
-		"Location":  "HNL",
+		"Issued by": "HNL",
 		"Number":    "09/123",
 		"Affects":   "HNL",
 		"Subject":   "runway (RWY)",

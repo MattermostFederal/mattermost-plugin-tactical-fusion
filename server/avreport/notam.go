@@ -101,10 +101,12 @@ func decodeFAANotam(line string, ref time.Time) (Report, bool) {
 
 	report := Report{Kind: KindNOTAM, Station: faaStation(affected)}
 	report.Rows = append(report.Rows,
-		Row{Label: "Location", Value: location},
+		Row{Label: "Issued by", Value: issuerText(location)},
 		Row{Label: "Number", Value: number},
-		Row{Label: "Affects", Value: affected},
 	)
+	if affected != noSingleLocation {
+		report.Rows = append(report.Rows, Row{Label: "Affects", Value: affected})
+	}
 	report.Rows = append(report.Rows, Row{Label: "Subject", Value: subjectText(keyword)})
 
 	text := body
@@ -143,6 +145,19 @@ func decodeFAANotam(line string, ref time.Time) (Report, bool) {
 	report.Summary = summarizeNotam(report)
 
 	return report, true
+}
+
+const noSingleLocation = "ZZZ"
+
+var faaIssuers = map[string]string{
+	"FDC": "FDC (FAA Flight Data Center)",
+}
+
+func issuerText(location string) string {
+	if name, ok := faaIssuers[location]; ok {
+		return name
+	}
+	return location
 }
 
 func subjectText(keyword string) string {

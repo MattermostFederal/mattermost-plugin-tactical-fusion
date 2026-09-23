@@ -242,3 +242,16 @@ func TestATFRLeavesItsSubjectToTheRestrictionRow(t *testing.T) {
 		t.Errorf("Subject = %q, want AIRSPACE", got)
 	}
 }
+
+func TestAnFDCNotamNamesItsIssuerAndHidesThePlaceholderLocation(t *testing.T) {
+	report, err := Decode(tfrExample, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := rowValue(report.Rows, "Issued by"); got != "FDC (FAA Flight Data Center)" {
+		t.Errorf("Issued by = %q", got)
+	}
+	if hasRow(report, "Affects") || hasRow(report, "Location") {
+		t.Errorf("the ZZZ placeholder or the old label survived: %v", report.Rows)
+	}
+}
