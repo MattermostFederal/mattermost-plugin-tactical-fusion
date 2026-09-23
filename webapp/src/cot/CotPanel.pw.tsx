@@ -10,7 +10,7 @@ import {stubPreferencesRoute} from '../preferences/stub_route';
 test('the sidebar is empty until the card asks for it', async ({mount}) => {
     const component = await mount(<CotPanelHarness/>);
 
-    await expect(component.getByTestId('rhs').getByTestId('tf-home')).toBeVisible();
+    await expect(component.getByTestId('rhs')).toContainText('Tactical Fusion');
     await expect(component.getByTestId('rhs')).not.toContainText('Readings for the');
 });
 

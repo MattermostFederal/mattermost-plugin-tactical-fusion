@@ -9,7 +9,6 @@ import {registerReportPanel} from './avreport/panel';
 import ReportPostBody from './avreport/ReportPostBody';
 import {AVREPORT_POST_TYPE} from './avreport/types';
 import {installBridgeGlobal} from './bridge/global';
-import {startHistory} from './components/rhs/history';
 import {RhsTitle, RhsView} from './components/rhs/RhsView';
 import CotPostBody from './cot/CotPostBody';
 import {registerCotPanel} from './cot/index';
@@ -20,13 +19,12 @@ import {installDecoratorClickHandler} from './decorators/click_handler';
 import {registerBuiltinDecorators} from './decorators/index';
 import {DecoratorPostBody} from './decorators/PostBody';
 import {all} from './decorators/registry';
-import {clearSelection, initRhs, toggleRhs} from './decorators/selection';
+import {initRhs} from './decorators/selection';
 import {installDecoratorStyles} from './decorators/styles';
 import {DecoratorTooltip} from './decorators/Tooltip';
 import GeoJsonPostBody from './geojson/GeoJsonPostBody';
 import {registerGeoJsonPanel} from './geojson/panel';
 import {GEOJSON_POST_TYPE} from './geojson/types';
-import {HeaderIcon} from './HeaderIcon';
 import {staticBaseUrl} from './plugin_url';
 
 /*
@@ -54,13 +52,12 @@ export default class Plugin {
         registerGeoJsonPanel();
         registerReportPanel();
 
-        const {id: rhsId, showRHSPlugin, toggleRHSPlugin} = registry.registerRightHandSidebarComponent(
+        const {id: rhsId, showRHSPlugin} = registry.registerRightHandSidebarComponent(
             RhsView,
             <RhsTitle/>,
         );
         this.disposers.push(() => registry.unregisterComponent(rhsId));
-        initRhs(store, showRHSPlugin, toggleRHSPlugin);
-        this.disposers.push(startHistory());
+        initRhs(store, showRHSPlugin);
 
         // No registerMessageWillFormatHook: the server already put the link in
         // the message, which is what makes it work on clients that never run
@@ -100,19 +97,6 @@ export default class Plugin {
 
         const reportId = registry.registerPostTypeComponent(AVREPORT_POST_TYPE, ReportPostBody);
         this.disposers.push(() => registry.unregisterPostTypeComponent(reportId));
-
-        const headerId = registry.registerChannelHeaderButtonAction(
-            <HeaderIcon/>,
-            () => {
-                // Always land on the empty state, which is also the only way
-                // back from a decorator panel.
-                clearSelection();
-                toggleRhs();
-            },
-            'Tactical Fusion',
-            'Tactical Fusion',
-        );
-        this.disposers.push(() => registry.unregisterComponent(headerId));
 
         // The System Console control for detail map packages. `custom` is the
         // only setting type that can carry a file; every other type is a

@@ -35,43 +35,17 @@ export function subscribe(listener: Listener): () => void {
     };
 }
 
-// Redux is only needed to dispatch the RHS show/toggle actions the registry
-// hands back. Nothing else here needs a store, so there is no reducer.
 let store: Store | null = null;
 let showAction: unknown = null;
-let toggleAction: unknown = null;
 
-export function initRhs(reduxStore: Store, show: unknown, toggle: unknown): void {
+export function initRhs(reduxStore: Store, show: unknown): void {
     store = reduxStore;
     showAction = show;
-    toggleAction = toggle;
-}
-
-interface ChannelState {
-    entities?: {
-        channels?: {currentChannelId?: string};
-        teams?: {currentTeamId?: string};
-    };
-}
-
-export function currentChannel(): {channelId: string; teamId: string} | null {
-    const state = store?.getState() as ChannelState | undefined;
-    const channelId = state?.entities?.channels?.currentChannelId ?? '';
-    if (channelId === '') {
-        return null;
-    }
-    return {channelId, teamId: state?.entities?.teams?.currentTeamId ?? ''};
 }
 
 export function openRhs(): void {
     if (store && showAction) {
         store.dispatch(showAction as never);
-    }
-}
-
-export function toggleRhs(): void {
-    if (store && toggleAction) {
-        store.dispatch(toggleAction as never);
     }
 }
 
@@ -81,5 +55,4 @@ export function _resetForTesting(): void { // eslint-disable-line no-underscore-
     listeners.clear();
     store = null;
     showAction = null;
-    toggleAction = null;
 }

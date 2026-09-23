@@ -1,6 +1,5 @@
+import manifest from 'manifest';
 import React, {useEffect, useState} from 'react';
-
-import Home from './Home';
 
 import type {Selection} from '../../decorators/selection';
 import {getSelection, subscribe} from '../../decorators/selection';
@@ -15,6 +14,10 @@ const styles: Record<string, React.CSSProperties> = {
         height: '100%',
         overflowY: 'auto',
     },
+    empty: {color: 'var(--center-channel-color)'},
+    emptyLead: {fontSize: '14px', margin: '0 0 8px'},
+    emptyHint: {fontSize: '13px', opacity: 0.65, margin: 0},
+    version: {fontSize: '12px', opacity: 0.5, marginTop: '24px'},
 };
 
 /** Subscribes a component to the current selection. */
@@ -23,6 +26,16 @@ function useSelection(): Selection | null {
     useEffect(() => subscribe(setSelection), []);
     return selection;
 }
+
+export const EmptyState: React.FC = () => (
+    <div style={styles.empty}>
+        <p style={styles.emptyLead}>{'Tactical Fusion'}</p>
+        <p style={styles.emptyHint}>
+            {'Highlighted values in a message, such as date-time groups and coordinates, open their details here.'}
+        </p>
+        <p style={styles.version}>{`Version ${manifest.version}`}</p>
+    </div>
+);
 
 /**
  * Renders the selected panel.
@@ -42,7 +55,7 @@ export const RhsView: React.FC = () => {
     if (!selection || !entry) {
         return (
             <div style={styles.container}>
-                <Home/>
+                <EmptyState/>
             </div>
         );
     }
@@ -55,14 +68,6 @@ export const RhsView: React.FC = () => {
     );
 };
 
-/**
- * The RHS header. Null-safe: the header button opens with no selection.
- *
- * A decorator whose panel has more than one view can declare a `Title`
- * component to follow it, since this is rendered separately from the body and
- * `summary` cannot see which view the panel is on. Everything else gets
- * `summary`.
- */
 export const RhsTitle: React.FC = () => {
     const selection = useSelection();
     const entry = selection ? getPanel(selection.type) : undefined;

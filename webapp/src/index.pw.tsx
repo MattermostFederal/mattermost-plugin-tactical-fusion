@@ -35,14 +35,13 @@ test('gives the sidebar its view and its title', async ({mount, page}) => {
     expect(result.rhsTitleName).toBe('RhsTitle');
 });
 
-// The header action closes over showRHSPlugin/toggleRHSPlugin, which only exist
-// once the sidebar registration has returned them.
-test('registers the sidebar before the header button', async ({mount, page}) => {
+test('registers the sidebar first and no channel header button', async ({mount, page}) => {
     await mount(<IndexHarness/>);
 
     const result = await recorded(page);
 
-    expect(result.order).toEqual(['rhs', 'tooltip', 'post-type', 'post-type', 'post-type', 'post-type', 'post-type', 'header']);
+    expect(result.order).toEqual(['rhs', 'tooltip', 'post-type', 'post-type', 'post-type', 'post-type', 'post-type']);
+    expect(result.called).not.toContain('registerChannelHeaderButtonAction');
 });
 
 // One registration for the whole plugin: a decorator gets a hover by declaring
@@ -68,16 +67,6 @@ test('registers a post body for every decorator that declares one', async ({moun
     expect(result.postBodyComponentNames).toEqual(['DecoratorPostBody', 'CotPostBody', 'GeoJsonPostBody', 'AirfieldsPostBody', 'ReportPostBody']);
 });
 
-test('wires the channel header button', async ({mount, page}) => {
-    await mount(<IndexHarness/>);
-
-    const result = await recorded(page);
-
-    expect(result.headerIconName).toBe('HeaderIcon');
-    expect(result.headerDropdownText).toBe('Tactical Fusion');
-    expect(result.headerTooltip).toBe('Tactical Fusion');
-});
-
 // Decoration happens on the server, which is what makes the link work on
 // clients that never run this bundle. A format hook here would be a second,
 // divergent implementation of the same thing.
@@ -88,18 +77,6 @@ test('never registers a message formatting hook', async ({mount, page}) => {
 
     expect(result.called).not.toContain('registerMessageWillFormatHook');
     expect(result.called).not.toContain('registerMessageWillBePostedHook');
-});
-
-// Always land on the empty state, which is also the only way back from a
-// decorator panel. The selection recorded at dispatch time is what proves the
-// clear happened first rather than after.
-test('the header button clears the selection before toggling', async ({mount, page}) => {
-    await mount(<IndexHarness/>);
-
-    const result = await recorded(page);
-
-    expect(result.dispatched).toEqual([{type: 'TOGGLE_RHS'}]);
-    expect(result.selectionAtDispatch).toEqual([null]);
 });
 
 test('intercepts a decorator link once initialized', async ({mount, page}) => {
@@ -151,7 +128,7 @@ test('uninitialize releases the click handler and the stylesheet', async ({mount
 // it does not remove what that instance registered: removePlugin in the host
 // says "The plugin is responsible for removing any of its registered
 // components." So every id has to come back here, or a plugin upgrade in a live
-// tab leaves a second sidebar, tooltip and header button behind.
+// tab leaves a second sidebar and tooltip behind.
 test('uninitialize gives back every registry component', async ({mount, page}) => {
     await mount(<IndexHarness/>);
     await recorded(page);
@@ -162,7 +139,7 @@ test('uninitialize gives back every registry component', async ({mount, page}) =
 
     await expect(page.getByTestId('unregistered')).toHaveText(
         'rhs-id,tooltip-id,post-type-id-custom_tf_location,post-type-id-custom_tf_cot,' +
-        'post-type-id-custom_tf_geojson,post-type-id-custom_tf_airfields,post-type-id-custom_tf_avreport,header-id');
+        'post-type-id-custom_tf_geojson,post-type-id-custom_tf_airfields,post-type-id-custom_tf_avreport');
 });
 
 // Calling it twice must be a no-op rather than running every disposer again.

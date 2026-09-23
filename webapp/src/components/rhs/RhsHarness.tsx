@@ -1,10 +1,9 @@
 import React, {useState} from 'react';
 
-import {clearHistory, startHistory} from './history';
 import {RhsTitle, RhsView} from './RhsView';
 
 import {register, _resetForTesting as resetRegistry} from '../../decorators/registry';
-import {clearSelection, initRhs, setSelection, _resetForTesting as resetSelection} from '../../decorators/selection';
+import {setSelection, _resetForTesting as resetSelection} from '../../decorators/selection';
 import type {Decorator} from '../../decorators/types';
 
 /**
@@ -47,35 +46,15 @@ interface Props {
 
     /** Whether the registered decorator declares its own header component. */
     withTitle?: boolean;
-
-    opened?: string[];
-
-    channelId?: string;
 }
 
-const RhsHarness: React.FC<Props> = ({selectionType, value = 'hello', title, withTitle = false, opened = [], channelId}) => {
+const RhsHarness: React.FC<Props> = ({selectionType, value = 'hello', title, withTitle = false}) => {
     // Set up once, before the first render, so the component never observes an
     // empty registry.
     useState(() => {
         resetRegistry();
         resetSelection();
         register(fixture(withTitle));
-        clearHistory();
-        startHistory();
-        for (const openedValue of opened) {
-            setSelection({type: 'fix', payload: {value: openedValue}});
-        }
-        if (opened.length > 0) {
-            clearSelection();
-        }
-        if (channelId !== undefined) {
-            initRhs({
-                getState: () => ({entities: {channels: {currentChannelId: channelId}, teams: {currentTeamId: 'team1'}}}),
-                dispatch: (action: unknown) => action,
-                subscribe: () => () => undefined,
-                replaceReducer: () => undefined,
-            } as never, null, null);
-        }
         if (selectionType) {
             setSelection({type: selectionType, payload: {value}});
         }
