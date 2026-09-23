@@ -94,6 +94,8 @@ type fakeAPI struct {
 	// publishErr forces publication to fail, which must not fail the save.
 	publishErr error
 
+	mcp mcpCalls
+
 	// commands records what OnActivate registered, and registerErr forces the
 	// registration to fail.
 	commands    []*model.Command

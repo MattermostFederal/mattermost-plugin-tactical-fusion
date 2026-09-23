@@ -53,7 +53,7 @@ var britishSuffixPattern = regexp.MustCompile(`(?i)\w*(` + strings.Join(britishS
 
 // Roots that are this project's own source. Everything outside them is either a
 // build artifact or somebody else's.
-var spellingRoots = []string{"../server", "../webapp/src", "../docs", "../public/help", "../build"}
+var spellingRoots = []string{"../server", "../webapp/src", "../public/help", "../build"}
 
 var spellingExtensions = map[string]bool{
 	".go": true, ".ts": true, ".tsx": true, ".md": true,

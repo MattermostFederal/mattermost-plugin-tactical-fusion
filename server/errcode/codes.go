@@ -19,7 +19,8 @@
 //	17000-17999   server/decorators/            framework and decorator pages
 //	18000-18999   server/packages.go            detail map packages
 //	19000-19999   server/bridge.go              the plugin bridge
-//	20000-20999   server/cyberdata.go           cyber datasets on disk
+//	20000-20999   server/mcp.go                 the Agents MCP server
+//	21000-21999   server/cyberdata.go           cyber datasets on disk
 //
 // Within a range codes are allocated in source order the first time a file is
 // instrumented; a site added later takes the next free number in its range, so
@@ -365,37 +366,47 @@ const (
 	BridgeFormatDisabled     = 19007
 	BridgePanic              = 19008
 
-	// server/cyberdata.go (20000-20999)
+	MCPInitFailed         = 20000
+	MCPManifestIncomplete = 20001
+	MCPRegistrationFailed = 20002
+	MCPUnregisterFailed   = 20003
+	MCPNotReady           = 20004
+	MCPToolPanic          = 20005
+	MCPLinkDeclined       = 20006
+	MCPConvertInvalid     = 20007
+	MCPAirportInvalid     = 20008
+
+	// server/cyberdata.go (21000-21999)
 
 	// CyberDataNoBundlePath reports that the plugin cannot locate its own
 	// bundle, so the datasets shipped inside it are not read. Datasets in the
 	// configured directory are unaffected.
-	CyberDataNoBundlePath = 20000
+	CyberDataNoBundlePath = 21000
 
 	// CyberDataUnreadable reports a dataset file that could not be opened or
 	// whose rows are not the shape this build reads. The file is skipped and
 	// every other dataset still answers.
-	CyberDataUnreadable = 20001
+	CyberDataUnreadable = 21001
 
 	// CyberDataSchemaMismatch reports a dataset carrying no stamp, or one
 	// built for a different reader. Distinct from unreadable, because the
 	// remedy is a newer dataset rather than a repaired file.
-	CyberDataSchemaMismatch = 20002
+	CyberDataSchemaMismatch = 21002
 
 	// CyberDataBadName reports a file in the dataset directory whose name is
 	// not one this build reads.
-	CyberDataBadName = 20003
+	CyberDataBadName = 21003
 
 	// CyberDataMMDBUnreadable reports a vendor database that could not be
 	// opened, or whose declared type this build does not read.
-	CyberDataMMDBUnreadable = 20004
+	CyberDataMMDBUnreadable = 21004
 
 	// CyberDataLookupFailed reports a dataset that opened and then could not
 	// be read at the moment a reader asked it something. It is deliberately
 	// not the sentence for a row that is absent: reporting a read failure as
 	// "not listed" would tell a responder that an indicator is not being
 	// exploited on the strength of a broken file.
-	CyberDataLookupFailed = 20005
+	CyberDataLookupFailed = 21005
 )
 
 // AllCodes lists every code declared above. TestAllCodesComplete enforces that
@@ -491,6 +502,16 @@ var AllCodes = []int{
 	BridgeTokenNotRecognized,
 	BridgeFormatDisabled,
 	BridgePanic,
+
+	MCPInitFailed,
+	MCPManifestIncomplete,
+	MCPRegistrationFailed,
+	MCPUnregisterFailed,
+	MCPNotReady,
+	MCPToolPanic,
+	MCPLinkDeclined,
+	MCPConvertInvalid,
+	MCPAirportInvalid,
 
 	CyberDataNoBundlePath,
 	CyberDataUnreadable,

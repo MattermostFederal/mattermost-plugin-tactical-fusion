@@ -3,6 +3,7 @@ package main
 import (
 	"sync"
 
+	"github.com/mattermost/mattermost-plugin-agents/v2/external/pluginmcp"
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 	"github.com/pkg/errors"
@@ -25,9 +26,10 @@ type Plugin struct {
 	packageCache *packageCache
 	warned       map[string]bool
 
-	// cyber holds the datasets open across lookups, reopened when the files
-	// under the configured directories move.
 	cyber cyberDatasets
+
+	mcpServerLock sync.RWMutex
+	mcpServer     *pluginmcp.Server
 
 	// decorators is built once in OnActivate and only read afterwards, by the
 	// message hook and by ServeHTTP.
@@ -224,6 +226,17 @@ func (p *Plugin) OnActivate() error {
 			"failed to register the slash command"))
 	}
 
+	if err := p.ensureMCPServer(); err != nil {
+		return errors.Wrap(err, errcode.WithCode(errcode.MCPInitFailed,
+			"failed to initialize the MCP server"))
+	}
+	p.registerMCPServerBestEffort()
+
+	return nil
+}
+
+func (p *Plugin) OnDeactivate() error {
+	p.unregisterMCPServerBestEffort()
 	return nil
 }
 

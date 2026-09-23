@@ -333,7 +333,7 @@ func TestTheStatusSentenceTellsTheThreeFailuresApart(t *testing.T) {
 	}{
 		{"no dataset", set, intel.NameKEV, intel.ErrNoDataset, "No known exploited vulnerabilities dataset is installed."},
 		{"no row", set, intel.NameCVE, intel.ErrNotFound, "Not in the vulnerability dataset generated 2026-09-01T00:00:00Z."},
-		{"unreadable", set, intel.NameCVE, errors.New("input/output error"), "The vulnerability dataset is installed and could not be read. (TF-20005)"},
+		{"unreadable", set, intel.NameCVE, errors.New("input/output error"), "The vulnerability dataset is installed and could not be read. (TF-21005)"},
 	}
 
 	for _, tc := range cases {

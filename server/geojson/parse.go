@@ -19,8 +19,8 @@ const MaxFeatures = 256
 // MaxVertices is how many positions one document may carry in total.
 //
 // Document-wide, and a refusal. Both differ from cot.MaxVertices, which is per
-// shape and truncates; docs/design/geojson.md argues why, so that nobody
-// reconciles the two by changing one.
+// shape and truncates, stated here so that nobody reconciles the two by
+// changing one.
 const MaxVertices = 4096
 
 // MaxJSONDepth bounds the walker's own recursion.

@@ -320,10 +320,9 @@ const CotMap: React.FC<{
         isRowVisible(preferences.location.hiddenRows, INLINE_ID) :
         isSectionVisible(preferences.cot.hiddenSections, 'map');
 
-    // Both surfaces, one switch, deliberately: docs/design/cot.md "Switches"
-    // argues it and TestCotHasNoMapSettingOfItsOwn is where it gets revisited.
-    // GeoJSON reads mapPanel for its panel instead, which is a different
-    // decision rather than a drift; see that file and geojson.md.
+    // Both surfaces, one switch, deliberately: TestCotHasNoMapSettingOfItsOwn
+    // is where it gets revisited. GeoJSON reads mapPanel for its panel
+    // instead, which is a different decision rather than a drift.
     if (!features.mapInline || !wanted) {
         return null;
     }

@@ -339,10 +339,13 @@ func (p *Plugin) serveAirport(w http.ResponseWriter, r *http.Request) {
 	// plugin upgrade.
 	w.Header().Set("Cache-Control", "private, max-age=300")
 
+	writeAPIJSON(w, http.StatusOK, describeAirport(ident))
+}
+
+func describeAirport(ident string) airportResponse {
 	details, found := airport.Describe(ident)
 	if !found {
-		writeAPIJSON(w, http.StatusOK, airportResponse{Found: false, Ident: ident})
-		return
+		return airportResponse{Found: false, Ident: ident}
 	}
 
 	body := airportResponse{
@@ -364,7 +367,7 @@ func (p *Plugin) serveAirport(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	writeAPIJSON(w, http.StatusOK, body)
+	return body
 }
 
 func (p *Plugin) handleGetPreferences(w http.ResponseWriter, userID string) {

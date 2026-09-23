@@ -80,6 +80,11 @@
                     <td><a href="#webapp"><code>window.TacticalFusion</code></a></td>
                     <td>The reader's session, to <code>/api/v1</code></td>
                 </tr>
+                <tr>
+                    <td>An LLM agent in the Agents plugin</td>
+                    <td><a href="#mcp">The MCP tools</a></td>
+                    <td><code>PluginHTTP</code> to <code>/mcp</code></td>
+                </tr>
             </tbody>
         </table>
 
@@ -545,6 +550,72 @@ declare global {
         TacticalFusion?: TacticalFusionApi;
     }
 }</code></pre>
+
+        <h2 id="mcp">From an LLM agent, over MCP</h2>
+
+        <p>
+            The <strong>Mattermost Agents</strong> plugin discovers this plugin's operations as
+            MCP tools and offers them to its
+            agents, so an agent answering in a channel can decorate a message it is about to
+            post, build one link, convert a coordinate or look up an airfield. There is nothing to
+            configure here: the tools register themselves when Tactical Fusion activates, and an
+            administrator enables or disables them per tool in the Agents plugin's own
+            <strong>Tools</strong> settings.
+        </p>
+
+        <p>
+            Tool names are namespaced with this plugin's id, so an agent sees
+            <code>com_mattermost_plugin-tactical-fusion__decorate_text</code> for the tool listed
+            below as <code>decorate_text</code>.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Tool</th><th>Give it</th><th>Get back</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>decorate_text</code></td>
+                    <td><code>message</code>, and optionally <code>reference_time</code></td>
+                    <td>The text with every recognized token linked, whether anything changed, and whether the result fits a post</td>
+                </tr>
+                <tr>
+                    <td><code>link_token</code></td>
+                    <td><code>type</code> and <code>token</code>, and optionally <code>label</code> and <code>reference_time</code></td>
+                    <td>One link, as markdown and as a URL</td>
+                </tr>
+                <tr>
+                    <td><code>convert_coordinate</code></td>
+                    <td><code>format</code> and <code>value</code></td>
+                    <td>Every other reading of the coordinate, plus its country and its decimal latitude and longitude</td>
+                </tr>
+                <tr>
+                    <td><code>lookup_airfield</code></td>
+                    <td><code>ident</code>, an ICAO code</td>
+                    <td>The airfield's name, type, place, elevation and IATA code, and its position</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>
+            These are the same operations the rest of this page documents, answered by the same
+            code, so everything under <a href="#rules">Rules worth knowing</a> applies to them
+            too: the admin format switches still govern <code>link_token</code>, a link already
+            written keeps working after a format is switched off, and
+            <code>lookup_airfield</code> keeps resolving regardless. Refusals carry
+            <a href="error-codes.html#mcp">their own codes</a>.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">Only the Agents plugin may call this.</p>
+            <p>
+                The <code>/mcp</code> endpoint answers only a request carrying the Agents plugin's
+                own id, a header Mattermost sets itself and strips from anything a browser sends.
+                It is not a general-purpose MCP server: there is no way to point an external MCP
+                client at it directly, and a <code>curl</code> from a terminal is answered
+                <code>403</code>.
+            </p>
+        </div>
 
         <h2 id="rules">Rules worth knowing</h2>
 

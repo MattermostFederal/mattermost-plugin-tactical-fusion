@@ -29,6 +29,7 @@ right-hand sidebar, and a standalone server-rendered page.
 | `http.go` | `ServeHTTP`: `/decorate/<type>`, `/map`, `/api/v1/*`, and the session gate |
 | `api.go` | Authenticated JSON API: `/preferences`, `/convert`, `/features`, `/airport`, `/decorate`, `/link` |
 | `bridge.go` | The plugin bridge: `/bridge/v1/{decorate,link,info}` for other plugins, and the `decorate`/`link` operations `/api/v1` shares |
+| `mcp.go`, `mcp_tools.go` | The Agents MCP server: the `/mcp` endpoint, its lifecycle, and the four tools |
 | `preferences.go`, `preferences_cache.go` | Per-reader KV store and its cluster-aware cache |
 | `command*.go` | The `/tactical-fusion` slash command and its example builders |
 | `errcode/` | The `TF-NNNN` catalog |
@@ -38,7 +39,7 @@ right-hand sidebar, and a standalone server-rendered page.
 | `decorators/airport/` | ICAO airfields; `data/` holds the embedded CSV and its provenance |
 | `cot/` | Cursor on Target: the bounded XML parse, the type tables, the post props |
 | `decorators/cyber/` | Security indicators: the five grammars, the embedded ATT&CK and CWE catalogs, the enrichment renderer; `intel/` reads the datasets on disk |
-| `cyberdata.go` | Cyber dataset discovery, the reopen-on-change cache, the `TF-200NN` codes |
+| `cyberdata.go` | Cyber dataset discovery, the reopen-on-change cache, the `TF-210NN` codes |
 | `geojson/` | GeoJSON: the bounded JSON walk, the parts/rings shape, the post props |
 
 ### `webapp/`
@@ -66,31 +67,9 @@ right-hand sidebar, and a standalone server-rendered page.
 - `docker-compose.dev.yml` and `docker/` back `make deploy`.
 - `implementation-plans/` holds the plans features were built from.
 
-## Design notes
-
-Anything a code comment would have recorded lives in `docs/design/`, by area.
-**Read the matching file before changing that area**, and write new rationale
-there rather than here or in a comment.
-
-| File | Covers |
-|---|---|
-| [`docs/design/decorators.md`](docs/design/decorators.md) | The framework, the DTG grammars, the tagger and protected spans, `siteURLPath`, page CSP, the slash command, adding a decorator, the post size limit |
-| [`docs/design/location.md`](docs/design/location.md) | Every coordinate grammar, boundary guards, rendering and resolution, geodesy, `/api/v1/convert`, copy buttons, prior art |
-| [`docs/design/airfields.md`](docs/design/airfields.md) | The label-only ICAO grammar, the embedded database, `/api/v1/airport`, the page and panel |
-| [`docs/design/cot.md`](docs/design/cot.md) | Cursor on Target: why it is not a decorator, the exclusivity rule, the props budget, `edit_at` over a digest, the parser's refusals, the CE circle |
-| [`docs/design/cyber.md`](docs/design/cyber.md) | Security indicators: why decoration reads only the build and enrichment only the install, the consumed tail, the declined list, the stamped datasets and their in-place search, prior mentions, why the shipped catalogs are a seed |
-| [`docs/design/geojson.md`](docs/design/geojson.md) | GeoJSON: why recognition is narrow, why format order stayed format-major, what the two stampers share and what they must not, the parts/rings shape, why `decimalShape` is not reused, the ringed map prop, extent-only, the cross-shape antimeridian unwrap |
-| [`docs/design/mapping.md`](docs/design/mapping.md) | The vector basemap, the OpenStreetMap detail tier and its seam, detail map packages, `PageStatic` vs `PageMapping`, the page bundle, zoom numbers, the country lookup, `Conversion`, the map page, the panel map, turning maps off, the map under a post |
-| [`docs/design/bridge.md`](docs/design/bridge.md) | The plugin bridge: why `PluginHTTP`, why `Mattermost-Plugin-ID` is trusted, the two transports, why `link` takes no label and still honors switches, the window global and its ready event, where the wire types live |
-| [`docs/design/preferences.md`](docs/design/preferences.md) | The KV store, both caches, the location hover, the location rows, the zone picker and ordering |
-| [`docs/design/admin-settings.md`](docs/design/admin-settings.md) | The thirty-one switches, the two map-package settings, the seven sections, why `EnableLocationUTM` and `EnableGeoJSONUnlabeled` ship off |
-| [`docs/design/help-and-errors.md`](docs/design/help-and-errors.md) | `public/help/` and the `TF-NNNN` catalog |
-| [`docs/design/unverified.md`](docs/design/unverified.md) | Claims that need a running server or a phone and have never been checked |
-
 ## Invariants
 
-The short list of things that break something real if you get them wrong. Each
-one is argued in the design note beside it.
+The short list of things that break something real if you get them wrong.
 
 **Decoration rewrites the stored message.** It is permanent, it lands in
 exports, and it survives uninstall. Nothing on that path may ever stop somebody
@@ -151,7 +130,7 @@ is missing, split, or not in a `maplibre-<hash>/` directory.
 **The basemap's cache buster is the archive's digest, never the plugin version.**
 The bundle is re-extracted on every install, so `Last-Modified` moves while the
 bytes do not, and a browser revalidating a cached byte range then gets the whole
-43 MB archive instead of a 206. `docs/design/mapping.md` has the measurement.
+43 MB archive instead of a 206.
 
 **Setting `Post.Type` costs the post its Elasticsearch/OpenSearch matches**,
 its auto-translation, its embeds and its slack-style message attachments. Its
@@ -217,8 +196,18 @@ forged sibling blob would otherwise reach stored props permanently.
 with per-user or per-channel data.** A plugin request carries no reader. Every
 bridge answer is a pure function of the request and the admin switches; a route
 that needs a reader belongs somewhere a user id is proven. Within `v1` changes are
-additive only, because the callers are other teams' plugins. `bridge.md` argues
-both.
+additive only, because the callers are other teams' plugins.
+
+**`/mcp` is the one transport that may read a reader, and only through
+`pluginmcp.GetUserID`.** Agents propagates the acting user, and the helper
+stashes it in the request context under an unexported key after its plugin-id
+check. A tool that wants a reader goes through that function and refuses when it
+returns empty; reading `X-Mattermost-UserID` from the headers is a disclosure
+bug, because the header is trustworthy only inside a request that arrived
+through `pluginmcp.Server.ServeHTTP`. No tool shipped today reads one, and a
+test calls every registered tool with no user id to keep that deliberate. The
+route sits above the method check and the session gate: MCP is POST, and a
+plugin request has no session to redirect.
 
 **`plugin.json` may not contain a backtick.** Both generated manifests embed it
 inside a literal a backtick terminates, so one breaks the Go and the webapp build
@@ -309,15 +298,8 @@ The token grammar itself is Go-only, so the two sides cannot drift on it.
   (`//go:embed`, `//go:generate`, `//nolint:...`, `//go:build`, `// #nosec`,
   `// eslint-disable-*`, `// @ts-expect-error`) and generated-file and license
   headers.
-- **Rationale goes in `docs/design/`**, in the file for that area, and it goes
-  in before the comment comes out rather than after. Write it there when a
-  comment would have recorded a measurement, a defect that caused the current
-  shape, or a contract a later change would silently break.
-- **Before deleting a comment**, check whether it is the only record of one of
-  those three. Move the content into the design note first, and ask rather than
-  dropping it quietly. Do not strip comments from code you are not otherwise
-  touching.
-- Carry the rest in the code: name things so the intent reads, give a magic
+- **Do not strip comments from code you are not otherwise touching.**
+- Carry the meaning in the code: name things so the intent reads, give a magic
   number a named constant, extract a named function rather than heading a block
   with a comment, and put invariants in test names
   (`TestRoundToNormalizesNegativeZero`, `TestGEOREFIsLongitudeFirst`).
@@ -354,8 +336,7 @@ The token grammar itself is Go-only, so the two sides cannot drift on it.
 ## Commits and releases
 
 Releases are automated with **release-please** driven by
-[Conventional Commits](https://www.conventionalcommits.org/). Details in
-[`docs/RELEASING.md`](docs/RELEASING.md).
+[Conventional Commits](https://www.conventionalcommits.org/).
 
 - Write conventional subjects, on commits and on PR titles, since PRs
   squash-merge. `feat:` bumps minor, `fix:`/`perf:`/`deps:` patch, `feat!:` or a
@@ -379,7 +360,7 @@ release` for the full tagged pipeline.
 Suppress a false-positive CVE in `.grype.yaml` with a documented reason, never
 blanket-ignore, and note that suppression is not available for anything that
 ships and runs in the reader's browser (MapLibre): the process there is upgrade
-or pin. See [`docs/SECURITY.md`](docs/SECURITY.md).
+or pin.
 
 GitHub Actions are pinned to full commit SHAs with a `# vX.Y.Z` comment. Resolve
 the tag to its SHA when adding or bumping one, and keep the comment accurate.
@@ -403,8 +384,7 @@ anything that ends up in the bundle** (Go modules in `go.mod`, npm packages in
   runs it alongside the CVE scan. Both run in CI on every PR, so a copyleft
   dependency fails the build rather than being caught by review.
 - An unavoidable exception goes in `.licenses.json`, keyed to one component and
-  one license, with a reason. `docs/SECURITY.md` explains what is already there
-  and why.
+  one license, with a reason.
 - `make bundle` writes `THIRD-PARTY-NOTICES.txt` into every bundle from the
   dependencies' own license files, and fails on one that ships no license text.
   Adding a dependency that publishes none means recording what it does declare

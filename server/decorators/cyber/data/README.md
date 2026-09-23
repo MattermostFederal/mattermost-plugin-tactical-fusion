@@ -9,7 +9,7 @@ They are embedded rather than synced because **decoration has to be a function
 of the build**. `Parse` runs in `MessageWillBePosted` and permanently rewrites
 the stored message, so the same message must decorate the same way on every
 node and on every day. A catalog an operator could change would make that
-untrue. See [`docs/design/cyber.md`](../../../../docs/design/cyber.md).
+untrue.
 
 ## Provenance
 
