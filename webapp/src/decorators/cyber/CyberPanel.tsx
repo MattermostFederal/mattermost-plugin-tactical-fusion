@@ -1,8 +1,8 @@
-import React from 'react';
+import React, {useState} from 'react';
 
-import {KIND_LABELS, isKind, useCyber} from './cyber';
-import type {CyberState} from './cyber';
-import type {CyberLink, CyberReference} from './types';
+import {KIND_LABELS, isKind, isSeverity, useCyber} from './cyber';
+import type {CyberSeverity, CyberState} from './cyber';
+import type {CyberLink, CyberReference, CyberResponse} from './types';
 
 import LinkButton from '../../components/LinkButton';
 import CopyButton from '../location/CopyButton';
@@ -10,69 +10,113 @@ import {setSelection} from '../selection';
 
 import type {CyberPayload} from './index';
 
+const MONOSPACE = 'ui-monospace, SFMono-Regular, Menlo, monospace';
+const RULE = '1px solid rgba(var(--center-channel-color-rgb), 0.08)';
+const SUMMARY_CLAMP_LINES = 6;
+const SUMMARY_CLAMP_CHARS = 420;
+
 const styles: Record<string, React.CSSProperties> = {
+    kind: {
+        fontSize: '11px',
+        textTransform: 'uppercase',
+        letterSpacing: '0.08em',
+        fontWeight: 600,
+        opacity: 0.6,
+        color: 'var(--center-channel-color)',
+        margin: '0 0 4px',
+    },
     title: {
-        fontSize: '18px',
+        fontSize: '20px',
+        lineHeight: '26px',
         fontWeight: 600,
         color: 'var(--center-channel-color)',
-        margin: '0 0 2px',
+        margin: 0,
+        overflowWrap: 'anywhere',
     },
     value: {
-        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+        fontFamily: MONOSPACE,
         fontSize: '12px',
         letterSpacing: '0.04em',
         opacity: 0.6,
         color: 'var(--center-channel-color)',
-        margin: '0 0 16px',
+        margin: '2px 0 0',
         wordBreak: 'break-all',
     },
-    summary: {
-        fontSize: '13px',
-        color: 'var(--center-channel-color)',
-        margin: '0 0 16px',
+    badges: {display: 'flex', flexWrap: 'wrap', gap: '6px', margin: '10px 0 0'},
+    badge: {
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '6px',
+        padding: '2px 8px',
+        borderRadius: '4px',
+        fontSize: '12px',
+        lineHeight: '18px',
+        fontWeight: 600,
     },
-    table: {width: '100%', borderCollapse: 'collapse', fontSize: '13px'},
+    badgeScore: {fontVariantNumeric: 'tabular-nums', fontWeight: 700},
+    exploited: {
+        background: 'rgba(210, 75, 78, 0.12)',
+        color: 'var(--error-text, #d24b4e)',
+        boxShadow: 'inset 0 0 0 1px var(--error-text, #d24b4e)',
+    },
+    summaryWrap: {margin: '16px 0 0'},
+    summary: {
+        fontSize: '14px',
+        lineHeight: '20px',
+        color: 'var(--center-channel-color)',
+        margin: 0,
+        overflowWrap: 'anywhere',
+    },
+    clamped: {
+        display: '-webkit-box',
+        WebkitLineClamp: SUMMARY_CLAMP_LINES,
+        WebkitBoxOrient: 'vertical',
+        overflow: 'hidden',
+    },
+    more: {fontSize: '13px', margin: '4px 0 0'},
+    table: {width: '100%', borderCollapse: 'collapse', fontSize: '13px', margin: '16px 0 0'},
     th: {
         textAlign: 'left',
         fontSize: '11px',
         textTransform: 'uppercase',
         letterSpacing: '0.04em',
         fontWeight: 600,
-        opacity: 0.7,
+        opacity: 0.64,
         color: 'var(--center-channel-color)',
-        padding: '8px 10px 8px 0',
+        padding: '9px 12px 9px 0',
         verticalAlign: 'top',
-        whiteSpace: 'nowrap',
-        width: '38%',
-        borderBottom: '1px solid rgba(var(--center-channel-color-rgb), 0.08)',
+        width: '34%',
+        borderTop: RULE,
     },
     td: {
         padding: '8px 0',
         color: 'var(--center-channel-color)',
-        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-        wordBreak: 'break-word',
-        borderBottom: '1px solid rgba(var(--center-channel-color-rgb), 0.08)',
+        fontVariantNumeric: 'tabular-nums',
+        overflowWrap: 'anywhere',
+        verticalAlign: 'top',
+        borderTop: RULE,
     },
+    code: {fontFamily: MONOSPACE, fontSize: '12px'},
     copyCell: {
         width: '24px',
         padding: '6px 0 6px 8px',
         verticalAlign: 'top',
         textAlign: 'right',
-        borderBottom: '1px solid rgba(var(--center-channel-color-rgb), 0.08)',
+        borderTop: RULE,
     },
     heading: {
         fontSize: '11px',
         textTransform: 'uppercase',
         letterSpacing: '0.08em',
         fontWeight: 600,
-        opacity: 0.7,
+        opacity: 0.64,
         color: 'var(--center-channel-color)',
-        margin: '20px 0 8px',
+        margin: '24px 0 8px',
     },
     note: {
         fontSize: '12px',
         color: 'var(--center-channel-color)',
-        opacity: 0.6,
+        opacity: 0.64,
         margin: '14px 0 0',
     },
     list: {listStyle: 'none', padding: 0, margin: 0, fontSize: '13px'},
@@ -80,51 +124,189 @@ const styles: Record<string, React.CSSProperties> = {
     verdict: {fontWeight: 600},
     meta: {
         fontSize: '12px',
-        opacity: 0.6,
+        opacity: 0.64,
         color: 'var(--center-channel-color)',
     },
-    details: {margin: '20px 0 0'},
+    related: {display: 'flex', gap: '8px', alignItems: 'baseline', textAlign: 'left', width: '100%'},
+    relatedCode: {
+        fontFamily: MONOSPACE,
+        fontSize: '12px',
+        color: 'var(--center-channel-color)',
+        opacity: 0.64,
+        flex: '0 0 auto',
+    },
+    section: {margin: '16px 0 0', borderTop: RULE, paddingTop: '12px'},
     toggle: {
         fontSize: '11px',
         textTransform: 'uppercase',
         letterSpacing: '0.08em',
         fontWeight: 600,
-        opacity: 0.7,
         color: 'var(--center-channel-color)',
         cursor: 'pointer',
-        margin: '0 0 8px',
     },
+    toggleTitle: {opacity: 0.64},
+    count: {
+        marginLeft: '6px',
+        padding: '0 6px',
+        borderRadius: '8px',
+        background: 'rgba(var(--center-channel-color-rgb), 0.08)',
+        fontVariantNumeric: 'tabular-nums',
+        letterSpacing: 0,
+    },
+    sectionBody: {margin: '10px 0 0'},
     line: {
-        margin: '0 0 6px',
+        margin: 0,
+        padding: '6px 0',
         fontSize: '13px',
+        lineHeight: '18px',
         color: 'var(--center-channel-color)',
         overflowWrap: 'anywhere',
+        borderBottom: '1px solid rgba(var(--center-channel-color-rgb), 0.04)',
     },
-    reference: {color: 'var(--link-color)', overflowWrap: 'anywhere'},
+    product: {fontWeight: 600},
+    reference: {
+        display: 'block',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        textDecoration: 'none',
+        color: 'var(--link-color)',
+    },
+    host: {fontWeight: 600},
+    path: {color: 'var(--center-channel-color)', opacity: 0.64},
+    tags: {display: 'flex', flexWrap: 'wrap', gap: '4px', margin: '4px 0 0'},
+    tag: {
+        fontSize: '11px',
+        lineHeight: '16px',
+        padding: '0 6px',
+        borderRadius: '4px',
+        background: 'rgba(var(--center-channel-color-rgb), 0.08)',
+        color: 'var(--center-channel-color)',
+    },
+    tagExploit: {background: 'rgba(210, 75, 78, 0.14)', color: 'var(--error-text, #d24b4e)'},
+    tagFix: {background: 'rgba(6, 214, 160, 0.16)'},
 };
 
-const Row: React.FC<{label: string; value: string}> = ({label, value}) => (
-    <tr>
-        <th
-            scope='row'
-            style={styles.th}
-        >{label}</th>
-        <td style={styles.td}>{value}</td>
-        <td style={styles.copyCell}>
-            <CopyButton
-                label={`Copy ${label}`}
-                value={value}
-            />
-        </td>
-    </tr>
-);
+const SEVERITY_STYLES: Record<CyberSeverity, React.CSSProperties> = {
+    critical: {background: '#b3261e', color: '#ffffff'},
+    high: {background: '#d9531e', color: '#ffffff'},
+    medium: {background: '#f2b21b', color: '#1f1f1f'},
+    low: {background: '#3b7fc4', color: '#ffffff'},
+    none: {background: 'rgba(var(--center-channel-color-rgb), 0.12)', color: 'var(--center-channel-color)'},
+};
+
+const FIX_TAGS = new Set(['Patch', 'Vendor Advisory', 'Mitigation', 'Release Notes']);
+
+function isCodeLike(value: string): boolean {
+    return value !== '' && !(/\s/).test(value);
+}
+
+function breakAfterSlashes(value: string): React.ReactNode[] {
+    const nodes: React.ReactNode[] = [];
+    let offset = value.indexOf('/');
+    let from = 0;
+
+    while (offset !== -1) {
+        nodes.push(value.slice(from, offset + 1), <wbr key={offset}/>);
+        from = offset + 1;
+        offset = value.indexOf('/', from);
+    }
+    nodes.push(value.slice(from));
+
+    return nodes;
+}
+
+const Row: React.FC<{label: string; value: string}> = ({label, value}) => {
+    const code = isCodeLike(value);
+
+    return (
+        <tr>
+            <th
+                scope='row'
+                style={styles.th}
+            >{label}</th>
+            <td style={code ? {...styles.td, ...styles.code} : styles.td}>
+                {code ? breakAfterSlashes(value) : value}
+            </td>
+            <td style={styles.copyCell}>
+                <CopyButton
+                    label={`Copy ${label}`}
+                    value={value}
+                />
+            </td>
+        </tr>
+    );
+};
+
+function capitalized(word: string): string {
+    return word.charAt(0).toUpperCase() + word.slice(1);
+}
+
+const Badges: React.FC<{details: CyberResponse}> = ({details}) => {
+    const severity = isSeverity(details.severity) ? details.severity : null;
+    if (!severity && !details.exploited) {
+        return null;
+    }
+
+    return (
+        <div style={styles.badges}>
+            {severity && (
+                <span
+                    data-testid='cyber-severity'
+                    style={{...styles.badge, ...SEVERITY_STYLES[severity]}}
+                >
+                    {details.score !== '' && <span style={styles.badgeScore}>{details.score}</span>}
+                    {capitalized(severity)}
+                </span>
+            )}
+            {details.exploited && (
+                <span
+                    data-testid='cyber-exploited'
+                    style={{...styles.badge, ...styles.exploited}}
+                >{'Known exploited'}</span>
+            )}
+        </div>
+    );
+};
+
+const Summary: React.FC<{text: string}> = ({text}) => {
+    const [expanded, setExpanded] = useState(false);
+    if (text === '') {
+        return null;
+    }
+
+    const long = text.length > SUMMARY_CLAMP_CHARS;
+
+    return (
+        <div style={styles.summaryWrap}>
+            <p style={long && !expanded ? {...styles.summary, ...styles.clamped} : styles.summary}>{text}</p>
+            {long && (
+                <LinkButton
+                    style={styles.more}
+                    onClick={() => setExpanded(!expanded)}
+                >{expanded ? 'Show less' : 'Show more'}</LinkButton>
+            )}
+        </div>
+    );
+};
 
 const Collapsible: React.FC<{title: string; count: number; children: React.ReactNode}> = ({title, count, children}) => (
-    <details style={styles.details}>
-        <summary style={styles.toggle}>{`${title} (${count})`}</summary>
-        {children}
+    <details style={styles.section}>
+        <summary style={styles.toggle}>
+            <span style={styles.toggleTitle}>{title}</span>
+            <span style={styles.count}>{count}</span>
+        </summary>
+        <div style={styles.sectionBody}>{children}</div>
     </details>
 );
+
+function splitProduct(line: string): [string, string] {
+    const at = line.indexOf(': ');
+    if (at <= 0) {
+        return [line, ''];
+    }
+    return [line.slice(0, at), line.slice(at + 2)];
+}
 
 const Lines: React.FC<{title: string; lines: string[]}> = ({title, lines}) => {
     if (lines.length === 0) {
@@ -137,16 +319,56 @@ const Lines: React.FC<{title: string; lines: string[]}> = ({title, lines}) => {
             count={lines.length}
         >
             <ul style={styles.list}>
-                {lines.map((line) => (
-                    <li
-                        key={line}
-                        style={styles.line}
-                    >{line}</li>
-                ))}
+                {lines.map((line) => {
+                    const [product, versions] = splitProduct(line);
+                    return (
+                        <li
+                            key={line}
+                            style={styles.line}
+                        >
+                            <span style={styles.product}>{product}</span>
+                            {versions !== '' && `: ${versions}`}
+                        </li>
+                    );
+                })}
             </ul>
         </Collapsible>
     );
 };
+
+function referenceParts(url: string): {host: string; path: string} {
+    const parsed = new URL(url);
+    const path = `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    return {host: parsed.host, path: path === '/' ? '' : path};
+}
+
+function tagStyle(tag: string): React.CSSProperties {
+    if (tag === 'Exploit') {
+        return {...styles.tag, ...styles.tagExploit};
+    }
+    if (FIX_TAGS.has(tag)) {
+        return {...styles.tag, ...styles.tagFix};
+    }
+    return styles.tag;
+}
+
+function referenceRank(reference: CyberReference): number {
+    const tags = reference.tags.split(', ');
+    if (tags.some((tag) => FIX_TAGS.has(tag))) {
+        return 0;
+    }
+    if (tags.includes('Exploit')) {
+        return 1;
+    }
+    return 2;
+}
+
+export function rankedReferences(references: CyberReference[]): CyberReference[] {
+    return references.
+        map((reference, position) => ({reference, position, rank: referenceRank(reference)})).
+        sort((a, b) => a.rank - b.rank || a.position - b.position).
+        map(({reference}) => reference);
+}
 
 const References: React.FC<{references: CyberReference[]}> = ({references}) => {
     if (references.length === 0) {
@@ -159,24 +381,46 @@ const References: React.FC<{references: CyberReference[]}> = ({references}) => {
             count={references.length}
         >
             <ul style={styles.list}>
-                {references.map((reference) => (
-                    <li
-                        key={reference.url}
-                        style={styles.line}
-                    >
-                        <a
-                            href={reference.url}
-                            target='_blank'
-                            rel='noopener noreferrer'
-                            style={styles.reference}
-                        >{reference.url}</a>
-                        {reference.tags !== '' && <span style={styles.meta}>{` ${reference.tags}`}</span>}
-                    </li>
-                ))}
+                {rankedReferences(references).map((reference) => {
+                    const {host, path} = referenceParts(reference.url);
+                    const tags = reference.tags.split(', ').filter(Boolean);
+                    return (
+                        <li
+                            key={reference.url}
+                            style={styles.line}
+                        >
+                            <a
+                                href={reference.url}
+                                target='_blank'
+                                rel='noopener noreferrer'
+                                title={reference.url}
+                                style={styles.reference}
+                            >
+                                <span style={styles.host}>{host}</span>
+                                <span style={styles.path}>{path}</span>
+                            </a>
+                            {tags.length > 0 && (
+                                <div style={styles.tags}>
+                                    {tags.map((tag) => (
+                                        <span
+                                            key={tag}
+                                            style={tagStyle(tag)}
+                                        >{tag}</span>
+                                    ))}
+                                </div>
+                            )}
+                        </li>
+                    );
+                })}
             </ul>
         </Collapsible>
     );
 };
+
+function relatedName(link: CyberLink): string {
+    const prefix = `${link.value} `;
+    return link.label.startsWith(prefix) ? link.label.slice(prefix.length) : '';
+}
 
 const Related: React.FC<{links: CyberLink[]}> = ({links}) => {
     if (links.length === 0) {
@@ -187,25 +431,36 @@ const Related: React.FC<{links: CyberLink[]}> = ({links}) => {
         <>
             <p style={styles.heading}>{'Related'}</p>
             <ul style={styles.list}>
-                {links.map((link) => (
-                    <li
-                        key={`${link.kind}:${link.value}`}
-                        style={styles.listItem}
-                    >
-                        <LinkButton
-                            onClick={() => setSelection({
-                                type: 'cyber',
-                                payload: {kind: link.kind, value: link.value},
-                            })}
-                        >{link.label}</LinkButton>
-                    </li>
-                ))}
+                {links.map((link) => {
+                    const name = relatedName(link);
+                    return (
+                        <li
+                            key={`${link.kind}:${link.value}`}
+                            style={styles.listItem}
+                        >
+                            <LinkButton
+                                style={styles.related}
+                                onClick={() => setSelection({
+                                    type: 'cyber',
+                                    payload: {kind: link.kind, value: link.value},
+                                })}
+                            >
+                                {name === '' ? link.label : (
+                                    <>
+                                        <span style={styles.relatedCode}>{link.value}</span>
+                                        <span>{name}</span>
+                                    </>
+                                )}
+                            </LinkButton>
+                        </li>
+                    );
+                })}
             </ul>
         </>
     );
 };
 
-function renderBody(state: CyberState): React.ReactNode {
+function renderBody(state: CyberState, kind: string): React.ReactNode {
     if (state.status === 'loading') {
         return <p style={styles.note}>{'Looking this indicator up...'}</p>;
     }
@@ -220,9 +475,11 @@ function renderBody(state: CyberState): React.ReactNode {
 
     return (
         <>
+            {isKind(kind) && <p style={styles.kind}>{KIND_LABELS[kind]}</p>}
             <p style={styles.title}>{details.title}</p>
             {details.title !== details.value && <p style={styles.value}>{details.value}</p>}
-            {details.summary !== '' && <p style={styles.summary}>{details.summary}</p>}
+            <Badges details={details}/>
+            <Summary text={details.summary}/>
 
             {details.rows.length > 0 && (
                 <table style={styles.table}>
@@ -279,7 +536,7 @@ const CyberPanel: React.FC<{payload: CyberPayload}> = ({payload}) => {
 
     return (
         <div aria-label={isKind(payload.kind) ? KIND_LABELS[payload.kind] : 'Cyber context'}>
-            {renderBody(state)}
+            {renderBody(state, payload.kind)}
         </div>
     );
 };

@@ -111,6 +111,9 @@ func TestDescribeRendersAVulnerability(t *testing.T) {
 	if !strings.Contains(d.Headline, "10.0 Critical") || !strings.Contains(d.Headline, "in KEV") {
 		t.Fatalf("headline %q", d.Headline)
 	}
+	if d.Score != "10.0" || d.Severity != "critical" || !d.Exploited {
+		t.Fatalf("score %q, severity %q, exploited %v", d.Score, d.Severity, d.Exploited)
+	}
 
 	if len(d.Related) != 1 || d.Related[0].Value != "CWE-502" {
 		t.Fatalf("related %+v", d.Related)
@@ -342,5 +345,55 @@ func TestTheStatusSentenceTellsTheThreeFailuresApart(t *testing.T) {
 				t.Fatalf("got %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestAVulnerabilityOutsideKEVIsNotMarkedExploited(t *testing.T) {
+	set := datasets(t, map[string][]string{
+		intel.NameCVE: {strings.Join([]string{
+			"CVE-2021-0001", "2021-01-01", "2021-02-01", "5.0", "MEDIUM", "AV:N", "", "something",
+		}, "\t")},
+	})
+
+	d := Describe(KindCVE, "CVE-2021-0001", set)
+
+	if d.Exploited {
+		t.Fatalf("marked exploited with no KEV dataset")
+	}
+	if d.Severity != "medium" {
+		t.Fatalf("severity %q, want the level in lower case", d.Severity)
+	}
+}
+
+func TestSeverityLevelNamesOnlyALevelItKnows(t *testing.T) {
+	cases := map[string]string{
+		"Critical":  "critical",
+		"HIGH":      "high",
+		"none":      "none",
+		"":          "",
+		"Important": "",
+		"red":       "",
+	}
+
+	for severity, want := range cases {
+		if got := severityLevel(severity); got != want {
+			t.Errorf("severityLevel(%q) = %q, want %q", severity, got, want)
+		}
+	}
+}
+
+func TestNVDTimestampDropsTheSecondsAndNamesTheZone(t *testing.T) {
+	cases := map[string]string{
+		"2021-12-10T10:15:09.143": "2021-12-10 10:15 UTC",
+		"2021-12-10T10:15:09":     "2021-12-10 10:15 UTC",
+		"2021-12-10":              "2021-12-10",
+		"":                        "",
+		"not a time":              "not a time",
+	}
+
+	for value, want := range cases {
+		if got := nvdTimestamp(value); got != want {
+			t.Errorf("nvdTimestamp(%q) = %q, want %q", value, got, want)
+		}
 	}
 }

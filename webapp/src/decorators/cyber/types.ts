@@ -35,6 +35,9 @@ export interface CyberResponse {
     related: CyberLink[];
     watchlist: CyberWatchEntry[];
     datasets: CyberDataset[];
+    score: string;
+    severity: string;
+    exploited: boolean;
     affected: string[];
     configurations: string[];
     references: CyberReference[];

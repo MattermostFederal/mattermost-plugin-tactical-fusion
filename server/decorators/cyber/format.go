@@ -3,8 +3,10 @@ package cyber
 import (
 	"errors"
 	"net/netip"
+	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/cyber/intel"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
@@ -47,6 +49,10 @@ type Details struct {
 	Watchlist []WatchEntry
 	Status    string
 	Datasets  []DatasetStatus
+
+	Score     string
+	Severity  string
+	Exploited bool
 
 	Affected       []string
 	Configurations []string
@@ -157,8 +163,8 @@ func describeCVE(d *Details, set *intel.Set) {
 		d.Status = datasetSentence(set, intel.NameCVE, err)
 	} else {
 		d.Summary = record.Summary
-		addRow(d, "Published", record.Published)
-		addRow(d, "Last modified", record.Modified)
+		addRow(d, "Published", nvdTimestamp(record.Published))
+		addRow(d, "Last modified", nvdTimestamp(record.Modified))
 		addRow(d, "CVSS", severityText(record.Score, record.Severity))
 		addRow(d, "Vector", record.Vector)
 
@@ -169,6 +175,8 @@ func describeCVE(d *Details, set *intel.Set) {
 		}
 
 		d.Headline = severityText(record.Score, record.Severity)
+		d.Score = record.Score
+		d.Severity = severityLevel(record.Severity)
 	}
 
 	if epss, err := set.EPSS(d.Value); err == nil {
@@ -181,6 +189,7 @@ func describeCVE(d *Details, set *intel.Set) {
 		addRow(d, "Affected product", kev.Product)
 		addRow(d, "Required action", kev.Action)
 		d.Headline = joinSentence(d.Headline, "in KEV")
+		d.Exploited = true
 	}
 
 	describeCVEDetail(d, set, recordFound)
@@ -197,6 +206,26 @@ func severityText(score, severity string) string {
 	}
 
 	return score + " " + severity
+}
+
+var SeverityLevels = []string{"critical", "high", "medium", "low", "none"}
+
+func severityLevel(severity string) string {
+	level := strings.ToLower(strings.TrimSpace(severity))
+	if slices.Contains(SeverityLevels, level) {
+		return level
+	}
+	return ""
+}
+
+const nvdTimestampLayout = "2006-01-02T15:04:05.999999999"
+
+func nvdTimestamp(value string) string {
+	parsed, err := time.Parse(nvdTimestampLayout, value)
+	if err != nil {
+		return value
+	}
+	return parsed.Format("2006-01-02 15:04") + " UTC"
 }
 
 func epssText(epss intel.EPSSRecord) string {

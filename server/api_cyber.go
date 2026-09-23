@@ -47,6 +47,10 @@ type cyberResponse struct {
 	Watchlist []cyberWatchEntry `json:"watchlist"`
 	Datasets  []cyberDataset    `json:"datasets"`
 
+	Score     string `json:"score"`
+	Severity  string `json:"severity"`
+	Exploited bool   `json:"exploited"`
+
 	Affected       []string         `json:"affected"`
 	Configurations []string         `json:"configurations"`
 	References     []cyberReference `json:"references"`
@@ -96,6 +100,10 @@ func cyberBody(details cyber.Details) cyberResponse {
 		Related:   []cyberLink{},
 		Watchlist: []cyberWatchEntry{},
 		Datasets:  []cyberDataset{},
+
+		Score:     details.Score,
+		Severity:  details.Severity,
+		Exploited: details.Exploited,
 
 		Affected:       append([]string{}, details.Affected...),
 		Configurations: append([]string{}, details.Configurations...),

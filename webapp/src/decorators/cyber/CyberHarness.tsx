@@ -13,7 +13,7 @@ import type {Selection} from '../selection';
 
 import type {CyberPayload} from './index';
 
-type Reply = 'found' | 'bare' | 'status' | 'rejected' | 'failed' | 'hold';
+type Reply = 'found' | 'long' | 'bare' | 'status' | 'rejected' | 'failed' | 'hold';
 
 const HEADLINE = '10.0 Critical, in KEV';
 const SUMMARY = 'Remote code execution in a logging library.';
@@ -41,12 +41,17 @@ const FOUND = {
         {name: 'cve', label: 'vulnerability', present: true, generated: '2026-09-01T00:00:00Z'},
         {name: 'ip', label: 'IP address', present: false, generated: ''},
     ],
+    score: '10.0',
+    severity: 'critical',
+    exploited: true,
     affected: ['Apache Software Foundation Apache Log4j2: from 2.0-beta9 before 2.15.0'],
     configurations: [
         'apache log4j: from 2.0 before 2.3.1, from 2.4 before 2.12.2',
         'siemens sppa-t3000 firmware: all versions (on siemens sppa-t3000)',
     ],
     references: [
+        {url: 'http://packetstormsecurity.com/files/165225/Apache-Log4j2-2.14.1-Remote-Code-Execution.html', tags: 'Third Party Advisory, VDB Entry'},
+        {url: 'https://lists.debian.org/debian-lts-announce/2021/12/msg00007.html', tags: 'Mailing List'},
         {url: 'https://logging.apache.org/log4j/2.x/security.html', tags: 'Vendor Advisory, Patch'},
         // eslint-disable-next-line no-script-url
         {url: 'javascript:alert(1)', tags: 'Exploit'},
@@ -56,6 +61,9 @@ const FOUND = {
 const BARE = {
     ...FOUND,
     summary: '',
+    score: '',
+    severity: '',
+    exploited: false,
     rows: [],
     related: [],
     watchlist: [],
@@ -71,7 +79,15 @@ const NO_DATASET = {
     datasets: [{name: 'cve', label: 'vulnerability', present: false, generated: ''}],
 };
 
+const LONG = {
+    ...FOUND,
+    summary: `${SUMMARY} ${'The rest of a long description. '.repeat(20)}`.trim(),
+};
+
 function baseFor(reply: Reply): typeof FOUND {
+    if (reply === 'long') {
+        return LONG;
+    }
     if (reply === 'status') {
         return NO_DATASET;
     }

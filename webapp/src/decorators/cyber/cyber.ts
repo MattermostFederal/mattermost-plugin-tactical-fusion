@@ -36,6 +36,18 @@ export const KIND_LABELS: Record<CyberKind, string> = {
     hash: 'File hash',
 };
 
+export const SEVERITIES = ['critical', 'high', 'medium', 'low', 'none'] as const;
+
+export type CyberSeverity = typeof SEVERITIES[number];
+
+export function isSeverity(value: string): value is CyberSeverity {
+    return (SEVERITIES as readonly string[]).includes(value);
+}
+
+function asSeverity(value: string): string {
+    return isSeverity(value) ? value : '';
+}
+
 export function matchesShape(kind: string, value: string): boolean {
     return isKind(kind) && SHAPES[kind].test(value);
 }
@@ -167,6 +179,9 @@ export function asCyber(body: unknown): CyberResponse {
         related: asLinks(asArray(wire, 'related')),
         watchlist: asWatchlist(asArray(wire, 'watchlist')),
         datasets: asDatasets(asArray(wire, 'datasets')),
+        score: asString(wire, 'score'),
+        severity: asSeverity(asString(wire, 'severity')),
+        exploited: wire.exploited === true,
         affected: asStrings(asArray(wire, 'affected'), 'affected products'),
         configurations: asStrings(asArray(wire, 'configurations'), 'affected configurations'),
         references: asReferences(asArray(wire, 'references')),

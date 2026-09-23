@@ -18,6 +18,9 @@ const FOUND = {
     related: [{kind: 'cwe', value: 'CWE-502', label: 'CWE-502 Deserialization of Untrusted Data'}],
     watchlist: [{verdict: 'malicious', source: 'internal', note: '', updated: '2026-08-01', known: true}],
     datasets: [{name: 'cve', label: 'vulnerability', present: true, generated: '2026-09-01T00:00:00Z'}],
+    score: '10.0',
+    severity: 'critical',
+    exploited: true,
     affected: ['Apache Software Foundation Apache Log4j2: from 2.0-beta9 before 2.15.0'],
     configurations: ['apache log4j: from 2.0 before 2.3.1'],
     references: [{url: 'https://logging.apache.org/log4j/2.x/security.html', tags: 'Vendor Advisory, Patch'}],
@@ -57,6 +60,21 @@ test.describe('asCyber', () => {
         expect(parsed.affected).toEqual(FOUND.affected);
         expect(parsed.configurations).toEqual(FOUND.configurations);
         expect(parsed.references).toEqual(FOUND.references);
+        expect(parsed.score).toBe('10.0');
+        expect(parsed.severity).toBe('critical');
+        expect(parsed.exploited).toBe(true);
+    });
+
+    test('drops a severity it has no color for, so no badge claims one', () => {
+        for (const severity of ['Critical', 'important', 'red', '']) {
+            expect(asCyber({...FOUND, severity}).severity, severity).toBe('');
+        }
+    });
+
+    test('reads anything but true as not exploited', () => {
+        for (const exploited of ['yes', 1, null, undefined]) {
+            expect(asCyber({...FOUND, exploited}).exploited, String(exploited)).toBe(false);
+        }
     });
 
     test('keeps only web links as references, the same table the Go gate holds', () => {
@@ -97,6 +115,8 @@ test.describe('asCyber', () => {
             ['an affected entry that is not text', {...FOUND, affected: [7]}],
             ['configurations that are not an array', {...FOUND, configurations: 'apache'}],
             ['no references', {...FOUND, references: undefined}],
+            ['no score', {...FOUND, score: undefined}],
+            ['a severity that is not text', {...FOUND, severity: 3}],
             ['a reference with no url', {...FOUND, references: [{tags: 'Patch'}]}],
         ];
 

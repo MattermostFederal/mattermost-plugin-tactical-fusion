@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -165,21 +166,27 @@ func TestWebappCyberTypeMatches(t *testing.T) {
 	}
 }
 
-func TestWebappCyberKindsMatch(t *testing.T) {
-	source := cyberWebappSource(t, "cyber.ts")
+func webappConstList(t *testing.T, source, name string) []string {
+	t.Helper()
 
-	found := regexp.MustCompile(`export const KINDS = \[(.*?)\] as const;`).FindStringSubmatch(source)
+	found := regexp.MustCompile(`export const ` + name + ` = \[(.*?)\] as const;`).FindStringSubmatch(source)
 	if found == nil {
-		t.Fatalf("cyber.ts declares no KINDS list")
+		t.Fatalf("cyber.ts declares no %s list", name)
 	}
 
-	var webapp []string
+	var list []string
 	for entry := range strings.SplitSeq(found[1], ",") {
 		entry = strings.TrimSpace(strings.Trim(strings.TrimSpace(entry), "'"))
 		if entry != "" {
-			webapp = append(webapp, entry)
+			list = append(list, entry)
 		}
 	}
+
+	return list
+}
+
+func TestWebappCyberKindsMatch(t *testing.T) {
+	webapp := webappConstList(t, cyberWebappSource(t, "cyber.ts"), "KINDS")
 
 	if len(webapp) != len(cyber.Kinds) {
 		t.Fatalf("Go has %d kinds and the webapp %d: %v", len(cyber.Kinds), len(webapp), webapp)
@@ -188,6 +195,14 @@ func TestWebappCyberKindsMatch(t *testing.T) {
 		if webapp[i] != string(kind) {
 			t.Errorf("kind %d: Go says %q and the webapp %q", i, kind, webapp[i])
 		}
+	}
+}
+
+func TestWebappCyberSeveritiesMatch(t *testing.T) {
+	webapp := webappConstList(t, cyberWebappSource(t, "cyber.ts"), "SEVERITIES")
+
+	if !slices.Equal(webapp, cyber.SeverityLevels) {
+		t.Fatalf("Go has severities %v and the webapp %v", cyber.SeverityLevels, webapp)
 	}
 }
 
