@@ -447,6 +447,12 @@ const (
 	// "not listed" would tell a responder that an indicator is not being
 	// exploited on the strength of a broken file.
 	CyberDataLookupFailed = 21005
+
+	// CyberDataUnpackFailed reports a gzipped dataset that could not be
+	// unpacked beside itself: a truncated or corrupt archive, one larger than
+	// this build accepts, or a directory the server cannot write to. The
+	// uncompressed file already there, if any, is left as it was.
+	CyberDataUnpackFailed = 21006
 )
 
 // AllCodes lists every code declared above. TestAllCodesComplete enforces that
@@ -585,4 +591,5 @@ var AllCodes = []int{
 	CyberDataBadName,
 	CyberDataMMDBUnreadable,
 	CyberDataLookupFailed,
+	CyberDataUnpackFailed,
 }

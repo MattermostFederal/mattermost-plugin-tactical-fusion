@@ -56,6 +56,8 @@ func cyberProblemCode(problem *intel.FileError) int {
 		return errcode.CyberDataBadName
 	case intel.ErrorMMDB:
 		return errcode.CyberDataMMDBUnreadable
+	case intel.ErrorUnpack:
+		return errcode.CyberDataUnpackFailed
 	}
 
 	return errcode.CyberDataUnreadable
@@ -69,6 +71,8 @@ func cyberProblemMessage(problem *intel.FileError) string {
 		return "a file in the cyber dataset directory is not a dataset this build reads"
 	case intel.ErrorMMDB:
 		return "a vendor IP database could not be read and was skipped"
+	case intel.ErrorUnpack:
+		return "a gzipped cyber dataset could not be unpacked beside itself"
 	}
 
 	return "a cyber dataset could not be read and was skipped"

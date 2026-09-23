@@ -384,12 +384,23 @@
             the panel goes back to saying that dataset is not installed.
         </p>
 
+        <p>
+            A dataset may also be dropped in <strong>gzipped</strong>, as <code>cve.tsv.gz</code>,
+            which is how the release publishes them: the full vulnerability dataset is 40 MB
+            gzipped and 186 MB unpacked. The plugin unpacks it once into <code>cve.tsv</code> in
+            the same directory and reads that, because it searches a dataset in place and cannot
+            do that inside an archive. It unpacks again only when a different archive replaces
+            the first, and a damaged archive never replaces a good file. The directory must be
+            writable by the Mattermost server for this; on read-only media, run
+            <code>gunzip -k</code> yourself and drop in the result.
+        </p>
+
         <div class="alert alert-warning">
             <p class="alert-title">A dataset whose schema stamp is absent or wrong is skipped.</p>
             <p>
                 Every file carries a stamp naming the schema it was built for. One that carries
                 none, or names another, is skipped rather than misread, and the reason is logged
-                once as <a href="error-codes.html#cyberdata"><code>TF-20002</code></a>. Skipping is
+                once as <a href="error-codes.html#cyberdata"><code>TF-21002</code></a>. Skipping is
                 per file: every other dataset still answers.
             </p>
         </div>

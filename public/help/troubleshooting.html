@@ -434,7 +434,7 @@
             Every dataset carries a stamp naming the schema it was built for. A file whose stamp is
             absent, or names another schema, is <strong>skipped rather than misread</strong>, and
             the reason is logged once as
-            <a href="error-codes.html#cyberdata"><code>TF-20002</code></a>. The panel goes on
+            <a href="error-codes.html#cyberdata"><code>TF-21002</code></a>. The panel goes on
             saying that one dataset is not installed while every other dataset answers normally,
             which is why the log line is the only thing that will ever explain it.
         </p>
@@ -445,24 +445,29 @@
             </thead>
             <tbody>
                 <tr>
-                    <td><a href="error-codes.html#cyberdata"><code>TF-20002</code></a>, a cyber dataset carries no usable schema stamp and was skipped</td>
+                    <td><a href="error-codes.html#cyberdata"><code>TF-21002</code></a>, a cyber dataset carries no usable schema stamp and was skipped</td>
                     <td>The file carries no stamp, or one built for a different reader. Usually a dataset generated for an older or newer plugin build, or a file that was edited or truncated in transit.</td>
                     <td>Regenerate the dataset with the generator matching this plugin build, and sync it whole. Repairing the stamp by hand on a file whose rows are a different shape only moves the failure.</td>
                 </tr>
                 <tr>
-                    <td><a href="error-codes.html#cyberdata"><code>TF-20001</code></a>, a cyber dataset could not be read and was skipped</td>
+                    <td><a href="error-codes.html#cyberdata"><code>TF-21001</code></a>, a cyber dataset could not be read and was skipped</td>
                     <td>The file could not be opened, or its rows are not the shape this build reads. A permissions problem on the directory looks like this too.</td>
                     <td>Check the plugin process can read the path, then check the file is the dataset it claims to be.</td>
                 </tr>
                 <tr>
-                    <td><a href="error-codes.html#cyberdata"><code>TF-20003</code></a>, a file in the cyber dataset directory is not a dataset this build reads</td>
+                    <td><a href="error-codes.html#cyberdata"><code>TF-21003</code></a>, a file in the cyber dataset directory is not a dataset this build reads</td>
                     <td>The name is not one of <code>cve.tsv</code>, <code>epss.tsv</code>, <code>kev.tsv</code>, <code>ip.tsv</code> or <code>watchlist.tsv</code>.</td>
                     <td>Rename it, or keep unrelated files out of the directory.</td>
                 </tr>
                 <tr>
-                    <td><a href="error-codes.html#cyberdata"><code>TF-20004</code></a>, a vendor IP database could not be read and was skipped</td>
+                    <td><a href="error-codes.html#cyberdata"><code>TF-21004</code></a>, a vendor IP database could not be read and was skipped</td>
                     <td>A <code>.mmdb</code> file could not be opened, or its declared type is not one this build reads.</td>
                     <td>Check the download completed, and that the database is an ASN, city or country one.</td>
+                </tr>
+                <tr>
+                    <td><a href="error-codes.html#cyberdata"><code>TF-21006</code></a>, a gzipped cyber dataset could not be unpacked beside itself</td>
+                    <td>A <code>.tsv.gz</code> is truncated or corrupt, unpacks to more than 2 GiB, or sits in a directory the Mattermost server cannot write to, such as read-only media.</td>
+                    <td>Copy the archive again and check it against <code>DATASETS.sha256</code>. On a read-only directory, unpack it yourself with <code>gunzip -k cve.tsv.gz</code> and the plugin reads the <code>.tsv</code>.</td>
                 </tr>
             </tbody>
         </table>

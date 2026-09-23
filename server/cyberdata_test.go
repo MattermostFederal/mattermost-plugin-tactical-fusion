@@ -127,6 +127,12 @@ func TestEachUnusableFileReportsItsOwnCode(t *testing.T) {
 			},
 			code: errcode.CyberDataMMDBUnreadable,
 		},
+		"an archive that will not unpack": {
+			write: func(dir string) {
+				_ = os.WriteFile(filepath.Join(dir, "cve"+intel.ArchiveSuffix), []byte("not gzip"), 0o600)
+			},
+			code: errcode.CyberDataUnpackFailed,
+		},
 	}
 
 	for name, tc := range cases {

@@ -44,7 +44,7 @@ right-hand sidebar, and a standalone server-rendered page.
 | `decorators/note/` | Notes: a link whose `v` is markdown, built by `/tactical-fusion note` or the bridge and never matched in message text; the page shows the source |
 | `avreport/` | Aviation reports: the METAR, TAF and NOTAM decoders, the decorator, the table, the page, the props; `data/` holds the contraction and Q-code tables |
 | `cot/` | Cursor on Target: the bounded XML parse, the type tables, the post props |
-| `decorators/cyber/` | Security indicators: the five grammars, the embedded ATT&CK and CWE catalogs, the enrichment renderer; `intel/` reads the datasets on disk |
+| `decorators/cyber/` | Security indicators: the five grammars, the embedded ATT&CK and CWE catalogs, the enrichment renderer; `intel/` reads the datasets on disk and unpacks a `.tsv.gz` beside itself |
 | `cyberdata.go` | Cyber dataset discovery, the reopen-on-change cache, the `TF-210NN` codes |
 | `geojson/` | GeoJSON: the bounded JSON walk, the parts/rings shape, the post props |
 

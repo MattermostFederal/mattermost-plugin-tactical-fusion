@@ -269,18 +269,26 @@ cyber-recent:
 	$(GO) run ./build/cyberdata -source build/cyberdata/recent -out build/cyberdata/recent \
 		-only cve -label "$$(cat build/cyberdata/recent/window)"
 
-## Attaches the release-asset cyber datasets in build/cyberdata/out to an existing release.
-## Operators drop these into the directory named by the CyberDatasetsDir setting.
-.PHONY: cyber-release
-cyber-release:
-	@[ -n "$(TAG)" ] || { echo "error: set TAG=<release tag>"; exit 1; }
+## Gzips each dataset in build/cyberdata/out and writes DATASETS.sha256 over the archives.
+## Operators drop the .tsv.gz files into the directory named by CyberDatasetsDir, and the
+## plugin unpacks each one beside itself. -n leaves the name and time out of the archive,
+## so the same dataset always packs to the same bytes.
+.PHONY: cyber-package
+cyber-package:
 	@ls build/cyberdata/out/*.tsv >/dev/null 2>&1 || { \
 		echo "error: no datasets in build/cyberdata/out; run 'make cyber-data' first."; \
 		exit 1; \
 	}
-	@cd build/cyberdata/out && shasum -a 256 *.tsv > DATASETS.sha256
-	@ls -l build/cyberdata/out/
-	gh release upload "$(TAG)" build/cyberdata/out/*.tsv build/cyberdata/out/DATASETS.sha256 --clobber
+	@cd build/cyberdata/out && for dataset in *.tsv; do gzip -9 -n -c "$$dataset" > "$$dataset.gz"; done
+	@cd build/cyberdata/out && shasum -a 256 *.tsv.gz > DATASETS.sha256
+	@ls -l build/cyberdata/out/*.tsv.gz build/cyberdata/out/DATASETS.sha256
+
+## Attaches the gzipped cyber datasets to an existing release.
+.PHONY: cyber-release
+cyber-release:
+	@[ -n "$(TAG)" ] || { echo "error: set TAG=<release tag>"; exit 1; }
+	@$(MAKE) --no-print-directory cyber-package
+	gh release upload "$(TAG)" build/cyberdata/out/*.tsv.gz build/cyberdata/out/DATASETS.sha256 --clobber
 
 ## Regenerates the bundled basemap from the Natural Earth source in build/mapdata/source.
 ## The outputs are committed, so a clean checkout builds and an air-gapped `go test` runs

@@ -71,6 +71,7 @@ const (
 	ErrorSchema
 	ErrorName
 	ErrorMMDB
+	ErrorUnpack
 )
 
 type FileError struct {
@@ -112,7 +113,7 @@ func scanCandidates(dirs []string) map[string]fingerprint {
 
 		for _, entry := range entries {
 			name := entry.Name()
-			if entry.IsDir() || (!strings.HasSuffix(name, Suffix) && !strings.HasSuffix(name, MMDBSuffix)) {
+			if entry.IsDir() || !isCandidate(name) {
 				continue
 			}
 
@@ -128,13 +129,13 @@ func scanCandidates(dirs []string) map[string]fingerprint {
 }
 
 func Open(dirs []string) (*Set, []*FileError) {
+	problems := unpackArchives(dirs)
+
 	set := &Set{
 		dirs:       append([]string(nil), dirs...),
 		datasets:   map[string]*Dataset{},
 		candidates: scanCandidates(dirs),
 	}
-
-	var problems []*FileError
 
 	tabular := map[string]string{}
 	vendor := map[string]string{}

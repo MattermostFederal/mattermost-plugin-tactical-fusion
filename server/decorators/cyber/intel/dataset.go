@@ -134,27 +134,35 @@ func (d *Dataset) readStamp() (int64, error) {
 	if end < 0 {
 		return 0, ErrSchema
 	}
-	line = line[:end]
 
+	generated, source, err := parseStamp(line[:end], d.Name)
+	if err != nil {
+		return 0, err
+	}
+
+	d.Generated = generated
+	d.Source = source
+
+	return int64(end) + 1, nil
+}
+
+func parseStamp(line, name string) (generated, source string, err error) {
 	if !strings.HasPrefix(line, SchemaPrefix) {
-		return 0, ErrSchema
+		return "", "", ErrSchema
 	}
 
 	fields := strings.Split(line, "\t")
 	if len(fields) != stampFields {
-		return 0, ErrSchema
+		return "", "", ErrSchema
 	}
 	if fields[0] != fmt.Sprintf("%s%d", SchemaPrefix, SchemaVersion) {
-		return 0, ErrSchema
+		return "", "", ErrSchema
 	}
-	if fields[1] != d.Name {
-		return 0, fmt.Errorf("%w: the stamp names %q and the file is %q", ErrSchema, fields[1], d.Name)
+	if fields[1] != name {
+		return "", "", fmt.Errorf("%w: the stamp names %q and the file is %q", ErrSchema, fields[1], name)
 	}
 
-	d.Generated = fields[2]
-	d.Source = fields[3]
-
-	return int64(end) + 1, nil
+	return fields[2], fields[3], nil
 }
 
 func searchableEnd(source readerAt, bodyStart, size int64) (int64, error) {

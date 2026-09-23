@@ -1473,6 +1473,14 @@
             plugin ships.
         </p>
 
+        <p>
+            A dataset may be dropped in gzipped, as <code>cve.tsv.gz</code>, which is how the
+            release publishes them. The plugin unpacks it beside itself into <code>cve.tsv</code>,
+            so the directory must be writable by the Mattermost server; on read-only media, unpack
+            it yourself with <code>gunzip -k</code>. See
+            <a href="cyber.html#cyber-datasets">where the data comes from</a>.
+        </p>
+
         <div class="alert alert-warning">
             <p class="alert-title">In a cluster every node must see this directory.</p>
             <p>

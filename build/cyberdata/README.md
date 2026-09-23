@@ -22,6 +22,37 @@ A small current example, the CVEs NVD published in the last seven days:
 make cyber-recent DAYS=7
 ```
 
+## Publishing
+
+```
+make cyber-package
+make cyber-release TAG=v0.8.0
+```
+
+`cyber-package` gzips each dataset in `out/` and writes `DATASETS.sha256` over
+the archives, which are what an operator downloads and checks. `cyber-release`
+checks `TAG` first, packages, and uploads only the archives and the checksum
+file. Packing uses `gzip -n`, so the same dataset always packs to the same bytes.
+
+An operator drops `cve.tsv.gz` into `CyberDatasetsDir` as it is. The plugin
+unpacks it into `cve.tsv` in the same directory, because it searches a dataset
+in place and cannot do that inside an archive:
+
+- It compares the stamp line inside the archive with the one at the top of the
+  `.tsv`, and unpacks only when they differ. Modification times are not used,
+  because `cp -p` and `rsync -a` keep an old one.
+- It checks the archive's stamp names the dataset its file name does before
+  writing anything, so a mislabeled archive cannot overwrite a good file.
+- It writes to a hidden staging file in the same directory and renames it into
+  place, so a reader, or another node sharing the directory, never sees half a
+  file, and gzip's own checksum rejects a truncated archive before the rename.
+- It refuses an archive that unpacks to more than 2 GiB.
+
+Measured with the full vulnerability archive: the first open unpacked 40 MB into
+186 MB in about half a second, and the next open took a millisecond. A failure
+is logged once as `TF-21006`. A server killed mid-unpack can leave a hidden
+`.cve.tsv.*.unpacking` file behind, which is safe to delete.
+
 ## How large the full build is
 
 Measured on 2026-09-23, from all 25 yearly NVD feeds:

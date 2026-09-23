@@ -833,6 +833,11 @@
                     <td><code>CyberDataLookupFailed</code> <span class="level">panel</span></td>
                     <td>A dataset opened and then could not be read when somebody looked an indicator up, usually because the file was replaced or removed underneath the server. The panel says the dataset could not be read rather than that the indicator is not listed, because those are opposite answers. Put the file back, or re-copy it, and the next lookup picks it up.</td>
                 </tr>
+                <tr>
+                    <td><code>TF-21006</code></td>
+                    <td><code>CyberDataUnpackFailed</code> <span class="level">log</span></td>
+                    <td>A gzipped dataset such as <code>cve.tsv.gz</code> could not be unpacked beside itself: the archive is truncated or corrupt, it unpacks to more than 2 GiB, or the server cannot write to the directory. Any <code>cve.tsv</code> already there is left as it was. Re-copy the archive, make the directory writable by the Mattermost server, or unpack it yourself with <code>gunzip -k</code> and the plugin reads the result.</td>
+                </tr>
             </tbody>
         </table>
 
