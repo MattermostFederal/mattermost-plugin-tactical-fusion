@@ -63,11 +63,51 @@ Measured on 2026-09-23, from all 25 yearly NVD feeds:
 | Unpacked JSON | 2.76 GB |
 | `cve.tsv` | 185.7 MB, 396,474 rows |
 | `cve.tsv` gzipped | 40.4 MB |
-| Build time and peak memory | 12 seconds, 1.4 GB |
+| `cvedetail.tsv` | 432.6 MB, 396,474 rows |
+| `cvedetail.tsv` gzipped | 37.2 MB |
+| Build time and peak memory, both files | 30 seconds, 3.9 GB |
 
-The TSV is small beside the JSON because it keeps eight fields of each record.
-It drops the pretty-printing, the affected products and versions, the reference
-links, every translation, and every scoring but one.
+`cve.tsv` keeps eight fields of each record: what the hover and the top of the
+panel need. `cvedetail.tsv` keeps the rest a responder asks about, described
+below. Between them they drop the pretty-printing, every translation, every
+scoring but one, and NVD's internal match identifiers.
+
+### What the detail file holds
+
+One row per CVE, each field a compact JSON array, empty when the CVE has none:
+
+- **Weaknesses by source**: which organization named each CWE. `cve.tsv`
+  already carries the CWE identifiers themselves.
+- **Configurations**: NVD's CPE matches, grouped the way NVD groups them, each
+  vulnerable match with its version bounds and the platforms it applies on.
+- **Affected**: the reporting organization's own vendor, product and version
+  list. It is the only product information a CVE NVD has not analyzed yet has.
+  An entry naming no vendor and no product, which 37% of older records carry as
+  `n/a`, is dropped.
+- **References**: every URL with its tags. A URL NVD lists once per source is
+  kept once, with the union of its tags, which is what took the file from
+  514 MB to 433 MB.
+
+It is a separate file rather than more columns in `cve.tsv` for two reasons,
+both measured. Its largest row is 0.5 MB, and the reader reads a whole row at
+each step of its binary search, so every hover lookup landing near one would
+pay for it. And an operator short of disk can leave it out: the panel then says
+it is not installed, and everything `cve.tsv` answers still works. Lookups in it
+ran at 44 microseconds at the median and 5.4 ms at worst across all 396,474
+rows, including decoding the JSON.
+
+The panel and the page render it, once, in Go: one line per product, version
+bounds in words, platforms named up to five and counted after that, and each
+section collapsed with its count. Only an `http` or `https` reference becomes a
+link, checked in Go and again in the webapp against the same table of cases.
+Some reporting organizations write product names with CPE escapes in them, such
+as `team\+`; those are shown as the organization wrote them.
+
+The generator and the reader share no code, so
+`server/decorators/cyber/intel/testdata/cvedetail.tsv` holds them to one shape:
+the generator's test must reproduce it exactly, and the reader's test must parse
+it. Regenerate it after an intended change with
+`go test ./build/cyberdata -run Golden -update`.
 
 The plugin searches the file on disk rather than loading it, so its size costs
 disk rather than memory. Every row of the full file was found at about 36

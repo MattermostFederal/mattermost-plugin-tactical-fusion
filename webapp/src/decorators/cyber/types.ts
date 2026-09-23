@@ -35,6 +35,14 @@ export interface CyberResponse {
     related: CyberLink[];
     watchlist: CyberWatchEntry[];
     datasets: CyberDataset[];
+    affected: string[];
+    configurations: string[];
+    references: CyberReference[];
+}
+
+export interface CyberReference {
+    url: string;
+    tags: string;
 }
 
 export interface CyberMention {

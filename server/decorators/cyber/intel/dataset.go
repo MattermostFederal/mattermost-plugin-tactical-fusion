@@ -26,6 +26,7 @@ var NamePattern = regexp.MustCompile(`^[a-z][a-z0-9]*$`)
 
 const (
 	NameCVE       = "cve"
+	NameCVEDetail = "cvedetail"
 	NameEPSS      = "epss"
 	NameKEV       = "kev"
 	NameIP        = "ip"
@@ -39,13 +40,14 @@ type spec struct {
 
 var specs = map[string]spec{
 	NameCVE:       {fields: 8},
+	NameCVEDetail: {fields: 5},
 	NameEPSS:      {fields: 4},
 	NameKEV:       {fields: 6},
 	NameIP:        {fields: 7},
 	NameWatchlist: {fields: 6, inspect: loadWatchlist},
 }
 
-var Names = []string{NameCVE, NameEPSS, NameKEV, NameIP, NameWatchlist}
+var Names = []string{NameCVE, NameCVEDetail, NameEPSS, NameKEV, NameIP, NameWatchlist}
 
 type Dataset struct {
 	Name      string

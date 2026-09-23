@@ -59,6 +59,15 @@ type cyberResponse struct {
 	Related   []cyberLink       `json:"related"`
 	Watchlist []cyberWatchEntry `json:"watchlist"`
 	Datasets  []cyberDataset    `json:"datasets"`
+
+	Affected       []string         `json:"affected"`
+	Configurations []string         `json:"configurations"`
+	References     []cyberReference `json:"references"`
+}
+
+type cyberReference struct {
+	URL  string `json:"url"`
+	Tags string `json:"tags"`
 }
 
 type cyberMention struct {
@@ -115,6 +124,10 @@ func cyberBody(details cyber.Details) cyberResponse {
 		Related:   []cyberLink{},
 		Watchlist: []cyberWatchEntry{},
 		Datasets:  []cyberDataset{},
+
+		Affected:       append([]string{}, details.Affected...),
+		Configurations: append([]string{}, details.Configurations...),
+		References:     []cyberReference{},
 	}
 
 	for _, row := range details.Rows {
@@ -136,6 +149,9 @@ func cyberBody(details cyber.Details) cyberResponse {
 			Name: dataset.Name, Label: dataset.Label,
 			Present: dataset.Present, Generated: dataset.Generated,
 		})
+	}
+	for _, ref := range details.References {
+		body.References = append(body.References, cyberReference{URL: ref.URL, Tags: ref.Tags})
 	}
 
 	return body

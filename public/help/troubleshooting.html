@@ -408,7 +408,7 @@
                 <tr>
                     <td>Every dataset but the known-exploited one says "not installed"</td>
                     <td>Nothing has been synced onto this server. Only <code>kev.tsv</code> ships inside the bundle; the rest are files an operator supplies.</td>
-                    <td>Put <code>cve.tsv</code>, <code>epss.tsv</code>, <code>ip.tsv</code> and <code>watchlist.tsv</code> in a directory on the server and name it in <a href="admin.html#cyber-datasets-dir"><code>CyberDatasetsDir</code></a>. They are read within a few seconds, with no restart.</td>
+                    <td>Put <code>cve.tsv</code>, <code>cvedetail.tsv</code>, <code>epss.tsv</code>, <code>ip.tsv</code> and <code>watchlist.tsv</code> in a directory on the server and name it in <a href="admin.html#cyber-datasets-dir"><code>CyberDatasetsDir</code></a>. They are read within a few seconds, with no restart.</td>
                 </tr>
                 <tr>
                     <td>The files are on the server and the panel still says "not installed"</td>
@@ -456,7 +456,7 @@
                 </tr>
                 <tr>
                     <td><a href="error-codes.html#cyberdata"><code>TF-21003</code></a>, a file in the cyber dataset directory is not a dataset this build reads</td>
-                    <td>The name is not one of <code>cve.tsv</code>, <code>epss.tsv</code>, <code>kev.tsv</code>, <code>ip.tsv</code> or <code>watchlist.tsv</code>.</td>
+                    <td>The name is not one of <code>cve.tsv</code>, <code>cvedetail.tsv</code>, <code>epss.tsv</code>, <code>kev.tsv</code>, <code>ip.tsv</code> or <code>watchlist.tsv</code>.</td>
                     <td>Rename it, or keep unrelated files out of the directory.</td>
                 </tr>
                 <tr>

@@ -18,7 +18,7 @@ The watchlist in particular must never be moved under `public/`.
 
 Everything else the decorator reads is too large to bundle and is attached to a
 release instead, for operators to drop into the directory named by the
-`CyberDatasetsDir` setting: `cve.tsv`, `epss.tsv`, `ip.tsv`, plus any vendor
+`CyberDatasetsDir` setting: `cve.tsv`, `cvedetail.tsv`, `epss.tsv`, `ip.tsv`, plus any vendor
 `.mmdb` database and the operator's own `watchlist.tsv`.
 
 ## `kev.tsv` is not committed yet

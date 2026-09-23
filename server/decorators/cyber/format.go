@@ -47,10 +47,15 @@ type Details struct {
 	Watchlist []WatchEntry
 	Status    string
 	Datasets  []DatasetStatus
+
+	Affected       []string
+	Configurations []string
+	References     []Reference
 }
 
 var datasetLabels = map[string]string{
 	intel.NameCVE:       "vulnerability",
+	intel.NameCVEDetail: "vulnerability detail",
 	intel.NameEPSS:      "exploit prediction",
 	intel.NameKEV:       "known exploited vulnerabilities",
 	intel.NameIP:        "IP address",
@@ -146,6 +151,8 @@ func joinSentence(first, second string) string {
 
 func describeCVE(d *Details, set *intel.Set) {
 	record, err := set.CVE(d.Value)
+	recordFound := err == nil
+
 	if err != nil {
 		d.Status = datasetSentence(set, intel.NameCVE, err)
 	} else {
@@ -175,6 +182,8 @@ func describeCVE(d *Details, set *intel.Set) {
 		addRow(d, "Required action", kev.Action)
 		d.Headline = joinSentence(d.Headline, "in KEV")
 	}
+
+	describeCVEDetail(d, set, recordFound)
 }
 
 func severityText(score, severity string) string {

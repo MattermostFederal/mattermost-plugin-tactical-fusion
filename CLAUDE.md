@@ -273,6 +273,8 @@ side moves alone. Change both halves together.
 | The cyber decorator type | `TestWebappCyberTypeMatches` |
 | The cyber kind vocabulary and its order | `TestWebappCyberKindsMatch` |
 | Each cyber kind's canonical shape expression | `TestWebappCyberShapeExpressionsMatch` |
+| Which reference URLs become links: `isWebURL` and `isWebLink` | `detail_test.go` and `cyber.spec.ts` hold the same table |
+| The `cvedetail.tsv` row shape, between `build/cyberdata` and `intel` | `intel/testdata/cvedetail.tsv`, which the generator must reproduce and the reader must parse |
 | The seam zoom: `seamZoom` and `SEAM_ZOOM` in `map/span.ts` | `TestSeamZoomMatchesTheWebapp`, `TestDetailPackagesStartAtTheSeam` |
 | The detail layer set: `DETAIL_SOURCE_LAYERS` in `map/maplibre.ts` | `TestArchiveCarriesEveryLayerTheStyleDraws`, and `style.spec.ts` holds the built style to the same list |
 | The package name grammar: `packageNamePattern` and `PACKAGE_NAME` | `TestWebappPackageNameGrammarMatches` |

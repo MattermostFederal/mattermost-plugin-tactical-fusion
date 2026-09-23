@@ -139,6 +139,18 @@
             vulnerability record names are offered as <a href="#cyber-cwe">CWE</a> links.
         </p>
 
+        <p>
+            With <code>cvedetail.tsv</code> installed the panel and the page also show, each in a
+            section that opens on a click and says how many lines it holds: the products and
+            versions the reporting organization lists as affected, the product configurations
+            NVD lists, and the references, each with its tags such as <em>Patch</em>,
+            <em>Exploit</em> or <em>Vendor Advisory</em>. A row names which organization
+            reported each weakness. A reference opens in a new tab, and only a
+            <code>http</code> or <code>https</code> address is ever shown as a link. On an
+            air-gapped network a reference will not load, but it still names the advisory to
+            ask for.
+        </p>
+
         <h2 id="cyber-cwe">Weakness identifiers</h2>
 
         <p>Setting: <a href="admin.html#enable-cyber-cwe"><code>EnableCyberCWE</code></a></p>
@@ -350,6 +362,7 @@
             </thead>
             <tbody>
                 <tr><td><code>cve.tsv</code></td><td>Vulnerability records: summary, dates, CVSS score and vector, and the weaknesses each one names</td></tr>
+                <tr><td><code>cvedetail.tsv</code></td><td>Affected products and versions, as the reporting organization lists them and as NVD configures them, the references, and which organization reported each weakness</td></tr>
                 <tr><td><code>epss.tsv</code></td><td>Exploit prediction scores and percentiles</td></tr>
                 <tr><td><code>kev.tsv</code></td><td>The known exploited vulnerabilities catalog, with its due dates and required actions</td></tr>
                 <tr><td><code>ip.tsv</code></td><td>Autonomous system, country, region and city per address range</td></tr>

@@ -1,8 +1,10 @@
 package main
 
 import (
+	"flag"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -21,8 +23,40 @@ const nvdFixture = `{"vulnerabilities":[
 {"cve":{"id":"CVE-2026-0004","published":"2026-09-20T10:00:00.000","lastModified":"2026-09-21T10:00:00.000",
  "descriptions":[{"lang":"en","value":"Not yet analyzed."}],"metrics":{}}},
 {"cve":{"id":"CVE-2026-0005","published":"2026-09-20T10:00:00.000","lastModified":"2026-09-21T10:00:00.000",
- "descriptions":[{"lang":"es","value":"Descripcion en otro idioma."},
-  {"lang":"en","value":"Buffer overflow in Example, Inc. HyperTerminal before 2.0.\nAn attacker who can\tcontrol input can execute arbitrary code. ` + longTail + `"}],"metrics":{}}}
+ "descriptions":[{"lang":"es","value":"Texto en otro idioma."},
+  {"lang":"en","value":"Buffer overflow in Example, Inc. HyperTerminal before 2.0.\nAn attacker who can\tcontrol input can execute arbitrary code. ` + longTail + `"}],"metrics":{}}},
+{"cve":{"id":"CVE-2026-0006","published":"2026-09-20T10:00:00.000","lastModified":"2026-09-21T10:00:00.000",
+ "descriptions":[{"lang":"en","value":"Every detail block."}],"metrics":{},
+ "weaknesses":[
+  {"source":"security@example.com","type":"Primary","description":[{"lang":"en","value":"CWE-20"},{"lang":"en","value":"CWE-502"}]},
+  {"source":"nvd@nist.gov","type":"Secondary","description":[{"lang":"en","value":"NVD-CWE-Other"},{"lang":"en","value":"CWE-917"}]}],
+ "configurations":[
+  {"operator":"AND","nodes":[
+   {"operator":"OR","negate":false,"cpeMatch":[{"vulnerable":true,"criteria":"cpe:2.3:o:example:router_firmware:*:*:*:*:*:*:*:*","versionEndExcluding":"2.7.0","matchCriteriaId":"A"}]},
+   {"operator":"OR","negate":false,"cpeMatch":[{"vulnerable":false,"criteria":"cpe:2.3:h:example:router:-:*:*:*:*:*:*:*","matchCriteriaId":"B"}]}]},
+  {"nodes":[{"operator":"OR","negate":false,"cpeMatch":[
+   {"vulnerable":true,"criteria":"cpe:2.3:a:example:log\\:lib:*:*:*:*:*:*:*:*","versionStartIncluding":"2.0","versionEndExcluding":"2.3.1","matchCriteriaId":"C"},
+   {"vulnerable":true,"criteria":"cpe:2.3:a:example:log\\:lib:2.13.0:beta1:*:*:*:*:*:*","matchCriteriaId":"D"}]}]},
+  {"nodes":[{"operator":"OR","negate":false,"cpeMatch":[{"vulnerable":false,"criteria":"cpe:2.3:o:example:os:-:*:*:*:*:*:*:*","matchCriteriaId":"E"}]}]}],
+ "affected":[{"source":"security@example.com","affectedData":[
+  {"vendor":"Example Corp","product":"Log Lib","defaultStatus":"unaffected","versions":[
+   {"version":"2.0","lessThan":"2.3.1","versionType":"semver","status":"affected","changes":[{"at":"2.1","status":"unaffected"},{"at":"2.2","status":"affected"}]},
+   {"version":"n/a","status":"affected"},
+   {"version":"2.15.0","status":"unaffected"}]},
+  {"vendor":"n/a","product":"n/a","versions":[{"version":"n/a","status":"affected"}]}]}],
+ "references":[
+  {"url":"https://example.com/advisory?id=1&lang=en","source":"security@example.com","tags":["Vendor Advisory","Patch"]},
+  {"url":"http://example.org/exploit","source":"nvd@nist.gov","tags":["Exploit"]},
+  {"url":"https://example.net/untagged","source":"nvd@nist.gov"},
+  {"url":"  ","source":"nvd@nist.gov"},
+  {"url":"http://example.org/exploit","source":"security@example.com","tags":["Exploit","Third Party Advisory"]}]}},
+{"cve":{"id":"CVE-2026-0007","published":"2026-09-20T10:00:00.000","lastModified":"2026-09-21T10:00:00.000",
+ "descriptions":[{"lang":"en","value":"Several products in one configuration."}],"metrics":{},
+ "configurations":[{"nodes":[{"operator":"OR","negate":false,"cpeMatch":[
+  {"vulnerable":true,"criteria":"cpe:2.3:a:cisco:unified_communications_manager:*:*:*:*:*:*:*:*","versionEndExcluding":"11.5\\(1\\)","matchCriteriaId":"F"},
+  {"vulnerable":true,"criteria":"cpe:2.3:a:cisco:unified_communications_manager:*:*:*:*:session_management:*:*:*","versionEndExcluding":"11.5\\(1\\)","matchCriteriaId":"G"},
+  {"vulnerable":true,"criteria":"cpe:2.3:a:cisco:unified_communications_manager:11.5\\(1\\):*:*:*:*:*:*:*","matchCriteriaId":"H"},
+  {"vulnerable":true,"criteria":"cpe:2.3:a:cisco:dna_spaces\\:_connector:*:*:*:*:*:*:*:*","versionEndExcluding":"2.5","matchCriteriaId":"I"}]}]}]}}
 ]}`
 
 const longTail = "Fixed in 2.0, which removes the feature entirely and is the only supported release for this product line going forward. Earlier releases remain vulnerable when the optional remote console is enabled, which it is by default on the server edition, and no configuration change mitigates it."
@@ -149,4 +183,41 @@ func TestACVEDescriptionIsKeptWholeInEnglish(t *testing.T) {
 		return
 	}
 	t.Fatal("CVE-2026-0005 was not built")
+}
+
+var updateGolden = flag.Bool("update", false, "rewrite the cvedetail golden file the reader's tests parse")
+
+const detailGolden = "../../server/decorators/cyber/intel/testdata/cvedetail.tsv"
+
+const detailGoldenStamp = "#tactical-fusion-cyber/1\tcvedetail\t2026-09-01T00:00:00Z\tgolden\n"
+
+func TestTheDetailRowsMatchTheGoldenFileTheReaderParses(t *testing.T) {
+	rows, err := buildCVEDetail(writeNVDFixture(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if invalid := checkRows(rows); invalid != nil {
+		t.Fatal(invalid)
+	}
+	sort.Slice(rows, func(i, j int) bool { return rows[i][0] < rows[j][0] })
+
+	var body strings.Builder
+	body.WriteString(detailGoldenStamp)
+	for _, row := range rows {
+		body.WriteString(strings.Join(row, "\t") + "\n")
+	}
+
+	if *updateGolden {
+		if written := os.WriteFile(detailGolden, []byte(body.String()), 0o600); written != nil {
+			t.Fatal(written)
+		}
+	}
+
+	golden, err := os.ReadFile(detailGolden)
+	if err != nil {
+		t.Fatalf("%v; run go test ./build/cyberdata -run Golden -update", err)
+	}
+	if string(golden) != body.String() {
+		t.Fatalf("the generator's detail rows no longer match %s, which the reader's tests parse; if the change is intended, rerun with -update and fix the reader to match\n got: %s\nwant: %s", detailGolden, body.String(), golden)
+	}
 }

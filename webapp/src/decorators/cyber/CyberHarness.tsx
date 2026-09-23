@@ -43,6 +43,16 @@ const FOUND = {
         {name: 'cve', label: 'vulnerability', present: true, generated: '2026-09-01T00:00:00Z'},
         {name: 'ip', label: 'IP address', present: false, generated: ''},
     ],
+    affected: ['Apache Software Foundation Apache Log4j2: from 2.0-beta9 before 2.15.0'],
+    configurations: [
+        'apache log4j: from 2.0 before 2.3.1, from 2.4 before 2.12.2',
+        'siemens sppa-t3000 firmware: all versions (on siemens sppa-t3000)',
+    ],
+    references: [
+        {url: 'https://logging.apache.org/log4j/2.x/security.html', tags: 'Vendor Advisory, Patch'},
+        // eslint-disable-next-line no-script-url
+        {url: 'javascript:alert(1)', tags: 'Exploit'},
+    ],
 };
 
 const BARE = {
@@ -51,6 +61,9 @@ const BARE = {
     rows: [],
     related: [],
     watchlist: [],
+    affected: [],
+    configurations: [],
+    references: [],
 };
 
 const NO_DATASET = {

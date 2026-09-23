@@ -131,6 +131,82 @@ test.describe('the panel', () => {
     });
 });
 
+test.describe('the detail sections', () => {
+    test('are collapsed, each with a count', async ({mount}) => {
+        const panel = await mount(
+            <CyberHarness
+                surface='panel'
+                payload={CVE}
+            />,
+        );
+
+        await expect(panel.getByText('Affected, as reported (1)')).toBeVisible();
+        await expect(panel.getByText('Affected, per NVD (2)')).toBeVisible();
+        await expect(panel.getByText('References (1)')).toBeVisible();
+        await expect(panel.getByText('apache log4j: from 2.0 before 2.3.1, from 2.4 before 2.12.2')).toBeHidden();
+    });
+
+    test('open to show every line', async ({mount}) => {
+        const panel = await mount(
+            <CyberHarness
+                surface='panel'
+                payload={CVE}
+            />,
+        );
+
+        await panel.getByText('Affected, per NVD (2)').click();
+
+        await expect(panel.getByText('apache log4j: from 2.0 before 2.3.1, from 2.4 before 2.12.2')).toBeVisible();
+        await expect(panel.getByText('siemens sppa-t3000 firmware: all versions (on siemens sppa-t3000)')).toBeVisible();
+        await expect(panel.getByText('Apache Software Foundation Apache Log4j2: from 2.0-beta9 before 2.15.0')).toBeHidden();
+    });
+
+    test('open a reference in a new tab, with its tags beside it', async ({mount}) => {
+        const panel = await mount(
+            <CyberHarness
+                surface='panel'
+                payload={CVE}
+            />,
+        );
+
+        await panel.getByText('References (1)').click();
+
+        const link = panel.getByRole('link', {name: 'https://logging.apache.org/log4j/2.x/security.html'});
+        await expect(link).toHaveAttribute('href', 'https://logging.apache.org/log4j/2.x/security.html');
+        await expect(link).toHaveAttribute('target', '_blank');
+        await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+        await expect(panel.getByText('Vendor Advisory, Patch')).toBeVisible();
+    });
+
+    test('never render a reference that is not a web link', async ({mount}) => {
+        const panel = await mount(
+            <CyberHarness
+                surface='panel'
+                payload={CVE}
+            />,
+        );
+
+        await panel.getByText('References (1)').click();
+
+        await expect(panel.locator('a[href^="javascript:"]')).toHaveCount(0);
+        await expect(panel.getByText('Exploit', {exact: true})).toHaveCount(0);
+    });
+
+    test('are absent when there is nothing to show', async ({mount}) => {
+        const panel = await mount(
+            <CyberHarness
+                surface='panel'
+                payload={CVE}
+                reply='status'
+            />,
+        );
+
+        await expect(panel.getByText('No vulnerability dataset is installed.').first()).toBeVisible();
+        await expect(panel.getByText(/^Affected, /)).toHaveCount(0);
+        await expect(panel.getByText(/^References \(/)).toHaveCount(0);
+    });
+});
+
 test.describe('earlier mentions', () => {
     test('are not asked for at all when there is no team to search', async ({mount}) => {
         const panel = await mount(

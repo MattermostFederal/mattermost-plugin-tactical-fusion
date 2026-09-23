@@ -18,6 +18,9 @@ const FOUND = {
     related: [{kind: 'cwe', value: 'CWE-502', label: 'CWE-502 Deserialization of Untrusted Data'}],
     watchlist: [{verdict: 'malicious', source: 'internal', note: '', updated: '2026-08-01', known: true}],
     datasets: [{name: 'cve', label: 'vulnerability', present: true, generated: '2026-09-01T00:00:00Z'}],
+    affected: ['Apache Software Foundation Apache Log4j2: from 2.0-beta9 before 2.15.0'],
+    configurations: ['apache log4j: from 2.0 before 2.3.1'],
+    references: [{url: 'https://logging.apache.org/log4j/2.x/security.html', tags: 'Vendor Advisory, Patch'}],
 };
 
 type Reply = (input?: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
@@ -51,6 +54,31 @@ test.describe('asCyber', () => {
         expect(parsed.related[0].value).toBe('CWE-502');
         expect(parsed.watchlist[0].known).toBe(true);
         expect(parsed.datasets[0].present).toBe(true);
+        expect(parsed.affected).toEqual(FOUND.affected);
+        expect(parsed.configurations).toEqual(FOUND.configurations);
+        expect(parsed.references).toEqual(FOUND.references);
+    });
+
+    test('keeps only web links as references, the same table the Go gate holds', () => {
+        const cases = [
+            // eslint-disable-next-line no-script-url
+            'javascript:alert(1)',
+            'data:text/html,x',
+            'ftp://example.com/f',
+            '//no-scheme.example/x',
+            'not a url',
+            'HTTPS://Example.com/Upper',
+            'https://example.com/a',
+            'http://example.org/b',
+        ];
+
+        const parsed = asCyber({...FOUND, references: cases.map((url) => ({url, tags: ''}))});
+
+        expect(parsed.references.map((ref) => ref.url)).toEqual([
+            'HTTPS://Example.com/Upper',
+            'https://example.com/a',
+            'http://example.org/b',
+        ]);
     });
 
     test('refuses anything that is not the shape', () => {
@@ -65,6 +93,11 @@ test.describe('asCyber', () => {
             ['a link with no kind', {...FOUND, related: [{value: 'x', label: 'y'}]}],
             ['a watchlist entry with no verdict', {...FOUND, watchlist: [{source: 's', note: '', updated: '', known: true}]}],
             ['a dataset with no name', {...FOUND, datasets: [{label: 'l', present: true, generated: ''}]}],
+            ['no affected list', {...FOUND, affected: undefined}],
+            ['an affected entry that is not text', {...FOUND, affected: [7]}],
+            ['configurations that are not an array', {...FOUND, configurations: 'apache'}],
+            ['no references', {...FOUND, references: undefined}],
+            ['a reference with no url', {...FOUND, references: [{tags: 'Patch'}]}],
         ];
 
         for (const [name, body] of cases) {

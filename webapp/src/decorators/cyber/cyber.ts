@@ -3,6 +3,7 @@ import {useEffect, useState} from 'react';
 import type {
     CyberDataset,
     CyberLink,
+    CyberReference,
     CyberResponse,
     CyberRow,
     CyberWatchEntry,
@@ -113,6 +114,33 @@ function asWatchlist(value: unknown[]): CyberWatchEntry[] {
     });
 }
 
+function asStrings(value: unknown[], what: string): string[] {
+    return value.map((entry) => {
+        if (typeof entry !== 'string') {
+            throw new Error(`The server did not return ${what}.`);
+        }
+        return entry;
+    });
+}
+
+export function isWebLink(url: string): boolean {
+    try {
+        const parsed = new URL(url);
+        return (parsed.protocol === 'http:' || parsed.protocol === 'https:') && parsed.host !== '';
+    } catch {
+        return false;
+    }
+}
+
+function asReferences(value: unknown[]): CyberReference[] {
+    return value.
+        map((entry) => {
+            const ref = asObject(entry, 'a reference');
+            return {url: asString(ref, 'url'), tags: asString(ref, 'tags')};
+        }).
+        filter((ref) => isWebLink(ref.url));
+}
+
 function asDatasets(value: unknown[]): CyberDataset[] {
     return value.map((entry) => {
         const dataset = asObject(entry, 'a dataset');
@@ -139,6 +167,9 @@ export function asCyber(body: unknown): CyberResponse {
         related: asLinks(asArray(wire, 'related')),
         watchlist: asWatchlist(asArray(wire, 'watchlist')),
         datasets: asDatasets(asArray(wire, 'datasets')),
+        affected: asStrings(asArray(wire, 'affected'), 'affected products'),
+        configurations: asStrings(asArray(wire, 'configurations'), 'affected configurations'),
+        references: asReferences(asArray(wire, 'references')),
     };
 }
 

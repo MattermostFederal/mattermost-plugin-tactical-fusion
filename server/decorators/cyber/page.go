@@ -3,6 +3,7 @@ package cyber
 import (
 	"html"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -22,6 +23,13 @@ ul.links a { color: var(--accent); }
 ul.datasets { list-style: none; padding: 0; margin: 0; font-size: 13px; color: var(--muted); }
 ul.datasets li { margin: 0 0 4px; }
 .verdict { font-weight: 600; }
+details { margin: 22px 0 0; }
+summary { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted);
+  cursor: pointer; }
+ul.lines { padding-left: 18px; margin: 8px 0 0; }
+ul.lines li { margin: 0 0 4px; overflow-wrap: anywhere; }
+ul.lines a { color: var(--accent); }
+.tags { color: var(--muted); font-size: 12px; }
 `
 
 const selfPath = "cyber"
@@ -58,6 +66,9 @@ func renderBody(d Details) string {
 
 	writeWatchlist(&b, d)
 	writeRelated(&b, d)
+	writeLines(&b, "Affected, as reported", d.Affected)
+	writeLines(&b, "Affected, per NVD", d.Configurations)
+	writeReferences(&b, d.References)
 	writeDatasets(&b, d)
 
 	return b.String()
@@ -99,6 +110,35 @@ func writeRelated(b *strings.Builder, d Details) {
 			html.EscapeString(link.Label) + `</a></li>`)
 	}
 	b.WriteString(`</ul>`)
+}
+
+func writeLines(b *strings.Builder, title string, lines []string) {
+	if len(lines) == 0 {
+		return
+	}
+
+	b.WriteString(`<details><summary>` + html.EscapeString(title) + ` (` + strconv.Itoa(len(lines)) + `)</summary><ul class="lines">`)
+	for _, line := range lines {
+		b.WriteString(`<li>` + html.EscapeString(line) + `</li>`)
+	}
+	b.WriteString(`</ul></details>`)
+}
+
+func writeReferences(b *strings.Builder, refs []Reference) {
+	if len(refs) == 0 {
+		return
+	}
+
+	b.WriteString(`<details><summary>References (` + strconv.Itoa(len(refs)) + `)</summary><ul class="lines">`)
+	for _, ref := range refs {
+		b.WriteString(`<li><a href="` + html.EscapeString(ref.URL) + `" rel="noopener noreferrer" target="_blank">` +
+			html.EscapeString(ref.URL) + `</a>`)
+		if ref.Tags != "" {
+			b.WriteString(` <span class="tags">` + html.EscapeString(ref.Tags) + `</span>`)
+		}
+		b.WriteString(`</li>`)
+	}
+	b.WriteString(`</ul></details>`)
 }
 
 func writeDatasets(b *strings.Builder, d Details) {

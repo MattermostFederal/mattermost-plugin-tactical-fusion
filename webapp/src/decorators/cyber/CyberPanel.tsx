@@ -3,7 +3,7 @@ import React from 'react';
 import {KIND_LABELS, isKind, useCyber} from './cyber';
 import type {CyberState} from './cyber';
 import {useMentions} from './mentions';
-import type {CyberLink, CyberMention} from './types';
+import type {CyberLink, CyberMention, CyberReference} from './types';
 
 import LinkButton from '../../components/LinkButton';
 import CopyButton from '../location/CopyButton';
@@ -84,6 +84,24 @@ const styles: Record<string, React.CSSProperties> = {
         opacity: 0.6,
         color: 'var(--center-channel-color)',
     },
+    details: {margin: '20px 0 0'},
+    toggle: {
+        fontSize: '11px',
+        textTransform: 'uppercase',
+        letterSpacing: '0.08em',
+        fontWeight: 600,
+        opacity: 0.7,
+        color: 'var(--center-channel-color)',
+        cursor: 'pointer',
+        margin: '0 0 8px',
+    },
+    line: {
+        margin: '0 0 6px',
+        fontSize: '13px',
+        color: 'var(--center-channel-color)',
+        overflowWrap: 'anywhere',
+    },
+    reference: {color: 'var(--link-color)', overflowWrap: 'anywhere'},
     mentionSnippet: {
         fontSize: '13px',
         color: 'var(--center-channel-color)',
@@ -107,6 +125,65 @@ const Row: React.FC<{label: string; value: string}> = ({label, value}) => (
         </td>
     </tr>
 );
+
+const Collapsible: React.FC<{title: string; count: number; children: React.ReactNode}> = ({title, count, children}) => (
+    <details style={styles.details}>
+        <summary style={styles.toggle}>{`${title} (${count})`}</summary>
+        {children}
+    </details>
+);
+
+const Lines: React.FC<{title: string; lines: string[]}> = ({title, lines}) => {
+    if (lines.length === 0) {
+        return null;
+    }
+
+    return (
+        <Collapsible
+            title={title}
+            count={lines.length}
+        >
+            <ul style={styles.list}>
+                {lines.map((line) => (
+                    <li
+                        key={line}
+                        style={styles.line}
+                    >{line}</li>
+                ))}
+            </ul>
+        </Collapsible>
+    );
+};
+
+const References: React.FC<{references: CyberReference[]}> = ({references}) => {
+    if (references.length === 0) {
+        return null;
+    }
+
+    return (
+        <Collapsible
+            title='References'
+            count={references.length}
+        >
+            <ul style={styles.list}>
+                {references.map((reference) => (
+                    <li
+                        key={reference.url}
+                        style={styles.line}
+                    >
+                        <a
+                            href={reference.url}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            style={styles.reference}
+                        >{reference.url}</a>
+                        {reference.tags !== '' && <span style={styles.mentionMeta}>{` ${reference.tags}`}</span>}
+                    </li>
+                ))}
+            </ul>
+        </Collapsible>
+    );
+};
 
 const Related: React.FC<{links: CyberLink[]}> = ({links}) => {
     if (links.length === 0) {
@@ -252,6 +329,15 @@ function renderBody(state: CyberState, payload: CyberPayload): React.ReactNode {
             )}
 
             <Related links={details.related}/>
+            <Lines
+                title='Affected, as reported'
+                lines={details.affected}
+            />
+            <Lines
+                title='Affected, per NVD'
+                lines={details.configurations}
+            />
+            <References references={details.references}/>
             <Mentions payload={payload}/>
 
             <p style={styles.heading}>{'Datasets'}</p>

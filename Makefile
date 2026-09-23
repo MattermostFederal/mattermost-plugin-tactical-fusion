@@ -255,10 +255,11 @@ cyber-sources:
 cyber-data:
 	$(GO) run ./build/cyberdata
 
-## Builds a vulnerability dataset from the CVEs NVD published in the last DAYS days, 7 by
-## default and at most 120, into build/cyberdata/recent/cve.tsv. A small current set for
-## trying the decorator: it holds nothing older than its window, so an older CVE reads as
-## not in the dataset. Its stamp names the window. Set NVD_API_KEY to raise NVD's rate limit.
+## Builds the vulnerability datasets from the CVEs NVD published in the last DAYS days, 7
+## by default and at most 120, into build/cyberdata/recent/cve.tsv and cvedetail.tsv. A
+## small current set for trying the decorator: it holds nothing older than its window, so
+## an older CVE reads as not in the dataset. Its stamp names the window. Set NVD_API_KEY to
+## raise NVD's rate limit.
 ##
 ##   make cyber-recent DAYS=7
 ##
@@ -267,7 +268,7 @@ cyber-data:
 cyber-recent:
 	DAYS="$(DAYS)" ./build/cyberdata/fetch-recent.sh
 	$(GO) run ./build/cyberdata -source build/cyberdata/recent -out build/cyberdata/recent \
-		-only cve -label "$$(cat build/cyberdata/recent/window)"
+		-only cve,cvedetail -label "$$(cat build/cyberdata/recent/window)"
 
 ## Gzips each dataset in build/cyberdata/out and writes DATASETS.sha256 over the archives.
 ## Operators drop the .tsv.gz files into the directory named by CyberDatasetsDir, and the
