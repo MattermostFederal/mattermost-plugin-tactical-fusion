@@ -164,7 +164,7 @@
             <a href="admin.html#enable-avreport-table"><code>EnableAvReportTable</code></a>.
         </p>
 
-        <h2 id="reports-card">A fenced report becomes a card</h2>
+        <h2 id="reports-card">A fenced report, or a flight restriction, becomes a card</h2>
 
         <p>
             A report in a fenced code block labeled <code>metar</code>, <code>speci</code>,
@@ -174,6 +174,13 @@
             of what it holds. A report on several lines posted on its own without a fence
             gets <a href="#reports-table">the table</a> instead, and the card only while
             that is turned off.
+        </p>
+
+        <p>
+            A temporary flight restriction is the exception. What it says is mostly where, so
+            one posted on its own is rendered as a card with its circle or polygon drawn on the
+            map under the message, the way a <a href="cot.html">Cursor on Target</a> event is,
+            and the table is used only while the card is turned off.
         </p>
 
         <p>

@@ -45,7 +45,8 @@ func (p *Plugin) recognizeAvReport(post *model.Post, ref time.Time) (*model.Post
 		return nil, false
 	}
 
-	if source.Kind == avreport.SourceMessage && p.avreportFormats().Table {
+	prefersCard := report.IsRestriction() && p.avreportCardEnabled()
+	if source.Kind == avreport.SourceMessage && p.avreportFormats().Table && !prefersCard {
 		if expanded, ok := p.expandAvReport(post, report, ref); ok {
 			return expanded, true
 		}

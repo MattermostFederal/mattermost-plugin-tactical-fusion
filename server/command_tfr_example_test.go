@@ -9,25 +9,23 @@ import (
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/avreport"
 )
 
-func TestTheTFRExampleIsPostedAsARestrictionTable(t *testing.T) {
+func TestTheTFRExampleIsPostedAsACard(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 	api := p.API.(*fakeAPI)
 
 	runExamplePosts(t, p)
 
-	var table string
+	var blob map[string]any
 	for _, post := range api.created {
-		if strings.Contains(post.Message, "| NOTAM | Temporary flight restriction |") {
-			table = post.Message
+		if post.Type == avreport.PostType && strings.HasPrefix(post.Message, "!FDC 6/4321") {
+			blob, _ = post.GetProps()[avreport.PropsKey].(map[string]any)
 		}
 	}
-	if table == "" {
-		t.Fatal("the TFR example was not posted as a table")
+	if blob == nil {
+		t.Fatal("the TFR example was not posted as a card")
 	}
-	for _, want := range []string{"| Radius | 3 NM |", "| Altitudes | surface to 3,000 ft MSL |", "| Details | [Open details]("} {
-		if !strings.Contains(table, want) {
-			t.Errorf("missing %q in:\n%s", want, table)
-		}
+	if blob["radius_nm"] != "3" || blob["value"] == "" {
+		t.Errorf("the card does not carry the circle: radius %v value %v", blob["radius_nm"], blob["value"])
 	}
 }
 

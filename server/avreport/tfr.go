@@ -29,6 +29,10 @@ var (
 	tfrFeetPattern      = regexp.MustCompile(`^(\d+) ?FT (MSL|AGL)$`)
 )
 
+func (r Report) IsRestriction() bool {
+	return hasRow(r, RestrictionLabel)
+}
+
 func readTFR(report *Report, body string) {
 	if restriction := restrictionText(body); restriction != "" {
 		report.Rows = append([]Row{{Label: RestrictionLabel, Value: restriction}}, report.Rows...)

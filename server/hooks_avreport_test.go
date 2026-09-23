@@ -831,8 +831,25 @@ const reportTFR = "!FDC 6/1234 ZZZ AIRSPACE SOME CITY, ST. TEMPORARY FLIGHT\n" +
 	"SFC-5000FT MSL\n\n" +
 	"EFFECTIVE 2609221800 UTC UNTIL 2609230200 UTC."
 
-func TestATFRPostedAloneExpandsIntoARestrictionTable(t *testing.T) {
+func TestATFRPostedAloneIsACardWithItsArea(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
+
+	updated := stampedReport(t, p, reportTFR)
+	if updated.Message != reportTFR {
+		t.Errorf("the TFR's message was rewritten:\n%s", updated.Message)
+	}
+	blob := reportBlob(t, updated)
+	if blob["radius_nm"] != "5" || blob["value"] != "43.6167,-116.2000" {
+		t.Errorf("the card does not carry the circle: radius %v value %v", blob["radius_nm"], blob["value"])
+	}
+	if again := p.decoratePost(&model.Post{Message: updated.Message, UserId: testUserID}, hookRef); again == nil || again.Type != avreport.PostType {
+		t.Errorf("the TFR posted again was not the same card: %+v", again)
+	}
+}
+
+func TestATFRFallsBackToTheTableWhileTheCardIsOff(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	withConfiguration(p, func(c *configuration) { c.EnableAvReportCard = false })
 
 	updated := p.decoratePost(&model.Post{Message: reportTFR, UserId: testUserID}, hookRef)
 	if updated == nil || updated.Type != "" {
@@ -861,6 +878,7 @@ func TestATFRInANotamFenceStampsACardCarryingItsCircle(t *testing.T) {
 
 func TestAnExpandedTFRIsStableUnderTheHook(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
+	withConfiguration(p, func(c *configuration) { c.EnableAvReportCard = false })
 
 	first := p.decoratePost(&model.Post{Message: reportTFR, UserId: testUserID}, hookRef)
 	if first == nil || !strings.Contains(first.Message, "/decorate/location?") {
