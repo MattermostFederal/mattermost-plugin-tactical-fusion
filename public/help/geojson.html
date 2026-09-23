@@ -79,14 +79,21 @@
     {
       "type": "Feature",
       "geometry": {"type": "Point", "coordinates": [-157.9483, 21.3353]},
-      "properties": {"name": "Forward supply point", "status": "active"}
+      "properties": {
+        "name": "Forward supply point",
+        "description": "Class I and III issue point, open 0600 to 2200 local.",
+        "status": "active"
+      }
     },
     {
       "type": "Feature",
       "geometry": {"type": "LineString", "coordinates": [
         [-157.9483, 21.3353], [-157.9300, 21.3400]
       ]},
-      "properties": {"name": "Primary route"}
+      "properties": {
+        "name": "Primary route",
+        "description": "Convoy route from the pier to the supply point."
+      }
     }
   ]
 }
@@ -225,6 +232,7 @@
             </thead>
             <tbody>
                 <tr><td>Name</td><td>From <code>properties.name</code>, then <code>title</code>, then <code>label</code>, then the feature's <code>id</code>, and otherwise "Feature 1", "Feature 2" and so on.</td></tr>
+                <tr><td>Description</td><td>From <code>properties.description</code>, as a line under the name.</td></tr>
                 <tr><td>Position</td><td>For a lone point only. A polygon's corners are not positions anybody reported.</td></tr>
                 <tr><td>Properties</td><td>Every key and value the feature carries, as text, except the simplestyle keys, which say how to draw it rather than what it is, and the key it was named by. The document under <strong>As posted</strong> in the sidebar still carries them.</td></tr>
                 <tr><td>Note</td><td>Only when the feature is not drawn, saying why.</td></tr>

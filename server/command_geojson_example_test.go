@@ -188,3 +188,21 @@ func TestTheGeoJSONExampleNamesAndDescribesItself(t *testing.T) {
 		t.Fatalf("the example carries no name or description: %q / %q", document.Name, document.Description)
 	}
 }
+
+func TestEveryExampleFeatureDescribesItself(t *testing.T) {
+	document, err := geojson.Parse([]byte(geoJSONExample))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, feature := range document.Features {
+		described := false
+		for _, property := range feature.Properties {
+			if property.Key == "description" && property.Value != "" {
+				described = true
+			}
+		}
+		if !described {
+			t.Errorf("%q carries no description", feature.Name)
+		}
+	}
+}

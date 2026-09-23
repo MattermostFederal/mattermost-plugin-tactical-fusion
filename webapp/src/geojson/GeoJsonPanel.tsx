@@ -2,7 +2,7 @@ import React, {useEffect, useLayoutEffect, useRef} from 'react';
 
 import Customize from './Customize';
 import {setEditing, useEditing} from './editing';
-import {measureLine, shapeLine, shownProperties} from './GeoJsonCard';
+import {descriptionOf, measureLine, shapeLine, shownProperties} from './GeoJsonCard';
 import GeoJsonMap from './GeoJsonMap';
 import {isSectionVisible, sectionLabel} from './sections';
 import type {GeoJsonFeature, GeoJsonPayload} from './types';
@@ -92,6 +92,7 @@ const Feature: React.FC<{feature: GeoJsonFeature; showProperties: boolean}> = ({
     const shape = shapeLine(feature);
     const measure = measureLine(feature);
     const properties = shownProperties(feature);
+    const description = descriptionOf(feature);
 
     return (
         <li style={styles.item}>
@@ -102,6 +103,7 @@ const Feature: React.FC<{feature: GeoJsonFeature; showProperties: boolean}> = ({
                 {shape !== '' && <span style={styles.shape}>{shape}</span>}
                 {measure !== '' && <span style={styles.measure}>{measure}</span>}
             </div>
+            {description !== '' && <p style={styles.featureNote}>{description}</p>}
             {feature.note !== '' && <p style={styles.featureNote}>{feature.note}</p>}
             {showProperties && properties.length > 0 && (
                 <dl style={styles.rows}>

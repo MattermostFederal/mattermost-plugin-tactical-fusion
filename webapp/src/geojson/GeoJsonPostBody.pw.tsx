@@ -374,3 +374,21 @@ test.describe('Open larger', () => {
         await expect(component.getByText('Open larger')).toHaveCount(0);
     });
 });
+
+test('renders a feature\'s description as a line under its name, not as a property', async ({mount}) => {
+    const component = await mount(
+        <GeoJsonPostBodyHarness
+            features={[{
+                name: 'Operating area',
+                properties: [
+                    {key: 'description', value: 'Restricted to exercise traffic.'},
+                    {key: 'status', value: 'active'},
+                ],
+            }]}
+        />,
+    );
+
+    await expect(component.getByTestId('geojson-feature-description')).toHaveText('Restricted to exercise traffic.');
+    await expect(component.getByText('description', {exact: true})).toHaveCount(0);
+    await expect(component).toContainText('status');
+});

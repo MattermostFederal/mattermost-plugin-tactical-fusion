@@ -37,7 +37,9 @@ const geoJSONExample = `{
       "type": "Feature",
       "geometry": {"type": "Point", "coordinates": [-157.9483, 21.3353]},
       "properties": {
-        "name": "Forward supply point", "status": "active", "capacity": 240,
+        "name": "Forward supply point",
+        "description": "Class I and III issue point, open 0600 to 2200 local.",
+        "status": "active", "capacity": 240,
         "marker-color": "#0000ff", "marker-size": "large"
       }
     },
@@ -49,7 +51,9 @@ const geoJSONExample = `{
         [-157.9176, 21.3624], [-157.9074, 21.3670]
       ]},
       "properties": {
-        "name": "Primary route", "surface": "paved",
+        "name": "Primary route",
+        "description": "Convoy route from the pier to the supply point, two lanes throughout.",
+        "surface": "paved",
         "stroke": "#00a651", "stroke-width": 3, "stroke-opacity": 0.9
       }
     },
@@ -66,6 +70,7 @@ const geoJSONExample = `{
       ]]},
       "properties": {
         "name": "Operating area",
+        "description": "Restricted to exercise traffic for the duration.",
         "stroke": "#ff0000", "stroke-width": 3, "stroke-opacity": 0.8,
         "fill": "#ff0000", "fill-opacity": 0.25
       }

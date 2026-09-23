@@ -22,9 +22,15 @@ export const STYLE_KEYS = new Set([
 
 const NAME_KEYS = new Set(['name', 'title', 'label']);
 
+const DESCRIPTION_KEY = 'description';
+
+export function descriptionOf(feature: GeoJsonFeature): string {
+    return feature.properties.find((property) => property.key === DESCRIPTION_KEY)?.value ?? '';
+}
+
 export function shownProperties(feature: GeoJsonFeature): GeoJsonProperty[] {
     return feature.properties.filter((property) => {
-        if (STYLE_KEYS.has(property.key)) {
+        if (STYLE_KEYS.has(property.key) || property.key === DESCRIPTION_KEY) {
             return false;
         }
         return !(NAME_KEYS.has(property.key) && property.value === feature.name);
@@ -84,6 +90,7 @@ const styles: Record<string, React.CSSProperties> = {
     name: {fontWeight: 600},
     coord: {fontFamily: 'monospace', fontSize: '0.9em'},
     featureNote: {opacity: 0.9, fontSize: '0.9em', margin: '2px 0 0'},
+    featureDescription: {opacity: 0.9, fontSize: '0.9em', margin: '2px 0 0', whiteSpace: 'pre-wrap'},
     properties: {
         display: 'grid',
         gridTemplateColumns: 'max-content 1fr',
@@ -161,6 +168,7 @@ const Dot: React.FC<{color: string}> = ({color}) => {
 const Feature: React.FC<{feature: GeoJsonFeature}> = ({feature}) => {
     const position = solePosition(feature);
     const properties = shownProperties(feature);
+    const description = descriptionOf(feature);
 
     return (
         <li style={styles.listItem}>
@@ -171,6 +179,14 @@ const Feature: React.FC<{feature: GeoJsonFeature}> = ({feature}) => {
                     <span style={styles.coord}>{`${position.lat}, ${position.lon}`}</span>
                 )}
             </div>
+            {description !== '' && (
+                <p
+                    style={styles.featureDescription}
+                    data-testid='geojson-feature-description'
+                >
+                    {description}
+                </p>
+            )}
             {feature.note !== '' && <p style={styles.featureNote}>{feature.note}</p>}
             {properties.length > 0 && (
                 <dl style={styles.properties}>
