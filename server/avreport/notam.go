@@ -67,7 +67,7 @@ func mustParseQCodes(source string) (map[string]string, map[string]string) {
 	return subjects, conditions
 }
 
-var faaNotamPattern = regexp.MustCompile(`^!([A-Z]{3})[ \t]+(\d{2}/\d{3,4})[ \t]+([A-Z]{3,4})[ \t]+([A-Z]{2,8}|\([OU]\))[ \t]+(.*)$`)
+var faaNotamPattern = regexp.MustCompile(`^!([A-Z]{3})[ \t]+(\d{1,2}/\d{3,4})[ \t]+([A-Z]{3,4})[ \t]+([A-Z]{2,8}|\([OU]\))[ \t]+(.*)$`)
 
 var faaEffectivePattern = regexp.MustCompile(`(\d{10})-(\d{10}|PERM)(EST)?$`)
 
@@ -137,12 +137,25 @@ func decodeFAANotam(line string, ref time.Time) (Report, bool) {
 			}
 		}
 	}
+	if report.IssuedAt.IsZero() && !hasRow(report, "Expires") {
+		readTFREffective(&report, body)
+	}
+	readTFR(&report, body)
 	if text != "" {
 		report.Rows = append(report.Rows, Row{Label: "Text", Value: expandContractions(text)})
 	}
 	report.Summary = summarizeNotam(report)
 
 	return report, true
+}
+
+func hasRow(report Report, label string) bool {
+	for _, row := range report.Rows {
+		if row.Label == label {
+			return true
+		}
+	}
+	return false
 }
 
 func faaStation(affected string) string {
@@ -334,7 +347,7 @@ func expandContractions(text string) string {
 
 func summarizeNotam(report Report) string {
 	var parts []string
-	for _, label := range []string{"Condition", "Subject", "Text"} {
+	for _, label := range []string{RestrictionLabel, "Condition", "Subject", "Text"} {
 		for _, row := range report.Rows {
 			if row.Label == label {
 				parts = append(parts, row.Value)

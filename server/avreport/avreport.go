@@ -29,6 +29,7 @@ const (
 	MaxPeriods     = 24
 	MaxUnknown     = 64
 	MaxFlags       = 8
+	MaxAreaPoints  = 64
 
 	summaryMaxRunes = 160
 
@@ -64,6 +65,7 @@ type Report struct {
 	Remarks     []Row
 	Unknown     []string
 	Center      *Center
+	Area        []Center
 	RadiusNm    string
 	Raw         string
 	Truncated   bool
@@ -258,6 +260,7 @@ func Blob(report Report) map[string]any {
 		"value":        report.Value,
 		"region":       region,
 		"radius_nm":    report.RadiusNm,
+		"area":         areaTokens(report.Area),
 		"src":          report.Raw,
 	}
 }

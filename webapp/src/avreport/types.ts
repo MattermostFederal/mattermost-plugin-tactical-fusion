@@ -18,6 +18,8 @@ export const MAX_REPORT_UNKNOWN = 64;
 
 export const MAX_REPORT_FLAGS = 8;
 
+export const MAX_AREA_POINTS = 64;
+
 export const KINDS = ['METAR', 'SPECI', 'TAF', 'NOTAM'] as const;
 
 export type ReportKind = typeof KINDS[number];
@@ -45,6 +47,7 @@ export interface Report {
     periods: ReportPeriod[];
     remarks: ReportRow[];
     unknown: string[];
+    area: string[];
     format: string;
     value: string;
     region: string;
@@ -194,7 +197,8 @@ export function fromWire(body: unknown): Report | null {
     const bodyPeriods = periods(blob, 'periods');
     const remarks = rows(blob, 'remarks');
     const unknown = strings(blob, 'unknown', MAX_REPORT_UNKNOWN);
-    if (flags === null || bodyRows === null || bodyPeriods === null || remarks === null || unknown === null) {
+    const area = Object.hasOwn(blob, 'area') ? strings(blob, 'area', MAX_AREA_POINTS) : [];
+    if (flags === null || bodyRows === null || bodyPeriods === null || remarks === null || unknown === null || area === null) {
         return null;
     }
 
@@ -211,6 +215,7 @@ export function fromWire(body: unknown): Report | null {
         periods: bodyPeriods,
         remarks,
         unknown,
+        area,
         format,
         value,
         region,

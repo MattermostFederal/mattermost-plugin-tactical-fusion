@@ -1,6 +1,6 @@
 import React, {useState} from 'react';
 
-import {REPORT_COLOR, drawsNothing, mapLabel, placed, radiusEllipse} from './map';
+import {REPORT_COLOR, drawsNothing, mapLabel, placed, radiusEllipse, reportShapes} from './map';
 import type {Report} from './types';
 
 import type {Camera} from '../decorators/location/map/camera';
@@ -59,6 +59,7 @@ export const ReportMapCanvas: React.FC<{
             pending={false}
             markers={[{...point, color: REPORT_COLOR}]}
             ellipse={radiusEllipse(report)}
+            geometries={reportShapes(report)}
             markerLabel={mapLabel(report)}
             pageHref={largerHref(pageEnabled, report, postId)}
             fill={fill}

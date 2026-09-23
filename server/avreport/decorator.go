@@ -55,7 +55,7 @@ var (
 	metarKeywordPattern = regexp.MustCompile(`((?:METAR|SPECI)[ \t]+(?:COR[ \t]+)?` + station + `[ \t]+` + timeGroup + rest + `)` + trail)
 	metarBarePattern    = regexp.MustCompile(`(` + station + `[ \t]+` + timeGroup + `[ \t]+(?:AUTO[ \t]+|COR[ \t]+)?(?:\d{3}|VRB)\d{2,3}(?:G\d{2,3})?(?:KT|MPS)` + rest + `)` + trail)
 	tafPattern          = regexp.MustCompile(`(TAF[ \t]+(?:AMD[ \t]+|COR[ \t]+)?` + station + `[ \t]+` + timeGroup + `[ \t]+(?:\d{4}/\d{4}|NIL|CNL)` + rest + `)` + trail + continuation)
-	notamPattern        = regexp.MustCompile(`(![A-Z]{3}[ \t]+\d{2}/\d{3,4}[ \t]+[A-Z]{3,4}[ \t]+[^\n=]*[^\s=])` + trail)
+	notamPattern        = regexp.MustCompile(`(![A-Z]{3}[ \t]+\d{1,2}/\d{3,4}[ \t]+[A-Z]{3,4}[ \t]+[^\n=]*[^\s=])` + trail)
 )
 
 func (d *Decorator) Patterns() []decorators.Pattern {

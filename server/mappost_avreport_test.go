@@ -66,3 +66,20 @@ func TestTheOverlayRouteStandsDownForAReportWithNoPosition(t *testing.T) {
 		t.Fatalf("status = %d, want 404 for a report with nowhere to draw", rec.Code)
 	}
 }
+
+func TestTheOverlayRouteServesATFRWithAnArea(t *testing.T) {
+	polygon := "!FDC 6/5678 ZZZ AIRSPACE TEMPORARY FLIGHT RESTRICTIONS WI AN AREA DEFINED AS " +
+		"433700N1161200W TO 434500N1160000W TO 433000N1155500W TO POINT OF ORIGIN SFC-FL180"
+	p, _ := overlayPlugin(t, avreportPost(t, polygon))
+
+	req := withSession(httptest.NewRequest(http.MethodGet, "/map?post="+overlayPost, nil))
+	rec := httptest.NewRecorder()
+	p.ServeHTTP(&plugin.Context{}, rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (%s)", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "43.6167") {
+		t.Error("the shell does not carry the area")
+	}
+}

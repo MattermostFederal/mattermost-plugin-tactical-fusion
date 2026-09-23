@@ -88,6 +88,11 @@
                     <td><code class="copyable">!HNL 09/123 HNL RWY 08L/26R CLSD 2609221200-2609232359</code></td>
                 </tr>
                 <tr>
+                    <td>Temporary flight restriction</td>
+                    <td>An FDC NOTAM, whose number carries a one-digit year, citing a TFR section of 14 CFR</td>
+                    <td><code>!FDC 6/1234 ZZZ AIRSPACE ... TEMPORARY FLIGHT RESTRICTIONS</code>, on several lines</td>
+                </tr>
+                <tr>
                     <td>NOTAM, ICAO form</td>
                     <td>The series and number header, then the <code>Q)</code> to <code>G)</code> fields</td>
                     <td><code>A1234/26 NOTAMN</code>, on several lines</td>
@@ -240,7 +245,9 @@
             <code>BECMG</code> and <code>PROB</code> period for a forecast; the location,
             keyword, effective and expiry times and the text with its contractions expanded for
             a NOTAM, plus the <code>Q)</code> line's subject, condition, limits, center and
-            radius for the ICAO form. Remarks are decoded where the vocabulary knows them, and
+            radius for the ICAO form. A temporary flight restriction adds the restriction and the
+            section of 14 CFR it cites, the <code>EFFECTIVE ... UNTIL</code> times, the altitude
+            band, and its area: a radius around a point, or the points of a polygon. Remarks are decoded where the vocabulary knows them, and
             anything else is listed under <em>Not decoded</em> exactly as written. Below the
             rows comes the map, and under it <strong>As posted</strong> holds the report
             exactly as it was written, collapsed, with a button to copy it, as the Cursor on
@@ -258,7 +265,11 @@
         <p>
             The station's airfield is drawn when the database holds it. An ICAO NOTAM whose
             <code>Q)</code> line carries a center and a radius draws that instead, as a circle
-            of that many nautical miles. A station outside the database draws nothing and the
+            of that many nautical miles. A temporary flight restriction draws its area the same
+            way: a circle for <code>5 NM RADIUS OF 433700N1161200W</code>, or the polygon for
+            <code>AREA DEFINED AS ... TO ... TO POINT OF ORIGIN</code>, with the marker at its
+            center. A coordinate that does not read as one draws nothing and is listed under
+            <em>Not decoded</em>. A station outside the database draws nothing and the
             panel says nothing about position. The map under a card reads the same
             <a href="admin.html#enable-location-map-inline">map under a post</a> switch the
             coordinate map does, and the panel map the

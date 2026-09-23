@@ -823,3 +823,38 @@ func TestAFenceIsNeitherReadNorRefusedWhileOnlyTheTableIsOn(t *testing.T) {
 		}
 	}
 }
+
+const reportTFR = "!FDC 6/1234 ZZZ AIRSPACE SOME CITY, ST. TEMPORARY FLIGHT\n" +
+	"RESTRICTIONS. PURSUANT TO 14 CFR SECTION 91.137, TEMPORARY FLIGHT\n" +
+	"RESTRICTIONS ARE IN EFFECT WI AN AREA DEFINED AS\n" +
+	"5 NM RADIUS OF 433700N1161200W\n" +
+	"SFC-5000FT MSL\n\n" +
+	"EFFECTIVE 2609221800 UTC UNTIL 2609230200 UTC."
+
+func TestATFRPostedAloneExpandsIntoARestrictionTable(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	updated := p.decoratePost(&model.Post{Message: reportTFR, UserId: testUserID}, hookRef)
+	if updated == nil || updated.Type != "" {
+		t.Fatalf("the TFR was not expanded: %+v", updated)
+	}
+	for _, want := range []string{
+		"| NOTAM | Temporary flight restriction |",
+		"| Altitudes | surface to 5,000 ft MSL |",
+		"| Radius | 5 NM |",
+		"| Details | [Open details](/plugins/",
+	} {
+		if !strings.Contains(updated.Message, want) {
+			t.Errorf("missing %q in:\n%s", want, updated.Message)
+		}
+	}
+}
+
+func TestATFRInANotamFenceStampsACardCarryingItsCircle(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	blob := reportBlob(t, stampedReport(t, p, reportFence("notam", reportTFR)))
+	if blob["radius_nm"] != "5" || blob["value"] != "43.6167,-116.2000" {
+		t.Errorf("the card does not carry the circle: radius %v value %v", blob["radius_nm"], blob["value"])
+	}
+}

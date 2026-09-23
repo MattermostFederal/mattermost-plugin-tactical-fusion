@@ -48,7 +48,7 @@ func renderBody(report Report) string {
 		writeRow(&b, "Flags", strings.Join(report.Flags, ", "), "")
 	}
 	for _, row := range report.Rows {
-		if row.Label == "Effective" && report.Kind == KindNOTAM {
+		if row.Label == "Effective" && report.Kind == KindNOTAM && !report.IssuedAt.IsZero() {
 			continue
 		}
 		writeRow(&b, row.Label, row.Value, "")

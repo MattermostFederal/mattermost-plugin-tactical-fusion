@@ -41,7 +41,7 @@ func reportTable(href string, report Report) (string, bool) {
 		writeTableRow(&b, "Flags", decorators.TableCell(strings.Join(report.Flags, ", ")))
 	}
 	for _, row := range report.Rows {
-		if row.Label == "Effective" && report.Kind == KindNOTAM {
+		if row.Label == "Effective" && report.Kind == KindNOTAM && !report.IssuedAt.IsZero() {
 			continue
 		}
 		writeTableRow(&b, decorators.TableCell(row.Label), rowCell(links, row))
@@ -67,6 +67,8 @@ func tableHeadingDetail(links *decorators.Tagger, report Report) string {
 		return "[" + label + "](" + links.URLFor(airfieldPath, url.Values{"v": {report.Station}}) + ")"
 	case report.Station != "":
 		return decorators.TableCell(report.Station)
+	case hasRow(report, RestrictionLabel):
+		return tfrHeading
 	}
 	return tableFallbackHeading
 }

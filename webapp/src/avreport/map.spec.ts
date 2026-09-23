@@ -1,6 +1,6 @@
 import {expect, test} from '@playwright/test';
 
-import {METERS_PER_NAUTICAL_MILE, drawsNothing, mapLabel, placed, radiusEllipse} from './map';
+import {METERS_PER_NAUTICAL_MILE, REPORT_COLOR, drawsNothing, mapLabel, placed, radiusEllipse, reportShapes} from './map';
 import {HONOLULU_METAR, NOTAM_WITH_RADIUS} from './report_fixtures';
 
 test.beforeEach(() => {
@@ -43,4 +43,21 @@ test('the label names the station and only a radius that is drawn', () => {
     expect(mapLabel(NOTAM_WITH_RADIUS)).toBe('Daniel K. Inouye International Airport (PHNL), 5 NM radius');
     expect(mapLabel({...NOTAM_WITH_RADIUS, radiusNm: '0'})).toBe('Daniel K. Inouye International Airport (PHNL)');
     expect(mapLabel({...HONOLULU_METAR, stationName: ''})).toBe('METAR PHNL');
+});
+
+test('a TFR area becomes one closed ring in the report color', () => {
+    const tfr = {...NOTAM_WITH_RADIUS, radiusNm: '', area: ['43.6167,-116.2000', '43.7500,-116.0000', '43.5000,-115.9167']};
+
+    expect(reportShapes(tfr)).toEqual([{
+        rings: [[{lat: 43.6167, lon: -116.2}, {lat: 43.75, lon: -116}, {lat: 43.5, lon: -115.9167}]],
+        closed: true,
+        color: REPORT_COLOR,
+    }]);
+    expect(mapLabel(tfr)).toContain('restricted area');
+});
+
+test('an area with a vertex this build cannot read, or too few vertices, draws no shape', () => {
+    expect(reportShapes({...NOTAM_WITH_RADIUS, area: ['43.6167,-116.2000', 'nope', '43.5000,-115.9167']})).toEqual([]);
+    expect(reportShapes({...NOTAM_WITH_RADIUS, area: ['43.6167,-116.2000', '43.7500,-116.0000']})).toEqual([]);
+    expect(reportShapes(NOTAM_WITH_RADIUS)).toEqual([]);
 });

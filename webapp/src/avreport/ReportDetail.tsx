@@ -69,7 +69,7 @@ export function issuedRows(report: Report): ReportRow[] {
 }
 
 export function bodyRows(report: Report): ReportRow[] {
-    return report.rows.filter((row) => !(report.kind === 'NOTAM' && row.label === 'Effective'));
+    return report.rows.filter((row) => !(report.kind === 'NOTAM' && row.label === 'Effective' && report.issued !== ''));
 }
 
 export const ReportDetail: React.FC<{report: Report}> = ({report}) => (
