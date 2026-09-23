@@ -11,12 +11,13 @@ import (
 
 const commandTrigger = "tactical-fusion"
 
-const subcommandList = "examples, check"
+const subcommandList = "examples, check, note"
 
 func getCommand() *model.Command {
 	autocomplete := model.NewAutocompleteData(commandTrigger, "[command]", "Tactical Fusion commands")
 	autocomplete.AddCommand(model.NewAutocompleteData("examples", "", "Post a demonstration to this channel, one message per format, for everybody to see"))
 	autocomplete.AddCommand(model.NewAutocompleteData("check", "[text]", "Show what would be decorated in some text, and what would not"))
+	autocomplete.AddCommand(model.NewAutocompleteData("note", "[label] | [markdown]", "Post a link whose hover card renders your markdown"))
 
 	return &model.Command{
 		Trigger:          commandTrigger,
@@ -39,6 +40,8 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 		return p.examplesResponse(args), nil
 	case "check":
 		return p.checkResponse(argumentText(args.Command, fields[1])), nil
+	case "note":
+		return p.noteResponse(args, argumentText(args.Command, fields[1])), nil
 	default:
 		return ephemeralResponse(errcode.WithCode(errcode.CommandUnknownSubcommand,
 			"Unknown subcommand. Available: "+subcommandList)), nil

@@ -298,6 +298,7 @@ func TestBridgeLinkOpensAPageThatRenders(t *testing.T) {
 		{Type: dtg.Type, Token: "091630ZAUG26"},
 		{Type: "location", Token: "18S UJ 23478 06483"},
 		{Type: "airport", Token: "PHIK"},
+		{Type: "note", Token: "| Tail | Fuel |\n|:--|--:|\n| 101 | 12,400 lb |", Label: "fuel"},
 	} {
 		t.Run(req.Type, func(t *testing.T) {
 			link := mustLink(t, p, req)
@@ -348,6 +349,21 @@ func TestBridgeLinkRefusesALabelWithALineBreak(t *testing.T) {
 		t.Fatalf("status = %d, want 400", rec.Code)
 	}
 	assertCode(t, rec.Body.String(), errcode.BridgeInvalidBody)
+}
+
+func TestBridgeLinkRefusesAMultiLineNoteWithNoLabel(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	rec := bridgeLink(t, p, bridgeclient.LinkRequest{Type: "note", Token: "**DCA**\n\nDefensive Counter Air"})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rec.Code)
+	}
+	assertCode(t, rec.Body.String(), errcode.BridgeInvalidBody)
+
+	link := mustLink(t, p, bridgeclient.LinkRequest{Type: "note", Token: "**DCA**: Defensive Counter Air"})
+	if !strings.HasPrefix(link.Markdown, `[\*\*DCA\*\*: Defensive Counter Air](`) {
+		t.Errorf("a one-line note is its own label: %q", link.Markdown)
+	}
 }
 
 func TestBridgeLinkTrimsTheToken(t *testing.T) {
@@ -454,8 +470,8 @@ func TestBridgeInfoListsTypesAndWhichAreOn(t *testing.T) {
 	want := bridgeclient.InfoResponse{
 		PluginVersion: manifest.Version,
 		APIVersion:    bridgeclient.APIVersion,
-		Types:         []string{"dtg", "location", "airport", "avreport", "frequency"},
-		EnabledTypes:  []string{"dtg", "airport", "avreport", "frequency"},
+		Types:         []string{"dtg", "location", "airport", "avreport", "frequency", "note"},
+		EnabledTypes:  []string{"dtg", "airport", "avreport", "frequency", "note"},
 	}
 	if !reflect.DeepEqual(info, want) {
 		t.Fatalf("info = %+v, want %+v", info, want)
@@ -537,7 +553,7 @@ func TestTheGoClientRoundTripsThroughTheBridge(t *testing.T) {
 func TestBridgeClientTypesAreTheRegisteredDecorators(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 
-	named := []string{bridgeclient.TypeDTG, bridgeclient.TypeLocation, bridgeclient.TypeAirport, bridgeclient.TypeAvReport, bridgeclient.TypeFrequency}
+	named := []string{bridgeclient.TypeDTG, bridgeclient.TypeLocation, bridgeclient.TypeAirport, bridgeclient.TypeAvReport, bridgeclient.TypeFrequency, bridgeclient.TypeNote}
 	for _, typ := range named {
 		if p.decorators.Get(typ) == nil {
 			t.Errorf("bridgeclient names type %q, which is not registered", typ)

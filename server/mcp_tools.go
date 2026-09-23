@@ -20,7 +20,7 @@ type DecorateTextArgs struct {
 }
 
 type LinkTokenArgs struct {
-	Type          string `json:"type" jsonschema:"the decorator type that reads the token: dtg, location, airport, avreport or frequency"`
+	Type          string `json:"type" jsonschema:"the decorator type that reads the token: dtg, location, airport, avreport, frequency or note (a note's token is markdown)"`
 	Token         string `json:"token" jsonschema:"the value alone with no field label: PHIK rather than ICAO:PHIK"`
 	Label         string `json:"label,omitempty" jsonschema:"link text; empty means the token as written"`
 	ReferenceTime int64  `json:"reference_time,omitempty" jsonschema:"Unix milliseconds supplying the month and year for a short date-time group; zero means now"`

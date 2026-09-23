@@ -95,6 +95,7 @@ Tokens each type accepts:
 | `TypeLocation` | `34.0561, -118.2500`, `34.0561 N, 118.2500 W`, `3510N07901W`, `18S UJ 23478 06483`, `18SUJ2347806483`, `11S 384640E 3769080N` (UTM, off by default), `GJPJ3718` (GEOREF), `006AG39` (GARS), `849VCWC8+R9` (Plus Code) |
 | `TypeAirport` | `PHIK`, `KIND`, any four-letter ICAO ident in the plugin's database |
 | `TypeFrequency` | `121.5`, `118.300 MHZ`, `8992 KHZ`: a frequency as an author writes it behind `FREQ:`, from 2 MHz to 1,300 MHz |
+| `TypeNote` | `**DCA**: Defensive Counter Air`, or a markdown table: any markdown up to 1,000 characters, line breaks included, which the hover card renders as Mattermost renders a post. Always pass a `Label` |
 | `TypeAvReport` | `METAR PHNL 221651Z 07012KT 10SM CLR 27/19 A3010`, a METAR, SPECI, TAF or FAA-format NOTAM on one line; `ReferenceTime` supplies the month and year |
 
 The full grammars are on the plugin's **Recognized Formats** help page.
@@ -131,7 +132,7 @@ alone. Decorating text that is already decorated changes nothing.
 info, err := p.tacticalFusion.Info(ctx)
 // info.PluginVersion "0.5.0"
 // info.APIVersion    1
-// info.Types         ["dtg" "location" "airport" "avreport" "frequency"]
+// info.Types         ["dtg" "location" "airport" "avreport" "frequency" "note"]
 // info.EnabledTypes  the types an administrator has left on
 ```
 

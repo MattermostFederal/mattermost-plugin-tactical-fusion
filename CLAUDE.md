@@ -40,6 +40,7 @@ right-hand sidebar, and a standalone server-rendered page.
 | `decorators/location/` | Coordinate grammars, geodesy, MGRS, rendering, conversion; `mapdata/` holds the generated country polygons |
 | `decorators/airport/` | ICAO and IATA airfields, their runways and frequencies; `data/` holds the three embedded CSVs and their provenance |
 | `decorators/frequency/` | Radio frequencies behind `FREQ:`: the grammar, the band and allocation tables, the page |
+| `decorators/note/` | Notes: a link whose `v` is markdown, built by `/tactical-fusion note` or the bridge and never matched in message text; the page shows the source |
 | `avreport/` | Aviation reports: the METAR, TAF and NOTAM decoders, the decorator, the table, the page, the props; `data/` holds the contraction and Q-code tables |
 | `cot/` | Cursor on Target: the bounded XML parse, the type tables, the post props |
 | `geojson/` | GeoJSON: the bounded JSON walk, the parts/rings shape, the post props |
@@ -50,7 +51,7 @@ right-hand sidebar, and a standalone server-rendered page.
 |---|---|
 | `src/index.tsx` | `initialize()`, registration, the disposer list run by `uninitialize()` |
 | `src/decorators/` | Framework: registry, click handler, styles, selection store, theme, `Tooltip` |
-| `src/decorators/{dtg,location,airport,frequency}/` | Panels, hovers, and per-decorator clients; `frequency/bands.ts` is the band table the Go side is held to |
+| `src/decorators/{dtg,location,airport,frequency,note}/` | Panels, hovers, and per-decorator clients; `frequency/bands.ts` is the band table the Go side is held to; `note/NoteMarkdown.tsx` renders through Mattermost's `window.PostUtils` and falls back to the source |
 | `src/cot/` | The Cursor on Target post body, its card and its map |
 | `src/geojson/` | The GeoJSON post body, its card, its map, its panel and its reader |
 | `src/avreport/` | The aviation report reader, client, card, post body, panel, hover and map; `src/decorators/avreport/` is the link's decorator entry |
@@ -262,6 +263,7 @@ side moves alone. Change both halves together.
 | The aviation report kinds and their order | `TestWebappAvReportKindsMatch` |
 | The aviation report props shape, walked rather than scraped | `TestWebappAvReportShapeMatches` |
 | The frequency token shape, range and the band and allocation tables | `TestWebappFrequencyTokenShapeMatches`, `TestWebappFrequencyBandsMatch` |
+| The note type, its param and `MaxNoteRunes`/`MAX_NOTE_RUNES` | `TestWebappNoteShapeMatches` |
 | The GeoJSON `kind` vocabulary and its order | `TestWebappGeoJSONKindsMatch` |
 | The GeoJSON panel's hideable sections: ids, labels, order | `TestWebappGeoJSONSectionCatalogMatches` |
 | The GeoJSON props shape, walked rather than scraped | `TestWebappGeoJSONShapeMatches` |

@@ -294,6 +294,14 @@ const (
 	// examples messages could not be posted to the channel.
 	CommandExamplesPostFailed = 16006
 
+	CommandNoteUsage = 16007
+
+	CommandNoteInvalid = 16008
+
+	CommandNoteTooLong = 16009
+
+	CommandNotePostFailed = 16010
+
 	// server/decorators/ (17000-17999)
 
 	// DTGPageParamsInvalid is returned by the date-time group page for a link
@@ -316,6 +324,8 @@ const (
 	AvReportPageInvalid = 17004
 
 	FrequencyPageInvalid = 17005
+
+	NotePageInvalid = 17006
 
 	// server/packages.go (18000-18999)
 
@@ -453,6 +463,10 @@ var AllCodes = []int{
 	CommandExamplesNothingEnabled,
 	CommandExamplesTooLong,
 	CommandExamplesPostFailed,
+	CommandNoteUsage,
+	CommandNoteInvalid,
+	CommandNoteTooLong,
+	CommandNotePostFailed,
 
 	DTGPageParamsInvalid,
 	LocationPageParamsInvalid,
@@ -460,6 +474,7 @@ var AllCodes = []int{
 	AirportPageParamsConflict,
 	AvReportPageInvalid,
 	FrequencyPageInvalid,
+	NotePageInvalid,
 
 	PackagesNoBundlePath,
 	PackagesBadName,

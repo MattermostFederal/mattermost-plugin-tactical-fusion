@@ -22,6 +22,7 @@ import (
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/frequency"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/note"
 )
 
 var hookRef = time.Date(2026, time.August, 9, 12, 0, 0, 0, time.UTC)
@@ -424,6 +425,7 @@ func registerDecoratorsForTest(t *testing.T, p *Plugin) {
 		&airport.Decorator{Enabled: p.airportFormats},
 		&avreport.Decorator{Enabled: p.avreportFormats},
 		&frequency.Decorator{Enabled: p.frequencyFormats},
+		&note.Decorator{},
 	)
 	if err != nil {
 		t.Fatalf("failed to build the decorator registry: %v", err)

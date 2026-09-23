@@ -25,6 +25,7 @@
             <a href="geojson.html">GeoJSON</a>
             <a href="reports.html">Aviation Reports</a>
             <a href="frequencies.html">Frequencies</a>
+            <a href="notes.html">Notes</a>
             <span class="nav-section">Guides</span>
             <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
@@ -132,7 +133,7 @@
                     <td><code>type</code></td>
                     <td>string</td>
                     <td>yes</td>
-                    <td><code>dtg</code>, <code>location</code>, <code>airport</code>, <code>avreport</code> or <code>frequency</code></td>
+                    <td><code>dtg</code>, <code>location</code>, <code>airport</code>, <code>avreport</code>, <code>frequency</code> or <code>note</code></td>
                 </tr>
                 <tr>
                     <td><code>token</code></td>
@@ -260,6 +261,11 @@
                     <td><a href="frequencies.html">Frequencies</a></td>
                 </tr>
                 <tr>
+                    <td><code>note</code></td>
+                    <td><code>**DCA**: Defensive Counter Air</code>, or a markdown table: any markdown up to 1,000 characters, line breaks included. Always pass a <code>label</code>, or the link text is the whole markdown</td>
+                    <td><a href="notes.html">Notes</a></td>
+                </tr>
+                <tr>
                     <td><code>avreport</code></td>
                     <td>A METAR, SPECI, TAF or FAA-format NOTAM on one line, exactly as written; the reference time supplies the month and year</td>
                     <td><a href="reports.html">Aviation Reports</a></td>
@@ -338,7 +344,7 @@ default:
                 <tr><td><code>ErrPluginNotActive</code></td><td>Tactical Fusion is not installed, not enabled, or gave an answer that is not its own</td></tr>
                 <tr><td><code>ErrNotRecognized</code></td><td>The token is not a value of that type</td></tr>
                 <tr><td><code>ErrDisabled</code></td><td>The token is valid but its format is switched off</td></tr>
-                <tr><td><code>ErrUnknownType</code></td><td>The type is not <code>dtg</code>, <code>location</code>, <code>airport</code>, <code>avreport</code> or <code>frequency</code></td></tr>
+                <tr><td><code>ErrUnknownType</code></td><td>The type is not <code>dtg</code>, <code>location</code>, <code>airport</code>, <code>avreport</code>, <code>frequency</code> or <code>note</code></td></tr>
             </tbody>
         </table>
 
@@ -429,7 +435,7 @@ Content-Type: application/json
             <tbody>
                 <tr><td><code>apiVersion</code></td><td><code>1</code></td></tr>
                 <tr><td><code>version</code></td><td>The installed Tactical Fusion version</td></tr>
-                <tr><td><code>types</code></td><td><code>["dtg", "location", "airport", "avreport", "frequency"]</code></td></tr>
+                <tr><td><code>types</code></td><td><code>["dtg", "location", "airport", "avreport", "frequency", "note"]</code></td></tr>
                 <tr><td><code>link(type, token, options?)</code></td><td>A promise of <code>{markdown, url, type, label}</code>. Options: <code>label</code>, <code>referenceTime</code> (a <code>Date</code> or milliseconds), <code>signal</code></td></tr>
                 <tr><td><code>decorate(message, options?)</code></td><td>A promise of <code>{message, changed, fitsPost}</code>. Options: <code>referenceTime</code>, <code>signal</code></td></tr>
                 <tr><td><code>Link</code></td><td>A React component rendering one link with its hover card. Props: <code>type</code>, <code>token</code>, <code>label?</code>, <code>referenceTime?</code>, <code>fallback?</code></td></tr>

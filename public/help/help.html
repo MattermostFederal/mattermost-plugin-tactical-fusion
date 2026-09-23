@@ -25,6 +25,7 @@
             <a href="geojson.html">GeoJSON</a>
             <a href="reports.html">Aviation Reports</a>
             <a href="frequencies.html">Frequencies</a>
+            <a href="notes.html">Notes</a>
             <span class="nav-section">Guides</span>
             <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
@@ -60,6 +61,13 @@
             that decodes every group into plain language. Write a
             <a href="frequencies.html">frequency behind <code>FREQ:</code></a> and it becomes
             a link naming its band and any known allocation.
+        </p>
+
+        <p>
+            A <a href="notes.html">note</a> is a link you write on purpose, with
+            <a href="commands.html#note"><code>/tactical-fusion note</code></a>: it carries its
+            own markdown, and its hover card renders that markdown as Mattermost renders a
+            post, tables and all. Nothing in an ordinary message becomes one.
         </p>
 
         <p>
@@ -188,6 +196,10 @@ DZ is [2120N15757W](/plugins/com.mattermost.plugin-tactical-fusion/decorate/loca
             <a href="frequencies.html" class="nav-card">
                 <h3>Frequencies</h3>
                 <p>A frequency behind <code>FREQ:</code>, its band, its channel spacing and any known allocation, derived in your browser with nothing fetched.</p>
+            </a>
+            <a href="notes.html" class="nav-card">
+                <h3>Notes</h3>
+                <p>A link that carries its own markdown, rendered in the hover card by Mattermost's own renderer: definitions, tables, checklists.</p>
             </a>
             <a href="formats.html" class="nav-card">
                 <h3>Recognized Formats</h3>

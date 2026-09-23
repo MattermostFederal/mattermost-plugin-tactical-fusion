@@ -25,6 +25,7 @@
             <a href="geojson.html">GeoJSON</a>
             <a href="reports.html">Aviation Reports</a>
             <a href="frequencies.html">Frequencies</a>
+            <a href="notes.html">Notes</a>
             <span class="nav-section">Guides</span>
             <a href="formats.html">Recognized Formats</a>
             <a href="panel.html">The Sidebar Panel</a>
@@ -469,6 +470,26 @@
                     <td><code>CommandExamplesPostFailed</code></td>
                     <td><code>Could not post the examples to this channel.</code> or <code>N of M messages could not be posted, so the examples are incomplete.</code> The first means nothing was written; the second means some messages landed and others did not. Both are also logged. A read-only or archived channel is the usual cause.</td>
                 </tr>
+                <tr>
+                    <td><code>TF-16007</code></td>
+                    <td><code>CommandNoteUsage</code></td>
+                    <td><code>Usage: /tactical-fusion note &lt;label&gt; | &lt;markdown&gt;.</code> <a href="commands.html#note"><code>note</code></a> needs a label, a <code>|</code>, and some markdown. The label is one line and may not contain <code>|</code>, since the first <code>|</code> is where the markdown starts.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-16008</code></td>
+                    <td><code>CommandNoteInvalid</code></td>
+                    <td><code>A note is up to 1000 characters of markdown.</code> The markdown is longer than a <a href="notes.html">note</a> may carry. Split it into two notes, or post it as a message.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-16009</code></td>
+                    <td><code>CommandNoteTooLong</code></td>
+                    <td><code>That note does not fit in a post once it is written into a link.</code> The markdown travels URL-encoded, which can triple its length, and non-Latin text grows more. Nothing was posted.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-16010</code></td>
+                    <td><code>CommandNotePostFailed</code></td>
+                    <td><code>Could not post the note to this channel.</code> Also logged. A read-only or archived channel is the usual cause.</td>
+                </tr>
             </tbody>
         </table>
 
@@ -508,6 +529,11 @@
                     <td><code>TF-17005</code></td>
                     <td><code>FrequencyPageInvalid</code> <span class="level">400</span></td>
                     <td><code>That is not a frequency this plugin issued.</code> The frequency page was given a <code>v</code> the grammar would not have produced, or one outside 2 MHz to 1,300 MHz once its unit is applied. A link this plugin writes always passes both, so the link was edited by hand.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-17006</code></td>
+                    <td><code>NotePageInvalid</code> <span class="level">400</span></td>
+                    <td><code>That is not a note this plugin issued.</code> The note page was given no <code>v</code>, a blank one, or one longer than 1,000 characters. A link this plugin writes always passes, so the link was edited by hand.</td>
                 </tr>
             </tbody>
         </table>

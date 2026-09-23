@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notes - Tactical Fusion</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="copy.js" defer></script>
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <h2>Tactical Fusion</h2>
+            <span class="version">Plugin Documentation</span>
+        </div>
+        <nav>
+            <span class="nav-section">Documentation</span>
+            <a href="help.html">Overview</a>
+            <span class="nav-section">Decorators</span>
+            <a href="dtg.html">Date-Time Groups</a>
+            <a href="location.html">Coordinates</a>
+            <a href="airfields.html">Airfields</a>
+            <a href="cot.html">Cursor on Target</a>
+            <a href="geojson.html">GeoJSON</a>
+            <a href="reports.html">Aviation Reports</a>
+            <a href="frequencies.html">Frequencies</a>
+            <a href="notes.html" class="active">Notes</a>
+            <span class="nav-section">Guides</span>
+            <a href="formats.html">Recognized Formats</a>
+            <a href="panel.html">The Sidebar Panel</a>
+            <a href="admin.html">Admin Settings</a>
+            <a href="commands.html">Slash Commands</a>
+            <a href="integration.html">Plugin Integration</a>
+            <span class="nav-section">Reference</span>
+            <a href="troubleshooting.html">Troubleshooting</a>
+            <a href="error-codes.html">Error Codes</a>
+        </nav>
+    </aside>
+
+    <main class="content">
+        <div class="breadcrumb">
+            <a href="help.html">Docs</a>
+            <span class="separator">/</span>
+            Notes
+        </div>
+
+        <h1>Notes</h1>
+        <p class="tagline">A note is a link that carries its own markdown. Point at it and the hover card renders that markdown exactly as Mattermost renders a post: tables, lists, headings, quotes, code and emoji.</p>
+
+        <div class="alert alert-info">
+            <p>
+                Nothing in an ordinary message becomes a note. A note is written on purpose, with
+                <a href="commands.html#note"><code>/tactical-fusion note</code></a> or by another
+                plugin through the <a href="integration.html">bridge</a>. To see some, run
+                <a href="commands.html#examples"><code>/tactical-fusion examples</code></a>.
+            </p>
+        </div>
+
+        <h2 id="note">Writing a note</h2>
+
+        <p>
+            Give the command a label, a <code>|</code>, and the markdown. The label becomes the
+            link text; everything after the first <code>|</code> is the note, so a table's own
+            pipes are safe. The markdown may run over several lines.
+        </p>
+
+        <pre tabindex="0"><code class="copyable">/tactical-fusion note DCA | **DCA**: Defensive Counter Air</code></pre>
+
+        <p>
+            The command posts the link to the channel as you, in the thread you ran it from.
+            A table is written the same way, across several lines:
+        </p>
+
+        <pre tabindex="0"><code class="copyable">/tactical-fusion note fuel state | | Tail | Fuel |
+|:--|--:|
+| 101 | 12,400 lb |
+| 102 | 9,800 lb |</code></pre>
+
+        <h2 id="note-limits">Limits</h2>
+
+        <table>
+            <thead>
+                <tr><th>Rule</th><th>Why</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Up to 1,000 characters of markdown</td><td>The markdown travels URL-encoded inside the link, which can triple its length, and the whole link has to fit in one post.</td></tr>
+                <tr><td>A one-line label with no <code>|</code></td><td>The first <code>|</code> is where the markdown starts.</td></tr>
+                <tr><td>Never edited in place</td><td>The markdown is the link. Changing a note means posting a new one.</td></tr>
+            </tbody>
+        </table>
+
+        <h2 id="note-panel">What the hover, the panel and the page show</h2>
+
+        <table>
+            <thead>
+                <tr><th>Where</th><th>What</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Hover</td><td>The rendered markdown, scrolling past a few hundred pixels so a long table stays inside the card.</td></tr>
+                <tr><td>Sidebar</td><td>The rendered markdown, then <strong>As posted</strong>: the markdown source, with a copy button.</td></tr>
+                <tr><td>Standalone page</td><td>The markdown source, as text. The page is served outside Mattermost, where its markdown renderer is not available, so it shows what the note says rather than a second rendering that could differ.</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            The rendering is Mattermost's own, so it follows the same rules as a post: raw
+            HTML is shown as text, never run, and an image is fetched the way an image in a
+            post would be.
+        </p>
+
+        <h2 id="note-examples">The examples</h2>
+
+        <p>
+            <code>/tactical-fusion examples</code> posts three messages of notes: a glossary
+            that expands DCA, OCA, ISR, ACO, ATO, COP, ROE, BDA, CAS and TST; two tables, a
+            squadron readiness board and a range schedule; and a weather brief and a launch
+            checklist that use headings, lists, a task list, a quote and inline code.
+        </p>
+
+        <h2 id="note-settings">Settings and troubleshooting</h2>
+
+        <p>
+            Notes have no switch. Nothing is recognized in message text, so there is nothing to
+            turn off; a link already posted keeps working. The command's refusals are
+            <a href="error-codes.html#command"><code>TF-16007</code> to <code>TF-16010</code></a>,
+            and the page's is <a href="error-codes.html#decorators"><code>TF-17006</code></a>.
+        </p>
+
+    </main>
+</div>
+</body>
+</html>

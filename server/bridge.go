@@ -16,6 +16,7 @@ import (
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/frequency"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/note"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
@@ -186,6 +187,9 @@ func (p *Plugin) buildLink(req bridgeclient.LinkRequest) (bridgeclient.LinkRespo
 	label := req.Label
 	if label == "" {
 		label = token
+		if strings.ContainsAny(label, "\r\n") {
+			return bridgeclient.LinkResponse{}, &refusedLabel
+		}
 	}
 
 	tagger := p.bridgeTagger()
@@ -234,6 +238,8 @@ func parsesWithEveryFormat(typ, token string, ref time.Time) bool {
 		unrestricted = &avreport.Decorator{}
 	case frequency.Type:
 		unrestricted = &frequency.Decorator{}
+	case note.Type:
+		unrestricted = &note.Decorator{}
 	default:
 		return false
 	}
@@ -250,6 +256,7 @@ func (p *Plugin) bridgeInfo() bridgeclient.InfoResponse {
 		airport.Type:   config.EnableAirport,
 		avreport.Type:  config.EnableAvReport,
 		frequency.Type: config.EnableFrequency,
+		note.Type:      true,
 	}
 
 	info := bridgeclient.InfoResponse{

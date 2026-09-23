@@ -33,6 +33,10 @@ const (
 	// TypeFrequency is a radio frequency as an author writes it behind FREQ:,
 	// such as "121.5", "118.300 MHZ" or "8992 KHZ".
 	TypeFrequency = "frequency"
+
+	// TypeNote is markdown, up to 1,000 characters, that the link's hover card
+	// and sidebar render with Mattermost's own markdown renderer.
+	TypeNote = "note"
 )
 
 // Reasons a Link request is declined, carried in ErrorResponse.Reason.

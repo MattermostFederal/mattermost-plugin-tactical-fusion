@@ -14,6 +14,7 @@ import (
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/frequency"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/note"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
@@ -221,6 +222,7 @@ func (p *Plugin) OnActivate() error {
 		&airport.Decorator{Enabled: p.airportFormats},
 		&avreport.Decorator{Enabled: p.avreportFormats},
 		&frequency.Decorator{Enabled: p.frequencyFormats},
+		&note.Decorator{},
 	)
 	// Expected to stay uncovered: Register only rejects a duplicate or empty
 	// type, and there is one decorator here with a constant one. It is what
