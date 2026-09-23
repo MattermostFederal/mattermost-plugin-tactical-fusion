@@ -498,7 +498,7 @@ func buildCVE(source string) ([][]string, error) {
 			summary := ""
 			for _, description := range cve.Descriptions {
 				if description.Lang == "en" {
-					summary = firstSentence(description.Value)
+					summary = clean(description.Value)
 					break
 				}
 			}

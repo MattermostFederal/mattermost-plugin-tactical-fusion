@@ -667,3 +667,41 @@ func TestADroppedSetReleasesItsHandles(t *testing.T) {
 			openDescriptors(t), rounds, before)
 	}
 }
+
+func TestRowsLongerThanAReadBlockAreFoundWholeAnywhereInTheFile(t *testing.T) {
+	pieces := []string{"overflow ", "é", "漢字", "🔥", "A"}
+
+	var rows []string
+	want := map[string]string{}
+	for i := range 60 {
+		id := fmt.Sprintf("CVE-2021-%04d", 1000+i*2)
+
+		var summary strings.Builder
+		for summary.Len() < blockBytes+500+i*97 {
+			summary.WriteString(pieces[(summary.Len()+i)%len(pieces)])
+		}
+
+		rows = append(rows, cveRow(id, summary.String()))
+		want[id] = summary.String()
+	}
+
+	dir := t.TempDir()
+	writeDataset(t, dir, NameCVE, rows...)
+	set := openIn(t, dir)
+
+	for id, summary := range want {
+		record, err := set.CVE(id)
+		if err != nil {
+			t.Fatalf("%s: %v", id, err)
+		}
+		if record.Summary != summary {
+			t.Fatalf("%s came back %d bytes, want %d", id, len(record.Summary), len(summary))
+		}
+	}
+
+	for _, absent := range []string{"CVE-2021-0999", "CVE-2021-1001", "CVE-2021-1059", "CVE-2021-9999"} {
+		if _, err := set.CVE(absent); !errors.Is(err, ErrNotFound) {
+			t.Fatalf("%s, which falls between long rows, gave %v", absent, err)
+		}
+	}
+}

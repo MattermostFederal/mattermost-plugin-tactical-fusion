@@ -19,8 +19,15 @@ const nvdFixture = `{"vulnerabilities":[
  "metrics":{"cvssMetricV40":[{"cvssData":{"baseScore":2.0,"baseSeverity":"LOW","vectorString":"CVSS:4.0/AV:L"}}],
             "cvssMetricV31":[{"cvssData":{"baseScore":7.5,"baseSeverity":"HIGH","vectorString":"CVSS:3.1/AV:N"}}]}}},
 {"cve":{"id":"CVE-2026-0004","published":"2026-09-20T10:00:00.000","lastModified":"2026-09-21T10:00:00.000",
- "descriptions":[{"lang":"en","value":"Not yet analyzed."}],"metrics":{}}}
+ "descriptions":[{"lang":"en","value":"Not yet analyzed."}],"metrics":{}}},
+{"cve":{"id":"CVE-2026-0005","published":"2026-09-20T10:00:00.000","lastModified":"2026-09-21T10:00:00.000",
+ "descriptions":[{"lang":"es","value":"Descripcion en otro idioma."},
+  {"lang":"en","value":"Buffer overflow in Example, Inc. HyperTerminal before 2.0.\nAn attacker who can\tcontrol input can execute arbitrary code. ` + longTail + `"}],"metrics":{}}}
 ]}`
+
+const longTail = "Fixed in 2.0, which removes the feature entirely and is the only supported release for this product line going forward. Earlier releases remain vulnerable when the optional remote console is enabled, which it is by default on the server edition, and no configuration change mitigates it."
+
+const fullDescription = "Buffer overflow in Example, Inc. HyperTerminal before 2.0. An attacker who can control input can execute arbitrary code. " + longTail
 
 func writeNVDFixture(t *testing.T) string {
 	t.Helper()
@@ -121,4 +128,25 @@ func TestTheLabelReplacesTheSourceInTheStamp(t *testing.T) {
 	if fields[3] != *label {
 		t.Fatalf("the stamp names %q as its source, want the label", fields[3])
 	}
+}
+
+func TestACVEDescriptionIsKeptWholeInEnglish(t *testing.T) {
+	rows, err := buildCVE(writeNVDFixture(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, row := range rows {
+		if row[0] != "CVE-2026-0005" {
+			continue
+		}
+		if len([]rune(fullDescription)) <= 300 {
+			t.Fatalf("the fixture is %d runes, too short to prove the old 300 cap is gone", len([]rune(fullDescription)))
+		}
+		if row[7] != fullDescription {
+			t.Fatalf("the description was not kept whole\n got: %q\nwant: %q", row[7], fullDescription)
+		}
+		return
+	}
+	t.Fatal("CVE-2026-0005 was not built")
 }

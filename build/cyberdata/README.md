@@ -22,6 +22,38 @@ A small current example, the CVEs NVD published in the last seven days:
 make cyber-recent DAYS=7
 ```
 
+## How large the full build is
+
+Measured on 2026-09-23, from all 25 yearly NVD feeds:
+
+| | |
+|---|---|
+| Download, gzipped | 232 MB |
+| Unpacked JSON | 2.76 GB |
+| `cve.tsv` | 185.7 MB, 396,474 rows |
+| `cve.tsv` gzipped | 40.4 MB |
+| Build time and peak memory | 12 seconds, 1.4 GB |
+
+The TSV is small beside the JSON because it keeps eight fields of each record.
+It drops the pretty-printing, the affected products and versions, the reference
+links, every translation, and every scoring but one.
+
+The plugin searches the file on disk rather than loading it, so its size costs
+disk rather than memory. Every row of the full file was found at about 36
+microseconds a lookup, measured with the file already in the page cache.
+
+### Descriptions are kept whole
+
+A CVE's English description goes into the file in full. Cutting it to the first
+sentence dropped 52% of the description text across the full set, and usually
+the impact: Log4Shell kept the sentence naming the flaw and lost the one saying
+an attacker can execute arbitrary code. The longest row in the full set is
+4,134 bytes, longer than the 4 KB block the reader searches in, which is why a
+test holds the reader to rows of any length.
+
+The ATT&CK and CWE catalogs still keep only a first sentence, because they are
+compiled into the plugin.
+
 ## The recent build
 
 `fetch-recent.sh` asks the NVD API for every CVE published in the window and
@@ -37,7 +69,7 @@ limit.
 
 Measured on 2026-09-23: a seven-day window held 3,065 CVEs, came back in two
 pages, and built in about 25 seconds. The pages were 11 MB and `cve.tsv` was
-920 KB.
+2.2 MB.
 
 ### It holds only its window
 
