@@ -192,6 +192,7 @@
                 <tr><td><code>ICAO:KIN</code></td><td>an ICAO ident is four letters</td></tr>
                 <tr><td><code>logs/ICAO:KIND</code></td><td>a label inside a path is not a field label</td></tr>
                 <tr><td><code>LOC: FAST</code></td><td>nothing after the colon, or ordinary capitalized prose would be rewritten</td></tr>
+                <tr><td><code>ICAO:PHNL,</code> or <code>ICAO:PHNL.</code></td><td>a comma or period straight after the code: the same rule that keeps <code>-118.2500.</code> from being rewritten. Put a space before the punctuation, or end a USMTF set with <code>//</code>, which is read</td></tr>
             </tbody>
         </table>
 
@@ -345,7 +346,7 @@
             <tbody>
                 <tr><td><code class="copyable">DEPLOC:PHIK ARRLOC:PGUA//</code></td><td>two links, and a map with 1 and 2 and the leg between them</td></tr>
                 <tr><td><code class="copyable">ICAO:PHIK IATA:HNL LOC:PGUA</code></td><td>three links, and a map with three markers and two legs</td></tr>
-                <tr><td><code>DEPLOC:PHIK, ARRLOC:PGUA</code></td><td>two links and no map: the comma is prose between the codes</td></tr>
+                <tr><td><code>DEPLOC:PHIK, ARRLOC:PGUA</code></td><td>one link, to PGUA, and no map: a comma straight after a code leaves that code as written</td></tr>
                 <tr><td><code>DEPLOC:PHIK 091630ZAUG26</code></td><td>two links and no map: not every token is an airfield</td></tr>
                 <tr><td><code>ICAO:PHIK</code></td><td>the <a href="#airfield-table">table</a> while that is on; a one-airfield map when it is off</td></tr>
             </tbody>

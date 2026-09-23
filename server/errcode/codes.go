@@ -379,20 +379,22 @@ const (
 	BridgeFormatDisabled     = 19007
 	BridgePanic              = 19008
 
-	MCPInitFailed         = 20000
-	MCPManifestIncomplete = 20001
-	MCPRegistrationFailed = 20002
-	MCPUnregisterFailed   = 20003
-	MCPNotReady           = 20004
-	MCPToolPanic          = 20005
-	MCPLinkDeclined       = 20006
-	MCPConvertInvalid     = 20007
-	MCPAirportInvalid     = 20008
-	MCPAvReportInvalid    = 20009
-	MCPCotInvalid         = 20010
-	MCPGeoJSONInvalid     = 20011
-	MCPFrequencyInvalid   = 20012
-	MCPDateTimeInvalid    = 20013
+	MCPInitFailed           = 20000
+	MCPManifestIncomplete   = 20001
+	MCPRegistrationFailed   = 20002
+	MCPUnregisterFailed     = 20003
+	MCPNotReady             = 20004
+	MCPToolPanic            = 20005
+	MCPLinkDeclined         = 20006
+	MCPConvertInvalid       = 20007
+	MCPAirportInvalid       = 20008
+	MCPAvReportInvalid      = 20009
+	MCPCotInvalid           = 20010
+	MCPGeoJSONInvalid       = 20011
+	MCPFrequencyInvalid     = 20012
+	MCPDateTimeInvalid      = 20013
+	MCPCreateCotInvalid     = 20014
+	MCPCreateGeoJSONInvalid = 20015
 )
 
 // AllCodes lists every code declared above. TestAllCodesComplete enforces that
@@ -518,4 +520,6 @@ var AllCodes = []int{
 	MCPGeoJSONInvalid,
 	MCPFrequencyInvalid,
 	MCPDateTimeInvalid,
+	MCPCreateCotInvalid,
+	MCPCreateGeoJSONInvalid,
 }

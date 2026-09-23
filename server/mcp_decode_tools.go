@@ -172,7 +172,7 @@ func rfc3339(at time.Time) string {
 func (p *Plugin) decodeCotTool(_ context.Context, _ *mcp.CallToolRequest, in DecodeCotArgs) (*mcp.CallToolResult, CotEvents, error) {
 	events, err := cot.Parse([]byte(in.XML))
 	if err != nil {
-		return toolRefusal(errcode.MCPCotInvalid, "That is not a Cursor on Target event this plugin reads: "+reason(err)), CotEvents{}, nil
+		return toolRefusal(errcode.MCPCotInvalid, "That is not a Cursor on Target event this plugin reads: "+errorReason(err)), CotEvents{}, nil
 	}
 
 	blob := cot.Props(events, cot.Source{Kind: cot.SourceFence})
@@ -182,12 +182,16 @@ func (p *Plugin) decodeCotTool(_ context.Context, _ *mcp.CallToolRequest, in Dec
 func (p *Plugin) summarizeGeoJSONTool(_ context.Context, _ *mcp.CallToolRequest, in SummarizeGeoJSONArgs) (*mcp.CallToolResult, GeoJSONSummary, error) {
 	document, err := geojson.Parse([]byte(in.Document))
 	if err != nil {
-		return toolRefusal(errcode.MCPGeoJSONInvalid, "That is not a GeoJSON document this plugin reads: "+reason(err)), GeoJSONSummary{}, nil
+		return toolRefusal(errcode.MCPGeoJSONInvalid, "That is not a GeoJSON document this plugin reads: "+errorReason(err)), GeoJSONSummary{}, nil
 	}
 
+	return nil, geoJSONSummaryOf(document), nil
+}
+
+func geoJSONSummaryOf(document *geojson.Document) GeoJSONSummary {
 	blob := geojson.Props(document, geojson.Source{Kind: geojson.SourceFence})
 	counts := document.Counts()
-	return nil, GeoJSONSummary{
+	return GeoJSONSummary{
 		Name:        document.Name,
 		Description: document.Description,
 		Note:        document.Note,
@@ -201,7 +205,7 @@ func (p *Plugin) summarizeGeoJSONTool(_ context.Context, _ *mcp.CallToolRequest,
 			Undrawable:  counts.Undrawable,
 		},
 		Features: objects(blob["features"]),
-	}, nil
+	}
 }
 
 func objects(value any) []map[string]any {
@@ -215,7 +219,7 @@ func objects(value any) []map[string]any {
 	return out
 }
 
-func reason(err error) string {
+func errorReason(err error) string {
 	text := err.Error()
 	if _, after, found := strings.Cut(text, ": "); found {
 		return after + "."

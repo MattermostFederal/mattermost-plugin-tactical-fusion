@@ -647,6 +647,16 @@ declare global {
                     <td><code>text</code>, a date-time group or RFC 3339 timestamp, and optionally <code>reference_time</code></td>
                     <td>The one UTC instant it names, its zone letter or offset, and which parts were assumed</td>
                 </tr>
+                <tr>
+                    <td><code>create_cot</code></td>
+                    <td><code>callsign</code>, <code>lat</code>, <code>lon</code>, and either an exact <code>type</code> or an <code>affiliation</code> and <code>dimension</code>; optionally <code>remarks</code>, <code>stale_minutes</code>, <code>hae</code>, <code>ce</code></td>
+                    <td>The event as XML, a <code>cot</code> fenced message that renders as a card when posted on its own, and the event read back in words</td>
+                </tr>
+                <tr>
+                    <td><code>create_geojson</code></td>
+                    <td><code>features</code>, each a named point, line or polygon of <code>{lat, lon}</code> positions with an optional <code>color</code> and <code>properties</code>; optionally a document <code>name</code> and <code>description</code></td>
+                    <td>The document, a <code>geojson</code> fenced message that renders as a card with a map when posted on its own, and its summary with measured lengths and areas</td>
+                </tr>
             </tbody>
         </table>
 
@@ -657,7 +667,10 @@ declare global {
             written keeps working after a format is switched off, and the tools that read
             rather than link (<code>lookup_airfield</code> and every <code>decode</code>,
             <code>summarize</code>, <code>describe</code> and <code>read</code> tool) answer
-            regardless of the switches. Nothing is fetched and nothing is posted. Refusals carry
+            regardless of the switches. Nothing is fetched and nothing is posted: the two
+            <code>create</code> tools hand back a message, and the agent decides whether to post it.
+            Positions are always given as <code>lat</code> and <code>lon</code> by name, so an
+            agent cannot swap GeoJSON's longitude-first order by accident. Refusals carry
             <a href="error-codes.html#mcp">their own codes</a>.
         </p>
 

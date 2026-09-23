@@ -83,6 +83,16 @@ func (p *Plugin) registerMCPTools(server *pluginmcp.Server) {
 		Name:        "read_date_time",
 		Description: "Resolve a military date-time group such as 141200ZSEP26 or 141200Z, or an RFC 3339 timestamp, to one UTC instant, and say which parts were assumed.",
 	}, guardTool(p, "read_date_time", p.readDateTimeTool))
+
+	pluginmcp.AddTool(server, &mcp.Tool{
+		Name:        "create_cot",
+		Description: "Build a Cursor on Target event for a callsign at a latitude and longitude, from an exact CoT type or from an affiliation (friend, hostile, neutral, unknown) and a dimension (ground, air, sea). Returns the XML, a message that renders as a Tactical Fusion card when posted on its own, and the event read back in words.",
+	}, guardTool(p, "create_cot", p.createCotTool))
+
+	pluginmcp.AddTool(server, &mcp.Tool{
+		Name:        "create_geojson",
+		Description: "Build a GeoJSON document from named points, lines and polygons given as latitude and longitude, with optional colors and properties. Returns the document, a message that renders as a Tactical Fusion card with a map when posted on its own, and a summary with measured lengths and areas.",
+	}, guardTool(p, "create_geojson", p.createGeoJSONTool))
 }
 
 func (p *Plugin) decorateTextTool(_ context.Context, _ *mcp.CallToolRequest, in DecorateTextArgs) (*mcp.CallToolResult, bridgeclient.DecorateResponse, error) {

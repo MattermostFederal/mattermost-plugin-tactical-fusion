@@ -753,6 +753,16 @@
                     <td><code>MCPDateTimeInvalid</code> <span class="level">Tool error</span></td>
                     <td><code>That is not a date-time group or RFC 3339 timestamp this plugin reads.</code> The <code>read_date_time</code> tool was given text in neither form.</td>
                 </tr>
+                <tr>
+                    <td><code>TF-20014</code></td>
+                    <td><code>MCPCreateCotInvalid</code> <span class="level">Tool error</span></td>
+                    <td><code>Could not build that event: ...</code> The <code>create_cot</code> tool was missing a callsign, given a position off the globe, an affiliation or dimension it does not know, a malformed type, a stale time over a week, or remarks over 256 characters. The message ends with which.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-20015</code></td>
+                    <td><code>MCPCreateGeoJSONInvalid</code> <span class="level">Tool error</span></td>
+                    <td><code>Could not build that document: ...</code> The <code>create_geojson</code> tool was given no features or too many, a feature with no name, the wrong number of positions for its kind, a position off the globe, or a color that is not <code>#rrggbb</code>. The message ends with which feature and why.</td>
+                </tr>
             </tbody>
         </table>
     </main>
