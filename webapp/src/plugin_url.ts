@@ -33,6 +33,12 @@ export function pluginBaseUrl(): string {
  * ignored rather than emitted, since it would resolve against whatever page the
  * reader happens to be on.
  */
+export function apiBaseUrl(): string {
+    const globalWindow = typeof window === 'undefined' ? undefined : (window as {basename?: string});
+    const basename = globalWindow?.basename ?? '';
+    return `${basename}/api/v4`;
+}
+
 export function staticBaseUrl(): string {
     const globalWindow = typeof window === 'undefined' ? undefined : (window as {basename?: string});
     const basename = globalWindow?.basename ?? '';

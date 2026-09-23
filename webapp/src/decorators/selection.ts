@@ -47,6 +47,22 @@ export function initRhs(reduxStore: Store, show: unknown, toggle: unknown): void
     toggleAction = toggle;
 }
 
+interface ChannelState {
+    entities?: {
+        channels?: {currentChannelId?: string};
+        teams?: {currentTeamId?: string};
+    };
+}
+
+export function currentChannel(): {channelId: string; teamId: string} | null {
+    const state = store?.getState() as ChannelState | undefined;
+    const channelId = state?.entities?.channels?.currentChannelId ?? '';
+    if (channelId === '') {
+        return null;
+    }
+    return {channelId, teamId: state?.entities?.teams?.currentTeamId ?? ''};
+}
+
 export function openRhs(): void {
     if (store && showAction) {
         store.dispatch(showAction as never);

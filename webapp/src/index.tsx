@@ -9,6 +9,7 @@ import {registerReportPanel} from './avreport/panel';
 import ReportPostBody from './avreport/ReportPostBody';
 import {AVREPORT_POST_TYPE} from './avreport/types';
 import {installBridgeGlobal} from './bridge/global';
+import {startHistory} from './components/rhs/history';
 import {RhsTitle, RhsView} from './components/rhs/RhsView';
 import CotPostBody from './cot/CotPostBody';
 import {registerCotPanel} from './cot/index';
@@ -59,6 +60,7 @@ export default class Plugin {
         );
         this.disposers.push(() => registry.unregisterComponent(rhsId));
         initRhs(store, showRHSPlugin, toggleRHSPlugin);
+        this.disposers.push(startHistory());
 
         // No registerMessageWillFormatHook: the server already put the link in
         // the message, which is what makes it work on clients that never run
