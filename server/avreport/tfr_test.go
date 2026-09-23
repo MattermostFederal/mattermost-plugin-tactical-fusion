@@ -190,8 +190,8 @@ func TestATFRKeepsItsPlaceReferenceAndOperatingConditions(t *testing.T) {
 	}
 	for label, want := range map[string]string{
 		"Place":      "SOME CITY, ST",
-		"Reference":  "SOME VORTAC 123 DEG RADIAL AT 15.2 nautical miles",
-		"Operations": "except AS SPECIFIED below AND/OR UNLESS authorized BY air traffic control: NO aircraft operations ARE authorized IN THE AREA EXCEPT...",
+		"Reference":  "SOME VORTAC 123 DEG RADIAL AT 15.2 NAUTICAL MILES",
+		"Operations": "EXCEPT AS SPECIFIED BELOW AND/OR UNLESS AUTHORIZED BY AIR TRAFFIC CONTROL: NO AIRCRAFT OPERATIONS ARE AUTHORIZED IN THE AREA EXCEPT...",
 	} {
 		if got := rowValue(report.Rows, label); got != want {
 			t.Errorf("%s = %q, want %q", label, got, want)

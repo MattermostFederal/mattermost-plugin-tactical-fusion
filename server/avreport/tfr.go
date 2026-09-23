@@ -56,7 +56,7 @@ func readTFR(report *Report, body string) {
 			report.RadiusNm = m[1]
 			report.Rows = append(report.Rows, Row{Label: "Radius", Value: m[1] + " NM"})
 			if m[3] != "" {
-				report.Rows = append(report.Rows, Row{Label: "Reference", Value: expandContractions(m[3])})
+				report.Rows = append(report.Rows, Row{Label: "Reference", Value: strings.ToUpper(expandContractions(m[3]))})
 			}
 		} else {
 			report.Unknown = append(report.Unknown, m[2])
@@ -75,7 +75,7 @@ func readTFR(report *Report, body string) {
 	if loc := tfrEffectivePattern.FindStringIndex(body); loc != nil {
 		operations := strings.TrimSpace(strings.TrimLeft(body[loc[1]:], ". "))
 		if operations != "" {
-			report.Rows = append(report.Rows, Row{Label: "Operations", Value: expandContractions(operations)})
+			report.Rows = append(report.Rows, Row{Label: "Operations", Value: strings.ToUpper(expandContractions(operations))})
 		}
 	}
 }
