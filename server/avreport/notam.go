@@ -105,11 +105,7 @@ func decodeFAANotam(line string, ref time.Time) (Report, bool) {
 		Row{Label: "Number", Value: number},
 		Row{Label: "Affects", Value: affected},
 	)
-	if subject, ok := notamKeywords[keyword]; ok {
-		report.Rows = append(report.Rows, Row{Label: "Subject", Value: subject + " (" + keyword + ")"})
-	} else {
-		report.Rows = append(report.Rows, Row{Label: "Subject", Value: keyword})
-	}
+	report.Rows = append(report.Rows, Row{Label: "Subject", Value: subjectText(keyword)})
 
 	text := body
 	if e := faaEffectivePattern.FindStringSubmatch(body); e != nil {
@@ -147,6 +143,14 @@ func decodeFAANotam(line string, ref time.Time) (Report, bool) {
 	report.Summary = summarizeNotam(report)
 
 	return report, true
+}
+
+func subjectText(keyword string) string {
+	subject, ok := notamKeywords[keyword]
+	if !ok || strings.EqualFold(subject, keyword) {
+		return keyword
+	}
+	return subject + " (" + keyword + ")"
 }
 
 func hasRow(report Report, label string) bool {

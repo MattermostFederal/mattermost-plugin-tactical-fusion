@@ -209,3 +209,36 @@ func TestATFRKeepsItsPlaceReferenceAndOperatingConditions(t *testing.T) {
 		t.Errorf("rows were invented for a TFR that states none: %v", polygon.Rows)
 	}
 }
+
+func TestASubjectNamesItsKeywordOnceWhenTheExpansionIsTheSameWord(t *testing.T) {
+	for keyword, want := range map[string]string{
+		"RWY":      "runway (RWY)",
+		"SVC":      "services (SVC)",
+		"AIRSPACE": "AIRSPACE",
+		"APRON":    "APRON",
+		"SECURITY": "SECURITY",
+		"ZZZZ":     "ZZZZ",
+	} {
+		if got := subjectText(keyword); got != want {
+			t.Errorf("subjectText(%q) = %q, want %q", keyword, got, want)
+		}
+	}
+}
+
+func TestATFRLeavesItsSubjectToTheRestrictionRow(t *testing.T) {
+	report, err := Decode(tfrExample, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hasRow(report, "Subject") {
+		t.Errorf("a TFR repeats its subject: %v", report.Rows)
+	}
+
+	plain, err := Decode("!JFK 09/001 JFK AIRSPACE LASER LIGHT ACT", ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := rowValue(plain.Rows, "Subject"); got != "AIRSPACE" {
+		t.Errorf("Subject = %q, want AIRSPACE", got)
+	}
+}

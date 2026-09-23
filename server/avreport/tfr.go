@@ -40,11 +40,17 @@ func readTFR(report *Report, body string) {
 		return
 	}
 
-	lead := []Row{{Label: RestrictionLabel, Value: restriction}}
+	rows := make([]Row, 0, len(report.Rows)+2)
+	rows = append(rows, Row{Label: RestrictionLabel, Value: restriction})
 	if m := tfrPlacePattern.FindStringSubmatch(body); m != nil {
-		lead = append(lead, Row{Label: "Place", Value: m[1]})
+		rows = append(rows, Row{Label: "Place", Value: m[1]})
 	}
-	report.Rows = append(lead, report.Rows...)
+	for _, row := range report.Rows {
+		if row.Label != "Subject" {
+			rows = append(rows, row)
+		}
+	}
+	report.Rows = rows
 
 	if m := tfrAltitudePattern.FindStringSubmatch(body); m != nil {
 		report.Rows = append(report.Rows, Row{Label: "Altitudes", Value: altitudeText(m[1]) + " to " + altitudeText(m[2])})
