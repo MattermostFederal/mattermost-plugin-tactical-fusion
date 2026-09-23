@@ -217,15 +217,6 @@ const (
 	// not this: that answers 200 saying so, exactly as the page does.
 	APICyberInvalid = 13012
 
-	// APICyberTeamInvalid is returned when the prior-mentions endpoint is
-	// given no team, or one that is not a Mattermost id. An empty team never
-	// means every team: the search is scoped to one and says which.
-	APICyberTeamInvalid = 13013
-
-	// APICyberSearchFailed reports that the search a reader's prior-mentions
-	// request ran came back as an error. The rest of the panel still renders.
-	APICyberSearchFailed = 13014
-
 	// server/preferences.go (14000-14999)
 
 	// PreferencesZoneNameTooLong rejects a row label longer than the cap.
@@ -511,8 +502,6 @@ var AllCodes = []int{
 	APIAirportParamsConflict,
 	APIAvReportInvalid,
 	APICyberInvalid,
-	APICyberTeamInvalid,
-	APICyberSearchFailed,
 
 	PreferencesZoneNameTooLong,
 	PreferencesZoneNameControlCharacters,

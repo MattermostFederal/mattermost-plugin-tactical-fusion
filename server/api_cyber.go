@@ -2,25 +2,12 @@ package main
 
 import (
 	"net/http"
-	"regexp"
-	"strings"
-
-	"github.com/mattermost/mattermost/server/public/model"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/cyber"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
-const (
-	cyberPath = apiPath + "/cyber"
-
-	cyberMentionsPath = apiPath + "/cyber/mentions"
-)
-
-const (
-	mentionsPerPage    = 20
-	mentionSnippetRune = 200
-)
+const cyberPath = apiPath + "/cyber"
 
 type cyberRow struct {
 	Label string `json:"label"`
@@ -68,21 +55,6 @@ type cyberResponse struct {
 type cyberReference struct {
 	URL  string `json:"url"`
 	Tags string `json:"tags"`
-}
-
-type cyberMention struct {
-	PostID    string `json:"post_id"`
-	ChannelID string `json:"channel_id"`
-	Channel   string `json:"channel"`
-	CreateAt  int64  `json:"create_at"`
-	Snippet   string `json:"snippet"`
-	Permalink string `json:"permalink"`
-}
-
-type cyberMentionsResponse struct {
-	Value     string         `json:"value"`
-	Mentions  []cyberMention `json:"mentions"`
-	Truncated bool           `json:"truncated"`
 }
 
 func (p *Plugin) serveCyber(w http.ResponseWriter, r *http.Request) {
@@ -156,96 +128,3 @@ func cyberBody(details cyber.Details) cyberResponse {
 
 	return body
 }
-
-func (p *Plugin) serveCyberMentions(w http.ResponseWriter, r *http.Request, userID string) {
-	if r.Method != http.MethodGet {
-		writeAPIError(w, http.StatusMethodNotAllowed,
-			errcode.WithCode(errcode.APIMethodNotAllowed, "Method not allowed."))
-		return
-	}
-
-	_, value, ok := cyberParams(r)
-	if !ok {
-		writeAPIError(w, http.StatusBadRequest,
-			errcode.WithCode(errcode.APICyberInvalid, "That is not an indicator this plugin issued."))
-		return
-	}
-
-	teamID := r.URL.Query().Get("team")
-	if !model.IsValidId(teamID) {
-		writeAPIError(w, http.StatusBadRequest,
-			errcode.WithCode(errcode.APICyberTeamInvalid, "That is not a team."))
-		return
-	}
-
-	w.Header().Set("Cache-Control", "no-store")
-
-	results, appErr := p.API.SearchPostsInTeamForUser(teamID, userID, model.SearchParameter{
-		Terms:      new(`"` + value + `"`),
-		IsOrSearch: new(false),
-		Page:       new(0),
-		PerPage:    new(mentionsPerPage),
-	})
-	if appErr != nil {
-		p.API.LogWarn("the prior-mentions search failed",
-			"error_code", errcode.APICyberSearchFailed, "team_id", teamID, "error", appErr.Error())
-		writeAPIError(w, http.StatusBadGateway,
-			errcode.WithCode(errcode.APICyberSearchFailed, "Could not search for earlier mentions."))
-		return
-	}
-
-	writeAPIJSON(w, http.StatusOK, p.mentionsBody(value, teamID, results))
-}
-
-func (p *Plugin) mentionsBody(value, teamID string, results *model.PostSearchResults) cyberMentionsResponse {
-	body := cyberMentionsResponse{Value: value, Mentions: []cyberMention{}}
-	if results == nil || results.PostList == nil {
-		return body
-	}
-
-	teamName := ""
-	if team, appErr := p.API.GetTeam(teamID); appErr == nil && team != nil {
-		teamName = team.Name
-	}
-
-	for _, id := range results.Order {
-		post := results.Posts[id]
-		if post == nil {
-			continue
-		}
-
-		mention := cyberMention{
-			PostID:    post.Id,
-			ChannelID: post.ChannelId,
-			CreateAt:  post.CreateAt,
-			Snippet:   mentionSnippet(post.Message),
-		}
-
-		if channel, appErr := p.API.GetChannel(post.ChannelId); appErr == nil && channel != nil {
-			mention.Channel = channel.DisplayName
-		}
-		if teamName != "" {
-			mention.Permalink = "/" + teamName + "/pl/" + post.Id
-		}
-
-		body.Mentions = append(body.Mentions, mention)
-	}
-
-	body.Truncated = len(body.Mentions) >= mentionsPerPage
-
-	return body
-}
-
-func mentionSnippet(message string) string {
-	collapsed := markdownLinkRe.ReplaceAllString(message, "$1")
-	collapsed = strings.Join(strings.Fields(collapsed), " ")
-
-	runes := []rune(collapsed)
-	if len(runes) <= mentionSnippetRune {
-		return collapsed
-	}
-
-	return strings.TrimSpace(string(runes[:mentionSnippetRune])) + "..."
-}
-
-var markdownLinkRe = regexp.MustCompile(`\[([^\]]*)\]\([^)]*\)`)

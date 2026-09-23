@@ -3,7 +3,6 @@ import React from 'react';
 import {_resetForTesting as resetCyber} from './cyber';
 import CyberHover from './CyberHover';
 import CyberPanel from './CyberPanel';
-import {_resetForTesting as resetMentions} from './mentions';
 
 import {
     _resetForTesting as resetSelection,
@@ -15,7 +14,6 @@ import type {Selection} from '../selection';
 import type {CyberPayload} from './index';
 
 type Reply = 'found' | 'bare' | 'status' | 'rejected' | 'failed' | 'hold';
-type MentionsReply = 'some' | 'none' | 'failed' | 'hold';
 
 const HEADLINE = '10.0 Critical, in KEV';
 const SUMMARY = 'Remote code execution in a logging library.';
@@ -73,19 +71,6 @@ const NO_DATASET = {
     datasets: [{name: 'cve', label: 'vulnerability', present: false, generated: ''}],
 };
 
-const MENTIONS = {
-    value: 'CVE-2021-44228',
-    mentions: [{
-        post_id: 'post1',
-        channel_id: 'channel1',
-        channel: 'Incident 4821',
-        create_at: 1767225600000,
-        snippet: 'We are patching CVE-2021-44228 on the edge tonight.',
-        permalink: '/ops/pl/post1',
-    }],
-    truncated: false,
-};
-
 function baseFor(reply: Reply): typeof FOUND {
     if (reply === 'status') {
         return NO_DATASET;
@@ -108,74 +93,36 @@ function paramOf(url: string, name: string): string {
 }
 
 let onRequest: (() => void) | null = null;
-let onMentionsRequest: (() => void) | null = null;
 let setups = 0;
 
-const teamListeners = new Set<() => void>();
-let currentTeam = '';
-
 const testStore = {
-    getState: () => ({entities: {teams: {currentTeamId: currentTeam}}}),
+    getState: () => ({}),
     dispatch: () => undefined,
-    subscribe: (listener: () => void) => {
-        teamListeners.add(listener);
-        return () => {
-            teamListeners.delete(listener);
-        };
-    },
+    subscribe: () => () => undefined,
     replaceReducer: () => undefined,
 };
-
-function switchTeam(id: string): void {
-    currentTeam = id;
-    teamListeners.forEach((listener) => listener());
-}
 
 const CyberHarness: React.FC<{
     surface: 'panel' | 'hover';
     payload: CyberPayload;
     second?: CyberPayload;
     reply?: Reply;
-    mentions?: MentionsReply;
-    team?: string;
-    nextTeam?: string;
-}> = ({surface, payload, second, reply = 'found', mentions = 'none', team = '', nextTeam}) => {
+}> = ({surface, payload, second, reply = 'found'}) => {
     const [requests, setRequests] = React.useState(0);
-    const [mentionRequests, setMentionRequests] = React.useState(0);
     const [shown, setShown] = React.useState(payload);
 
     React.useState(() => {
         setups += 1;
         resetCyber();
-        resetMentions();
         resetSelection();
 
-        teamListeners.clear();
-        currentTeam = team;
         initRhs(testStore as never, null);
 
         onRequest = () => setRequests((n) => n + 1);
-        onMentionsRequest = () => setMentionRequests((n) => n + 1);
 
         const real = globalThis.fetch;
         globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
             const url = String(input);
-
-            if (url.includes('/api/v1/cyber/mentions')) {
-                onMentionsRequest?.();
-                if (mentions === 'hold') {
-                    return new Promise<Response>(() => undefined);
-                }
-                if (mentions === 'failed') {
-                    throw new Error('offline');
-                }
-
-                return {
-                    status: 200,
-                    ok: true,
-                    json: async () => (mentions === 'some' ? MENTIONS : {...MENTIONS, mentions: []}),
-                } as unknown as Response;
-            }
 
             if (!url.includes('/api/v1/cyber')) {
                 return real(input, init);
@@ -211,7 +158,6 @@ const CyberHarness: React.FC<{
         <div>
             <Surface payload={shown}/>
             <p data-testid='requests'>{requests}</p>
-            <p data-testid='mention-requests'>{mentionRequests}</p>
             <p data-testid='selection'>
                 {selection ? `${selection.type}:${JSON.stringify(selection.payload)}` : 'none'}
             </p>
@@ -220,12 +166,6 @@ const CyberHarness: React.FC<{
                     type='button'
                     onClick={() => setShown(second)}
                 >{'Show the second'}</button>
-            )}
-            {nextTeam !== undefined && (
-                <button
-                    type='button'
-                    onClick={() => switchTeam(nextTeam)}
-                >{'Switch team'}</button>
             )}
         </div>
     );

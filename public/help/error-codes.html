@@ -356,16 +356,6 @@
                     <td><code>APICyberInvalid</code> <span class="level">400</span></td>
                     <td><code>That is not an indicator this plugin issued.</code> The cyber endpoint was given a kind and value that do not reproduce each other, which means the link was not written by this plugin. An indicator no dataset holds is <em>not</em> this: that answers normally and says so, exactly as the page does.</td>
                 </tr>
-                <tr>
-                    <td><code>TF-13013</code></td>
-                    <td><code>APICyberTeamInvalid</code> <span class="level">400</span></td>
-                    <td><code>That is not a team.</code> The earlier-mentions endpoint was given no team, or one that is not a Mattermost id. An empty team never means every team: the search is scoped to one and says which.</td>
-                </tr>
-                <tr>
-                    <td><code>TF-13014</code></td>
-                    <td><code>APICyberSearchFailed</code> <span class="level">502</span></td>
-                    <td><code>Could not search for earlier mentions.</code> The search a reader's earlier-mentions request ran came back as an error. Logged with the same code. The rest of the panel still renders.</td>
-                </tr>
             </tbody>
         </table>
 

@@ -2,12 +2,11 @@ import React from 'react';
 
 import {KIND_LABELS, isKind, useCyber} from './cyber';
 import type {CyberState} from './cyber';
-import {useMentions} from './mentions';
-import type {CyberLink, CyberMention, CyberReference} from './types';
+import type {CyberLink, CyberReference} from './types';
 
 import LinkButton from '../../components/LinkButton';
 import CopyButton from '../location/CopyButton';
-import {setSelection, useCurrentTeamId} from '../selection';
+import {setSelection} from '../selection';
 
 import type {CyberPayload} from './index';
 
@@ -79,7 +78,7 @@ const styles: Record<string, React.CSSProperties> = {
     list: {listStyle: 'none', padding: 0, margin: 0, fontSize: '13px'},
     listItem: {margin: '0 0 8px'},
     verdict: {fontWeight: 600},
-    mentionMeta: {
+    meta: {
         fontSize: '12px',
         opacity: 0.6,
         color: 'var(--center-channel-color)',
@@ -102,12 +101,6 @@ const styles: Record<string, React.CSSProperties> = {
         overflowWrap: 'anywhere',
     },
     reference: {color: 'var(--link-color)', overflowWrap: 'anywhere'},
-    mentionSnippet: {
-        fontSize: '13px',
-        color: 'var(--center-channel-color)',
-        margin: '2px 0 0',
-        wordBreak: 'break-word',
-    },
 };
 
 const Row: React.FC<{label: string; value: string}> = ({label, value}) => (
@@ -177,7 +170,7 @@ const References: React.FC<{references: CyberReference[]}> = ({references}) => {
                             rel='noopener noreferrer'
                             style={styles.reference}
                         >{reference.url}</a>
-                        {reference.tags !== '' && <span style={styles.mentionMeta}>{` ${reference.tags}`}</span>}
+                        {reference.tags !== '' && <span style={styles.meta}>{` ${reference.tags}`}</span>}
                     </li>
                 ))}
             </ul>
@@ -212,68 +205,7 @@ const Related: React.FC<{links: CyberLink[]}> = ({links}) => {
     );
 };
 
-function mentionTime(createAt: number): string {
-    if (!createAt) {
-        return '';
-    }
-
-    return new Date(createAt).toLocaleString();
-}
-
-const Mention: React.FC<{mention: CyberMention}> = ({mention}) => {
-    const where = [mention.channel, mentionTime(mention.createAt)].filter(Boolean).join(' - ');
-
-    return (
-        <li style={styles.listItem}>
-            {mention.permalink ? (
-                <a href={mention.permalink}>{where || 'Open the post'}</a>
-            ) : (
-                <span style={styles.mentionMeta}>{where}</span>
-            )}
-            <p style={styles.mentionSnippet}>{mention.snippet}</p>
-        </li>
-    );
-};
-
-const Mentions: React.FC<{payload: CyberPayload}> = ({payload}) => {
-    const team = useCurrentTeamId();
-    const state = useMentions(team, payload.kind, payload.value);
-
-    if (state.status === 'idle') {
-        return null;
-    }
-
-    return (
-        <>
-            <p style={styles.heading}>{'Earlier mentions'}</p>
-            {state.status === 'loading' && <p style={styles.note}>{'Looking for earlier mentions...'}</p>}
-            {state.status === 'failed' && (
-                <p style={styles.note}>{'Earlier mentions could not be searched for.'}</p>
-            )}
-            {state.status === 'ready' && state.data && (
-                state.data.mentions.length === 0 ? (
-                    <p style={styles.note}>{'No earlier mention of this indicator was found in this team.'}</p>
-                ) : (
-                    <>
-                        <ul style={styles.list}>
-                            {state.data.mentions.map((mention) => (
-                                <Mention
-                                    key={mention.postId}
-                                    mention={mention}
-                                />
-                            ))}
-                        </ul>
-                        {state.data.truncated && (
-                            <p style={styles.note}>{'Only the most recent mentions are shown.'}</p>
-                        )}
-                    </>
-                )
-            )}
-        </>
-    );
-};
-
-function renderBody(state: CyberState, payload: CyberPayload): React.ReactNode {
+function renderBody(state: CyberState): React.ReactNode {
     if (state.status === 'loading') {
         return <p style={styles.note}>{'Looking this indicator up...'}</p>;
     }
@@ -319,7 +251,7 @@ function renderBody(state: CyberState, payload: CyberPayload): React.ReactNode {
                             >
                                 <span style={styles.verdict}>{entry.verdict}</span>
                                 {entry.note !== '' && ` ${entry.note}`}
-                                <span style={styles.mentionMeta}>
+                                <span style={styles.meta}>
                                     {[entry.source, entry.updated].filter(Boolean).join(' - ')}
                                 </span>
                             </li>
@@ -338,20 +270,6 @@ function renderBody(state: CyberState, payload: CyberPayload): React.ReactNode {
                 lines={details.configurations}
             />
             <References references={details.references}/>
-            <Mentions payload={payload}/>
-
-            <p style={styles.heading}>{'Datasets'}</p>
-            <ul style={styles.list}>
-                {details.datasets.map((dataset) => (
-                    <li
-                        key={dataset.name}
-                        style={styles.mentionMeta}
-                    >
-                        {dataset.label}
-                        {dataset.present ? `: installed${dataset.generated ? `, generated ${dataset.generated}` : ''}` : ': not installed'}
-                    </li>
-                ))}
-            </ul>
         </>
     );
 }
@@ -361,7 +279,7 @@ const CyberPanel: React.FC<{payload: CyberPayload}> = ({payload}) => {
 
     return (
         <div aria-label={isKind(payload.kind) ? KIND_LABELS[payload.kind] : 'Cyber context'}>
-            {renderBody(state, payload)}
+            {renderBody(state)}
         </div>
     );
 };

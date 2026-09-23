@@ -98,21 +98,7 @@ func wireKind(typ reflect.Type) string {
 	return typ.Kind().String()
 }
 
-func cyberCamelToWire(name string) string {
-	var b strings.Builder
-	for _, r := range name {
-		if r >= 'A' && r <= 'Z' {
-			b.WriteByte('_')
-			b.WriteRune(r + 32)
-			continue
-		}
-		b.WriteRune(r)
-	}
-
-	return b.String()
-}
-
-func requireSameShape(t *testing.T, what string, goFields []webappField, webapp []webappField, rename func(string) string) {
+func requireSameShape(t *testing.T, what string, goFields []webappField, webapp []webappField) {
 	t.Helper()
 
 	if len(goFields) != len(webapp) {
@@ -122,9 +108,6 @@ func requireSameShape(t *testing.T, what string, goFields []webappField, webapp 
 
 	for i := range goFields {
 		name := webapp[i].name
-		if rename != nil {
-			name = rename(name)
-		}
 		if name != goFields[i].name {
 			t.Errorf("%s field %d: Go calls it %q and the webapp %q", what, i, goFields[i].name, name)
 		}
@@ -144,46 +127,35 @@ var cyberStructNames = map[string]string{
 	"cyberLink[]":       "CyberLink[]",
 	"cyberWatchEntry[]": "CyberWatchEntry[]",
 	"cyberDataset[]":    "CyberDataset[]",
-	"cyberMention[]":    "CyberMention[]",
 	"cyberReference[]":  "CyberReference[]",
 }
 
 func TestWebappCyberResponseShapeMatches(t *testing.T) {
 	requireSameShape(t, "CyberResponse",
-		goWireFields(t, cyberResponse{}), cyberWebappFields(t, "CyberResponse"), nil)
+		goWireFields(t, cyberResponse{}), cyberWebappFields(t, "CyberResponse"))
 }
 
 func TestWebappCyberRowShapeMatches(t *testing.T) {
-	requireSameShape(t, "CyberRow", goWireFields(t, cyberRow{}), cyberWebappFields(t, "CyberRow"), nil)
+	requireSameShape(t, "CyberRow", goWireFields(t, cyberRow{}), cyberWebappFields(t, "CyberRow"))
 }
 
 func TestWebappCyberReferenceShapeMatches(t *testing.T) {
 	requireSameShape(t, "CyberReference",
-		goWireFields(t, cyberReference{}), cyberWebappFields(t, "CyberReference"), nil)
+		goWireFields(t, cyberReference{}), cyberWebappFields(t, "CyberReference"))
 }
 
 func TestWebappCyberLinkShapeMatches(t *testing.T) {
-	requireSameShape(t, "CyberLink", goWireFields(t, cyberLink{}), cyberWebappFields(t, "CyberLink"), nil)
+	requireSameShape(t, "CyberLink", goWireFields(t, cyberLink{}), cyberWebappFields(t, "CyberLink"))
 }
 
 func TestWebappCyberWatchEntryShapeMatches(t *testing.T) {
 	requireSameShape(t, "CyberWatchEntry",
-		goWireFields(t, cyberWatchEntry{}), cyberWebappFields(t, "CyberWatchEntry"), nil)
+		goWireFields(t, cyberWatchEntry{}), cyberWebappFields(t, "CyberWatchEntry"))
 }
 
 func TestWebappCyberDatasetShapeMatches(t *testing.T) {
 	requireSameShape(t, "CyberDataset",
-		goWireFields(t, cyberDataset{}), cyberWebappFields(t, "CyberDataset"), nil)
-}
-
-func TestWebappCyberMentionShapeMatches(t *testing.T) {
-	requireSameShape(t, "CyberMention",
-		goWireFields(t, cyberMention{}), cyberWebappFields(t, "CyberMention"), cyberCamelToWire)
-}
-
-func TestWebappCyberMentionsResponseShapeMatches(t *testing.T) {
-	requireSameShape(t, "CyberMentionsResponse",
-		goWireFields(t, cyberMentionsResponse{}), cyberWebappFields(t, "CyberMentionsResponse"), nil)
+		goWireFields(t, cyberDataset{}), cyberWebappFields(t, "CyberDataset"))
 }
 
 func TestWebappCyberTypeMatches(t *testing.T) {

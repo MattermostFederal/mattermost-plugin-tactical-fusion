@@ -44,18 +44,3 @@ export interface CyberReference {
     url: string;
     tags: string;
 }
-
-export interface CyberMention {
-    postId: string;
-    channelId: string;
-    channel: string;
-    createAt: number;
-    snippet: string;
-    permalink: string;
-}
-
-export interface CyberMentionsResponse {
-    value: string;
-    mentions: CyberMention[];
-    truncated: boolean;
-}

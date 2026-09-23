@@ -9,7 +9,6 @@ const SUMMARY = 'Remote code execution in a logging library.';
 
 const CVE = {kind: 'cve', value: 'CVE-2021-44228'};
 const CWE = {kind: 'cwe', value: 'CWE-79'};
-const TEAM = 'yb7hrkmbcigxuk1w1xgxj3rrqe';
 
 test.describe('the panel', () => {
     test('shows the indicator and what is known about it', async ({mount}) => {
@@ -26,7 +25,7 @@ test.describe('the panel', () => {
         await expect(panel.getByText('2021-12-10')).toBeVisible();
     });
 
-    test('says which datasets are installed and which are not', async ({mount}) => {
+    test('leaves the dataset list to the standalone page', async ({mount}) => {
         const panel = await mount(
             <CyberHarness
                 surface='panel'
@@ -34,8 +33,9 @@ test.describe('the panel', () => {
             />,
         );
 
-        await expect(panel.getByText('vulnerability: installed, generated 2026-09-01T00:00:00Z')).toBeVisible();
-        await expect(panel.getByText('IP address: not installed')).toBeVisible();
+        await expect(panel.getByText(SUMMARY)).toBeVisible();
+        await expect(panel.getByText('Datasets', {exact: true})).toHaveCount(0);
+        await expect(panel.getByText(/not installed/)).toHaveCount(0);
     });
 
     test('says so when no dataset holds the indicator', async ({mount}) => {
@@ -204,95 +204,6 @@ test.describe('the detail sections', () => {
         await expect(panel.getByText('No vulnerability dataset is installed.').first()).toBeVisible();
         await expect(panel.getByText(/^Affected, /)).toHaveCount(0);
         await expect(panel.getByText(/^References \(/)).toHaveCount(0);
-    });
-});
-
-test.describe('earlier mentions', () => {
-    test('are not asked for at all when there is no team to search', async ({mount}) => {
-        const panel = await mount(
-            <CyberHarness
-                surface='panel'
-                payload={CVE}
-            />,
-        );
-
-        await expect(panel.getByText('CVE-2021-44228').first()).toBeVisible();
-        await expect(panel.getByTestId('mention-requests')).toHaveText('0');
-        await expect(panel.getByText('Earlier mentions', {exact: true})).toHaveCount(0);
-    });
-
-    test('list the posts that named the indicator', async ({mount}) => {
-        const panel = await mount(
-            <CyberHarness
-                surface='panel'
-                payload={CVE}
-                team={TEAM}
-                mentions='some'
-            />,
-        );
-
-        await expect(panel.getByText('Earlier mentions', {exact: true})).toBeVisible();
-        await expect(panel.getByText('We are patching CVE-2021-44228 on the edge tonight.')).toBeVisible();
-        await expect(panel.getByRole('link', {name: /Incident 4821/})).toHaveAttribute('href', '/ops/pl/post1');
-    });
-
-    test('say plainly when there are none rather than implying there were none', async ({mount}) => {
-        const panel = await mount(
-            <CyberHarness
-                surface='panel'
-                payload={CVE}
-                team={TEAM}
-                mentions='none'
-            />,
-        );
-
-        await expect(panel.getByText('No earlier mention of this indicator was found in this team.')).toBeVisible();
-    });
-
-    test('say so when the search itself failed', async ({mount}) => {
-        const panel = await mount(
-            <CyberHarness
-                surface='panel'
-                payload={CVE}
-                team={TEAM}
-                mentions='failed'
-            />,
-        );
-
-        await expect(panel.getByText('Earlier mentions could not be searched for.')).toBeVisible();
-    });
-
-    test('follow the reader to another team without a remount', async ({mount}) => {
-        const panel = await mount(
-            <CyberHarness
-                surface='panel'
-                payload={CVE}
-                mentions='some'
-                nextTeam={TEAM}
-            />,
-        );
-
-        await expect(panel.getByTestId('mention-requests')).toHaveText('0');
-        await expect(panel.getByText('Earlier mentions', {exact: true})).toHaveCount(0);
-
-        await panel.getByRole('button', {name: 'Switch team'}).click();
-
-        await expect(panel.getByText('Earlier mentions', {exact: true})).toBeVisible();
-        await expect(panel.getByText('We are patching CVE-2021-44228 on the edge tonight.')).toBeVisible();
-    });
-
-    test('are never asked for by the hover', async ({mount}) => {
-        const card = await mount(
-            <CyberHarness
-                surface='hover'
-                payload={CVE}
-                team={TEAM}
-                mentions='some'
-            />,
-        );
-
-        await expect(card.getByText(HEADLINE)).toBeVisible();
-        await expect(card.getByTestId('mention-requests')).toHaveText('0');
     });
 });
 
