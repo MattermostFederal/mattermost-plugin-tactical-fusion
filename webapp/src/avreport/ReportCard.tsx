@@ -8,8 +8,6 @@ import {headingOf} from './types';
 
 import ErrorBoundary from '../components/ErrorBoundary';
 
-export const CARD_KIND = 'Aviation report';
-
 export const DETAIL_FAILED = 'The detail of this report could not be rendered. The report itself is shown above as it was posted.';
 
 export const ROWS_DROPPED_NOTE = 'The decoded groups were omitted to fit the size limit. The report is shown as posted.';
@@ -23,9 +21,8 @@ const styles: Record<string, React.CSSProperties> = {
         maxWidth: 640,
         overflow: 'hidden',
     },
-    kind: {fontWeight: 700, margin: 0, padding: '8px 12px 0'},
-    header: {alignItems: 'baseline', display: 'flex', flexWrap: 'wrap', gap: '0.5em', padding: '2px 12px 4px'},
-    heading: {fontWeight: 600},
+    header: {alignItems: 'baseline', display: 'flex', flexWrap: 'wrap', gap: '0.5em', padding: '8px 12px 4px'},
+    heading: {fontWeight: 700},
     source: {
         fontFamily: 'monospace',
         fontSize: '0.85em',
@@ -53,7 +50,6 @@ export const ReportCard: React.FC<{payload: ReportPayload; compactDisplay?: bool
             style={styles.card}
             data-testid='avreport-card'
         >
-            <p style={styles.kind}>{CARD_KIND}</p>
             <div style={styles.header}>
                 <span
                     style={styles.heading}

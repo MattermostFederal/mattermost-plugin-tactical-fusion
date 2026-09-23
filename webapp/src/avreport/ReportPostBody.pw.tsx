@@ -112,3 +112,41 @@ test('draws no map for a station the build cannot place, even with the inline ma
     await expect(body.getByTestId('avreport-card')).toBeVisible();
     await expect(body.getByTestId('avreport-map')).toBeHidden();
 });
+
+test('the card opens on the report heading, with no Aviation report label', async ({mount}) => {
+    const body = await mount(<ReportPostBodyHarness payload={NOTAM_WITH_RADIUS}/>);
+
+    await expect(body.getByTestId('avreport-heading')).toHaveText('NOTAM PHNL');
+    await expect(body.getByTestId('avreport-card')).not.toContainText('Aviation report');
+});
+
+test('a timed row links its instant through the date-time decorator', async ({mount}) => {
+    const query = 'a=&dtg=2026-09-22T12%3A00%3A00Z&o=0&t=1790078400000';
+    const body = await mount(
+        <ReportPostBodyHarness
+            payload={{
+                ...NOTAM_WITH_RADIUS,
+                issued: '',
+                rows: [{label: 'Expires', value: '23 Sep 2026 23:59Z (estimated)', query}],
+            }}
+        />,
+    );
+
+    const link = body.getByRole('link', {name: '23 Sep 2026 23:59Z'});
+    await expect(link).toHaveAttribute('href', new RegExp(`/decorate/dtg\\?${query.replace(/[?]/g, '\\?')}$`));
+    await expect(body.getByTestId('avreport-rows')).toContainText('(estimated)');
+});
+
+test('a flight restriction leaves its text to the report as posted', async ({mount}) => {
+    const body = await mount(
+        <ReportPostBodyHarness
+            payload={{
+                ...NOTAM_WITH_RADIUS,
+                rows: [{label: 'Restriction', value: 'temporary flight restriction'}, {label: 'Text', value: 'THE WHOLE TEXT'}],
+            }}
+        />,
+    );
+
+    await expect(body.getByTestId('avreport-rows')).toContainText('temporary flight restriction');
+    await expect(body.getByTestId('avreport-card')).not.toContainText('THE WHOLE TEXT');
+});

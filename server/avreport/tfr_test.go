@@ -145,3 +145,40 @@ func twoDigits(n int) string {
 	}
 	return string(rune('0'+n/10)) + string(rune('0'+n%10))
 }
+
+func TestATFRTableLeavesItsTextToTheReportAsPosted(t *testing.T) {
+	report, err := Decode(tfrExample, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	table, _ := Expanded(tableHREF, report)
+	if strings.Contains(table, "| Text |") {
+		t.Errorf("the TFR table repeats its text:\n%s", table)
+	}
+
+	plain, err := Decode("!HNL 09/123 HNL RWY 08L/26R CLSD 2609221200-2609232359", ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if table, _ := Expanded(tableHREF, plain); !strings.Contains(table, "| Text |") {
+		t.Errorf("an ordinary NOTAM lost its text:\n%s", table)
+	}
+}
+
+func TestEveryTimedRowCarriesItsDateTimeQuery(t *testing.T) {
+	report, err := Decode(tfrExample, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	blob := Blob(report)
+	if query, _ := blob["issued_query"].(string); !strings.Contains(query, "dtg=") {
+		t.Errorf("issued_query = %q", query)
+	}
+	for _, entry := range blob["rows"].([]any) {
+		row := entry.(map[string]any)
+		_, has := row["query"]
+		if timed := row["label"] == "Effective" || row["label"] == "Expires"; timed != has {
+			t.Errorf("row %v: query present %v, want %v", row["label"], has, timed)
+		}
+	}
+}

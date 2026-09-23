@@ -1,10 +1,12 @@
 import React from 'react';
 
 import type {Report, ReportRow} from './types';
-import {issuedLabel} from './types';
+import {isRestriction, issuedLabel} from './types';
 
 import LinkButton from '../components/LinkButton';
+import HoverLink from '../decorators/HoverLink';
 import {openRhs, setSelection} from '../decorators/selection';
+import {pluginBaseUrl} from '../plugin_url';
 
 const styles: Record<string, React.CSSProperties> = {
     rows: {
@@ -40,10 +42,25 @@ export const Rows: React.FC<{rows: ReportRow[]; testId?: string}> = ({rows, test
                 // eslint-disable-next-line react/no-array-index-key
                 <React.Fragment key={`${row.label}-${index}`}>
                     <dt style={styles.term}>{row.label}</dt>
-                    <dd style={styles.value}>{row.value}</dd>
+                    <dd style={styles.value}><RowValue row={row}/></dd>
                 </React.Fragment>
             ))}
         </dl>
+    );
+};
+
+const RowValue: React.FC<{row: ReportRow}> = ({row}) => {
+    if (row.query === undefined || row.query === '') {
+        return <>{row.value}</>;
+    }
+
+    const at = row.value.search(/Z\b/);
+    const reading = at < 0 ? row.value : row.value.slice(0, at + 1);
+    return (
+        <>
+            <HoverLink href={`${pluginBaseUrl()}/decorate/dtg?${row.query}`}>{reading}</HoverLink>
+            {row.value.slice(reading.length)}
+        </>
     );
 };
 
@@ -60,7 +77,7 @@ export const StationLine: React.FC<{report: Report}> = ({report}) => {
 export function issuedRows(report: Report): ReportRow[] {
     const rows: ReportRow[] = [];
     if (report.issued !== '') {
-        rows.push({label: issuedLabel(report), value: report.issued});
+        rows.push({label: issuedLabel(report), value: report.issued, query: report.issuedQuery});
     }
     if (report.flags.length > 0) {
         rows.push({label: 'Flags', value: report.flags.join(', ')});
@@ -69,7 +86,13 @@ export function issuedRows(report: Report): ReportRow[] {
 }
 
 export function bodyRows(report: Report): ReportRow[] {
-    return report.rows.filter((row) => !(report.kind === 'NOTAM' && row.label === 'Effective' && report.issued !== ''));
+    const restriction = isRestriction(report);
+    return report.rows.filter((row) => {
+        if (restriction && row.label === 'Text') {
+            return false;
+        }
+        return !(report.kind === 'NOTAM' && row.label === 'Effective' && report.issued !== '');
+    });
 }
 
 export const ReportDetail: React.FC<{report: Report}> = ({report}) => (

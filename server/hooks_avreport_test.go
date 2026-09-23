@@ -881,8 +881,8 @@ func TestAnExpandedTFRIsStableUnderTheHook(t *testing.T) {
 	withConfiguration(p, func(c *configuration) { c.EnableAvReportCard = false })
 
 	first := p.decoratePost(&model.Post{Message: reportTFR, UserId: testUserID}, hookRef)
-	if first == nil || !strings.Contains(first.Message, "/decorate/location?") {
-		t.Fatalf("the TFR's coordinate was not linked in the table: %+v", first)
+	if first == nil || !strings.Contains(first.Message, "| NOTAM | Temporary flight restriction |") {
+		t.Fatalf("the TFR was not expanded into a table: %+v", first)
 	}
 	if again := p.decoratePost(&model.Post{Message: first.Message, UserId: testUserID}, hookRef); again != nil {
 		t.Errorf("the stored TFR table was rewritten again:\n%s", again.Message)

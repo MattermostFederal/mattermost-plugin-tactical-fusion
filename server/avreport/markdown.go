@@ -41,6 +41,9 @@ func reportTable(href string, report Report) (string, bool) {
 		writeTableRow(&b, "Flags", decorators.TableCell(strings.Join(report.Flags, ", ")))
 	}
 	for _, row := range report.Rows {
+		if row.Label == "Text" && report.IsRestriction() {
+			continue
+		}
 		if row.Label == "Effective" && report.Kind == KindNOTAM && !report.IssuedAt.IsZero() {
 			continue
 		}

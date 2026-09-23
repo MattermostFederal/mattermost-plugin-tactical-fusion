@@ -33,6 +33,7 @@ export type ReportKind = typeof KINDS[number];
 export interface ReportRow {
     label: string;
     value: string;
+    query?: string;
 }
 
 export interface ReportPeriod {
@@ -46,6 +47,7 @@ export interface Report {
     stationName: string;
     issued: string;
     issuedAt: string;
+    issuedQuery: string;
     inferred: boolean;
     summary: string;
     flags: string[];
@@ -118,10 +120,11 @@ function readRow(item: unknown): ReportRow | null {
     }
     const label = text(raw, 'label');
     const value = text(raw, 'value');
-    if (label === '' || label === null || value === null) {
+    const query = text(raw, 'query');
+    if (label === '' || label === null || value === null || query === null) {
         return null;
     }
-    return {label, value};
+    return query === '' ? {label, value} : {label, value, query};
 }
 
 function rows(blob: Record<string, unknown>, key: string): ReportRow[] | null {
@@ -195,6 +198,10 @@ export function fromWire(body: unknown): Report | null {
     if (issuedAt === null || !(/^-?\d+$/).test(issuedAt)) {
         return null;
     }
+    const issuedQuery = text(blob, 'issued_query');
+    if (issuedQuery === null) {
+        return null;
+    }
 
     const station = text(blob, 'station');
     const stationName = text(blob, 'station_name');
@@ -222,6 +229,7 @@ export function fromWire(body: unknown): Report | null {
         stationName,
         issued,
         issuedAt,
+        issuedQuery,
         inferred: flag(blob, 'inferred'),
         summary,
         flags,

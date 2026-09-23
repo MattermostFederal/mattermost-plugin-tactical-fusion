@@ -10,6 +10,7 @@ import (
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 )
 
@@ -249,6 +250,7 @@ func Blob(report Report) map[string]any {
 		"station_name": report.StationName,
 		"issued":       zuluText(report.IssuedAt),
 		"issued_at":    strconv.FormatInt(report.Instant(), 10),
+		"issued_query": dtgQuery(report.IssuedAt),
 		"inferred":     report.Inferred,
 		"summary":      report.Summary,
 		"flags":        stringsAny(report.Flags),
@@ -268,9 +270,24 @@ func Blob(report Report) map[string]any {
 func rowsAny(rows []Row) []any {
 	out := make([]any, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, map[string]any{"label": row.Label, "value": row.Value})
+		entry := map[string]any{"label": row.Label, "value": row.Value}
+		if query := dtgQuery(row.At); query != "" {
+			entry["query"] = query
+		}
+		out = append(out, entry)
 	}
 	return out
+}
+
+func dtgQuery(at time.Time) string {
+	if at.IsZero() {
+		return ""
+	}
+	params, ok := dtg.ParamsForZulu(at)
+	if !ok {
+		return ""
+	}
+	return params.Encode()
 }
 
 func periodsAny(periods []Period) []any {
