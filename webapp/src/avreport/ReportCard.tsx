@@ -1,5 +1,6 @@
 import React from 'react';
 
+import {areaFocus, hasArea} from './map';
 import {showReport} from './panel';
 import ReportDetail, {StationLine} from './ReportDetail';
 import ReportMap from './ReportMap';
@@ -7,6 +8,7 @@ import type {ReportPayload} from './types';
 import {headingOf} from './types';
 
 import ErrorBoundary from '../components/ErrorBoundary';
+import {useInlineMapShown, useMapFocus} from '../decorators/location/map/use_map_focus';
 
 export const CARD_KIND = 'Aviation report';
 
@@ -46,62 +48,71 @@ const styles: Record<string, React.CSSProperties> = {
     },
 };
 
-export const ReportCard: React.FC<{payload: ReportPayload; compactDisplay?: boolean}> = ({payload, compactDisplay}) => (
-    <div>
-        {payload.lead !== '' && <span style={styles.text}>{payload.lead}</span>}
-        <div
-            style={styles.card}
-            data-testid='avreport-card'
-        >
-            <p style={styles.kind}>{CARD_KIND}</p>
-            <div style={styles.header}>
-                <span
-                    style={styles.heading}
-                    data-testid='avreport-heading'
-                >{headingOf(payload)}</span>
-                <StationLine report={payload}/>
-            </div>
+export const ReportCard: React.FC<{payload: ReportPayload; compactDisplay?: boolean}> = ({payload, compactDisplay}) => {
+    const [focus, show] = useMapFocus(areaFocus);
+    const onShow = useInlineMapShown() && hasArea(payload) ? () => show(payload) : undefined;
 
-            <pre
-                style={styles.source}
-                data-testid='avreport-source'
-            >{payload.src}</pre>
+    return (
+        <div>
+            {payload.lead !== '' && <span style={styles.text}>{payload.lead}</span>}
+            <div
+                style={styles.card}
+                data-testid='avreport-card'
+            >
+                <p style={styles.kind}>{CARD_KIND}</p>
+                <div style={styles.header}>
+                    <span
+                        style={styles.heading}
+                        data-testid='avreport-heading'
+                    >{headingOf(payload)}</span>
+                    <StationLine report={payload}/>
+                </div>
 
-            {payload.rowsDropped && (
+                <pre
+                    style={styles.source}
+                    data-testid='avreport-source'
+                >{payload.src}</pre>
+
+                {payload.rowsDropped && (
                 <p
                     style={styles.note}
                     data-testid='avreport-degraded'
                 >{ROWS_DROPPED_NOTE}</p>
             )}
 
-            {!compactDisplay && (
+                {!compactDisplay && (
                 <ErrorBoundary fallback={<p style={styles.note}>{DETAIL_FAILED}</p>}>
                     <ReportMap
                         report={payload}
                         surface='card'
                         postId={payload.postId}
+                        focus={focus}
                     />
                 </ErrorBoundary>
             )}
 
-            {!compactDisplay && (
+                {!compactDisplay && (
                 <ErrorBoundary fallback={<p style={styles.note}>{DETAIL_FAILED}</p>}>
                     <div style={styles.detail}>
-                        <ReportDetail report={payload}/>
+                        <ReportDetail
+                            report={payload}
+                            onShow={onShow}
+                        />
                     </div>
                 </ErrorBoundary>
             )}
 
-            <div style={styles.actions}>
-                <button
-                    type='button'
-                    style={styles.button}
-                    onClick={() => showReport(payload)}
-                >{'Open details'}</button>
+                <div style={styles.actions}>
+                    <button
+                        type='button'
+                        style={styles.button}
+                        onClick={() => showReport(payload)}
+                    >{'Open details'}</button>
+                </div>
             </div>
+            {payload.trail !== '' && <span style={styles.text}>{payload.trail}</span>}
         </div>
-        {payload.trail !== '' && <span style={styles.text}>{payload.trail}</span>}
-    </div>
-);
+    );
+};
 
 export default ReportCard;

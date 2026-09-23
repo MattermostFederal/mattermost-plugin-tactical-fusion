@@ -2,6 +2,8 @@ import type {Report} from './types';
 import {headingOf, isPlaced} from './types';
 
 import {positionPayload} from '../decorators/airport/map';
+import type {MapFocus} from '../decorators/location/map/focus';
+import {focusOn} from '../decorators/location/map/focus';
 import type {MapEllipse} from '../decorators/location/map/overlay';
 import type {MapShape} from '../decorators/location/map/paint';
 import {isRenderable} from '../decorators/location/map/span';
@@ -46,6 +48,32 @@ export function reportShapes(report: Report): MapShape[] {
         ring.push({lat: coord.lat.decimal, lon: coord.lon.decimal});
     }
     return [{rings: [ring], closed: true, color: REPORT_COLOR}];
+}
+
+const METERS_PER_DEGREE = 111320;
+
+export function hasArea(report: Report): boolean {
+    return reportShapes(report).length > 0 || (placed(report) !== null && radiusEllipse(report) !== undefined);
+}
+
+export function areaFocus(report: Report, seq: number): MapFocus | null {
+    const shapes = reportShapes(report);
+    if (shapes.length > 0) {
+        return focusOn(shapes[0].rings[0], seq);
+    }
+
+    const center = placed(report);
+    const ellipse = radiusEllipse(report);
+    if (center === null || ellipse === undefined) {
+        return null;
+    }
+
+    const dLat = ellipse.major / METERS_PER_DEGREE;
+    const dLon = dLat / Math.max(Math.cos((center.lat * Math.PI) / 180), 0.01);
+    return focusOn([
+        {lat: center.lat - dLat, lon: center.lon - dLon},
+        {lat: center.lat + dLat, lon: center.lon + dLon},
+    ], seq);
 }
 
 export function drawsNothing(report: Report): boolean {
