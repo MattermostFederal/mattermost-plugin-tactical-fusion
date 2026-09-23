@@ -152,6 +152,9 @@ func (p *Plugin) decorateMessage(post *model.Post, ref time.Time) (result *model
 		// author the decoration as well.
 		expanded := decorators.StandaloneExpansion(
 			p.decorators.Get(found.Type), tagger.URLFor(found.Type, found.Params), found.Trail, found.Params)
+		if expanded != "" {
+			expanded = tagger.Decorate(expanded, ref)
+		}
 		if expanded != "" && utf8.RuneCountInString(expanded) <= safePostRunes {
 			message = expanded
 		}

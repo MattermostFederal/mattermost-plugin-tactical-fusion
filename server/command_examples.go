@@ -143,11 +143,11 @@ func (p *Plugin) examplesResponse(args *model.CommandArgs) *model.CommandRespons
 // formatExampleMessages is every message the format commands will write, so the
 // size gate above can measure them alongside the decorator sets.
 func (p *Plugin) formatExampleMessages() []string {
-	return append(p.cotExampleMessages(), p.geoJSONExampleMessages()...)
+	return append(append(p.cotExampleMessages(), p.geoJSONExampleMessages()...), p.tfrExampleMessages()...)
 }
 
 func (p *Plugin) postExamples(args *model.CommandArgs, messages []string) *model.CommandResponse {
-	failed, total := 0, len(messages)+p.cotExampleCount()+p.geoJSONExampleCount()
+	failed, total := 0, len(messages)+p.cotExampleCount()+p.geoJSONExampleCount()+p.tfrExampleCount()
 
 	for _, message := range messages {
 		if _, appErr := p.API.CreatePost(examplePost(args, message)); appErr != nil {
@@ -159,6 +159,7 @@ func (p *Plugin) postExamples(args *model.CommandArgs, messages []string) *model
 
 	failed += p.postCotExamples(args)
 	failed += p.postGeoJSONExamples(args)
+	failed += p.postTFRExample(args)
 
 	if failed == total {
 		return ephemeralResponse(errcode.WithCode(errcode.CommandExamplesPostFailed,

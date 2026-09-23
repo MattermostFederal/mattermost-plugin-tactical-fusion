@@ -37,10 +37,10 @@ func TestExamplesPostOneMessagePerSet(t *testing.T) {
 
 	messages := runExamplePosts(t, p)
 
-	want := len(exampleSetOrder) + len(cotExampleOrder) + p.geoJSONExampleCount()
+	want := len(exampleSetOrder) + len(cotExampleOrder) + p.geoJSONExampleCount() + p.tfrExampleCount()
 	if len(messages) != want {
-		t.Fatalf("got %d messages for %d sets plus %d Cursor on Target events plus %d GeoJSON documents",
-			len(messages), len(exampleSetOrder), len(cotExampleOrder), p.geoJSONExampleCount())
+		t.Fatalf("got %d messages for %d sets plus %d Cursor on Target events plus %d GeoJSON documents plus %d TFRs",
+			len(messages), len(exampleSetOrder), len(cotExampleOrder), p.geoJSONExampleCount(), p.tfrExampleCount())
 	}
 
 	for i, key := range exampleSetOrder {

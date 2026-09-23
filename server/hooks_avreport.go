@@ -46,7 +46,7 @@ func (p *Plugin) recognizeAvReport(post *model.Post, ref time.Time) (*model.Post
 	}
 
 	if source.Kind == avreport.SourceMessage && p.avreportFormats().Table {
-		if expanded, ok := p.expandAvReport(post, report); ok {
+		if expanded, ok := p.expandAvReport(post, report, ref); ok {
 			return expanded, true
 		}
 	}
@@ -73,7 +73,7 @@ func (p *Plugin) recognizeAvReport(post *model.Post, ref time.Time) (*model.Post
 	return updated, true
 }
 
-func (p *Plugin) expandAvReport(post *model.Post, report avreport.Report) (*model.Post, bool) {
+func (p *Plugin) expandAvReport(post *model.Post, report avreport.Report, ref time.Time) (*model.Post, bool) {
 	if p.decorators == nil {
 		return nil, false
 	}
@@ -84,8 +84,12 @@ func (p *Plugin) expandAvReport(post *model.Post, report avreport.Report) (*mode
 		avreport.ParamInstant: {strconv.FormatInt(report.Instant(), 10)},
 	})
 
-	message, ok := avreport.Expanded(href, report)
-	if !ok || utf8.RuneCountInString(message) > safePostRunes {
+	table, ok := avreport.Expanded(href, report)
+	if !ok {
+		return nil, false
+	}
+	message := tagger.Decorate(table, ref)
+	if utf8.RuneCountInString(message) > safePostRunes {
 		return nil, false
 	}
 

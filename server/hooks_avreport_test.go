@@ -858,3 +858,15 @@ func TestATFRInANotamFenceStampsACardCarryingItsCircle(t *testing.T) {
 		t.Errorf("the card does not carry the circle: radius %v value %v", blob["radius_nm"], blob["value"])
 	}
 }
+
+func TestAnExpandedTFRIsStableUnderTheHook(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	first := p.decoratePost(&model.Post{Message: reportTFR, UserId: testUserID}, hookRef)
+	if first == nil || !strings.Contains(first.Message, "/decorate/location?") {
+		t.Fatalf("the TFR's coordinate was not linked in the table: %+v", first)
+	}
+	if again := p.decoratePost(&model.Post{Message: first.Message, UserId: testUserID}, hookRef); again != nil {
+		t.Errorf("the stored TFR table was rewritten again:\n%s", again.Message)
+	}
+}
