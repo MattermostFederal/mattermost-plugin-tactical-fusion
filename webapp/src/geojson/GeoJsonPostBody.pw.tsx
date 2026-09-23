@@ -404,3 +404,15 @@ test('a drawn feature is a button that shows it on the map, and an undrawn one i
     await show.click();
     await expect(component.getByRole('button', {name: 'Show Unlocated on the map'})).toHaveCount(0);
 });
+
+test('the whole feature row, description included, is the button', async ({mount}) => {
+    const component = await mount(
+        <GeoJsonPostBodyHarness
+            features={[{name: 'Depot', kind: 'Point', properties: [{key: 'description', value: 'Issue point'}]}]}
+        />,
+    );
+
+    const show = component.getByRole('button', {name: 'Show Depot on the map'});
+    await expect(show.getByTestId('geojson-feature-description')).toHaveText('Issue point');
+    await component.getByTestId('geojson-feature-description').click();
+});

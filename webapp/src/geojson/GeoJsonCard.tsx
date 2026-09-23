@@ -88,10 +88,10 @@ const styles: Record<string, React.CSSProperties> = {
         padding: '6px 0',
     },
     featureHead: {alignItems: 'baseline', display: 'flex', flexWrap: 'wrap', gap: '0.5em'},
-    featureButton: {background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', font: 'inherit', padding: 0, textAlign: 'left'},
+    featureButton: {background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', display: 'block', font: 'inherit', padding: 0, textAlign: 'left', width: '100%'},
     name: {fontWeight: 600},
-    featureNote: {opacity: 0.9, fontSize: '0.9em', margin: '2px 0 0'},
-    featureDescription: {opacity: 0.9, fontSize: '0.9em', margin: '2px 0 0', whiteSpace: 'pre-wrap'},
+    featureNote: {display: 'block', opacity: 0.9, fontSize: '0.9em', margin: '2px 0 0'},
+    featureDescription: {display: 'block', opacity: 0.9, fontSize: '0.9em', margin: '2px 0 0', whiteSpace: 'pre-wrap'},
     actions: {display: 'flex', gap: '12px', padding: '0 12px 8px'},
     button: {
         background: 'none',
@@ -159,37 +159,37 @@ const Dot: React.FC<{color: string}> = ({color}) => {
 
 const Feature: React.FC<{feature: GeoJsonFeature; onShow?: () => void}> = ({feature, onShow}) => {
     const description = descriptionOf(feature);
-    const head = (
+    const body = (
         <>
-            <Dot color={feature.color}/>
-            <span style={styles.name}>{feature.name}</span>
+            <span style={styles.featureHead}>
+                <Dot color={feature.color}/>
+                <span style={styles.name}>{feature.name}</span>
+            </span>
+            {description !== '' && (
+                <span
+                    style={styles.featureDescription}
+                    data-testid='geojson-feature-description'
+                >
+                    {description}
+                </span>
+            )}
+            {feature.note !== '' && <span style={styles.featureNote}>{feature.note}</span>}
         </>
     );
 
     return (
         <li style={styles.listItem}>
-            {onShow === undefined ? (
-                <div style={styles.featureHead}>{head}</div>
-            ) : (
+            {onShow === undefined ? body : (
                 <button
                     type='button'
-                    style={{...styles.featureHead, ...styles.featureButton}}
+                    style={styles.featureButton}
                     onClick={onShow}
                     aria-label={`Show ${feature.name} on the map`}
                     data-testid='geojson-feature-show'
                 >
-                    {head}
+                    {body}
                 </button>
             )}
-            {description !== '' && (
-                <p
-                    style={styles.featureDescription}
-                    data-testid='geojson-feature-description'
-                >
-                    {description}
-                </p>
-            )}
-            {feature.note !== '' && <p style={styles.featureNote}>{feature.note}</p>}
         </li>
     );
 };

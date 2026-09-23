@@ -109,8 +109,11 @@ func TestTheExampleDrawsIrregularShapes(t *testing.T) {
 		}
 	}
 
-	if len(area.RingCounts) != 2 || area.RingCounts[0] != 2 || area.RingCounts[1] != 1 {
-		t.Errorf("the area's polygons carry %v rings, want a holed polygon and a plain one", area.RingCounts)
+	if len(area.RingCounts) != 1 || area.RingCounts[0] != 2 {
+		t.Errorf("the area's polygons carry %v rings, want one polygon with a hole", area.RingCounts)
+	}
+	if len(area.Rings) == 2 && len(area.Rings[1]) < 8 {
+		t.Errorf("the hole has %d positions, so it is a box rather than an organic shape", len(area.Rings[1]))
 	}
 
 	if len(ring) < 16 {
