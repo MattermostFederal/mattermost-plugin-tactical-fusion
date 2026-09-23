@@ -11,12 +11,13 @@ test.beforeEach(async ({page}) => {
     await stubFeaturesRoute(page, {mapPanel: true, mapInline: false, mapPage: true});
 });
 
-test('renders the report as posted and its decoded rows, with no summary line', async ({mount}) => {
+test('renders the decoded rows and leaves the report as posted to the sidebar', async ({mount}) => {
     const body = await mount(<ReportPostBodyHarness/>);
 
     await expect(body.getByTestId('avreport-card')).toBeVisible();
     await expect(body.getByTestId('avreport-heading')).toHaveText('METAR PHNL');
-    await expect(body.getByTestId('avreport-source')).toHaveText(HONOLULU_METAR.src);
+    await expect(body.getByTestId('avreport-source')).toHaveCount(0);
+    await expect(body.getByTestId('avreport-card')).not.toContainText(HONOLULU_METAR.src);
     await expect(body.getByTestId('avreport-summary')).toHaveCount(0);
     await expect(body.getByTestId('avreport-rows')).toContainText('Issued');
     await expect(body.getByTestId('avreport-rows')).toContainText('30.10 inHg');
@@ -41,11 +42,12 @@ test('Open details opens the report panel', async ({mount}) => {
     await expect(body.getByTestId('selection')).toContainText('avreport-post');
 });
 
-test('a multi-line NOTAM keeps its lines', async ({mount}) => {
+test('a multi-line NOTAM shows its decode, not its raw text', async ({mount}) => {
     const body = await mount(<ReportPostBodyHarness payload={NOTAM_WITH_RADIUS}/>);
 
     await expect(body.getByTestId('avreport-heading')).toHaveText('NOTAM PHNL');
-    await expect(body.getByTestId('avreport-source')).toContainText('Q) PHZH/QMRLC');
+    await expect(body.getByTestId('avreport-source')).toHaveCount(0);
+    await expect(body.getByTestId('avreport-card')).not.toContainText('Q) PHZH/QMRLC');
     await expect(body.getByTestId('avreport-rows')).toContainText('Effective');
     await expect(body.getByTestId('avreport-unknown')).toBeHidden();
 });

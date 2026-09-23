@@ -68,10 +68,12 @@ export const ReportCard: React.FC<{payload: ReportPayload; compactDisplay?: bool
                     <StationLine report={payload}/>
                 </div>
 
-                <pre
-                    style={styles.source}
-                    data-testid='avreport-source'
-                >{payload.src}</pre>
+                {(compactDisplay || payload.rowsDropped) && (
+                    <pre
+                        style={styles.source}
+                        data-testid='avreport-source'
+                    >{payload.src}</pre>
+                )}
 
                 {payload.rowsDropped && (
                 <p
