@@ -16,7 +16,7 @@ test('renders the card for a well formed post', async ({mount}) => {
 
     await expect(component.getByTestId('geojson-card')).toBeVisible();
     await expect(component).toContainText('Depot');
-    await expect(component).toContainText('34.0561, -118.25');
+    await expect(component).not.toContainText('34.0561');
 });
 
 test('names and describes the document, and never counts its features', async ({mount}) => {
@@ -60,7 +60,7 @@ test('draws a feature its color as a dot before its name', async ({mount}) => {
     await expect(dots).toHaveCSS('background-color', 'rgb(255, 0, 0)');
 });
 
-test('keeps the style keys and the naming key out of a feature\'s properties', async ({mount}) => {
+test('shows a feature nothing but its name, whatever properties it carries', async ({mount}) => {
     const component = await mount(
         <GeoJsonPostBodyHarness
             features={[{
@@ -79,12 +79,10 @@ test('keeps the style keys and the naming key out of a feature\'s properties', a
         />,
     );
 
-    await expect(component).toContainText('status');
-    await expect(component).toContainText('active');
-    await Promise.all(['fill', 'fill-opacity', 'stroke', 'stroke-opacity', 'stroke-width', '0.25', '0.8'].map(
+    await expect(component.getByText('Operating area', {exact: true})).toHaveCount(1);
+    await Promise.all(['fill', 'fill-opacity', 'stroke', 'stroke-opacity', 'stroke-width', '0.25', '0.8', 'status', 'active'].map(
         (hidden) => expect(component.getByText(hidden, {exact: true})).toHaveCount(0),
     ));
-    await expect(component.getByText('Operating area', {exact: true})).toHaveCount(1);
 });
 
 test('keeps the text the author wrote around the document, in reading order', async ({mount}) => {
@@ -100,7 +98,7 @@ test('keeps the text the author wrote around the document, in reading order', as
     await expect(component.getByTestId('geojson-card')).toBeVisible();
 });
 
-test('shows each feature the properties it carries', async ({mount}) => {
+test('leaves a feature\'s other properties to the sidebar', async ({mount}) => {
     const component = await mount(
         <GeoJsonPostBodyHarness
             features={[{
@@ -113,10 +111,9 @@ test('shows each feature the properties it carries', async ({mount}) => {
         />,
     );
 
-    await expect(component).toContainText('status');
-    await expect(component).toContainText('active');
-    await expect(component).toContainText('capacity');
-    await expect(component).toContainText('240');
+    await expect(component).toContainText('Depot');
+    await expect(component).not.toContainText('status');
+    await expect(component).not.toContainText('capacity');
 });
 
 /*
@@ -129,12 +126,12 @@ test('renders author markup in a property as text, never as markup', async ({mou
         <GeoJsonPostBodyHarness
             features={[{
                 name: '<img src=x onerror=alert(1)>',
-                properties: [{key: '<b>k</b>', value: '<script>alert(1)</script>'}],
+                properties: [{key: 'description', value: '<script>alert(1)</script><b>k</b>'}],
             }]}
         />,
     );
 
-    await expect(component).toContainText('<script>alert(1)</script>');
+    await expect(component).toContainText('<script>alert(1)</script><b>k</b>');
     await expect(component).toContainText('<img src=x onerror=alert(1)>');
     await expect(component.locator('script')).toHaveCount(0);
     await expect(component.locator('img')).toHaveCount(0);
@@ -390,5 +387,5 @@ test('renders a feature\'s description as a line under its name, not as a proper
 
     await expect(component.getByTestId('geojson-feature-description')).toHaveText('Restricted to exercise traffic.');
     await expect(component.getByText('description', {exact: true})).toHaveCount(0);
-    await expect(component).toContainText('status');
+    await expect(component).not.toContainText('status');
 });

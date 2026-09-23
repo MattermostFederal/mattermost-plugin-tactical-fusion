@@ -3,7 +3,7 @@ import React from 'react';
 import GeoJsonMap from './GeoJsonMap';
 import {showGeoJsonDocument} from './panel';
 import type {GeoJsonFeature, GeoJsonPayload, GeoJsonProperty} from './types';
-import {ringCount, solePosition, vertexCount} from './types';
+import {ringCount, vertexCount} from './types';
 
 import ErrorBoundary from '../components/ErrorBoundary';
 
@@ -88,18 +88,8 @@ const styles: Record<string, React.CSSProperties> = {
     },
     featureHead: {alignItems: 'baseline', display: 'flex', flexWrap: 'wrap', gap: '0.5em'},
     name: {fontWeight: 600},
-    coord: {fontFamily: 'monospace', fontSize: '0.9em'},
     featureNote: {opacity: 0.9, fontSize: '0.9em', margin: '2px 0 0'},
     featureDescription: {opacity: 0.9, fontSize: '0.9em', margin: '2px 0 0', whiteSpace: 'pre-wrap'},
-    properties: {
-        display: 'grid',
-        gridTemplateColumns: 'max-content 1fr',
-        gap: '1px 12px',
-        margin: '4px 0 0',
-        fontSize: '0.9em',
-    },
-    term: {opacity: 0.85},
-    value: {margin: 0, wordBreak: 'break-word'},
     actions: {display: 'flex', gap: '12px', padding: '0 12px 8px'},
     button: {
         background: 'none',
@@ -166,8 +156,6 @@ const Dot: React.FC<{color: string}> = ({color}) => {
 };
 
 const Feature: React.FC<{feature: GeoJsonFeature}> = ({feature}) => {
-    const position = solePosition(feature);
-    const properties = shownProperties(feature);
     const description = descriptionOf(feature);
 
     return (
@@ -175,9 +163,6 @@ const Feature: React.FC<{feature: GeoJsonFeature}> = ({feature}) => {
             <div style={styles.featureHead}>
                 <Dot color={feature.color}/>
                 <span style={styles.name}>{feature.name}</span>
-                {position !== null && (
-                    <span style={styles.coord}>{`${position.lat}, ${position.lon}`}</span>
-                )}
             </div>
             {description !== '' && (
                 <p
@@ -188,16 +173,6 @@ const Feature: React.FC<{feature: GeoJsonFeature}> = ({feature}) => {
                 </p>
             )}
             {feature.note !== '' && <p style={styles.featureNote}>{feature.note}</p>}
-            {properties.length > 0 && (
-                <dl style={styles.properties}>
-                    {properties.map((property) => (
-                        <React.Fragment key={property.key}>
-                            <dt style={styles.term}>{property.key}</dt>
-                            <dd style={styles.value}>{property.value}</dd>
-                        </React.Fragment>
-                    ))}
-                </dl>
-            )}
         </li>
     );
 };

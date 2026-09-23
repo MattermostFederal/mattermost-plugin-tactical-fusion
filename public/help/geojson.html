@@ -233,8 +233,6 @@
             <tbody>
                 <tr><td>Name</td><td>From <code>properties.name</code>, then <code>title</code>, then <code>label</code>, then the feature's <code>id</code>, and otherwise "Feature 1", "Feature 2" and so on.</td></tr>
                 <tr><td>Description</td><td>From <code>properties.description</code>, as a line under the name.</td></tr>
-                <tr><td>Position</td><td>For a lone point only. A polygon's corners are not positions anybody reported.</td></tr>
-                <tr><td>Properties</td><td>Every key and value the feature carries, as text, except the simplestyle keys, which say how to draw it rather than what it is, and the key it was named by. The document under <strong>As posted</strong> in the sidebar still carries them.</td></tr>
                 <tr><td>Note</td><td>Only when the feature is not drawn, saying why.</td></tr>
             </tbody>
         </table>
@@ -363,7 +361,8 @@
         <p>
             <strong>Open details</strong> on the card opens the sidebar on the document. It
             carries the same name, description and feature list the card does, adds each
-            feature's geometry type, its size in rings and points and its length or area, and it is where a point's
+            feature's geometry type, its size in rings and points, its length or area and its
+            other properties, less the simplestyle keys, and it is where a point's
             position becomes a link into the
             <a href="location.html">coordinate tools</a>.
         </p>
