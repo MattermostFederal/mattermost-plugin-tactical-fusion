@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.7.0](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/compare/v0.6.0...v0.7.0) (2026-09-23)
+
+
+### Features
+
+* add markdown note links whose hover card renders tables, lists and checklists, and a /tactical-fusion note command ([c257bce](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/c257bce5d4bac8a1cea23de2e72de25e2bf1f82e))
+* airfields gain IATA codes, runways, radio frequencies, a military designator and a numbered route map ([c257bce](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/c257bce5d4bac8a1cea23de2e72de25e2bf1f82e))
+* decode FAA temporary flight restrictions and draw their circle or area in red on the report map ([c257bce](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/c257bce5d4bac8a1cea23de2e72de25e2bf1f82e))
+* decode METAR, SPECI, TAF and NOTAM reports into plain language, as a link on one line and a card on several ([c257bce](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/c257bce5d4bac8a1cea23de2e72de25e2bf1f82e))
+* decorate radio frequencies written behind FREQ: ([c257bce](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/c257bce5d4bac8a1cea23de2e72de25e2bf1f82e))
+* **mcp:** decode aviation reports, Cursor on Target, GeoJSON, frequencies and date-time groups, and build CoT events and GeoJSON documents ([c257bce](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/c257bce5d4bac8a1cea23de2e72de25e2bf1f82e))
+* **mcp:** expose four tools to the Agents plugin over MCP ([#51](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/51)) ([e7640d1](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/e7640d1e836aa99719300ceb8afeae5f97307585))
+
+
+### Bug Fixes
+
+* load note images through the image proxy when the server has one ([c257bce](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/c257bce5d4bac8a1cea23de2e72de25e2bf1f82e))
+* require permission to post before /tactical-fusion note or examples posts for a user ([c257bce](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/c257bce5d4bac8a1cea23de2e72de25e2bf1f82e))
+
 ## [0.6.0](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/compare/v0.5.1...v0.6.0) (2026-09-17)
 
 
