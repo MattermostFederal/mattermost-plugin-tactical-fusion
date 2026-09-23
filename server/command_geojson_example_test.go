@@ -96,26 +96,21 @@ func TestTheExampleDrawsIrregularShapes(t *testing.T) {
 
 	var ring geojson.Ring
 	var route geojson.Ring
-	var areaParts []geojson.Part
+	var area geojson.Part
 	for _, feature := range document.Features {
 		for _, part := range feature.Geometry.Parts {
 			switch part.Kind {
 			case geojson.KindMultiPoly:
-				if ring == nil {
-					ring = part.Rings[0]
-				}
-				areaParts = append(areaParts, part)
+				area = part
+				ring = part.Rings[0]
 			case geojson.KindLineString:
 				route = part.Rings[0]
 			}
 		}
 	}
 
-	if len(areaParts) != 2 {
-		t.Errorf("the area has %d polygons, want two", len(areaParts))
-	}
-	if len(areaParts) > 0 && len(areaParts[0].Rings) != 2 {
-		t.Errorf("the first polygon has %d rings, want an outer ring and a hole", len(areaParts[0].Rings))
+	if len(area.RingCounts) != 2 || area.RingCounts[0] != 2 || area.RingCounts[1] != 1 {
+		t.Errorf("the area's polygons carry %v rings, want a holed polygon and a plain one", area.RingCounts)
 	}
 
 	if len(ring) < 16 {
