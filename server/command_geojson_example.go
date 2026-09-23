@@ -39,7 +39,8 @@ const geoJSONExample = `{
       "properties": {
         "name": "Forward supply point",
         "description": "Class I and III issue point, open 0600 to 2200 local.",
-        "status": "active", "capacity": 240,
+        "status": "active", "capacity": 240, "fuel": "JP-8",
+        "operator": "1st Battalion S4", "opened": "2026-09-22",
         "marker-color": "#0000ff", "marker-size": "large"
       }
     },
@@ -55,24 +56,42 @@ const geoJSONExample = `{
       "properties": {
         "name": "Primary route",
         "description": "Convoy route from the pier to the supply point, two lanes throughout.",
-        "surface": "paved",
+        "surface": "paved", "lanes": 2, "speed_limit": "40 km/h",
+        "checkpoints": 3, "condition": "green",
         "stroke": "#00a651", "stroke-width": 3, "stroke-opacity": 0.9
       }
     },
     {
       "type": "Feature",
-      "geometry": {"type": "Polygon", "coordinates": [[
-        [-157.9065, 21.3455], [-157.9085, 21.3534], [-157.9148, 21.3588],
-        [-157.9221, 21.3613], [-157.9279, 21.3644], [-157.9345, 21.3621],
-        [-157.9404, 21.3624], [-157.9525, 21.3686], [-157.9597, 21.3626],
-        [-157.9548, 21.3517], [-157.9527, 21.3455], [-157.9524, 21.3401],
-        [-157.9522, 21.3335], [-157.9493, 21.3266], [-157.9422, 21.3235],
-        [-157.9345, 21.3191], [-157.9261, 21.3215], [-157.9254, 21.3338],
-        [-157.9224, 21.3373], [-157.9109, 21.3384], [-157.9065, 21.3455]
-      ]]},
+      "geometry": {"type": "MultiPolygon", "coordinates": [
+        [
+          [
+            [-157.9065, 21.3455], [-157.9085, 21.3534], [-157.9148, 21.3588],
+            [-157.9221, 21.3613], [-157.9279, 21.3644], [-157.9345, 21.3621],
+            [-157.9404, 21.3624], [-157.9525, 21.3686], [-157.9597, 21.3626],
+            [-157.9548, 21.3517], [-157.9527, 21.3455], [-157.9524, 21.3401],
+            [-157.9522, 21.3335], [-157.9493, 21.3266], [-157.9422, 21.3235],
+            [-157.9345, 21.3191], [-157.9261, 21.3215], [-157.9254, 21.3338],
+            [-157.9224, 21.3373], [-157.9109, 21.3384], [-157.9065, 21.3455]
+          ],
+          [
+            [-157.9440, 21.3360], [-157.9440, 21.3450], [-157.9350, 21.3450],
+            [-157.9350, 21.3360], [-157.9440, 21.3360]
+          ]
+        ],
+        [
+          [
+            [-157.8990, 21.3300], [-157.8905, 21.3320], [-157.8870, 21.3395],
+            [-157.8925, 21.3450], [-157.9010, 21.3420], [-157.9035, 21.3350],
+            [-157.8990, 21.3300]
+          ]
+        ]
+      ]},
       "properties": {
         "name": "Operating area",
-        "description": "Restricted to exercise traffic for the duration.",
+        "description": "Restricted to exercise traffic for the duration. The inner block is the hospital grounds and stays open.",
+        "restriction": "exercise traffic only", "effective": "2026-09-22T06:00Z",
+        "expires": "2026-09-30T22:00Z", "poc": "Exercise control, S3",
         "stroke": "#ff0000", "stroke-width": 3, "stroke-opacity": 0.8,
         "fill": "#ff0000", "fill-opacity": 0.25
       }

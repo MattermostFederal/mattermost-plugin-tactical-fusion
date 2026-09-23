@@ -29,8 +29,7 @@ test('names and describes the document, and never counts its features', async ({
         />,
     );
 
-    await expect(component.getByTestId('geojson-kind')).toHaveText('Operating area');
-    await expect(component).not.toContainText('GeoJSON');
+    await expect(component.getByTestId('geojson-kind')).toHaveText('GeoJSON: Operating area');
     await expect(component.getByTestId('geojson-heading')).toHaveCount(0);
     await expect(component.getByTestId('geojson-description')).toHaveText("Tonight's overlay");
     await expect(component.getByTestId('geojson-summary')).toHaveCount(0);

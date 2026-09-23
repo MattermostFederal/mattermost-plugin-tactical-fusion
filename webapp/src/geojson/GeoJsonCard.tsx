@@ -217,7 +217,7 @@ export const GeoJsonCard: React.FC<Props> = ({payload}) => {
                     style={styles.kind}
                     data-testid='geojson-kind'
                 >
-                    {payload.name === '' ? CARD_KIND : payload.name}
+                    {payload.name === '' ? CARD_KIND : `${CARD_KIND}: ${payload.name}`}
                 </p>
                 {payload.name === '' && payload.fileName !== '' && (
                     <div style={styles.header}>
