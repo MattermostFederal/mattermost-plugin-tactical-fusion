@@ -1,6 +1,8 @@
 import {expect, test} from '@playwright/test';
 
-import decorator, {MAX_NOTE_RUNES, firstLine, fromParams} from './index';
+import {HOVER_MAX_WIDTH} from '../Tooltip';
+
+import decorator, {MAX_NOTE_RUNES, NOTE_HOVER_MAX_WIDTH, firstLine, fromParams} from './index';
 
 test('the type is the path segment the server routes', () => {
     expect(decorator.type).toBe('note');
@@ -26,4 +28,9 @@ test('the summary is the first line of text with the markdown stripped', () => {
     expect(firstLine('| Tail | Fuel |\n|:--|--:|')).toBe('Tail Fuel');
     expect(firstLine('- [x] Flight plan filed')).toBe('Flight plan filed');
     expect(decorator.summary({markdown: '> Expect turbulence'})).toBe('Note: Expect turbulence');
+});
+
+test('the hover card is a fifth wider than the framework default', () => {
+    expect(NOTE_HOVER_MAX_WIDTH).toBe(HOVER_MAX_WIDTH * 1.2);
+    expect(decorator.hoverMaxWidth).toBe(NOTE_HOVER_MAX_WIDTH);
 });

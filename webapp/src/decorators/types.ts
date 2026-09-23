@@ -65,6 +65,8 @@ export interface Decorator<T> {
      */
     Hover?: React.ComponentType<{payload: T}>;
 
+    hoverMaxWidth?: number;
+
     postType?: string;
 
     Inline?: React.ComponentType<{payload: T}>;

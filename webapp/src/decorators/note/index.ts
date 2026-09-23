@@ -7,6 +7,8 @@ export const PANEL_TITLE = 'Note';
 
 export const MAX_NOTE_RUNES = 1000;
 
+export const NOTE_HOVER_MAX_WIDTH = 432;
+
 export interface NotePayload {
     markdown: string;
 }
@@ -54,6 +56,8 @@ const decorator: Decorator<NotePayload> = {
     Panel: NotePanel,
 
     Hover: NoteHover,
+
+    hoverMaxWidth: NOTE_HOVER_MAX_WIDTH,
 };
 
 export default decorator;
