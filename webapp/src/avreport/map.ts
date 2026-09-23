@@ -1,5 +1,5 @@
 import type {Report} from './types';
-import {headingOf, isPlaced} from './types';
+import {headingOf, isPlaced, isRestriction} from './types';
 
 import {positionPayload} from '../decorators/airport/map';
 import type {MapFocus} from '../decorators/location/map/focus';
@@ -11,6 +11,12 @@ import {isRenderable} from '../decorators/location/map/span';
 export const METERS_PER_NAUTICAL_MILE = 1852;
 
 export const REPORT_COLOR = '#2e7d9a';
+
+export const RESTRICTION_COLOR = '#d32f2f';
+
+export function reportColor(report: Report): string {
+    return isRestriction(report) ? RESTRICTION_COLOR : REPORT_COLOR;
+}
 
 export function placed(report: Report): {lat: number; lon: number} | null {
     if (!isPlaced(report)) {
@@ -32,7 +38,7 @@ export function radiusEllipse(report: Report): MapEllipse | undefined {
         return undefined;
     }
     const meters = radius * METERS_PER_NAUTICAL_MILE;
-    return {major: meters, minor: meters, angle: 0, color: REPORT_COLOR};
+    return {major: meters, minor: meters, angle: 0, color: reportColor(report)};
 }
 
 export function reportShapes(report: Report): MapShape[] {
@@ -47,7 +53,7 @@ export function reportShapes(report: Report): MapShape[] {
         }
         ring.push({lat: coord.lat.decimal, lon: coord.lon.decimal});
     }
-    return [{rings: [ring], closed: true, color: REPORT_COLOR}];
+    return [{rings: [ring], closed: true, color: reportColor(report)}];
 }
 
 const METERS_PER_DEGREE = 111320;

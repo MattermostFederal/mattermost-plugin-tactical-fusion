@@ -1,6 +1,6 @@
 import {expect, test} from '@playwright/test';
 
-import {METERS_PER_NAUTICAL_MILE, REPORT_COLOR, areaFocus, drawsNothing, hasArea, mapLabel, placed, radiusEllipse, reportShapes} from './map';
+import {METERS_PER_NAUTICAL_MILE, REPORT_COLOR, RESTRICTION_COLOR, areaFocus, drawsNothing, hasArea, mapLabel, placed, radiusEllipse, reportColor, reportShapes} from './map';
 import {HONOLULU_METAR, NOTAM_WITH_RADIUS} from './report_fixtures';
 
 test.beforeEach(() => {
@@ -84,4 +84,18 @@ test('a polygon focuses on the box around its ring', () => {
 test('a report with no area cannot be focused', () => {
     expect(hasArea(HONOLULU_METAR)).toBe(false);
     expect(areaFocus(HONOLULU_METAR, 1)).toBeNull();
+});
+
+test('a flight restriction is drawn in red, marker, circle and area alike', () => {
+    const tfr = {...NOTAM_WITH_RADIUS, rows: [{label: 'Restriction', value: 'temporary flight restriction'}, ...NOTAM_WITH_RADIUS.rows]};
+    const area = {...tfr, radiusNm: '', area: ['43.6167,-116.2000', '43.7500,-116.0000', '43.5000,-115.9167']};
+
+    expect(reportColor(tfr)).toBe(RESTRICTION_COLOR);
+    expect(radiusEllipse(tfr)?.color).toBe(RESTRICTION_COLOR);
+    expect(reportShapes(area)[0].color).toBe(RESTRICTION_COLOR);
+});
+
+test('any other report keeps the report color', () => {
+    expect(reportColor(NOTAM_WITH_RADIUS)).toBe(REPORT_COLOR);
+    expect(radiusEllipse(NOTAM_WITH_RADIUS)?.color).toBe(REPORT_COLOR);
 });

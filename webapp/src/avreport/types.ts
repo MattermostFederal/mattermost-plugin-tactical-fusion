@@ -20,6 +20,12 @@ export const MAX_REPORT_FLAGS = 8;
 
 export const MAX_AREA_POINTS = 64;
 
+export const RESTRICTION_LABEL = 'Restriction';
+
+export function isRestriction(report: Report): boolean {
+    return report.rows.some((row) => row.label === RESTRICTION_LABEL);
+}
+
 export const KINDS = ['METAR', 'SPECI', 'TAF', 'NOTAM'] as const;
 
 export type ReportKind = typeof KINDS[number];
