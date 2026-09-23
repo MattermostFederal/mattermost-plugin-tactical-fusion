@@ -82,9 +82,17 @@ function flag(blob: Record<string, unknown>, key: string): boolean {
     return blob[key] === true;
 }
 
+function listOf(blob: Record<string, unknown>, key: string): unknown[] | null {
+    const raw = Object.hasOwn(blob, key) ? blob[key] : undefined;
+    if (raw === undefined || raw === null) {
+        return [];
+    }
+    return Array.isArray(raw) ? raw : null;
+}
+
 function strings(blob: Record<string, unknown>, key: string, cap: number): string[] | null {
-    const raw = blob[key];
-    if (!Array.isArray(raw)) {
+    const raw = listOf(blob, key);
+    if (raw === null) {
         return null;
     }
     const out: string[] = [];
@@ -111,8 +119,8 @@ function readRow(item: unknown): ReportRow | null {
 }
 
 function rows(blob: Record<string, unknown>, key: string): ReportRow[] | null {
-    const raw = blob[key];
-    if (!Array.isArray(raw)) {
+    const raw = listOf(blob, key);
+    if (raw === null) {
         return null;
     }
     const out: ReportRow[] = [];
@@ -140,8 +148,8 @@ function readPeriod(value: unknown): ReportPeriod | null {
 }
 
 function periods(blob: Record<string, unknown>, key: string): ReportPeriod[] | null {
-    const raw = blob[key];
-    if (!Array.isArray(raw)) {
+    const raw = listOf(blob, key);
+    if (raw === null) {
         return null;
     }
     const out: ReportPeriod[] = [];
@@ -197,7 +205,7 @@ export function fromWire(body: unknown): Report | null {
     const bodyPeriods = periods(blob, 'periods');
     const remarks = rows(blob, 'remarks');
     const unknown = strings(blob, 'unknown', MAX_REPORT_UNKNOWN);
-    const area = Object.hasOwn(blob, 'area') ? strings(blob, 'area', MAX_AREA_POINTS) : [];
+    const area = strings(blob, 'area', MAX_AREA_POINTS);
     if (flags === null || bodyRows === null || bodyPeriods === null || remarks === null || unknown === null || area === null) {
         return null;
     }

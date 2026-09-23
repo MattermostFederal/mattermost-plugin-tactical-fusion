@@ -133,3 +133,27 @@ test.describe('fromWire', () => {
         expect(fromWire({...wire(), inferred: false})?.inferred).toBe(false);
     });
 });
+
+test.describe('lists the plugin RPC boundary turned into null', () => {
+    test('an empty list stored as null, or missing, reads as empty', () => {
+        const wire = {...propsFor(HONOLULU_METAR).tactical_fusion_avreport as Record<string, unknown>};
+        for (const key of ['flags', 'periods', 'remarks', 'unknown', 'area']) {
+            wire[key] = null;
+        }
+        delete wire.rows;
+
+        const payload = fromProps({tactical_fusion_avreport: wire});
+        expect(payload).not.toBeNull();
+        expect(payload?.flags).toEqual([]);
+        expect(payload?.rows).toEqual([]);
+        expect(payload?.periods).toEqual([]);
+        expect(payload?.area).toEqual([]);
+    });
+
+    test('a list that is present and not a list is still refused', () => {
+        for (const key of ['flags', 'rows', 'periods', 'remarks', 'unknown', 'area']) {
+            const wire = {...propsFor(HONOLULU_METAR).tactical_fusion_avreport as Record<string, unknown>, [key]: 'nope'};
+            expect(fromProps({tactical_fusion_avreport: wire}), key).toBeNull();
+        }
+    });
+});
