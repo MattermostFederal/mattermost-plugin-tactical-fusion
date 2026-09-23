@@ -50,7 +50,7 @@ const geoJSONExample = `{
       ]},
       "properties": {
         "name": "Primary route", "surface": "paved",
-        "stroke": "#0000ff", "stroke-width": 3, "stroke-opacity": 0.9
+        "stroke": "#00a651", "stroke-width": 3, "stroke-opacity": 0.9
       }
     },
     {

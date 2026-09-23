@@ -187,8 +187,6 @@ const Feature: React.FC<{feature: GeoJsonFeature}> = ({feature}) => {
 };
 
 export const GeoJsonCard: React.FC<Props> = ({payload}) => {
-    const heading = payload.name === '' ? payload.fileName : payload.name;
-
     return (
         <div>
             {payload.lead !== '' && <span style={styles.text}>{payload.lead}</span>}
@@ -196,14 +194,19 @@ export const GeoJsonCard: React.FC<Props> = ({payload}) => {
                 style={styles.card}
                 data-testid='geojson-card'
             >
-                <p style={styles.kind}>{CARD_KIND}</p>
-                {heading !== '' && (
+                <p
+                    style={styles.kind}
+                    data-testid='geojson-kind'
+                >
+                    {payload.name === '' ? CARD_KIND : payload.name}
+                </p>
+                {payload.name === '' && payload.fileName !== '' && (
                     <div style={styles.header}>
                         <span
                             style={styles.heading}
                             data-testid='geojson-heading'
                         >
-                            {heading}
+                            {payload.fileName}
                         </span>
                     </div>
                 )}

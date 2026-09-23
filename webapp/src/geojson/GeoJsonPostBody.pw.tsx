@@ -29,7 +29,9 @@ test('names and describes the document, and never counts its features', async ({
         />,
     );
 
-    await expect(component.getByTestId('geojson-heading')).toHaveText('Operating area');
+    await expect(component.getByTestId('geojson-kind')).toHaveText('Operating area');
+    await expect(component).not.toContainText('GeoJSON');
+    await expect(component.getByTestId('geojson-heading')).toHaveCount(0);
     await expect(component.getByTestId('geojson-description')).toHaveText("Tonight's overlay");
     await expect(component.getByTestId('geojson-summary')).toHaveCount(0);
     await expect(component).not.toContainText('3 features');
@@ -38,10 +40,12 @@ test('names and describes the document, and never counts its features', async ({
 
 test('falls back to the file name and otherwise heads the card with nothing', async ({mount}) => {
     const named = await mount(<GeoJsonPostBodyHarness fileName='overlay.geojson'/>);
+    await expect(named.getByTestId('geojson-kind')).toHaveText('GeoJSON');
     await expect(named.getByTestId('geojson-heading')).toHaveText('overlay.geojson');
     await named.unmount();
 
     const bare = await mount(<GeoJsonPostBodyHarness/>);
+    await expect(bare.getByTestId('geojson-kind')).toHaveText('GeoJSON');
     await expect(bare.getByTestId('geojson-heading')).toHaveCount(0);
     await expect(bare.getByTestId('geojson-description')).toHaveCount(0);
 });

@@ -141,13 +141,15 @@ func TestTheExampleCarriesTheStyleItDemonstrates(t *testing.T) {
 		t.Fatalf("the example does not parse: %v", err)
 	}
 
-	var area, point geojson.Style
+	var area, point, route geojson.Style
 	for _, feature := range document.Features {
 		switch feature.Geometry.Kind {
 		case geojson.KindPolygon:
 			area = feature.Style
 		case geojson.KindPoint:
 			point = feature.Style
+		case geojson.KindLineString:
+			route = feature.Style
 		}
 	}
 
@@ -156,6 +158,9 @@ func TestTheExampleCarriesTheStyleItDemonstrates(t *testing.T) {
 	}
 	if point.Color == "" || point.MarkerSize == "" {
 		t.Errorf("the supply point states no marker style: %+v", point)
+	}
+	if route.Color == "" || route.Color == point.Color || route.Color == area.Color {
+		t.Errorf("the three features do not show three colors: point %q, route %q, area %q", point.Color, route.Color, area.Color)
 	}
 }
 
