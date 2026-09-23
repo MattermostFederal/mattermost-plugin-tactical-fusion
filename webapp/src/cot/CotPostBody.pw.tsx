@@ -184,15 +184,15 @@ test('a position note is shown beside the reading it explains', async ({mount}) 
     await expect(component.getByRole('link')).toHaveCount(0);
 });
 
-test('a linkable position opens the coordinate tools', async ({mount}) => {
+test('the position is plain text, since the map already shows it', async ({mount}) => {
     const component = await mount(
         <CotPostBodyHarness
             event={{lat: '34.0561', lon: '-118.2500', format: 'dd', value: '34.0561,-118.2500'}}
         />,
     );
 
-    const link = component.getByRole('link', {name: '34.0561, -118.2500'});
-    await expect(link).toHaveAttribute('href', /\/decorate\/location\?f=dd&v=34\.0561%2C-118\.2500$/);
+    await expect(component.getByTestId('cot-card')).toContainText('34.0561, -118.2500');
+    await expect(component.getByRole('link', {name: '34.0561, -118.2500'})).toHaveCount(0);
 });
 
 test('an unrecognized type says so rather than guessing', async ({mount}) => {

@@ -88,18 +88,7 @@ function Row({label, children}: {label: string; children: React.ReactNode}) {
 }
 
 function PositionValue({event}: {event: CotEvent}) {
-    const reading = `${event.lat}, ${event.lon}`;
-
-    if (!isLinkable(event)) {
-        return <span>{reading}</span>;
-    }
-
-    const params = new URLSearchParams({f: event.format, v: event.value});
-    return (
-        <HoverLink href={`${pluginBaseUrl()}/decorate/location?${params.toString()}`}>
-            {reading}
-        </HoverLink>
-    );
+    return <span>{`${event.lat}, ${event.lon}`}</span>;
 }
 
 const FILE_ID = /^[a-z0-9]{26}$/;
