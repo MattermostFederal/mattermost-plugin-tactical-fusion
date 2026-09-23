@@ -1,6 +1,6 @@
 import {expect, test} from '@playwright/test';
 
-import {METERS_PER_NAUTICAL_MILE, REPORT_COLOR, RESTRICTION_COLOR, areaFocus, drawsNothing, hasArea, mapLabel, placed, radiusEllipse, reportColor, reportShapes} from './map';
+import {METERS_PER_NAUTICAL_MILE, REPORT_COLOR, RESTRICTION_COLOR, drawsNothing, mapLabel, placed, radiusEllipse, reportColor, reportShapes} from './map';
 import {HONOLULU_METAR, NOTAM_WITH_RADIUS} from './report_fixtures';
 
 test.beforeEach(() => {
@@ -60,30 +60,6 @@ test('an area with a vertex this build cannot read, or too few vertices, draws n
     expect(reportShapes({...NOTAM_WITH_RADIUS, area: ['43.6167,-116.2000', 'nope', '43.5000,-115.9167']})).toEqual([]);
     expect(reportShapes({...NOTAM_WITH_RADIUS, area: ['43.6167,-116.2000', '43.7500,-116.0000']})).toEqual([]);
     expect(reportShapes(NOTAM_WITH_RADIUS)).toEqual([]);
-});
-
-test('a circle focuses on a box one radius around its center', () => {
-    const focus = areaFocus(NOTAM_WITH_RADIUS, 3);
-    const center = placed(NOTAM_WITH_RADIUS)!;
-
-    expect(hasArea(NOTAM_WITH_RADIUS)).toBe(true);
-    expect(focus?.seq).toBe(3);
-    const [[west, south], [east, north]] = focus!.box!;
-    expect(north - center.lat).toBeCloseTo((5 * METERS_PER_NAUTICAL_MILE) / 111320, 5);
-    expect(center.lat - south).toBeCloseTo(north - center.lat, 9);
-    expect(east - center.lon).toBeGreaterThan(north - center.lat);
-    expect(center.lon - west).toBeCloseTo(east - center.lon, 9);
-});
-
-test('a polygon focuses on the box around its ring', () => {
-    const tfr = {...NOTAM_WITH_RADIUS, radiusNm: '', area: ['43.6167,-116.2000', '43.7500,-116.0000', '43.5000,-115.9167']};
-
-    expect(areaFocus(tfr, 1)?.box).toEqual([[-116.2, 43.5], [-115.9167, 43.75]]);
-});
-
-test('a report with no area cannot be focused', () => {
-    expect(hasArea(HONOLULU_METAR)).toBe(false);
-    expect(areaFocus(HONOLULU_METAR, 1)).toBeNull();
 });
 
 test('a flight restriction is drawn in red, marker, circle and area alike', () => {

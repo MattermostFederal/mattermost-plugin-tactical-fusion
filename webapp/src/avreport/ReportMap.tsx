@@ -4,7 +4,6 @@ import {drawsNothing, mapLabel, placed, radiusEllipse, reportColor, reportShapes
 import type {Report} from './types';
 
 import type {Camera} from '../decorators/location/map/camera';
-import type {MapFocus} from '../decorators/location/map/focus';
 import LocationMap, {INLINE_MAP_HEIGHT, MAP_HEIGHT} from '../decorators/location/map/LocationMap';
 import {useNearViewport} from '../decorators/location/map/near_viewport';
 import {overlayPageHref} from '../decorators/location/map/view';
@@ -44,8 +43,7 @@ export const ReportMapCanvas: React.FC<{
     fill?: boolean;
     inline?: boolean;
     openAt?: Camera;
-    focus?: MapFocus;
-}> = ({report, pageEnabled, postId, fill, inline, openAt, focus}) => {
+}> = ({report, pageEnabled, postId, fill, inline, openAt}) => {
     const point = placed(report);
     if (point === null) {
         return null;
@@ -67,7 +65,6 @@ export const ReportMapCanvas: React.FC<{
             fill={fill}
             inline={inline}
             openAt={openAt}
-            focus={focus}
         />
     );
 };
@@ -76,8 +73,7 @@ const ReportMap: React.FC<{
     report: Report;
     surface: 'card' | 'panel';
     postId?: string;
-    focus?: MapFocus;
-}> = ({report, surface, postId, focus}) => {
+}> = ({report, surface, postId}) => {
     const {preferences} = usePreferences();
     const {features} = useFeatures();
     const [box, setBox] = useState<HTMLDivElement | null>(null);
@@ -101,7 +97,6 @@ const ReportMap: React.FC<{
                     pageEnabled={features.mapPage}
                     postId={postId}
                     inline={surface === 'card'}
-                    focus={focus}
                 />
             ) : <div style={surface === 'card' ? styles.reservedInline : styles.reserved}/>}
         </div>

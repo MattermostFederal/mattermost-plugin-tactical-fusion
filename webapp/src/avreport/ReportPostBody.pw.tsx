@@ -112,29 +112,3 @@ test('draws no map for a station the build cannot place, even with the inline ma
     await expect(body.getByTestId('avreport-card')).toBeVisible();
     await expect(body.getByTestId('avreport-map')).toBeHidden();
 });
-
-test('a report with an area on the map makes each decoded row a button that shows it', async ({mount, page}) => {
-    await stubFeaturesRoute(page, {mapPanel: true, mapInline: true, mapPage: true});
-    await serveMapAssets(page);
-
-    const body = await mount(<ReportPostBodyHarness payload={NOTAM_WITH_RADIUS}/>);
-
-    const rows = body.getByTestId('avreport-row-show');
-    await expect(rows).toHaveCount(NOTAM_WITH_RADIUS.rows.length);
-    await expect(rows.first()).toHaveAccessibleName(/^Show on the map: /);
-    await rows.first().click();
-    await expect(body.getByTestId('avreport-map')).toBeVisible();
-});
-
-test('rows are plain text for a report with no area, or with the inline map off', async ({mount, page}) => {
-    await stubFeaturesRoute(page, {mapPanel: true, mapInline: true, mapPage: true});
-    const station = await mount(<ReportPostBodyHarness/>);
-    await expect(station.getByTestId('avreport-rows')).toBeVisible();
-    await expect(station.getByTestId('avreport-row-show')).toHaveCount(0);
-    await station.unmount();
-
-    await stubFeaturesRoute(page, {mapPanel: true, mapInline: false, mapPage: true});
-    const hidden = await mount(<ReportPostBodyHarness payload={NOTAM_WITH_RADIUS}/>);
-    await expect(hidden.getByTestId('avreport-rows')).toBeVisible();
-    await expect(hidden.getByTestId('avreport-row-show')).toHaveCount(0);
-});
