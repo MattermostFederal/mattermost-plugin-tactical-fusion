@@ -373,7 +373,7 @@ test.describe('the detail sections', () => {
 });
 
 test.describe('the hover card', () => {
-    test('is one line, and it is the headline', async ({mount}) => {
+    test('shows a vulnerability as the badges the panel shows', async ({mount}) => {
         const card = await mount(
             <CyberHarness
                 surface='hover'
@@ -381,8 +381,36 @@ test.describe('the hover card', () => {
             />,
         );
 
-        await expect(card.getByText(HEADLINE)).toBeVisible();
+        await expect(card.getByTestId('cyber-severity')).toHaveText('10.0Critical');
+        await expect(card.getByTestId('cyber-exploited')).toHaveText('Known exploited');
+        await expect(card.getByText(HEADLINE)).toHaveCount(0);
         await expect(card.getByText(SUMMARY)).toHaveCount(0);
+    });
+
+    test('keeps the badges on one line', async ({mount}) => {
+        const card = await mount(
+            <CyberHarness
+                surface='hover'
+                payload={CVE}
+            />,
+        );
+
+        const severity = await card.getByTestId('cyber-severity').boundingBox();
+        const exploited = await card.getByTestId('cyber-exploited').boundingBox();
+        expect(severity?.y).toBe(exploited?.y);
+    });
+
+    test('falls back to the headline for a vulnerability with no score and no listing', async ({mount}) => {
+        const card = await mount(
+            <CyberHarness
+                surface='hover'
+                payload={CVE}
+                reply='bare'
+            />,
+        );
+
+        await expect(card.getByText(HEADLINE)).toBeVisible();
+        await expect(card.getByTestId('cyber-severity')).toHaveCount(0);
     });
 
     test('renders nothing while the request is in flight', async ({mount}) => {
@@ -396,6 +424,7 @@ test.describe('the hover card', () => {
 
         await expect(card.getByTestId('requests')).toBeVisible();
         await expect(card.getByText(HEADLINE)).toHaveCount(0);
+        await expect(card.getByTestId('cyber-severity')).toHaveCount(0);
     });
 
     test('renders nothing when the lookup failed', async ({mount}) => {
@@ -409,6 +438,7 @@ test.describe('the hover card', () => {
 
         await expect(card.getByTestId('requests')).toHaveText('1');
         await expect(card.getByText(HEADLINE)).toHaveCount(0);
+        await expect(card.getByTestId('cyber-severity')).toHaveCount(0);
     });
 
     test('renders nothing when the server refused the link', async ({mount}) => {
@@ -422,6 +452,7 @@ test.describe('the hover card', () => {
 
         await expect(card.getByTestId('requests')).toHaveText('1');
         await expect(card.getByText(HEADLINE)).toHaveCount(0);
+        await expect(card.getByTestId('cyber-severity')).toHaveCount(0);
     });
 
     test('shares its answer with the panel that follows it', async ({mount}) => {
@@ -432,7 +463,7 @@ test.describe('the hover card', () => {
             />,
         );
 
-        await expect(card.getByText(HEADLINE)).toBeVisible();
+        await expect(card.getByTestId('cyber-severity')).toBeVisible();
         await expect(card.getByTestId('requests')).toHaveText('1');
     });
 });

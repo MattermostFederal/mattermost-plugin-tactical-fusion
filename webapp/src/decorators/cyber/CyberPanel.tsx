@@ -1,8 +1,9 @@
 import React, {useState} from 'react';
 
-import {KIND_LABELS, isKind, isSeverity, useCyber} from './cyber';
-import type {CyberSeverity, CyberState} from './cyber';
-import type {CyberLink, CyberReference, CyberResponse, CyberVectorMetric} from './types';
+import Badges from './Badges';
+import {KIND_LABELS, isKind, useCyber} from './cyber';
+import type {CyberState} from './cyber';
+import type {CyberLink, CyberReference, CyberVectorMetric} from './types';
 
 import LinkButton from '../../components/LinkButton';
 import {pluginBaseUrl} from '../../plugin_url';
@@ -35,23 +36,7 @@ const styles: Record<string, React.CSSProperties> = {
         margin: '2px 0 0',
         wordBreak: 'break-all',
     },
-    badges: {display: 'flex', flexWrap: 'wrap', gap: '6px', margin: '10px 0 0'},
-    badge: {
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '6px',
-        padding: '2px 8px',
-        borderRadius: '4px',
-        fontSize: '12px',
-        lineHeight: '18px',
-        fontWeight: 600,
-    },
-    badgeScore: {fontVariantNumeric: 'tabular-nums', fontWeight: 700},
-    exploited: {
-        background: 'rgba(210, 75, 78, 0.12)',
-        color: 'var(--error-text, #d24b4e)',
-        boxShadow: 'inset 0 0 0 1px var(--error-text, #d24b4e)',
-    },
+    badgesInPanel: {margin: '10px 0 0'},
     summaryWrap: {margin: '16px 0 0'},
     summary: {
         fontSize: '14px',
@@ -191,14 +176,6 @@ const styles: Record<string, React.CSSProperties> = {
     tagFix: {background: 'rgba(6, 214, 160, 0.16)'},
 };
 
-const SEVERITY_STYLES: Record<CyberSeverity, React.CSSProperties> = {
-    critical: {background: '#b3261e', color: '#ffffff'},
-    high: {background: '#d9531e', color: '#ffffff'},
-    medium: {background: '#f2b21b', color: '#1f1f1f'},
-    low: {background: '#3b7fc4', color: '#ffffff'},
-    none: {background: 'rgba(var(--center-channel-color-rgb), 0.12)', color: 'var(--center-channel-color)'},
-};
-
 const FIX_TAGS = new Set(['Patch', 'Vendor Advisory', 'Mitigation', 'Release Notes']);
 
 function isCodeLike(value: string): boolean {
@@ -248,37 +225,6 @@ const Row: React.FC<{label: string; value: string; query: string; copyable: bool
                 </td>
             )}
         </tr>
-    );
-};
-
-function capitalized(word: string): string {
-    return word.charAt(0).toUpperCase() + word.slice(1);
-}
-
-const Badges: React.FC<{details: CyberResponse}> = ({details}) => {
-    const severity = isSeverity(details.severity) ? details.severity : null;
-    if (!severity && !details.exploited) {
-        return null;
-    }
-
-    return (
-        <div style={styles.badges}>
-            {severity && (
-                <span
-                    data-testid='cyber-severity'
-                    style={{...styles.badge, ...SEVERITY_STYLES[severity]}}
-                >
-                    {details.score !== '' && <span style={styles.badgeScore}>{details.score}</span>}
-                    {capitalized(severity)}
-                </span>
-            )}
-            {details.exploited && (
-                <span
-                    data-testid='cyber-exploited'
-                    style={{...styles.badge, ...styles.exploited}}
-                >{'Known exploited'}</span>
-            )}
-        </div>
     );
 };
 
@@ -515,7 +461,10 @@ function renderBody(state: CyberState): React.ReactNode {
         <>
             <p style={styles.title}>{details.title}</p>
             {details.title !== details.value && <p style={styles.value}>{details.value}</p>}
-            <Badges details={details}/>
+            <Badges
+                details={details}
+                style={styles.badgesInPanel}
+            />
             <Summary text={details.summary}/>
 
             {details.rows.length > 0 && (
