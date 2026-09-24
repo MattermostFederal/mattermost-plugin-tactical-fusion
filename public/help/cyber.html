@@ -206,8 +206,9 @@
 
         <p>
             Where the <a href="#cyber-datasets">datasets</a> have something to add, the autonomous
-            system, the country, the region and the city come from <code>ip.tsv</code> or from a
-            vendor <code>.mmdb</code> database an operator dropped in.
+            system and the country come from <code>ip.tsv</code>, which ships in the bundle from
+            IPtoASN (<code>iptoasn.com</code>, public domain), and the region and the city from a vendor <code>.mmdb</code>
+            database an operator dropped in.
         </p>
 
         <p>
@@ -387,7 +388,7 @@
                 <tr><th>File</th><th>Carries</th></tr>
             </thead>
             <tbody>
-                <tr><td><code>cve.tsv</code></td><td>Vulnerability records: summary, dates, CVSS score and vector, and the weaknesses each one names</td></tr>
+                <tr><td><code>cve.tsv</code></td><td>Vulnerability records: summary, dates, CVSS score and vector, and the weaknesses each one names. The bundle carries only the CVEs in KEV, which a full file here replaces</td></tr>
                 <tr><td><code>cvedetail.tsv</code></td><td>Affected products and versions, as the reporting organization lists them and as NVD configures them, the references, and which organization reported each weakness</td></tr>
                 <tr><td><code>cwedetail.tsv</code></td><td>For each weakness: its whole description, background, consequences, mitigations, detection methods and observed CVEs. Ships with the plugin</td></tr>
                 <tr><td><code>attackdetail.tsv</code></td><td>For each ATT&amp;CK technique and tactic: its whole description, the mitigations and detection strategies MITRE maps to it with their analytics and log sources, every procedure example from a group, malware, tool or campaign, and its references. Ships with the plugin</td></tr>
@@ -396,7 +397,7 @@
                 <tr><td><code>malware.tsv</code></td><td>Every malware sample in abuse.ch MalwareBazaar, found by its SHA-256, MD5 or SHA-1, with its file name, file type, malware family and the date it was first seen. Never shipped, under the same terms as <code>threat.tsv</code></td></tr>
                 <tr><td><code>epss.tsv</code></td><td>Exploit prediction scores and percentiles</td></tr>
                 <tr><td><code>kev.tsv</code></td><td>The known exploited vulnerabilities catalog, with its due dates and required actions</td></tr>
-                <tr><td><code>ip.tsv</code></td><td>Autonomous system, country, region and city per address range</td></tr>
+                <tr><td><code>ip.tsv</code></td><td>Autonomous system, country, region and city per address range. The bundle carries IPtoASN's, gzipped, which a file here replaces</td></tr>
                 <tr><td><code>watchlist.tsv</code></td><td>Your own verdicts, for any indicator of any kind</td></tr>
                 <tr><td>Any <code>.mmdb</code></td><td>A vendor IP database in MaxMind's format, read alongside <code>ip.tsv</code>; the one that gives an address a region and city. None ships with the plugin. DB-IP's free <em>IP to City Lite</em> database works and is licensed CC BY 4.0; MaxMind's GeoLite2 and paid databases work too. When DB-IP or GeoLite2 data answers, the panel, the page and the hover card credit the vendor, as both licenses require, and the panel and page link back to it</td></tr>
             </tbody>

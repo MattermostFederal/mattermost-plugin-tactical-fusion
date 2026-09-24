@@ -404,6 +404,11 @@ bundle:
 	./build/bin/manifest dist
 ifneq ($(wildcard $(ASSETS_DIR)/.),)
 	cp -r $(ASSETS_DIR) dist/$(PLUGIN_ID)/
+	@# A test run unpacks a bundled .tsv.gz beside itself; ship only the archive.
+	@for archive in dist/$(PLUGIN_ID)/$(ASSETS_DIR)/cyber/*.tsv.gz; do \
+		[ -e "$$archive" ] || continue; \
+		rm -f "$${archive%.gz}" "$${archive%.gz}.unpacking"; \
+	done
 endif
 ifneq ($(HAS_PUBLIC),)
 	cp -r public dist/$(PLUGIN_ID)/

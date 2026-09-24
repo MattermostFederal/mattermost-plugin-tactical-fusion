@@ -18,11 +18,15 @@ The watchlist in particular must never be moved under `public/`.
 | `advisory.tsv` | The IP addresses and file hashes named in the CISA advisories listed in `build/cyberdata/advisories.txt` | yes |
 | `attackdetail.tsv` | MITRE Enterprise ATT&CK: each technique's and tactic's whole description, mitigations, detection strategies and analytics, procedure examples and references | yes |
 | `cwedetail.tsv` | MITRE CWE research view 1000: each weakness's whole description, background, consequences, mitigations, detection methods and observed examples | yes |
+| `cve.tsv`, `cvedetail.tsv` | The NVD records of every CVE in `kev.tsv`, and only those | yes |
+| `ip.tsv.gz` | IPtoASN's address ranges with their autonomous system and country, gzipped; the plugin unpacks it beside itself on first read | yes, as the archive only |
 
-Everything else the decorator reads is too large to bundle and is attached to a
-release instead, for operators to drop into the directory named by the
-`CyberDatasetsDir` setting: `cve.tsv`, `cvedetail.tsv`, `epss.tsv`, `ip.tsv`, plus any vendor
-`.mmdb` database and the operator's own `watchlist.tsv`.
+Everything else the decorator reads is too large or changes too fast to bundle
+and is attached to a release instead, for operators to drop into the directory
+named by the `CyberDatasetsDir` setting: the full `cve.tsv` and `cvedetail.tsv`,
+`epss.tsv`, `threat.tsv`, `malware.tsv`, any vendor `.mmdb` database and the
+operator's own `watchlist.tsv`. A file there replaces the bundled one of the same
+name.
 
 ## Refreshing `kev.tsv`
 
@@ -117,3 +121,39 @@ indicator became valid and the date the advisory was published, and links to
 the advisory. Add an advisory by adding its id to `build/cyberdata/advisories.txt`
 and running `make cyber-advisories`.
 
+
+### `cve.tsv` and `cvedetail.tsv`
+
+| | |
+|---|---|
+| Upstream | The full files built from NVD's yearly JSON feeds, `https://nvd.nist.gov/feeds/json/cve/2.0/` |
+| Origin | National Institute of Standards and Technology, National Vulnerability Database |
+| License | A work of the United States government, so not subject to domestic copyright |
+| Format | The same rows as the full files, filtered to the CVE ids in `kev.tsv` |
+
+The stamp keeps the full file's compile time and prefixes its source with
+`KEV entries only, from`, which is how the panel knows a miss means "not in the
+slice" rather than "no such CVE". Rebuild them after `kev.tsv` or the full files
+change:
+
+```
+go run ./build/cyberdata -only cvekev,cvedetailkev
+```
+
+### `ip.tsv.gz`
+
+| | |
+|---|---|
+| Upstream | `https://iptoasn.com/data/ip2asn-combined.tsv.gz` |
+| Origin | IPtoASN |
+| License | Public domain, Open Data Commons PDDL 1.0 |
+| Format | Address ranges with their autonomous system number, name and country |
+
+The plugin unpacks the archive into `ip.tsv` beside it on first read, about
+59 MB, which `.gitignore` keeps out of the tree and the `bundle` target keeps out
+of the bundle. Rebuild it with `make cyber-sources`, then:
+
+```
+go run ./build/cyberdata -only ip -label "IPtoASN ip2asn-combined, fetched <date>"
+gzip -9 -c build/cyberdata/out/ip.tsv > assets/cyber/ip.tsv.gz
+```

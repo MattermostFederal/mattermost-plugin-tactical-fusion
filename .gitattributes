@@ -3,3 +3,4 @@ webapp/src/manifest.ts linguist-generated=true
 
 *.pmtiles binary
 *.pbf binary
+*.gz binary
