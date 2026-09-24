@@ -86,7 +86,7 @@ func TestDescribeRendersAVulnerability(t *testing.T) {
 			"CVE-2021-44228", "2021-12-10", "2022-01-01", "10.0", "Critical",
 			"CVSS:3.1/AV:N/AC:L", "CWE-502,CWE-99999", "Remote code execution in a logging library.",
 		}, "\t")},
-		intel.NameEPSS: {strings.Join([]string{"CVE-2021-44228", "0.975", "99.9th"}, "\t") + "\t2026-09-01"},
+		intel.NameEPSS: {strings.Join([]string{"CVE-2021-44228", "0.975", "0.9998"}, "\t") + "\t2026-09-01"},
 		intel.NameKEV: {strings.Join([]string{
 			"CVE-2021-44228", "2021-12-10", "2021-12-24", "Known", "Apache Log4j2", "Apply updates.",
 		}, "\t")},
@@ -103,7 +103,7 @@ func TestDescribeRendersAVulnerability(t *testing.T) {
 	if got := rowValue(d, "CVSS"); got != "10.0 Critical" {
 		t.Fatalf("CVSS %q", got)
 	}
-	if got := rowValue(d, "EPSS"); got != "0.975 (99.9th percentile)" {
+	if got := rowValue(d, "EPSS"); got != "97.5% chance of exploitation in the next 30 days, higher than 99.98% of scored CVEs" {
 		t.Fatalf("EPSS %q", got)
 	}
 	if got := rowValue(d, "Known exploited"); !strings.Contains(got, "Listed 2021-12-10") {
@@ -492,6 +492,28 @@ func TestALinkAlreadyPostedForARetiredTechniqueStillResolves(t *testing.T) {
 	for _, id := range []string{"T1562", "T1562.001", "T1053.001", "T1043"} {
 		if !RecognizeAs(KindAttack, id) {
 			t.Errorf("%s no longer resolves", id)
+		}
+	}
+}
+
+func TestAsPercentMovesTheDecimalPointWithoutRoundingAway(t *testing.T) {
+	cases := map[string]string{
+		"0.99802": "99.802%",
+		"0.03351": "3.351%",
+		"0.5":     "50%",
+		"0.00043": "0.043%",
+		"1.0":     "100%",
+		"0.1":     "10%",
+		"0.10000": "10%",
+	}
+	for fraction, want := range cases {
+		if got, ok := asPercent(fraction); !ok || got != want {
+			t.Errorf("asPercent(%q) = %q, %v, want %q", fraction, got, ok, want)
+		}
+	}
+	for _, bad := range []string{"", "99.9th", "1.5e-3", ".5", "2.0", "-0.1", "1.5", "1.00001"} {
+		if _, ok := asPercent(bad); ok {
+			t.Errorf("asPercent accepted %q", bad)
 		}
 	}
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/csv"
 	"encoding/hex"
@@ -1327,16 +1328,52 @@ func appendOnce(values []string, value string) []string {
 	return append(values, value)
 }
 
+func epssScoreDate(header string) (string, error) {
+	for field := range strings.SplitSeq(strings.TrimPrefix(strings.TrimSpace(header), "#"), ",") {
+		key, value, ok := strings.Cut(field, ":")
+		if !ok || key != "score_date" {
+			continue
+		}
+		scored, err := time.Parse(time.RFC3339, value)
+		if err != nil {
+			return "", fmt.Errorf("the EPSS score date %q is not a timestamp: %w", value, err)
+		}
+		return scored.UTC().Format("2006-01-02"), nil
+	}
+	return "", fmt.Errorf("the EPSS export names no score_date in its first line %q", header)
+}
+
+func plainDecimal(value string) string {
+	value = clean(value)
+	if !strings.ContainsAny(value, "eE") {
+		return value
+	}
+	parsed, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return value
+	}
+	return strconv.FormatFloat(parsed, 'f', -1, 64)
+}
+
 func buildEPSS(source string) ([][]string, error) {
-	handle, err := os.Open(source)
+	handle, err := os.Open(source) // #nosec G304 -- a source file under the directory the operator names with -source
 	if err != nil {
 		return nil, err
 	}
-	defer handle.Close()
+	defer func() { _ = handle.Close() }()
 
-	reader := csv.NewReader(handle)
+	buffered := bufio.NewReader(handle)
+	header, err := buffered.ReadString('\n')
+	if err != nil {
+		return nil, fmt.Errorf("reading the EPSS header: %w", err)
+	}
+	scoreDate, err := epssScoreDate(header)
+	if err != nil {
+		return nil, err
+	}
+
+	reader := csv.NewReader(buffered)
 	reader.FieldsPerRecord = -1
-	reader.Comment = '#'
 
 	records, err := reader.ReadAll()
 	if err != nil {
@@ -1346,8 +1383,6 @@ func buildEPSS(source string) ([][]string, error) {
 		return nil, fmt.Errorf("the EPSS export is empty")
 	}
 
-	modelDate := time.Now().UTC().Format("2006-01-02")
-
 	var rows [][]string
 	for _, record := range records[1:] {
 		if len(record) < 3 || !strings.HasPrefix(record[0], "CVE-") {
@@ -1356,9 +1391,9 @@ func buildEPSS(source string) ([][]string, error) {
 
 		rows = append(rows, []string{
 			strings.ToUpper(clean(record[0])),
-			clean(record[1]),
-			clean(record[2]),
-			modelDate,
+			plainDecimal(record[1]),
+			plainDecimal(record[2]),
+			scoreDate,
 		})
 	}
 

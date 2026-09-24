@@ -3,6 +3,7 @@ package cyber
 import (
 	"errors"
 	"net/netip"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -244,10 +245,34 @@ func nvdTimestamp(value string) (string, time.Time) {
 	return minute.Format("2006-01-02 15:04") + " UTC", minute
 }
 
+var unitFraction = regexp.MustCompile(`^(0|1)\.(\d+)$`)
+
+func asPercent(fraction string) (string, bool) {
+	parts := unitFraction.FindStringSubmatch(fraction)
+	if parts == nil || (parts[1] == "1" && strings.Trim(parts[2], "0") != "") {
+		return "", false
+	}
+	digits := parts[2] + strings.Repeat("0", max(0, 2-len(parts[2])))
+	whole := strings.TrimLeft(parts[1]+digits[:2], "0")
+	if whole == "" {
+		whole = "0"
+	}
+	if rest := strings.TrimRight(digits[2:], "0"); rest != "" {
+		return whole + "." + rest + "%", true
+	}
+	return whole + "%", true
+}
+
 func epssText(epss intel.EPSSRecord) string {
-	text := epss.Score
-	if epss.Percentile != "" {
-		text += " (" + epss.Percentile + " percentile)"
+	probability, ok := asPercent(epss.Score)
+	if !ok {
+		probability = epss.Score
+	}
+	text := probability + " chance of exploitation in the next 30 days"
+	if percentile, ok := asPercent(epss.Percentile); ok {
+		text += ", higher than " + percentile + " of scored CVEs"
+	} else if epss.Percentile != "" {
+		text += " (percentile " + epss.Percentile + ")"
 	}
 	return text
 }

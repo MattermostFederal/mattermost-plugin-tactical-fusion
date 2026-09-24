@@ -400,3 +400,36 @@ func TestAnAttackNameCarriesNoTypographicDash(t *testing.T) {
 		t.Fatalf("attackName = %q", got)
 	}
 }
+
+func TestAnEPSSScoreCarriesTheDateFIRSTScoredIt(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "epss.csv")
+	body := "#model_version:v2026.06.15,score_date:2026-09-20T12:00:20Z\ncve,epss,percentile\nCVE-2099-0001,0.5,0.9\n"
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	rows, err := buildEPSS(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"CVE-2099-0001", "0.5", "0.9", "2026-09-20"}; !reflect.DeepEqual(rows[0], want) {
+		t.Fatalf("row %q, want %q", rows[0], want)
+	}
+}
+
+func TestAnEPSSExportWithNoScoreDateIsRefused(t *testing.T) {
+	for _, header := range []string{"cve,epss,percentile", "#model_version:v2026.06.15", "#score_date:yesterday"} {
+		if _, err := epssScoreDate(header); err == nil {
+			t.Errorf("accepted %q", header)
+		}
+	}
+}
+
+func TestAnEPSSValueInExponentFormIsWrittenAsAPlainDecimal(t *testing.T) {
+	cases := map[string]string{"4e-05": "0.00004", "1e-05": "0.00001", "0.03351": "0.03351", "1.0": "1.0", "9.9E-4": "0.00099"}
+	for value, want := range cases {
+		if got := plainDecimal(value); got != want {
+			t.Errorf("plainDecimal(%q) = %q, want %q", value, got, want)
+		}
+	}
+}
