@@ -270,6 +270,7 @@ func (p *Plugin) OnActivate() error {
 			"failed to initialize the MCP server"))
 	}
 	p.registerMCPServerBestEffort()
+	p.warmCyberDatasets()
 
 	return nil
 }

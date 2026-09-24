@@ -17,13 +17,17 @@ const cyberCacheTTL = 5 * time.Second
 type cyberDatasets struct {
 	lock sync.Mutex
 
-	set     *intel.Set
-	checked time.Time
+	set        *intel.Set
+	checked    time.Time
+	generation int
+	refreshing bool
 }
 
 func (p *Plugin) cyberIntel() *intel.Set {
-	dirs := p.cyberDirs()
+	return p.cyberIntelFor(p.cyberDirs())
+}
 
+func (p *Plugin) cyberIntelFor(dirs []string) *intel.Set {
 	p.cyber.lock.Lock()
 	defer p.cyber.lock.Unlock()
 
@@ -36,16 +40,49 @@ func (p *Plugin) cyberIntel() *intel.Set {
 		return p.cyber.set
 	}
 
+	if p.cyber.set != nil {
+		if !p.cyber.refreshing {
+			p.cyber.refreshing = true
+			go p.refreshCyberDatasets(dirs, p.cyber.generation)
+		}
+		return p.cyber.set
+	}
+
+	p.cyber.set = p.openCyberDatasets(dirs)
+	p.cyber.checked = time.Now()
+
+	return p.cyber.set
+}
+
+func (p *Plugin) openCyberDatasets(dirs []string) *intel.Set {
 	set, problems := intel.Open(dirs)
 	for _, problem := range problems {
 		p.warnOnce(problem.Path, cyberProblemMessage(problem),
 			"error_code", cyberProblemCode(problem), "path", problem.Path, "error", problem.Err.Error())
 	}
+	return set
+}
 
+func (p *Plugin) refreshCyberDatasets(dirs []string, generation int) {
+	set := p.openCyberDatasets(dirs)
+
+	p.cyber.lock.Lock()
+	defer p.cyber.lock.Unlock()
+
+	p.cyber.refreshing = false
+	if p.cyber.generation != generation {
+		return
+	}
 	p.cyber.set = set
 	p.cyber.checked = time.Now()
+}
 
-	return set
+func (p *Plugin) warmCyberDatasets() {
+	if _, err := p.API.GetBundlePath(); err != nil {
+		return
+	}
+	dirs := p.cyberDirs()
+	go p.cyberIntelFor(dirs)
 }
 
 func cyberProblemCode(problem *intel.FileError) int {
@@ -110,4 +147,5 @@ func (p *Plugin) forgetCyberDatasets() {
 
 	p.cyber.set = nil
 	p.cyber.checked = time.Time{}
+	p.cyber.generation++
 }

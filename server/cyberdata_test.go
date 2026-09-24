@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/cyber"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/cyber/intel"
@@ -188,5 +189,52 @@ func TestABrokenFileIsReportedOnceAndTheRestStillAnswer(t *testing.T) {
 	}
 	if schema != 1 {
 		t.Fatalf("the same broken file was reported %d times, want once", schema)
+	}
+}
+
+func expireCyberCache(p *Plugin) {
+	p.cyber.lock.Lock()
+	p.cyber.checked = time.Time{}
+	p.cyber.lock.Unlock()
+}
+
+func TestAChangedDatasetIsServedFromTheOldSetWhileTheNewOneOpens(t *testing.T) {
+	dir := t.TempDir()
+	p := withDatasetDir(t, dir)
+	old := p.cyberIntel()
+
+	writeKEV(t, dir)
+	expireCyberCache(p)
+
+	if served := p.cyberIntel(); served != old {
+		t.Fatal("a changed directory blocked the caller on a reopen rather than serving the set it had")
+	}
+
+	deadline := time.Now().Add(5 * time.Second)
+	for !p.cyberIntel().Has(intel.NameKEV) {
+		if time.Now().After(deadline) {
+			t.Fatal("the background reopen never replaced the old set")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func TestARefreshThatAForgetOvertookIsDropped(t *testing.T) {
+	dir := t.TempDir()
+	writeKEV(t, dir)
+	p := withDatasetDir(t, dir)
+	p.cyberIntel()
+
+	p.cyber.lock.Lock()
+	generation := p.cyber.generation
+	p.cyber.lock.Unlock()
+	p.forgetCyberDatasets()
+
+	p.refreshCyberDatasets(p.cyberDirs(), generation)
+
+	p.cyber.lock.Lock()
+	defer p.cyber.lock.Unlock()
+	if p.cyber.set != nil {
+		t.Fatal("a refresh started before the configuration changed replaced the cleared set")
 	}
 }
