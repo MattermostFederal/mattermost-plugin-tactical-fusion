@@ -29,6 +29,8 @@ PLANETILER_OMT_SHA256 ?= 246cd5c9c10102a3bcc58465ae7dde5b97aa4cee6524ea25788e233
 include build/setup.mk
 
 BUNDLE_NAME ?= $(PLUGIN_ID)-$(PLUGIN_VERSION).tar.gz
+FULL_BUNDLE_NAME ?= $(PLUGIN_ID)-$(PLUGIN_VERSION)-full.tar.gz
+MAX_BUNDLE_BYTES ?= 104857600
 
 # Include custom makefile, if present
 ifneq ($(wildcard build/custom.mk),)
@@ -78,9 +80,12 @@ release-check:
 ## Generate SHA256 checksum for the release bundle.
 .PHONY: release-checksum
 release-checksum:
-	@echo "Generating SHA256 checksum..."
-	@cd dist && shasum -a 256 $(BUNDLE_NAME) > $(BUNDLE_NAME).sha256
-	@echo "Checksum: $$(cat dist/$(BUNDLE_NAME).sha256)"
+	@echo "Generating SHA256 checksums..."
+	@cd dist && for bundle in $(BUNDLE_NAME) $(FULL_BUNDLE_NAME); do \
+		[ -f "$$bundle" ] || continue; \
+		shasum -a 256 "$$bundle" > "$$bundle.sha256"; \
+		echo "Checksum: $$(cat "$$bundle.sha256")"; \
+	done
 
 ## Include SBOMs and CodeQL results in the release bundle and repackage.
 .PHONY: release-bundle
@@ -112,13 +117,59 @@ release-bundle:
 .PHONY: release-sign
 release-sign:
 	@if [ -n "$(PLUGIN_SIGNING_KEY)" ]; then \
-		echo "Signing plugin bundle with GPG key $(PLUGIN_SIGNING_KEY)..."; \
-		gpg -u $(PLUGIN_SIGNING_KEY) --verbose --personal-digest-preferences SHA256 --detach-sign dist/$(BUNDLE_NAME); \
-		echo "Signature: dist/$(BUNDLE_NAME).sig"; \
+		for bundle in $(BUNDLE_NAME) $(FULL_BUNDLE_NAME); do \
+			[ -f "dist/$$bundle" ] || continue; \
+			echo "Signing dist/$$bundle with GPG key $(PLUGIN_SIGNING_KEY)..."; \
+			gpg -u $(PLUGIN_SIGNING_KEY) --verbose --personal-digest-preferences SHA256 --detach-sign "dist/$$bundle"; \
+			echo "Signature: dist/$$bundle.sig"; \
+		done; \
 	else \
 		echo "PLUGIN_SIGNING_KEY not set, skipping signing."; \
 		echo "To sign, set PLUGIN_SIGNING_KEY to your GPG key ID."; \
 	fi
+
+## Fails when the plugin bundle is larger than MAX_BUNDLE_BYTES, Mattermost's default
+## FileSettings.MaxFileSize of 100 MiB, which gates plugin upload: a bigger bundle is refused
+## by every install that has not raised it. The full bundle is exempt and says so in the
+## release notes.
+##
+## Fails when the plugin bundle exceeds the default upload limit
+.PHONY: bundle-size-check
+bundle-size-check:
+	@size=$$(wc -c < dist/$(BUNDLE_NAME) | tr -d ' '); \
+	if [ "$$size" -gt $(MAX_BUNDLE_BYTES) ]; then \
+		echo "ERROR: dist/$(BUNDLE_NAME) is $$size bytes, over the $(MAX_BUNDLE_BYTES) byte default upload limit."; \
+		echo "Every install that has not raised FileSettings.MaxFileSize would refuse it."; \
+		exit 1; \
+	fi; \
+	echo "dist/$(BUNDLE_NAME) is $$size bytes, $$(( $(MAX_BUNDLE_BYTES) - size )) under the default upload limit."
+
+## Builds dist/<id>-<version>-full.tar.gz for installs that would rather raise their upload
+## limit than copy datasets by hand: the finished bundle with the full cve and cvedetail
+## datasets in place of the KEV-only slices, and the DB-IP City Lite database, all from
+## build/cyberdata/release. It is over the default upload limit on purpose, so it is never
+## the default download.
+##
+## Builds the full release bundle, with every downloadable cyber dataset inside
+.PHONY: release-full-bundle
+release-full-bundle:
+	@for file in cve.tsv.gz cvedetail.tsv.gz dbip-city-lite.mmdb; do \
+		[ -f "$(CYBER_RELEASE_DIR)/$$file" ] || { echo "error: $(CYBER_RELEASE_DIR)/$$file is missing; run 'make cyber-refresh cyber-release-package' first."; exit 1; }; \
+	done
+	@[ -d dist/$(PLUGIN_ID) ] || { echo "error: dist/$(PLUGIN_ID) is missing; run 'make dist' first."; exit 1; }
+	rm -rf dist/full
+	mkdir -p dist/full
+	cp -R dist/$(PLUGIN_ID) dist/full/
+	rm -f dist/full/$(PLUGIN_ID)/$(ASSETS_DIR)/cyber/cve.tsv dist/full/$(PLUGIN_ID)/$(ASSETS_DIR)/cyber/cvedetail.tsv
+	cp $(CYBER_RELEASE_DIR)/cve.tsv.gz $(CYBER_RELEASE_DIR)/cvedetail.tsv.gz $(CYBER_RELEASE_DIR)/dbip-city-lite.mmdb dist/full/$(PLUGIN_ID)/$(ASSETS_DIR)/cyber/
+	rm -f dist/$(FULL_BUNDLE_NAME)
+ifeq ($(shell uname),Darwin)
+	tar --disable-copyfile -czf dist/$(FULL_BUNDLE_NAME) -C dist/full $(PLUGIN_ID)
+else
+	tar -czf dist/$(FULL_BUNDLE_NAME) -C dist/full $(PLUGIN_ID)
+endif
+	rm -rf dist/full
+	@echo "full bundle built at: dist/$(FULL_BUNDLE_NAME), $$(wc -c < dist/$(FULL_BUNDLE_NAME) | tr -d ' ') bytes"
 
 ## Create a git tag for the release version.
 .PHONY: release-tag
@@ -133,9 +184,9 @@ release-tag:
 
 CYBER_REFRESH ?= 1
 
-## Full release build: checks, a cyber data refresh, clean, style, tests, build, SBOM audit, CodeQL, bundle with SBOMs, sign, and checksum.
+## Full release build: checks, a cyber data refresh, clean, style, tests, build, SBOM audit, CodeQL, bundle with SBOMs, the full bundle, sign, and checksum.
 .PHONY: release
-release: release-check $(if $(filter 1,$(CYBER_REFRESH)),cyber-refresh cyber-release-package) clean all sbom-audit codeql-analyze security-gate release-bundle virus-scan release-sign release-checksum
+release: release-check $(if $(filter 1,$(CYBER_REFRESH)),cyber-refresh cyber-release-package) clean all sbom-audit codeql-analyze security-gate release-bundle bundle-size-check $(if $(filter 1,$(CYBER_REFRESH)),release-full-bundle) virus-scan release-sign release-checksum
 	@echo ""
 	@echo "=========================================="
 	@echo "Release build complete!"
@@ -591,6 +642,7 @@ else
 endif
 
 	@echo plugin built at: dist/$(BUNDLE_NAME)
+	@$(MAKE) --no-print-directory bundle-size-check
 
 ## Builds and bundles the plugin.
 .PHONY: dist

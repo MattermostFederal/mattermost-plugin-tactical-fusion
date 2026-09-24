@@ -456,6 +456,18 @@
             <code>gunzip -k</code> yourself and drop in the result.
         </p>
 
+        <p>
+            Each release also publishes a <strong>full bundle</strong>,
+            <code>com.mattermost.plugin-tactical-fusion-&lt;version&gt;-full.tar.gz</code>: the same
+            plugin with the full vulnerability datasets and DB-IP's City Lite database already
+            inside, so an air-gapped install needs no dataset directory at all. It is about
+            235 MB, over Mattermost's default 100 MiB upload limit, so raise
+            <strong>Maximum File Size</strong> under <strong>File Storage</strong>
+            (<code>FileSettings.MaxFileSize</code>), and any reverse proxy's request body
+            limit, before uploading it. Each node unpacks the datasets beside themselves on
+            first read, about 750 MB more on disk than the standard bundle.
+        </p>
+
         <div class="alert alert-warning">
             <p class="alert-title">A dataset whose schema stamp is absent or wrong is skipped.</p>
             <p>

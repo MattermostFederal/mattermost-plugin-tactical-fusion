@@ -374,6 +374,12 @@ Releases are automated with **release-please** driven by
   `cyber-release-package` packs the full `cve` and `cvedetail` datasets
   and DB-IP City Lite into `build/cyberdata/release`, which the workflow
   attaches to the release. `CYBER_REFRESH=0` releases the committed data.
+- A release publishes two bundles. The standard one must stay under Mattermost's
+  default 100 MiB upload limit (`FileSettings.MaxFileSize`, which gates plugin
+  upload), and `bundle-size-check` fails `make dist` and `make release` when it
+  does not. `release-full-bundle` builds `<id>-<version>-full.tar.gz`: the same
+  bundle with the full `cve`/`cvedetail` in place of the KEV slices and DB-IP
+  City Lite added, deliberately over the limit, for air-gapped installs.
 
 ## CI and security
 
