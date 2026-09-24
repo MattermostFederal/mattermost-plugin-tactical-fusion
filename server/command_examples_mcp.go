@@ -51,7 +51,7 @@ func agentPromptText(prompt agentPrompt) string {
 
 func mcpExampleMessage() string {
 	var b strings.Builder
-	b.WriteString("#### Ask " + mcpExamplesAgent + "\n\n")
+	b.WriteString("#### Ask the Fusion agent\n\n")
 	b.WriteString("One question for each kind of thing the Tactical Fusion tools know. Copy one into a channel or a direct message with the agent.\n")
 	for _, prompt := range agentPrompts {
 		b.WriteString("\n**" + prompt.label + "**\n\n")

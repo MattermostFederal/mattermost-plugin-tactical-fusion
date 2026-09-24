@@ -34,7 +34,7 @@ func codeBlocks(t *testing.T, message string) []string {
 
 func TestTheAgentExampleHoldsOnePromptPerBlock(t *testing.T) {
 	message := mcpExampleMessage()
-	if !strings.HasPrefix(message, "#### Ask "+mcpExamplesAgent+"\n") {
+	if !strings.HasPrefix(message, "#### Ask the Fusion agent\n") {
 		t.Fatalf("the message does not open with its heading:\n%s", message)
 	}
 
@@ -90,5 +90,16 @@ func TestOuterFencedOutrunsTheLongestFenceInside(t *testing.T) {
 		if !strings.HasPrefix(got, want+"\n") || !strings.HasSuffix(got, "\n"+want) || strings.HasPrefix(got, want+"`") {
 			t.Errorf("outerFenced(%q) = %q, want fences of %q", body, got, want)
 		}
+	}
+}
+
+func TestTheAgentExampleMentionsTheAgentOnlyInsideCode(t *testing.T) {
+	message := mcpExampleMessage()
+	for _, block := range codeBlocks(t, message) {
+		message = strings.Replace(message, block, "", 1)
+	}
+
+	if strings.Contains(message, mcpExamplesAgent) {
+		t.Errorf("the examples post mentions %s outside code, so posting it would summon the agent:\n%s", mcpExamplesAgent, message)
 	}
 }
