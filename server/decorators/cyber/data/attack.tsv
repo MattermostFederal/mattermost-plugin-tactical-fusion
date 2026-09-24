@@ -1,4 +1,4 @@
-#tactical-fusion-cyber/1	attack	2026-09-24T14:49:56Z	enterprise-attack.json
+#tactical-fusion-cyber/1	attack	2026-09-24T15:06:54Z	enterprise-attack.json
 id	name	kind	tactics	parent	platforms	summary	status	replaced_by
 T1001	Data Obfuscation	technique	TA0011		ESXi,Linux,macOS,Windows	Adversaries may obfuscate command and control traffic to make it more difficult to detect.	active	
 T1001.001	Junk Data	subtechnique	TA0011	T1001	ESXi,Linux,macOS,Windows	Adversaries may add junk data to protocols used for command and control to make detection more difficult.	active	

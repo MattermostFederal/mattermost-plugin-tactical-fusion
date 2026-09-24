@@ -1,4 +1,4 @@
-#tactical-fusion-cyber/1	cveattack	2026-09-24T14:52:32Z	kev-attack-enterprise.json
+#tactical-fusion-cyber/1	cveattack	2026-09-24T15:06:55Z	kev-attack-enterprise.json
 CVE-2007-5659	[{"id":"T1204.002","types":["exploitation technique"]}]
 CVE-2008-0655	[{"id":"T1204.002","types":["exploitation technique"]}]
 CVE-2008-2992	[{"id":"T1204.002","types":["exploitation technique"]}]
