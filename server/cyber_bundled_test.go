@@ -169,3 +169,9 @@ func TestTheBundledMappingsReachTheirPanels(t *testing.T) {
 		}
 	}
 }
+
+func TestTheBundledEPSSScoresACVE(t *testing.T) {
+	if _, err := openBundledCyber(t).EPSS("CVE-2021-44228"); err != nil {
+		t.Errorf("CVE-2021-44228 has no bundled EPSS score: %v", err)
+	}
+}

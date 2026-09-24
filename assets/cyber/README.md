@@ -22,12 +22,13 @@ The watchlist in particular must never be moved under `public/`.
 | `capec.tsv` | MITRE CAPEC attack patterns, keyed by the CWE ids and ATT&CK technique ids each one names | yes |
 | `cveattack.tsv` | The Center for Threat-Informed Defense's mappings of KEV CVEs to ATT&CK techniques, keyed both ways | yes |
 | `LICENSE-mappings-explorer.txt` | The Apache License 2.0 that `cveattack.tsv`'s source is published under | yes |
+| `epss.tsv.gz` | FIRST's Exploit Prediction Scoring System scores and percentiles for every scored CVE, gzipped; unpacked beside itself on first read | yes, as the archive only |
 | `ip.tsv.gz` | IPtoASN's address ranges with their autonomous system and country, gzipped; the plugin unpacks it beside itself on first read | yes, as the archive only |
 
 Everything else the decorator reads is too large or changes too fast to bundle
 and is attached to a release instead, for operators to drop into the directory
 named by the `CyberDatasetsDir` setting: the full `cve.tsv` and `cvedetail.tsv`,
-`epss.tsv`, `threat.tsv`, `malware.tsv`, any vendor `.mmdb` database and the
+`threat.tsv`, `malware.tsv`, any vendor `.mmdb` database and the
 operator's own `watchlist.tsv`. A file there replaces the bundled one of the same
 name.
 
@@ -205,3 +206,20 @@ vulnerabilities**. Rebuild both files with `make cyber-sources`, then:
 ```
 go run ./build/cyberdata -only capec,cveattack
 ```
+
+### `epss.tsv.gz`
+
+| | |
+|---|---|
+| Upstream | `https://epss.empiricalsecurity.com/epss_scores-current.csv.gz` |
+| Origin | FIRST, Exploit Prediction Scoring System |
+| License | Published freely with no registration; FIRST asks that products using it credit EPSS, which the help page and this file do |
+| Format | CVE id, score, percentile, and the date FIRST scored it |
+
+> EPSS scores are from FIRST's Exploit Prediction Scoring System, https://www.first.org/epss/.
+
+FIRST rescores every CVE daily, so the bundled copy is as old as the release; each
+row carries its own score date, and the panel's Data sources table shows when the
+file was compiled. An operator who wants today's scores drops a fresh `epss.tsv.gz`
+into `CyberDatasetsDir`. The plugin unpacks the archive into `epss.tsv` beside it,
+about 16 MB, which `.gitignore` and the `bundle` target keep out.

@@ -71,4 +71,5 @@ build/maposm/out/
 
 # Unpacked on read from the committed assets/cyber/*.tsv.gz
 /assets/cyber/ip.tsv
+/assets/cyber/epss.tsv
 /assets/cyber/*.unpacking

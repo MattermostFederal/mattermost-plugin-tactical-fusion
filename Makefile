@@ -344,15 +344,16 @@ cyber-refresh:
 	$(GO) run ./build/cyberdata -only cvekev,cvedetailkev
 	$(GO) run ./build/cyberdata -only ip -label "IPtoASN ip2asn-combined, fetched $$(date -u +%Y-%m-%d)"
 	gzip -9 -n -c build/cyberdata/out/ip.tsv > assets/cyber/ip.tsv.gz
+	gzip -9 -n -c build/cyberdata/out/epss.tsv > assets/cyber/epss.tsv.gz
 	$(MAKE) --no-print-directory cyber-advisories
 
-CYBER_RELEASE_DATASETS := cve cvedetail epss
+CYBER_RELEASE_DATASETS := cve cvedetail
 CYBER_RELEASE_DIR := build/cyberdata/release
 
-## Packs the downloadable cyber datasets for a release into build/cyberdata/release: cve,
-## cvedetail and epss gzipped, the DB-IP City Lite database as it is read, the
-## SOURCES.sha256 the refresh wrote, and DATASETS.sha256 over the lot. ip is left out
-## because the bundle carries it, and threat and malware because abuse.ch's terms leave
+## Packs the downloadable cyber datasets for a release into build/cyberdata/release: cve
+## and cvedetail gzipped, the DB-IP City Lite database as it is read, the SOURCES.sha256
+## the refresh wrote, and DATASETS.sha256 over the lot. ip and epss are left out because
+## the bundle carries them, and threat and malware because abuse.ch's terms leave
 ## them to each operator.
 ##
 ## Packs the downloadable cyber datasets for a release
