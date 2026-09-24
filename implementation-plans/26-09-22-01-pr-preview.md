@@ -72,10 +72,12 @@ GitHub or AWS, and no way to attack the org's production hostnames.
   per-preview prefix and the instance installs it with `mmctl --local plugin
   add ... --force` then `plugin enable`, exactly as `make docker-deploy` does.
   Redeploys run on the box through SSM Run Command. No SSH, no key pairs.
-- **Label approves a commit, not a branch.** The labeled run records the head
-  SHA. A push from a fork tears the preview down and removes the label; a
-  maintainer re-adds it to preview the new commit. Pushes from branches in
-  the org repo redeploy directly.
+- **Label approves a commit, not a branch.** For a fork PR the approved
+  commit is the head SHA in the `labeled` event payload, and the first
+  deployment happens only when that SHA still equals the live head and the
+  fetched bundle. Any later fork push tears the preview down and removes the
+  label; a maintainer re-adds it to preview the new commit. Pushes from
+  branches in the org repo redeploy directly.
 - **Every run reconciles.** Each workflow run reads the PR's live state and
   converges to it (up when open and labeled, down otherwise) instead of
   trusting the event payload, so a displaced or out-of-order run cannot leave
@@ -193,9 +195,11 @@ templates/preview.yml            canonical thin workflow to copy into each plugi
 
 `bootstrap/bootstrap.yaml` is the org repo's `github_actions_oidc_role.yaml`
 (OIDC provider, a read-only role trusting
-`repo:MattermostFederal/pr-preview:pull_request`, a read-write role with
-`AdministratorAccess` trusting `...:ref:refs/heads/main`) plus one
-`AWS::S3::Bucket` named `<acct>-tf-state`. The read-only role also needs
+`repo:MattermostFederal@233000902/pr-preview@<repo-id>:pull_request`, a
+read-write role with `AdministratorAccess` trusting the same immutable subject
+at `ref:refs/heads/main`) plus one `AWS::S3::Bucket` named `<acct>-tf-state`.
+The repository id is a stack parameter, so bootstrap runs after
+`terraform-github-management` has created the repo. The read-only role also needs
 `s3:PutObject` and `s3:DeleteObject` on the state bucket for the lockfile.
 
 `config.env` is the single source of every non-secret id. Nothing is repeated
@@ -223,7 +227,7 @@ org roles that grant those.
 | `route53.tf` | `data.aws_route53_zone.preview` for the registered domain's zone (registration itself is a one-time `aws route53domains register-domain`, which creates the zone) |
 | `s3.tf` | `aws_s3_bucket.bundles` `mfi-preview-bundles-<acct>`, public access block, SSE-S3, bucket policy denying non-TLS, lifecycle expiring `previews/` after 14 days and aborting multipart uploads after 1 day |
 | `iam_instance.tf` | role `preview-instance` trusting ec2 with an inline SSM-agent-only policy (the `ssm:UpdateInstanceInformation`, `ssmmessages:*`, `ec2messages:*`, `ssm:ListAssociations`, `ssm:ListInstanceAssociations`, `ssm:PutInventory`, `ssm:UpdateInstanceAssociationStatus` set, no `ssm:GetParameter*`, no `ssm:GetDocument`), plus `s3:GetObject` on `previews/*` and nothing else on S3 (no `ListBucket`); instance profile |
-| `iam_github.tf` | `data.aws_iam_openid_connect_provider.github`; role `GithubActionsPreview` trusting `aud = sts.amazonaws.com` and `StringLike sub` in `["repo:MattermostFederal/mattermost-plugin-*:*", "repo:MattermostFederal/pr-preview:ref:refs/heads/main"]`, 1 h max session, with the policy below |
+| `iam_github.tf` | `data.aws_iam_openid_connect_provider.github`; role `GithubActionsPreview` trusting `aud = sts.amazonaws.com` and `StringLike sub` in `["repo:MattermostFederal/mattermost-plugin-*:*", "repo:MattermostFederal@233000902/mattermost-plugin-*@*:*", "repo:MattermostFederal@233000902/pr-preview@<repo-id>:ref:refs/heads/main"]`, 1 h max session, with the policy below. Repositories created after July 15, 2026 present immutable subjects that carry the owner and repository ids (`repo:OWNER@OWNER-ID/REPO@REPO-ID:...`); `pr-preview` is one, and the second plugin pattern covers plugin repos created later. The repo id lives in `infra/terraform.tfvars`. |
 | `budget.tf` | `aws_budgets_budget` monthly cost budget with an email alert at 80 and 100 percent |
 | `outputs.tf` | `zone_id`, `domain`, `bucket`, `subnet_id`, `security_group_id`, `instance_profile`, `github_role_arn`, `account_id` |
 
@@ -268,9 +272,11 @@ Two jobs:
   concurrency group. Runs when the PR is open and labeled (checked live with
   `gh api`, not from the payload). Waits up to 30 minutes for the `pr.yml`
   run on the head SHA, downloads and validates the bundle (contract below),
-  and uploads it as the `preview-bundle` artifact of this run. First-time
-  contributors' `pr.yml` runs need "approve and run" first; the failure
-  comment says so. The 30-minute wait happens here so the AWS session in the
+  and uploads it as the `preview-bundle` artifact of this run. A bundle is
+  missing when a first-time contributor's `pr.yml` run is awaiting approval,
+  when the run failed, or when its artifact passed the seven-day retention.
+  The failure comment says so and tells the maintainer to re-run PR Validation
+  for the head commit, then remove and re-add the label. The 30-minute wait happens here so the AWS session in the
   next job is never near its 1-hour limit.
 - **reconcile**: `needs: fetch` (with `if: always()` so teardowns run when
   fetch is skipped), `permissions: id-token: write, pull-requests: write,
@@ -313,8 +319,9 @@ About 80 lines. The only per-repo differences are two optional `env` lines:
 lowercased, sanitized to `[a-z0-9-]`, truncated so `<app>-pr<N>` fits 63
 characters) and `PREVIEW_MM_IMAGE_TAG` (default: the constant in
 `config.env`, full semver such as `11.8.0`). Environment passed to the
-scripts: `REPO`, `PR_NUMBER`, `GH_TOKEN`, `RUN_URL`, `PREVIEW_ADMIN_SECRET`,
-plus the two optional overrides. PR event fields reach `run:` only through
+scripts: `REPO`, `PR_NUMBER`, `EVENT_ACTION`, `EVENT_HEAD_SHA`, `GH_TOKEN`,
+`RUN_URL`, `BUNDLE_DIR`, `FETCH_ERROR`, `PREVIEW_ADMIN_SECRET`, plus the two
+optional overrides. PR event fields reach `run:` only through
 `env:`, never inline. `refs/tags/v1` is a named exception to the
 no-floating-refs rule because it is a `checkout` with a token, not a `uses:`,
 and the tag is protected by ruleset.
@@ -354,8 +361,11 @@ and the tag is protected by ruleset.
   - open and labeled, org branch: `up` with the live head SHA.
   - open and labeled, fork: if an instance exists with `preview:sha` equal to
     the live head, nothing to do; if it exists with a different SHA, `down
-    --reason fork-push` (tears down, removes the label, comments); if none
-    exists, `up` with the live head and record it in `preview:sha`.
+    fork-push` (tears down, removes the label, comments); if none exists,
+    `up` only when the run is the `labeled` event and the payload's head SHA
+    (`EVENT_HEAD_SHA`) equals the live head, recording it in `preview:sha`;
+    otherwise the fork moved since the label and the label is removed with
+    the fork-push comment.
   - `up` refuses when the count of live managed instances is at
     `MAX_PREVIEWS` (10) and comments accordingly.
 - `find_instance`: `describe-instances` filtered on `tag:preview:host`,
@@ -444,9 +454,13 @@ repo filter, assumes `GithubActionsPreview`, runs `scripts/preview reap`.
   never argv), `team create test`, `team users add test admin`, then `shred
   -u /opt/preview/env` and unset the variable. Wait until an authoritative
   name server for the zone answers `dig +short $FQDN` with the instance's own
-  IP from IMDSv2; `compose up -d caddy`; `deploy.sh`; `touch
-  /opt/preview/READY`.
-- `deploy.sh` ports `make docker-deploy`: fail fast if `READY` is missing;
+  IP from IMDSv2. Ordering: admin and team, `shred`, `touch SETUP_DONE`,
+  `deploy.sh`, DNS wait, `compose up -d caddy`, `touch READY`. Caddy starts
+  only after the plugin is installed, so an HTTPS ping from the runner means
+  the whole first boot succeeded.
+- `deploy.sh` ports `make docker-deploy`: fail fast if `SETUP_DONE` is
+  missing (it exists before the first-boot deploy; `READY` is written only
+  after Caddy is up);
   pull the bundle from the prefix; derive and validate id and version with
   the same rules as the runner; `compose stop mattermost`; remove the
   `plugins`, `client-plugins`, and `config` named volumes so nothing a
@@ -469,8 +483,9 @@ repo filter, assumes `GithubActionsPreview`, runs `scripts/preview reap`.
 ## Sequencing and one-time setup
 
 1. terraform-aws-organization PR (account), apply, note the account id.
-2. Bootstrap in `mfi-preview` from a local clone of pr-preview, using an org
-   identity that assumes `OrganizationAccountAccessRole` there. First confirm
+2. After step 3 has created the `pr-preview` repository (its id is a stack
+   parameter), bootstrap in `mfi-preview` from a local clone of pr-preview,
+   using an org identity that assumes `OrganizationAccountAccessRole` there. First confirm
    the account: `aws --profile mfi-preview sts get-caller-identity --query
    Account --output text` must equal the id from step 1; stop if it does not.
    Then
@@ -481,10 +496,13 @@ repo filter, assumes `GithubActionsPreview`, runs `scripts/preview reap`.
    hosted zone.
 3. terraform-github-management PR declaring `pr-preview` with the tag and
    branch rulesets and without the required check, apply, push the repo
-   contents; set repo secrets `ROLE_TO_ASSUME_RO`, `ROLE_TO_ASSUME_RW`,
-   `PREVIEW_REAPER_APP_PRIVATE_KEY` and variables `ACCOUNT_ID`,
-   `PREVIEW_REAPER_APP_ID`; then a follow-up PR adding the `Plan (infra)`
-   required check.
+   contents; read the repo id with `gh api repos/MattermostFederal/pr-preview
+   --jq .id` and put it in `infra/terraform.tfvars`; set repo secrets
+   `ROLE_TO_ASSUME_RO`, `ROLE_TO_ASSUME_RW`, `PREVIEW_REAPER_APP_PRIVATE_KEY`
+   and variables `ACCOUNT_ID`, `PREVIEW_REAPER_APP_ID`; then a follow-up PR
+   adding the `Plan (infra)` required check. The `infrastructure` team gets
+   `maintain`, not `admin`, because repository admins can edit the rulesets
+   that protect `v*`.
 4. pr-preview infra PR, plan, merge, apply; copy the outputs into
    `config.env` in a second PR.
 5. GitHub Apps: `mmf-preview-checkout` (Contents read, Metadata read,
@@ -497,7 +515,15 @@ repo filter, assumes `GithubActionsPreview`, runs `scripts/preview reap`.
 7. Tag pr-preview `v1`. `v1` is a moving major tag guarded by the ruleset:
    the env contract only gains fields within `v1`; a breaking change means
    `v2` and editing every copied workflow.
-8. Per plugin repo: `gh label create preview --color 0E8A16 --description "Deploy a preview environment for this PR"`,
+8. Org Actions event policy: GitHub disables `pull_request_target` by default
+   on public repositories from November 2, 2026 unless an explicit enterprise,
+   organization, or repository event policy allows it (workflow execution
+   protections, generally available September 17, 2026). Configure an
+   organization policy that allows `pull_request_target` for the plugin repos
+   before adopting. The repos' action allowlist already permits GitHub-owned
+   and verified-creator actions plus `opentofu/setup-opentofu`, which covers
+   every action the workflow uses.
+9. Per plugin repo: `gh label create preview --color 0E8A16 --description "Deploy a preview environment for this PR"`,
    copy `templates/preview.yml`, merge, label a PR.
 
 ## Security notes
