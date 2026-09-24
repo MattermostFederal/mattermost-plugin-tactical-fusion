@@ -16,7 +16,7 @@ untrue.
 | | |
 |---|---|
 | `attack.tsv` upstream | `https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json` |
-| `attack.tsv` origin | MITRE ATT&CK, enterprise domain, STIX 2.1 |
+| `attack.tsv` origin | MITRE ATT&CK, enterprise and mobile domains, STIX 2.1; mobile from `mobile-attack/mobile-attack.json` in the same repository |
 | `attack.tsv` license | MITRE ATT&CK terms of use. Redistribution is permitted with attribution. |
 | `cwe.tsv` upstream | `https://cwe.mitre.org/data/csv/1000.csv.zip` |
 | `cwe.tsv` origin | MITRE CWE, research view 1000 |
@@ -37,9 +37,13 @@ Data sources table shows for ATT&CK and CWE.
 2026-09-23: 944 weaknesses, each with its name, abstraction, status, the first
 sentence of its description, and its parents in that view.
 
-`attack.tsv` is the generator's output from Enterprise ATT&CK 19.2, fetched
-2026-09-23: 15 tactics, 222 techniques and 475 sub-techniques that are active,
-plus 149 revoked and 12 deprecated entries. Earlier builds shipped a hand-written
+`attack.tsv` is the generator's output from Enterprise and Mobile ATT&CK 19.2,
+enterprise fetched 2026-09-23 and mobile 2026-09-24: 27 tactics, 299 techniques and 522 sub-techniques that are
+active, plus 188 revoked and 27 deprecated entries. The two domains are read
+separately, since their tactics share names (Mobile's Initial Access is `TA0027`,
+Enterprise's `TA0001`), and merged by id; an id both write differently fails the
+build. ATT&CK for ICS is left out on purpose: its ids, `T0800` to `T0891`, read
+like clock times in operations chat, and a wrong decoration is permanent. Earlier builds shipped a hand-written
 seed of 123 entries because the build host could not reach
 `raw.githubusercontent.com`; every id the seed held is still here.
 

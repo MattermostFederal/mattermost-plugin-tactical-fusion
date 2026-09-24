@@ -208,3 +208,22 @@ func TestTheCatalogStillRefusesAutolinksAndControlCharacters(t *testing.T) {
 		}
 	}
 }
+
+func TestMobileATTACKIdsDecorate(t *testing.T) {
+	for _, message := range []string{"seen T1398 on the handset", "mobile tactic TA0027", "sub-technique T1626.001"} {
+		if !decorated(t, message) {
+			t.Errorf("%q is not decorated", message)
+		}
+	}
+	if technique, _ := LookupTechnique("T1398"); !strings.Contains(strings.Join(technique.Platforms, ","), "Android") {
+		t.Errorf("T1398 reads as %+v", technique)
+	}
+}
+
+func TestICSIdsThatReadLikeClockTimesDoNotDecorate(t *testing.T) {
+	for _, message := range []string{"launch at T0830", "TOT T0800", "tactic TA0104"} {
+		if decorated(t, message) {
+			t.Errorf("%q decorated, but ATT&CK for ICS is not in the catalog", message)
+		}
+	}
+}

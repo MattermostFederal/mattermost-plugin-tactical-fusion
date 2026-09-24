@@ -1,4 +1,4 @@
-#tactical-fusion-cyber/1	attack	2026-09-24T13:51:39Z	enterprise-attack.json
+#tactical-fusion-cyber/1	attack	2026-09-24T14:49:56Z	enterprise-attack.json
 id	name	kind	tactics	parent	platforms	summary	status	replaced_by
 T1001	Data Obfuscation	technique	TA0011		ESXi,Linux,macOS,Windows	Adversaries may obfuscate command and control traffic to make it more difficult to detect.	active	
 T1001.001	Junk Data	subtechnique	TA0011	T1001	ESXi,Linux,macOS,Windows	Adversaries may add junk data to protocols used for command and control to make detection more difficult.	active	
@@ -428,9 +428,93 @@ T1222	File and Directory Permissions Modification	technique	TA0112		ESXi,Linux,m
 T1222.001	Windows Permissions	subtechnique	TA0112	T1222	Windows	Adversaries may modify file or directory permissions/attributes to evade access control lists (ACLs) and access protected files.	active	
 T1222.002	Linux and Mac Permissions	subtechnique	TA0112	T1222	Linux,macOS	Adversaries may modify file or directory permissions/attributes to evade access control lists (ACLs) and access protected files.	active	
 T1223	Compiled HTML File	technique	TA0002,TA0005		Windows	Compiled HTML files (.chm) are commonly distributed as part of the Microsoft HTML Help system.	revoked	T1218.001
+T1398	Boot or Logon Initialization Scripts	technique	TA0028		Android,iOS	Adversaries may use scripts automatically executed at boot or logon initialization to establish persistence.	active	
+T1399	Modify Trusted Execution Environment	technique	TA0028,TA0030		Android	If an adversary can escalate privileges, he or she may be able to use those privileges to place malicious code in the device's Trusted Execution Environment (TEE) or other similar isolated execution environment where the code can evade detection, may persist after device resets, and may not be...	deprecated	
+T1400	Modify System Partition	technique	TA0028,TA0030,TA0034		Android,iOS	If an adversary can escalate privileges, he or she may be able to use those privileges to place malicious code in the device system partition, where it may persist after device resets and may not be easily removed by the device user.	revoked	T1625.001
+T1401	Device Administrator Permissions	technique	TA0029		Android	Adversaries may request device administrator permissions to perform malicious actions.	revoked	T1626.001
+T1402	Broadcast Receivers	technique	TA0028,TA0041		Android	An intent is a message passed between Android application or system components.	revoked	T1624.001
+T1403	Modify Cached Executable Code	technique	TA0028		Android	ART (the Android Runtime) compiles optimized code on the device itself to improve performance.	deprecated	
+T1404	Exploitation for Privilege Escalation	technique	TA0029		Android,iOS	Adversaries may exploit software vulnerabilities in order to elevate privileges.	active	
+T1405	Exploit TEE Vulnerability	technique	TA0029,TA0031		Android	A malicious app or other attack vector could be used to exploit vulnerabilities in code running within the Trusted Execution Environment (TEE) .	deprecated	
+T1406	Obfuscated Files or Information	technique	TA0030		Android,iOS	Adversaries may attempt to make a payload or file difficult to discover or analyze by encrypting, encoding, or otherwise obfuscating its contents on the device or in transit.	active	
+T1406.001	Steganography	subtechnique	TA0030	T1406	Android	Adversaries may use steganography techniques in order to prevent the detection of hidden information.	active	
+T1406.002	Software Packing	subtechnique	TA0030	T1406	Android,iOS	Adversaries may perform software packing to conceal their code.	active	
+T1407	Download New Code at Runtime	technique	TA0030		Android,iOS	Adversaries may download and execute dynamic code not included in the original application package after installation.	active	
+T1408	Disguise Root/Jailbreak Indicators	technique	TA0030		Android,iOS	An adversary could use knowledge of the techniques used by security software to evade detection.	revoked	T1630.003
+T1409	Stored Application Data	technique	TA0035		Android,iOS	Adversaries may try to access and collect application data resident on the device.	active	
+T1410	Network Traffic Capture or Redirection	technique	TA0031,TA0035		Android,iOS	An adversary may capture network traffic to and from the device to obtain credentials or other sensitive data, or redirect network traffic to flow through an adversary-controlled gateway to do the same.	revoked	T1638
+T1411	Input Prompt	technique	TA0031		Android,iOS	The operating system and installed applications often have legitimate needs to prompt the user for sensitive information such as account credentials, bank account information, or Personally Identifiable Information (PII).	revoked	T1417.002
+T1412	Capture SMS Messages	technique	TA0031,TA0035		Android,iOS	A malicious application could capture sensitive data sent via SMS, including authentication credentials.	revoked	T1636.004
+T1413	Access Sensitive Data in Device Logs	technique	TA0031,TA0035		Android	On versions of Android prior to 4.1, an adversary may use a malicious application that holds the READ_LOGS permission to obtain private keys, passwords, other credentials, or other sensitive data stored in the device's system log.	deprecated	
+T1414	Clipboard Data	technique	TA0031,TA0035		Android,iOS	Adversaries may abuse clipboard manager APIs to obtain sensitive information copied to the device clipboard.	active	
+T1415	URL Scheme Hijacking	technique	TA0031		iOS	An iOS application may be able to maliciously claim a URL scheme, allowing it to intercept calls that are meant for a different application.	revoked	T1635.001
+T1416	URI Hijacking	technique	TA0031		Android,iOS	Adversaries may register Uniform Resource Identifiers (URIs) to intercept sensitive data.	revoked	T1635.001
+T1417	Input Capture	technique	TA0031,TA0035		Android,iOS	Adversaries may use methods of capturing user input to obtain credentials or collect information.	active	
+T1417.001	Keylogging	subtechnique	TA0031,TA0035	T1417	Android,iOS	Adversaries may log user keystrokes to intercept credentials or other information from the user as the user types them.	active	
+T1417.002	GUI Input Capture	subtechnique	TA0031,TA0035	T1417	Android,iOS	Adversaries may mimic common operating system GUI components to prompt users for sensitive information with a seemingly legitimate prompt.	active	
+T1418	Software Discovery	technique	TA0032		Android,iOS	Adversaries may attempt to get a listing of applications that are installed on a device.	active	
+T1418.001	Security Software Discovery	subtechnique	TA0032	T1418	Android,iOS	Adversaries may attempt to get a listing of security applications and configurations that are installed on a device.	active	
+T1419	Device Type Discovery	technique	TA0032		Android	On Android, device type information is accessible to apps through the android.os.Build class .	revoked	T1426
+T1420	File and Directory Discovery	technique	TA0032		Android,iOS	Adversaries may enumerate files and directories or search in specific device locations for desired information within a filesystem.	active	
+T1421	System Network Connections Discovery	technique	TA0032		Android	Adversaries may attempt to get a listing of network connections to or from the compromised device they are currently accessing or from remote systems by querying for information over the network.	active	
+T1422	System Network Configuration Discovery	technique	TA0032		Android,iOS	Adversaries may look for details about the network configuration and settings, such as IP and/or MAC addresses, of devices they access or through information discovery of remote systems.	active	
+T1422.001	Internet Connection Discovery	subtechnique	TA0032	T1422	Android,iOS	Adversaries may check for Internet connectivity on compromised systems.	active	
+T1422.002	Wi-Fi Discovery	subtechnique	TA0032	T1422	Android,iOS	Adversaries may search for information about Wi-Fi networks, such as network names and passwords, on compromised systems.	active	
+T1423	Network Service Scanning	technique	TA0032		Android,iOS	Adversaries may attempt to get a listing of services running on remote hosts, including those that may be vulnerable to remote software exploitation.	active	
+T1424	Process Discovery	technique	TA0032		Android,iOS	Adversaries may attempt to get information about running processes on a device.	active	
+T1426	System Information Discovery	technique	TA0032		Android,iOS	Adversaries may attempt to get detailed information about a device's operating system and hardware, including versions, patches, and architecture.	active	
+T1427	Attack PC via USB Connection	technique	TA0033		Android	With escalated privileges, an adversary could program the mobile device to impersonate USB devices such as input devices (keyboard and mouse), storage devices, and/or networking devices in order to attack a physically connected PC This technique has been demonstrated on Android.	deprecated	
+T1428	Exploitation of Remote Services	technique	TA0033		Android,iOS	Adversaries may exploit remote services of enterprise servers, workstations, or other resources to gain unauthorized access to internal systems once inside of a network.	active	
+T1429	Audio Capture	technique	TA0035		Android,iOS	Adversaries may capture audio to collect information by leveraging standard operating system APIs of a mobile device.	active	
+T1430	Location Tracking	technique	TA0032,TA0035		Android,iOS	Adversaries may track a device's physical location through use of standard operating system APIs via malicious or exploited applications on the compromised device.	active	
+T1430.001	Remote Device Management Services	subtechnique	TA0032,TA0035	T1430	Android,iOS	An adversary may use access to cloud services (e.g.	active	
+T1430.002	Impersonate SS7 Nodes	subtechnique	TA0032,TA0035	T1430	Android,iOS	Adversaries may exploit the lack of authentication in signaling system network nodes to track the location of mobile devices by impersonating a node.	active	
+T1432	Access Contact List	technique	TA0035		Android,iOS	An adversary could call standard operating system APIs from a malicious application to gather contact list (i.e., address book) data, or with escalated privileges could directly access files containing contact list data.	revoked	T1636.003
+T1433	Access Call Log	technique	TA0035		Android,iOS	On Android, an adversary could call standard operating system APIs from a malicious application to gather call log data, or with escalated privileges could directly access files containing call log data.	revoked	T1636.002
+T1435	Access Calendar Entries	technique	TA0035		Android,iOS	An adversary could call standard operating system APIs from a malicious application to gather calendar entry data, or with escalated privileges could directly access files containing calendar data.	revoked	T1636.001
+T1436	Commonly Used Port	technique	TA0036,TA0037		Android,iOS	Adversaries may communicate over a commonly used port to bypass firewalls or network detection systems and to blend with normal network activity to avoid more detailed inspection.	deprecated	
+T1437	Application Layer Protocol	technique	TA0037		Android,iOS	Adversaries may communicate using application layer protocols to avoid detection/network filtering by blending in with existing traffic.	active	
+T1437.001	Web Protocols	subtechnique	TA0037	T1437	Android,iOS	Adversaries may communicate using application layer protocols associated with web protocols traffic to avoid detection/network filtering by blending in with existing traffic.	active	
+T1438	Exfiltration Over Other Network Medium	technique	TA0037		Android,iOS	Adversaries may attempt to exfiltrate data over a different network medium than the command and control channel.	revoked	T1644
+T1439	Eavesdrop on Insecure Network Communication	technique			Android,iOS	If network traffic between the mobile device and remote servers is unencrypted or is encrypted in an insecure manner, then an adversary positioned on the network can eavesdrop on communication.	revoked	T1638
+T1444	Masquerade as Legitimate Application	technique	TA0027,TA0030		Android,iOS	An adversary could distribute developed malware by masquerading the malware as a legitimate application.	deprecated	
+T1446	Device Lockout	technique	TA0030,TA0034		Android,iOS	An adversary may seek to lock the legitimate user out of the device, for example to inhibit user interaction or to obtain a ransom payment.	revoked	T1629.002
+T1447	Delete Device Data	technique	TA0030,TA0034		Android	Adversaries may wipe a device or delete individual files in order to manipulate external outcomes or hide activity.	revoked	T1630.002
+T1448	Carrier Billing Fraud	technique	TA0034		Android	A malicious app may trigger fraudulent charges on a victim's carrier billing statement in several different ways, including SMS toll fraud and SMS shortcodes that make purchases.	revoked	T1643
+T1449	Exploit SS7 to Redirect Phone Calls/SMS	technique			Android,iOS	An adversary could exploit signaling system vulnerabilities to redirect calls or text messages (SMS) to a phone number under the attacker's control.	deprecated	
+T1450	Exploit SS7 to Track Device Location	technique			Android,iOS	An adversary could exploit signaling system vulnerabilities to track the location of mobile devices.	revoked	T1430.002
+T1451	SIM Card Swap	technique	TA0027		Android,iOS	Adversaries may gain access to mobile devices through transfers or swaps from victims' phone numbers to adversary-controlled SIM cards and mobile devices.	active	
+T1452	Manipulate App Store Rankings or Ratings	technique	TA0034		Android,iOS	An adversary could use access to a compromised device's credentials to attempt to manipulate app store rankings or ratings by triggering application downloads or posting fake reviews of applications.	revoked	T1643
+T1453	Abuse Accessibility Features	technique	TA0031,TA0035		Android	Adversaries may abuse accessibility features in Android devices to steal sensitive data and to spread malware to other devices.	active	
+T1454	Malicious SMS Message	technique	TA0035		Android	Test	revoked	
+T1456	Drive-By Compromise	technique	TA0027		Android,iOS	Adversaries may gain access to a system through a user visiting a website over the normal course of browsing.	active	
+T1458	Replication Through Removable Media	technique	TA0027,TA0033		Android,iOS	Adversaries may move onto devices by exploiting or copying malware to devices connected via USB.	active	
+T1461	Lockscreen Bypass	technique	TA0027		Android,iOS	An adversary with physical access to a mobile device may seek to bypass the device's lockscreen.	active	
+T1463	Manipulate Device Communication	technique			Android,iOS	If network traffic between the mobile device and a remote server is not securely protected, then an attacker positioned on the network may be able to manipulate network communication without being detected.	revoked	T1638
+T1464	Network Denial of Service	technique	TA0034		Android,iOS	Adversaries may perform Network Denial of Service (DoS) attacks to degrade or block the availability of targeted resources to users.	active	
+T1465	Rogue Wi-Fi Access Points	technique			Android,iOS	An adversary could set up unauthorized Wi-Fi access points or compromise existing access points and, if the device connects to them, carry out network-based attacks such as eavesdropping on or modifying network communication.	revoked	T1638
+T1466	Downgrade to Insecure Protocols	technique			Android,iOS	An adversary could cause the mobile device to use less secure protocols, for example by jamming frequencies used by newer protocols such as LTE and only allowing older protocols such as GSM to communicate.	revoked	T1638
+T1467	Rogue Cellular Base Station	technique			Android,iOS	An adversary could set up a rogue cellular base station and then use it to eavesdrop on or manipulate cellular device communication.	revoked	T1638
+T1468	Remotely Track Device Without Authorization	technique			Android,iOS	An adversary who is able to obtain unauthorized access to or misuse authorized access to cloud services (e.g.	revoked	T1430.001
+T1469	Remotely Wipe Data Without Authorization	technique			Android,iOS	An adversary who is able to obtain unauthorized access to or misuse authorized access to cloud services (e.g.	deprecated	
+T1470	Obtain Device Cloud Backups	technique			Android,iOS	An adversary who is able to obtain unauthorized access to or misuse authorized access to cloud backup services (e.g.	deprecated	
+T1471	Data Encrypted for Impact	technique	TA0034		Android	An adversary may encrypt files stored on a mobile device to prevent the user from accessing them.	active	
+T1472	Generate Fraudulent Advertising Revenue	technique	TA0034		Android,iOS	An adversary could seek to generate fraudulent advertising revenue from mobile devices, for example by triggering automatic clicks of advertising links without user involvement.	revoked	T1643
+T1474	Supply Chain Compromise	technique	TA0027		Android,iOS	Adversaries may manipulate products or product delivery mechanisms prior to receipt by a final consumer for the purpose of data or system compromise.	active	
+T1474.001	Compromise Software Dependencies and Development Tools	subtechnique	TA0027	T1474	Android,iOS	Adversaries may manipulate products or product delivery mechanisms prior to receipt by a final consumer for the purpose of data or system compromise.	active	
+T1474.002	Compromise Hardware Supply Chain	subtechnique	TA0027	T1474	Android,iOS	Adversaries may manipulate hardware components in products prior to receipt by a final consumer for the purpose of data or system compromise.	active	
+T1474.003	Compromise Software Supply Chain	subtechnique	TA0027	T1474	Android,iOS	Adversaries may manipulate application software prior to receipt by a final consumer for the purpose of data or system compromise.	active	
+T1475	Deliver Malicious App via Authorized App Store	technique	TA0027		Android,iOS	Malicious applications are a common attack vector used by adversaries to gain a presence on mobile devices.	deprecated	
+T1476	Deliver Malicious App via Other Means	technique	TA0027		Android,iOS	Malicious applications are a common attack vector used by adversaries to gain a presence on mobile devices.	deprecated	
+T1477	Exploit via Radio Interfaces	technique	TA0027		Android,iOS	The mobile device may be targeted for exploitation through its interface to cellular networks or other radio interfaces.	deprecated	
+T1478	Install Insecure or Malicious Configuration	technique	TA0027,TA0030		Android,iOS	An adversary could attempt to install insecure or malicious configuration settings on the mobile device, through means such as phishing emails or text messages either directly containing the configuration settings as an attachment, or containing a web link to the configuration settings.	revoked	T1632.001
 T1480	Execution Guardrails	technique	TA0005		ESXi,Linux,macOS,Windows	Adversaries may use execution guardrails to constrain execution or actions based on adversary supplied and environment specific conditions that are expected to be present on the target.	active	
 T1480.001	Environmental Keying	subtechnique	TA0005	T1480	Linux,Windows,macOS	Adversaries may environmentally key payloads or other features of malware to evade defenses and constraint execution to a specific target environment.	active	
 T1480.002	Mutual Exclusion	subtechnique	TA0005	T1480	Linux,macOS,Windows	Adversaries may constrain execution or actions based on the presence of a mutex associated with malware.	active	
+T1481	Web Service	technique	TA0037		Android,iOS	Adversaries may use an existing, legitimate external Web service as a means for relaying data to/from a compromised system.	active	
+T1481.001	Dead Drop Resolver	subtechnique	TA0037	T1481	Android,iOS	Adversaries may use an existing, legitimate external Web service to host information that points to additional command and control (C2) infrastructure.	active	
+T1481.002	Bidirectional Communication	subtechnique	TA0037	T1481	Android,iOS	Adversaries may use an existing, legitimate external Web service channel as a means for sending commands to and receiving output from a compromised system.	active	
+T1481.003	One-Way Communication	subtechnique	TA0037	T1481	Android,iOS	Adversaries may use an existing, legitimate external Web service channel as a means for sending commands to a compromised system without receiving return output.	active	
 T1482	Domain Trust Discovery	technique	TA0007		Windows	Adversaries may attempt to gather information on domain trust relationships that may be used to identify lateral movement opportunities in Windows multi-domain/forest environments.	active	
 T1483	Domain Generation Algorithms	technique	TA0011		Linux,macOS,Windows	Adversaries may make use of Domain Generation Algorithms (DGAs) to dynamically identify a destination for command and control traffic rather than relying on a list of static IP addresses or domains.	revoked	T1568.002
 T1484	Domain or Tenant Policy Modification	technique	TA0004,TA0112		Windows,Identity Provider	Adversaries may modify the configuration settings of a domain or identity tenant to evade defenses and/or escalate privileges in centrally managed environments.	active	
@@ -480,12 +564,26 @@ T1505.004	IIS Components	subtechnique	TA0003	T1505	Windows	Adversaries may insta
 T1505.005	Terminal Services DLL	subtechnique	TA0003	T1505	Windows	Adversaries may abuse components of Terminal Services to enable persistent access to systems.	active	
 T1505.006	vSphere Installation Bundles	subtechnique	TA0003	T1505	ESXi	Adversaries may abuse vSphere Installation Bundles (VIBs) to establish persistent access to ESXi hypervisors.	active	
 T1506	Web Session Cookie	technique	TA0005,TA0008		Office 365,SaaS	Adversaries can use stolen session cookies to authenticate to web applications and services.	revoked	T1550.004
+T1507	Network Information Discovery	technique	TA0035		Android	Adversaries may use device sensors to collect information about nearby networks, such as Wi-Fi and Bluetooth.	revoked	T1421
+T1508	Suppress Application Icon	technique	TA0030		Android	A malicious application could suppress its icon from being displayed to the user in the application launcher to hide the fact that it is installed, and to make it more difficult for the user to uninstall the application.	revoked	T1628.001
+T1509	Non-Standard Port	technique	TA0037		Android,iOS	Adversaries may generate network traffic using a protocol and port pairing that are typically not associated.	active	
+T1510	Clipboard Modification	technique	TA0034		Android	Adversaries may abuse clipboard functionality to intercept and replace information in the Android device clipboard.	revoked	T1641.001
+T1512	Video Capture	technique	TA0035		Android,iOS	An adversary can leverage a device's cameras to gather information by capturing video recordings.	active	
+T1513	Screen Capture	technique	TA0035		Android	Adversaries may use screen capture to collect additional information about a target device, such as applications running in the foreground, user data, credentials, or other sensitive information.	active	
 T1514	Elevated Execution with Prompt	technique	TA0004		macOS	Adversaries may leverage the AuthorizationExecuteWithPrivileges API to escalate privileges by prompting the user for credentials.	revoked	T1548.004
+T1516	Input Injection	technique	TA0030,TA0034		Android	A malicious application can inject input to the user interface to mimic user interaction through the abuse of Android's accessibility APIs.	active	
+T1517	Access Notifications	technique	TA0031,TA0035		Android	Adversaries may collect data within notifications sent by the operating system or other applications.	active	
 T1518	Software Discovery	technique	TA0007		ESXi,IaaS,Linux,macOS,Windows	Adversaries may attempt to get a listing of software and software versions that are installed on a system or in a cloud environment.	active	
 T1518.001	Security Software Discovery	subtechnique	TA0007	T1518	IaaS,Linux,macOS,Windows	Adversaries may attempt to get a listing of security software, configurations, defensive tools, and sensors that are installed on a system or in a cloud environment.	active	
 T1518.002	Backup Software Discovery	subtechnique	TA0007	T1518	Windows,macOS,Linux	Adversaries may attempt to get a listing of backup software or configurations that are installed on a system.	active	
 T1519	Emond	technique	TA0003,TA0004		macOS	Adversaries may use Event Monitor Daemon (emond) to establish persistence by scheduling malicious commands to run on predictable event triggers.	revoked	T1546.014
+T1520	Domain Generation Algorithms	technique	TA0037		Android,iOS	Adversaries may use Domain Generation Algorithms (DGAs) to procedurally generate domain names for command and control communication, and other uses such as malicious application distribution.	revoked	T1637.001
+T1521	Encrypted Channel	technique	TA0037		Android,iOS	Adversaries may explicitly employ a known encryption algorithm to conceal command and control traffic rather than relying on any inherent protections provided by a communication protocol.	active	
+T1521.001	Symmetric Cryptography	subtechnique	TA0037	T1521	Android,iOS	Adversaries may employ a known symmetric encryption algorithm to conceal command and control traffic, rather than relying on any inherent protections provided by a communication protocol.	active	
+T1521.002	Asymmetric Cryptography	subtechnique	TA0037	T1521	Android,iOS	Adversaries may employ a known asymmetric encryption algorithm to conceal command and control traffic, rather than relying on any inherent protections provided by a communication protocol.	active	
+T1521.003	SSL Pinning	subtechnique	TA0037	T1521	Android,iOS	Adversaries may use SSL Pinning to protect the C2 traffic from being intercepted and analyzed.	active	
 T1522	Cloud Instance Metadata API	technique	TA0006		IaaS	Adversaries may attempt to access the Cloud Instance Metadata API to collect credentials and other sensitive data.	revoked	T1552.005
+T1523	Evade Analysis Environment	technique	TA0030,TA0032		Android,iOS	Malicious applications may attempt to detect their operating environment prior to fully executing their payloads.	revoked	T1633.001
 T1525	Implant Internal Image	technique	TA0003		IaaS,Containers	Adversaries may implant cloud or container images with malicious code to establish persistence after gaining access to an environment.	active	
 T1526	Cloud Service Discovery	technique	TA0007		IaaS,Identity Provider,Office Suite,SaaS	An adversary may attempt to enumerate the cloud services running on a system after gaining access.	active	
 T1527	Application Access Token	technique	TA0005,TA0008		SaaS,Office 365	Adversaries may use application access tokens to bypass the typical authentication process and access restricted accounts, information, or services on remote systems.	revoked	T1550.001
@@ -493,12 +591,16 @@ T1528	Steal Application Access Token	technique	TA0006		Containers,IaaS,Identity 
 T1529	System Shutdown/Reboot	technique	TA0040		ESXi,Linux,macOS,Network Devices,Windows	Adversaries may shutdown/reboot systems to interrupt access to, or aid in the destruction of, those systems.	active	
 T1530	Data from Cloud Storage	technique	TA0009		IaaS,Office Suite,SaaS	Adversaries may access data from cloud storage.	active	
 T1531	Account Access Removal	technique	TA0040		Linux,macOS,Windows,SaaS,IaaS,Office Suite,ESXi	Adversaries may interrupt availability of system and network resources by inhibiting access to accounts utilized by legitimate users.	active	
+T1532	Archive Collected Data	technique	TA0035		Android,iOS	Adversaries may compress and/or encrypt data that is collected prior to exfiltration.	active	
+T1533	Data from Local System	technique	TA0035		Android,iOS	Adversaries may search local system sources, such as file systems or local databases, to find files of interest and sensitive data prior to exfiltration.	active	
 T1534	Internal Spearphishing	technique	TA0008		Linux,macOS,Office Suite,SaaS,Windows	After they already have access to accounts or systems within the environment, adversaries may use internal spearphishing to gain access to additional information or compromise other users within the same organization.	active	
 T1535	Unused/Unsupported Cloud Regions	technique	TA0005		IaaS	Adversaries may create cloud instances in unused geographic service regions in order to evade detection.	active	
 T1536	Revert Cloud Instance	technique	TA0005		IaaS	An adversary may revert changes made to a cloud instance after they have performed malicious activities in attempt to evade detection and remove evidence of their presence.	revoked	T1578.004
 T1537	Transfer Data to Cloud Account	technique	TA0010		IaaS,Office Suite,SaaS	Adversaries may exfiltrate data by transferring the data, including through sharing/syncing and creating backups of cloud environments, to another cloud account they control on the same service.	active	
 T1538	Cloud Service Dashboard	technique	TA0007		IaaS,SaaS,Office Suite,Identity Provider	An adversary may use a cloud service dashboard GUI with stolen credentials to gain useful information from an operational cloud environment, such as specific services, resources, and features.	active	
 T1539	Steal Web Session Cookie	technique	TA0006		Linux,macOS,Office Suite,SaaS,Windows	An adversary may steal web application or service session cookies and use them to gain access to web applications or Internet services as an authenticated user without needing credentials.	active	
+T1540	Code Injection	technique	TA0028,TA0029,TA0030		Android,iOS	Adversaries may use code injection attacks to implant arbitrary code into the address space of a running application.	revoked	T1631.001
+T1541	Foreground Persistence	technique	TA0028,TA0030		Android	Adversaries may abuse Android's startForeground() API method to maintain continuous sensor access.	active	
 T1542	Pre-OS Boot	technique	TA0003,TA0005		Linux,macOS,Network Devices,Windows	Adversaries may abuse Pre-OS Boot mechanisms as a way to establish persistence on a system.	active	
 T1542.001	System Firmware	subtechnique	TA0003,TA0005	T1542	Network Devices,Windows	Adversaries may modify system firmware to persist on systems.The BIOS (Basic Input/Output System) and The Unified Extensible Firmware Interface (UEFI) or Extensible Firmware Interface (EFI) are examples of system firmware that operate as the software interface between the operating system and...	active	
 T1542.002	Component Firmware	subtechnique	TA0003,TA0005	T1542	Windows,Linux,macOS	Adversaries may modify component firmware to persist on systems.	active	
@@ -511,6 +613,7 @@ T1543.002	Systemd Service	subtechnique	TA0003,TA0004	T1543	Linux	Adversaries may
 T1543.003	Windows Service	subtechnique	TA0003,TA0004	T1543	Windows	Adversaries may create or modify Windows services to repeatedly execute malicious payloads as part of persistence.	active	
 T1543.004	Launch Daemon	subtechnique	TA0003,TA0004	T1543	macOS	Adversaries may create or modify Launch Daemons to execute malicious payloads as part of persistence.	active	
 T1543.005	Container Service	subtechnique	TA0003,TA0004	T1543	Containers	Adversaries may create or modify container or container cluster management tools that run as daemons, agents, or services on individual hosts.	active	
+T1544	Ingress Tool Transfer	technique	TA0037		Android,iOS	Adversaries may transfer tools or other files from an external system onto a compromised device to facilitate follow-on actions.	active	
 T1546	Event Triggered Execution	technique	TA0003,TA0004		Linux,macOS,Windows,SaaS,IaaS,Office Suite	Adversaries may establish persistence and/or elevate privileges using system mechanisms that trigger execution based on specific events.	active	
 T1546.001	Change Default File Association	subtechnique	TA0003,TA0004	T1546	Windows	Adversaries may establish persistence by executing malicious content triggered by a file type association.	active	
 T1546.002	Screensaver	subtechnique	TA0003,TA0004	T1546	Windows	Adversaries may establish persistence by executing malicious content triggered by user inactivity.	active	
@@ -687,13 +790,19 @@ T1574.011	Services Registry Permissions Weakness	subtechnique	TA0002,TA0005	T157
 T1574.012	COR_PROFILER	subtechnique	TA0002,TA0005	T1574	Windows	Adversaries may leverage the COR_PROFILER environment variable to hijack the execution flow of programs that load the .NET CLR.	active	
 T1574.013	KernelCallbackTable	subtechnique	TA0002,TA0005	T1574	Windows	Adversaries may abuse the KernelCallbackTable of a process to hijack its execution flow in order to run their own payloads.	active	
 T1574.014	AppDomainManager	subtechnique	TA0002,TA0005	T1574	Windows	Adversaries may execute their own malicious payloads by hijacking how the .NET AppDomainManager loads assemblies.	active	
+T1575	Native API	technique	TA0030,TA0041		Android	Adversaries may use Android's Native Development Kit (NDK) to write native functions that can achieve execution of binaries or functions.	active	
+T1576	Uninstall Malicious Application	technique	TA0030		Android	Adversaries may include functionality in malware that uninstalls the malicious application from the device.	revoked	T1630.001
+T1577	Compromise Application Executable	technique	TA0028		Android	Adversaries may modify applications installed on a device to establish persistent access to a victim.	active	
 T1578	Modify Cloud Compute Infrastructure	technique	TA0112		IaaS	An adversary may attempt to modify a cloud account's compute service infrastructure to evade defenses.	active	
 T1578.001	Create Snapshot	subtechnique	TA0112	T1578	IaaS	An adversary may create a snapshot or data backup within a cloud account to evade defenses.	active	
 T1578.002	Create Cloud Instance	subtechnique	TA0112	T1578	IaaS	An adversary may create a new instance or virtual machine (VM) within the compute service of a cloud account to evade defenses.	active	
 T1578.003	Delete Cloud Instance	subtechnique	TA0112	T1578	IaaS	An adversary may delete a cloud instance after they have performed malicious activities in an attempt to evade detection and remove evidence of their presence.	active	
 T1578.004	Revert Cloud Instance	subtechnique	TA0112	T1578	IaaS	An adversary may revert changes made to a cloud instance after they have performed malicious activities in attempt to evade detection and remove evidence of their presence.	active	
 T1578.005	Modify Cloud Compute Configurations	subtechnique	TA0112	T1578	IaaS	Adversaries may modify settings that directly affect the size, locations, and resources available to cloud compute infrastructure in order to evade defenses.	active	
+T1579	Keychain	technique	TA0031		iOS	Adversaries may collect the keychain storage data from an iOS device to acquire credentials.	revoked	T1634.001
 T1580	Cloud Infrastructure Discovery	technique	TA0007		IaaS	An adversary may attempt to discover infrastructure and resources that are available within an infrastructure-as-a-service (IaaS) environment.	active	
+T1581	Geofencing	technique	TA0030		Android,iOS	Adversaries may use a device's geographical location to limit certain malicious behaviors.	revoked	T1627.001
+T1582	SMS Control	technique	TA0034		Android	Adversaries may delete, alter, or send SMS messages without user authorization.	active	
 T1583	Acquire Infrastructure	technique	TA0042		PRE	Adversaries may buy, lease, rent, or obtain infrastructure that can be used during targeting.	active	
 T1583.001	Domains	subtechnique	TA0042	T1583	PRE	Adversaries may acquire domains that can be used during targeting.	active	
 T1583.002	DNS Server	subtechnique	TA0042	T1583	PRE	Adversaries may set up their own Domain Name System (DNS) servers that can be used during targeting.	active	
@@ -788,6 +897,9 @@ T1601.002	Downgrade System Image	subtechnique	TA0112	T1601	Network Devices	Adver
 T1602	Data from Configuration Repository	technique	TA0009		Network Devices	Adversaries may collect data related to managed devices from configuration repositories.	active	
 T1602.001	SNMP (MIB Dump)	subtechnique	TA0009	T1602	Network Devices	Adversaries may target the Management Information Base (MIB) to collect and/or mine valuable information in a network managed using Simple Network Management Protocol (SNMP).	active	
 T1602.002	Network Device Configuration Dump	subtechnique	TA0009	T1602	Network Devices	Adversaries may access network configuration files to collect sensitive data about the device and the network.	active	
+T1603	Scheduled Task/Job	technique	TA0028,TA0041		Android,iOS	Adversaries may abuse task scheduling functionality to facilitate initial or recurring execution of malicious code.	active	
+T1604	Proxy Through Victim	technique	TA0030		Android	Adversaries may use a compromised device as a proxy server to the Internet.	active	
+T1605	Command-Line Interface	technique	TA0041		Android,iOS	Adversaries may use built-in command-line interfaces to interact with the device and execute commands.	revoked	T1623.001
 T1606	Forge Web Credentials	technique	TA0006		SaaS,Windows,macOS,Linux,IaaS,Office Suite,Identity Provider	Adversaries may forge credential materials that can be used to gain access to web applications or Internet services.	active	
 T1606.001	Web Cookies	subtechnique	TA0006	T1606	Linux,macOS,Windows,SaaS,IaaS	Adversaries may forge web cookies that can be used to gain access to web applications or Internet services.	active	
 T1606.002	SAML Tokens	subtechnique	TA0006	T1606	SaaS,Windows,IaaS,Office Suite,Identity Provider	An adversary may forge SAML tokens with any permissions claims and lifetimes if they possess a valid SAML token-signing certificate.	active	
@@ -806,10 +918,64 @@ T1613	Container and Resource Discovery	technique	TA0007		Containers	Adversaries 
 T1614	System Location Discovery	technique	TA0007		IaaS,Linux,macOS,Windows	Adversaries may gather information in an attempt to calculate the geographical location of a victim host.	active	
 T1614.001	System Language Discovery	subtechnique	TA0007	T1614	Linux,macOS,Windows	Adversaries may attempt to gather information about the system language of a victim in order to infer the geographical location of that host.	active	
 T1615	Group Policy Discovery	technique	TA0007		Windows	Adversaries may gather information on Group Policy settings to identify paths for privilege escalation, security measures applied within a domain, and to discover patterns in domain objects that can be manipulated or used to blend in the environment.	active	
+T1616	Call Control	technique	TA0034,TA0035,TA0037		Android	Adversaries may make, forward, or block phone calls without user authorization.	active	
+T1617	Hooking	technique	TA0030		Android	Adversaries may utilize hooking to hide the presence of artifacts associated with their behaviors to evade detection.	active	
+T1618	User Evasion	technique	TA0030		Android	Adversaries may attempt to avoid detection by hiding malicious behavior from the user.	revoked	T1628.002
 T1619	Cloud Storage Object Discovery	technique	TA0007		IaaS	Adversaries may enumerate objects in cloud storage infrastructure.	active	
 T1620	Reflective Code Loading	technique	TA0005		Linux,macOS,Windows	Adversaries may reflectively load code into a process in order to conceal the execution of malicious payloads.	active	
 T1621	Multi-Factor Authentication Request Generation	technique	TA0006		Windows,Linux,macOS,IaaS,SaaS,Office Suite,Identity Provider	Adversaries may attempt to bypass multi-factor authentication (MFA) mechanisms and gain access to accounts by generating MFA requests sent to users.	active	
 T1622	Debugger Evasion	technique	TA0005,TA0007		Linux,macOS,Windows	Adversaries may employ various means to detect and avoid debuggers.	active	
+T1623	Command and Scripting Interpreter	technique	TA0041		Android,iOS	Adversaries may abuse command and script interpreters to execute commands, scripts, or binaries.	active	
+T1623.001	Unix Shell	subtechnique	TA0041	T1623	Android,iOS	Adversaries may abuse Unix shell commands and scripts for execution.	active	
+T1624	Event Triggered Execution	technique	TA0028		Android	Adversaries may establish persistence using system mechanisms that trigger execution based on specific events.	active	
+T1624.001	Broadcast Receivers	subtechnique	TA0028	T1624	Android	Adversaries may establish persistence using system mechanisms that trigger execution based on specific events.	active	
+T1625	Hijack Execution Flow	technique	TA0028		Android	Adversaries may execute their own malicious payloads by hijacking the way operating systems run applications.	active	
+T1625.001	System Runtime API Hijacking	subtechnique	TA0028	T1625	Android	Adversaries may execute their own malicious payloads by hijacking the way an operating system runs applications.	active	
+T1626	Abuse Elevation Control Mechanism	technique	TA0029		Android	Adversaries may circumvent mechanisms designed to control elevated privileges to gain higher-level permissions.	active	
+T1626.001	Device Administrator Permissions	subtechnique	TA0029	T1626	Android	Adversaries may abuse Android's device administration API to obtain a higher degree of control over the device.	active	
+T1627	Execution Guardrails	technique	TA0030		Android,iOS	Adversaries may use execution guardrails to constrain execution or actions based on adversary supplied and environment specific conditions that are expected to be present on the target.	active	
+T1627.001	Geofencing	subtechnique	TA0030	T1627	Android,iOS	Adversaries may use a device's geographical location to limit certain malicious behaviors.	active	
+T1628	Hide Artifacts	technique	TA0030		Android	Adversaries may attempt to hide artifacts associated with their behaviors to evade detection.	active	
+T1628.001	Suppress Application Icon	subtechnique	TA0030	T1628	Android	A malicious application could suppress its icon from being displayed to the user in the application launcher.	active	
+T1628.002	User Evasion	subtechnique	TA0030	T1628	Android	Adversaries may attempt to avoid detection by hiding malicious behavior from the user.	active	
+T1628.003	Conceal Multimedia Files	subtechnique	TA0030	T1628	Android	Adversaries may attempt to hide multimedia files from the user.	active	
+T1629	Impair Defenses	technique	TA0030		Android	Adversaries may maliciously modify components of a victim environment in order to hinder or disable defensive mechanisms.	active	
+T1629.001	Prevent Application Removal	subtechnique	TA0030	T1629	Android	Adversaries may abuse the Android device administration API to prevent the user from uninstalling a target application.	active	
+T1629.002	Device Lockout	subtechnique	TA0030	T1629	Android	An adversary may seek to inhibit user interaction by locking the legitimate user out of the device.	active	
+T1629.003	Disable or Modify Tools	subtechnique	TA0030	T1629	Android	Adversaries may disable security tools to avoid potential detection of their tools and activities.	active	
+T1630	Indicator Removal on Host	technique	TA0030		iOS,Android	Adversaries may delete, alter, or hide generated artifacts on a device, including files, jailbreak status, or the malicious application itself.	active	
+T1630.001	Uninstall Malicious Application	subtechnique	TA0030	T1630	Android	Adversaries may include functionality in malware that uninstalls the malicious application from the device.	active	
+T1630.002	File Deletion	subtechnique	TA0030	T1630	Android	Adversaries may wipe a device or delete individual files in order to manipulate external outcomes or hide activity.	active	
+T1630.003	Disguise Root/Jailbreak Indicators	subtechnique	TA0030	T1630	Android,iOS	An adversary could use knowledge of the techniques used by security software to evade detection.	active	
+T1631	Process Injection	technique	TA0029,TA0030		Android,iOS	Adversaries may inject code into processes in order to evade process-based defenses or even elevate privileges.	active	
+T1631.001	Ptrace System Calls	subtechnique	TA0029,TA0030	T1631	Android,iOS	Adversaries may inject malicious code into processes via ptrace (process trace) system calls in order to evade process-based defenses as well as possibly elevate privileges.	active	
+T1632	Subvert Trust Controls	technique	TA0030		Android,iOS	Adversaries may undermine security controls that will either warn users of untrusted activity or prevent execution of untrusted applications.	active	
+T1632.001	Code Signing Policy Modification	subtechnique	TA0030	T1632	Android,iOS	Adversaries may modify code signing policies to enable execution of applications signed with unofficial or unknown keys.	active	
+T1633	Virtualization/Sandbox Evasion	technique	TA0030		Android,iOS	Adversaries may employ various means to detect and avoid virtualization and analysis environments.	active	
+T1633.001	System Checks	subtechnique	TA0030	T1633	Android,iOS	Adversaries may employ various system checks to detect and avoid virtualization and analysis environments.	active	
+T1634	Credentials from Password Store	technique	TA0031		iOS	Adversaries may search common password storage locations to obtain user credentials.	active	
+T1634.001	Keychain	subtechnique	TA0031	T1634	iOS	Adversaries may collect keychain data from an iOS device to acquire credentials.	active	
+T1635	Steal Application Access Token	technique	TA0031		Android,iOS	Adversaries can steal user application access tokens as a means of acquiring credentials to access remote systems and resources.	active	
+T1635.001	URI Hijacking	subtechnique	TA0031	T1635	Android,iOS	Adversaries may register Uniform Resource Identifiers (URIs) to intercept sensitive data.	active	
+T1636	Protected User Data	technique	TA0035		Android,iOS	Adversaries may utilize standard operating system APIs to collect data from permission-backed data stores on a device, such as the calendar or contact list.	active	
+T1636.001	Calendar Entries	subtechnique	TA0035	T1636	Android,iOS	Adversaries may utilize standard operating system APIs to gather calendar entry data.	active	
+T1636.002	Call Log	subtechnique	TA0035	T1636	Android,iOS	Adversaries may utilize standard operating system APIs to gather call log data.	active	
+T1636.003	Contact List	subtechnique	TA0035	T1636	Android,iOS	Adversaries may utilize standard operating system APIs to gather contact list data.	active	
+T1636.004	SMS Messages	subtechnique	TA0035	T1636	Android,iOS	Adversaries may utilize standard operating system APIs to gather SMS messages.	active	
+T1636.005	Accounts	subtechnique	TA0035	T1636	Android,iOS	Adversaries may utilize standard operating system APIs to gather account data.	active	
+T1637	Dynamic Resolution	technique	TA0037		Android,iOS	Adversaries may dynamically establish connections to command and control infrastructure to evade common detections and remediations.	active	
+T1637.001	Domain Generation Algorithms	subtechnique	TA0037	T1637	Android,iOS	Adversaries may use Domain Generation Algorithms (DGAs) to procedurally generate domain names for uses such as command and control communication or malicious application distribution.	active	
+T1638	Adversary-in-the-Middle	technique	TA0035		Android,iOS	Adversaries may attempt to position themselves between two or more networked devices to support follow-on behaviors such as Transmitted Data Manipulation or Endpoint Denial of Service.	active	
+T1639	Exfiltration Over Alternative Protocol	technique	TA0036		Android,iOS	Adversaries may steal data by exfiltrating it over a different protocol than that of the existing command and control channel.	active	
+T1639.001	Exfiltration Over Unencrypted Non-C2 Protocol	subtechnique	TA0036	T1639	Android,iOS	Adversaries may steal data by exfiltrating it over an un-encrypted network protocol other than that of the existing command and control channel.	active	
+T1640	Account Access Removal	technique	TA0034		Android	Adversaries may interrupt availability of system and network resources by inhibiting access to accounts utilized by legitimate users.	active	
+T1641	Data Manipulation	technique	TA0034		Android	Adversaries may insert, delete, or alter data in order to manipulate external outcomes or hide activity.	active	
+T1641.001	Transmitted Data Manipulation	subtechnique	TA0034	T1641	Android	Adversaries may alter data en route to storage or other systems in order to manipulate external outcomes or hide activity.	active	
+T1642	Endpoint Denial of Service	technique	TA0034		Android,iOS	Adversaries may perform Endpoint Denial of Service (DoS) attacks to degrade or block the availability of services to users.	active	
+T1643	Generate Traffic from Victim	technique	TA0034		Android,iOS	Adversaries may generate outbound traffic from devices.	active	
+T1644	Out of Band Data	technique	TA0037		Android,iOS	Adversaries may communicate with compromised devices using out of band data streams.	active	
+T1645	Compromise Client Software Binary	technique	TA0028		Android,iOS	Adversaries may modify system software binaries to establish persistent access to devices.	active	
+T1646	Exfiltration Over C2 Channel	technique	TA0036		Android,iOS	Adversaries may steal data by exfiltrating it over an existing command and control channel.	active	
 T1647	Plist File Modification	technique	TA0112		macOS	Adversaries may modify property list files (plist files) to enable other malicious activity, while also potentially evading and bypassing system defenses.	active	
 T1648	Serverless Execution	technique	TA0002		SaaS,IaaS,Office Suite	Adversaries may abuse serverless computing, integration, and automation services to execute arbitrary code in cloud environments.	active	
 T1649	Steal or Forge Authentication Certificates	technique	TA0006		Windows,Linux,macOS,Identity Provider	Adversaries may steal or forge certificates used for authentication to access remote systems or resources.	active	
@@ -818,19 +984,29 @@ T1651	Cloud Administration Command	technique	TA0002		IaaS	Adversaries may abuse 
 T1652	Device Driver Discovery	technique	TA0007		Linux,macOS,Windows	Adversaries may attempt to enumerate local device drivers on a victim host.	active	
 T1653	Power Settings	technique	TA0003		Windows,Linux,macOS,Network Devices	Adversaries may impair a system's ability to hibernate, reboot, or shut down in order to extend access to infected machines.	active	
 T1654	Log Enumeration	technique	TA0007		ESXi,IaaS,Linux,macOS,Windows	Adversaries may enumerate system and service logs to find useful data.	active	
+T1655	Masquerading	technique	TA0030		Android,iOS	Adversaries may attempt to manipulate features of their artifacts to make them appear legitimate or benign to users and/or security tools.	active	
+T1655.001	Match Legitimate Name or Location	subtechnique	TA0030	T1655	Android,iOS	Adversaries may match or approximate the name or location of legitimate files or resources when naming/placing them.	active	
 T1656	Impersonation	technique	TA0005		Linux,macOS,Office Suite,SaaS,Windows	Adversaries may impersonate a trusted person or organization in order to persuade and trick a target into performing some action on their behalf.	revoked	T1684.001
 T1657	Financial Theft	technique	TA0040		Linux,macOS,Office Suite,SaaS,Windows	Adversaries may steal monetary resources from targets through extortion, social engineering, technical theft, or other methods aimed at their own financial gain at the expense of the availability of these resources for victims.	active	
+T1658	Exploitation for Client Execution	technique	TA0041		Android,iOS	Adversaries may exploit software vulnerabilities in client applications to execute code.	active	
 T1659	Content Injection	technique	TA0001,TA0011		Linux,macOS,Windows	Adversaries may gain access and continuously communicate with victims by injecting malicious content into systems through online network traffic.	active	
+T1660	Phishing	technique	TA0027		Android,iOS	Adversaries may send malicious content to users in order to gain access to their mobile devices.	active	
+T1661	Application Versioning	technique	TA0027,TA0030		Android,iOS	An adversary may push an update to a previously benign application to add malicious code.	active	
+T1662	Data Destruction	technique	TA0034		Android	Adversaries may destroy data and files on specific devices or in large numbers to interrupt availability to systems, services, and network resources.	active	
+T1663	Remote Access Software	technique	TA0037		Android,iOS	Adversaries may use legitimate remote access software, such as VNC, TeamViewer, AirDroid, AirMirror, etc., to establish an interactive command and control channel to target mobile devices.	active	
+T1664	Exploitation for Initial Access	technique	TA0027		Android,iOS	Adversaries may exploit software vulnerabilities to gain initial access to a mobile device.	active	
 T1665	Hide Infrastructure	technique	TA0011		ESXi,Linux,macOS,Network Devices,Windows	Adversaries may manipulate network traffic in order to hide and evade detection of their C2 infrastructure.	active	
 T1666	Modify Cloud Resource Hierarchy	technique	TA0112		IaaS	Adversaries may attempt to modify hierarchical structures in infrastructure-as-a-service (IaaS) environments in order to evade defenses.	active	
 T1667	Email Bombing	technique	TA0040		Linux,Office Suite,Windows,macOS	Adversaries may flood targeted email addresses with an overwhelming volume of messages.	active	
 T1668	Exclusive Control	technique	TA0003		Linux,macOS,Windows	Adversaries who successfully compromise a system may attempt to maintain persistence by "closing the door" behind them - in other words, by preventing other threat actors from initially accessing or maintaining a foothold on the same system.	active	
 T1669	Wi-Fi Networks	technique	TA0001		Linux,Network Devices,Windows,macOS	Adversaries may gain initial access to target systems by connecting to wireless networks.	active	
+T1670	Virtualization Solution	technique	TA0030		Android	Adversaries may carry out malicious operations using virtualization solutions to escape from Android sandboxes and to avoid detection.	active	
 T1671	Cloud Application Integration	technique	TA0003		Office Suite,SaaS	Adversaries may achieve persistence by leveraging OAuth application integrations in a software-as-a-service environment.	active	
 T1672	Email Spoofing	technique	TA0005		Office Suite,Windows,macOS,Linux	Adversaries may fake, or spoof, a sender's identity by modifying the value of relevant email headers in order to establish contact with victims under false pretenses.	revoked	T1684.002
 T1673	Virtual Machine Discovery	technique	TA0007		ESXi,Linux,macOS,Windows	An adversary may attempt to enumerate running virtual machines (VMs) after gaining access to a host or hypervisor.	active	
 T1674	Input Injection	technique	TA0002		Windows,macOS,Linux	Adversaries may simulate keystrokes on a victim's computer by various means to perform any type of action on behalf of the user, such as launching the command interpreter using keyboard shortcuts, typing an inline script to be executed, or interacting directly with a GUI-based application.	active	
 T1675	ESXi Administration Command	technique	TA0002		ESXi	Adversaries may abuse ESXi administration services to execute commands on guest machines hosted within an ESXi virtual environment.	active	
+T1676	Linked Devices	technique	TA0028,TA0035		Android,iOS	Adversaries may abuse the "linked devices" feature on messaging applications, such as Signal and WhatsApp, to register the user's account to an adversary-controlled device.	active	
 T1677	Poisoned Pipeline Execution	technique	TA0002		SaaS	Adversaries may manipulate continuous integration / continuous development (CI/CD) processes by injecting malicious code into the build process.	active	
 T1678	Delay Execution	technique	TA0005		Linux,macOS,Windows	Adversaries may employ various time-based methods to evade detection and analysis.	active	
 T1679	Selective Exclusion	technique	TA0005		Windows	Adversaries may intentionally exclude certain files, folders, directories, file types, or system components from encryption or tampering during a ransomware or malicious payload execution.	active	
@@ -869,7 +1045,21 @@ TA0008	Lateral Movement	tactic				The adversary is trying to move through your e
 TA0009	Collection	tactic				The adversary is trying to gather data of interest to their goal.	active	
 TA0010	Exfiltration	tactic				The adversary is trying to steal data.	active	
 TA0011	Command and Control	tactic				The adversary is trying to communicate with compromised systems to control them.	active	
+TA0027	Initial Access	tactic				The adversary is trying to get into your device.	active	
+TA0028	Persistence	tactic				The adversary is trying to maintain their foothold.	active	
+TA0029	Privilege Escalation	tactic				The adversary is trying to gain higher-level permissions.	active	
+TA0030	Defense Evasion	tactic				The adversary is trying to avoid being detected.	active	
+TA0031	Credential Access	tactic				The adversary is trying to steal account names, passwords, or other secrets that enable access to resources.	active	
+TA0032	Discovery	tactic				The adversary is trying to figure out your environment.	active	
+TA0033	Lateral Movement	tactic				The adversary is trying to move through your environment.	active	
+TA0034	Impact	tactic				The adversary is trying to manipulate, interrupt, or destroy your devices and data.	active	
+TA0035	Collection	tactic				The adversary is trying to gather data of interest to their goal.	active	
+TA0036	Exfiltration	tactic				The adversary is trying to steal data.	active	
+TA0037	Command and Control	tactic				The adversary is trying to communicate with compromised devices to control them.	active	
+TA0038	Network Effects	tactic				The adversary is trying to intercept or manipulate network traffic to or from a device.	deprecated	
+TA0039	Remote Service Effects	tactic				The adversary is trying to control or monitor the device using remote services.	deprecated	
 TA0040	Impact	tactic				The adversary is trying to manipulate, interrupt, or destroy your systems and data.	active	
+TA0041	Execution	tactic				The adversary is trying to run malicious code.	active	
 TA0042	Resource Development	tactic				The adversary is trying to establish resources they can use to support operations.	active	
 TA0043	Reconnaissance	tactic				The adversary is trying to gather information they can use to plan future operations.	active	
 TA0112	Defense Impairment	tactic				The adversary is trying to break security mechanisms, pipelines, and tooling so defenders can't see or trust what's happening.	active	

@@ -63,7 +63,7 @@ func main() {
 		{
 			name:   "attack",
 			source: "enterprise-attack.json",
-			build:  buildAttack,
+			build:  acrossAttackDomains(buildAttack),
 			target: func() string { return filepath.Join(*treeDir, "server", "decorators", "cyber", "data", "attack.tsv") },
 		},
 		{
@@ -93,7 +93,7 @@ func main() {
 		{
 			name:   "attackdetail",
 			source: "enterprise-attack.json",
-			build:  buildAttackDetail,
+			build:  acrossAttackDomains(buildAttackDetail),
 			target: func() string { return filepath.Join(*treeDir, "assets", "cyber", "attackdetail.tsv") },
 		},
 		{
@@ -415,7 +415,7 @@ func buildAttack(source string) ([][]string, error) {
 		case "attack-pattern":
 			var tactics []string
 			for _, phase := range o.KillChainPhases {
-				if phase.KillChainName != "mitre-attack" {
+				if !attackKillChains[phase.KillChainName] {
 					continue
 				}
 				if tactic, ok := tacticByShortName[phase.PhaseName]; ok {
@@ -1564,4 +1564,42 @@ func firstColumn(path string) (map[string]bool, error) {
 		ids[id] = true
 	}
 	return ids, nil
+}
+
+var (
+	attackDomainFiles = []string{"mobile-attack.json"}
+	attackKillChains  = map[string]bool{"mitre-attack": true, "mitre-mobile-attack": true}
+)
+
+func acrossAttackDomains(build func(source string) ([][]string, error)) func(source string) ([][]string, error) {
+	return func(enterprise string) ([][]string, error) {
+		rows, err := build(enterprise)
+		if err != nil {
+			return nil, err
+		}
+
+		kept := map[string][]string{}
+		for _, row := range rows {
+			kept[row[0]] = row
+		}
+
+		for _, file := range attackDomainFiles {
+			domain, err := build(filepath.Join(filepath.Dir(enterprise), file))
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", file, err)
+			}
+			for _, row := range domain {
+				if existing, seen := kept[row[0]]; seen {
+					if !slices.Equal(existing, row) {
+						return nil, fmt.Errorf("%s: %s differs from the row another domain wrote for it", file, row[0])
+					}
+					continue
+				}
+				kept[row[0]] = row
+				rows = append(rows, row)
+			}
+		}
+
+		return rows, nil
+	}
 }

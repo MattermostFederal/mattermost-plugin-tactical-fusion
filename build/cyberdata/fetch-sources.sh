@@ -25,6 +25,9 @@ fetch_gz() {
 fetch "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json" \
     "enterprise-attack.json"
 
+fetch "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/mobile-attack/mobile-attack.json" \
+    "mobile-attack.json"
+
 echo "fetching cwe-1000.csv"
 curl --fail --location --silent --show-error --output "${source_dir}/cwe-1000.csv.zip" \
     "https://cwe.mitre.org/data/csv/1000.csv.zip"
@@ -51,7 +54,7 @@ if [ -f "${lock}" ]; then
 else
     echo "no sources.lock yet; writing one from what was just fetched"
     (cd "${source_dir}" && shasum -a 256 \
-        enterprise-attack.json cwe-1000.csv known_exploited_vulnerabilities.json \
+        enterprise-attack.json mobile-attack.json cwe-1000.csv known_exploited_vulnerabilities.json \
         epss_scores-current.csv ip2asn-combined.tsv > "${lock}")
 fi
 
