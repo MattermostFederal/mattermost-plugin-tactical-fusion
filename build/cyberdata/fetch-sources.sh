@@ -60,6 +60,32 @@ fetch_gz "https://epss.empiricalsecurity.com/epss_scores-current.csv.gz" \
 
 fetch_gz "https://iptoasn.com/data/ip2asn-combined.tsv.gz" "ip2asn-combined.tsv"
 
+fetch "https://check.torproject.org/torbulkexitlist" "tor-exits.txt"
+
+misp_repo="https://github.com/MISP/misp-warninglists"
+misp_commit="$(git ls-remote "${misp_repo}.git" refs/heads/main | cut -f1)"
+if [ -z "${misp_commit}" ]; then
+    echo "error: could not resolve the MISP warninglists main branch" >&2
+    exit 1
+fi
+misp_dir="${source_dir}/misp-warninglists"
+misp_tree="$(mktemp -d)"
+trap 'rm -rf "${misp_tree}"' EXIT
+echo "fetching MISP warninglists at ${misp_commit}"
+curl --fail --location --silent --show-error "https://codeload.github.com/MISP/misp-warninglists/tar.gz/${misp_commit}" \
+    | tar xz -C "${misp_tree}" --strip-components=1
+rm -rf "${misp_dir}"
+mkdir -p "${misp_dir}"
+while read -r list; do
+    [ -n "${list}" ] || continue
+    if [ ! -f "${misp_tree}/lists/${list}/list.json" ]; then
+        echo "error: warninglist ${list} is not in MISP warninglists ${misp_commit}" >&2
+        exit 1
+    fi
+    cp "${misp_tree}/lists/${list}/list.json" "${misp_dir}/${list}.json"
+done < "${here}/warninglists.txt"
+printf '%s\n' "${misp_commit}" > "${misp_dir}/COMMIT"
+
 if [ -f "${lock}" ]; then
     echo "verifying against ${lock}"
     (cd "${source_dir}" && shasum -a 256 -c "${lock}")
@@ -68,7 +94,8 @@ else
     (cd "${source_dir}" && shasum -a 256 \
         enterprise-attack.json mobile-attack.json cwe-1000.csv capec-1000.csv \
         kev-attack-enterprise.json kev-attack-mobile.json known_exploited_vulnerabilities.json \
-        epss_scores-current.csv ip2asn-combined.tsv > "${lock}")
+        epss_scores-current.csv ip2asn-combined.tsv tor-exits.txt \
+        misp-warninglists/COMMIT misp-warninglists/*.json > "${lock}")
 fi
 
 echo "sources are in ${source_dir}"

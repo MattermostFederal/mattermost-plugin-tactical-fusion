@@ -220,7 +220,19 @@
             affiliates used to exploit Citrix Bleed. Its panel lists that under
             <strong>Threat reports</strong>, linked to the advisory, and its hover says
             <strong>Reported malicious</strong>. The indicators of the CISA advisories the
-            plugin ships with come in the bundle. Every report names its source. Your team's own
+            plugin ships with come in the bundle. Every report names its source.
+        </p>
+
+        <p>
+            Beside the verdicts, the bundle carries <strong>context</strong>: the Tor Project's exit
+            list, and MISP warninglists for cloud provider ranges (Amazon AWS, Microsoft Azure,
+            Google Cloud, Oracle Cloud), CDNs (Cloudflare, Akamai, Fastly), public DNS resolvers,
+            known sinkholes, and research scanners (Censys, Shodan, Shadowserver, Rapid7 and
+            universities). <code class="copyable">8.8.8.8</code> reads as a public DNS resolver. Context
+            is shown under the same <strong>Threat reports</strong> heading, in plain text rather
+            than red, and never makes the hover say <strong>Reported malicious</strong>: a scanner
+            touching your network, or a Tor exit, explains a log line rather than convicting it.
+            Your team's own
             judgments belong in the <a href="#cyber-datasets">watchlist</a>. Hosting addresses
             are reassigned, so one named in an old advisory may belong to somebody else today.
         </p>
@@ -246,8 +258,11 @@
             the EICAR test file. The panel names the algorithm and the length. A hash is an
             identity rather than a record, so everything else comes from the
             <a href="#cyber-datasets">datasets</a>: the threat reports the bundled CISA advisories
-            make about it, and any watchlist entry. A hash no dataset knows proves nothing about
-            the file either way.
+            make about it, context from the MISP warninglists (the hashes of empty files, of the
+            EICAR test file, and others known to cause false positives), and any watchlist entry.
+            <code class="copyable">e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</code>
+            is the SHA-256 of an empty file. A hash no dataset knows proves nothing about the file
+            either way.
         </p>
 
         <p>
@@ -389,6 +404,8 @@
                 <tr><td><code>cvedetail.tsv</code></td><td>Affected products and versions, as the reporting organization lists them and as NVD configures them, the references, and which organization reported each weakness</td></tr>
                 <tr><td><code>cwedetail.tsv</code></td><td>For each weakness: its whole description, background, consequences, mitigations, detection methods and observed CVEs. Ships with the plugin</td></tr>
                 <tr><td><code>attackdetail.tsv</code></td><td>For each ATT&amp;CK technique and tactic: its whole description, the mitigations and detection strategies MITRE maps to it with their analytics and log sources, every procedure example from a group, malware, tool or campaign, and its references. Ships with the plugin</td></tr>
+                <tr><td><code>netlists.tsv</code></td><td>Context for address ranges: Tor exits, cloud providers, CDNs, public DNS resolvers, sinkholes and research scanners, from the Tor Project (CC0) and MISP warninglists (CC0). Ships with the plugin, gzipped</td></tr>
+                <tr><td><code>hashlists.tsv</code></td><td>Context for file hashes: empty files, the EICAR test file and common false positives, from MISP warninglists (CC0). Ships with the plugin</td></tr>
                 <tr><td><code>capec.tsv</code></td><td>MITRE CAPEC attack patterns, found by the CWE and ATT&amp;CK ids each one names. Ships with the plugin</td></tr>
                 <tr><td><code>cveattack.tsv</code></td><td>The Center for Threat-Informed Defense's mappings between known-exploited CVEs and ATT&amp;CK techniques, under the Apache License 2.0. Ships with the plugin</td></tr>
                 <tr><td><code>advisory.tsv</code></td><td>The IP addresses and file hashes named in the CISA advisories the plugin ships with, each linked to its advisory. Ships with the plugin</td></tr>

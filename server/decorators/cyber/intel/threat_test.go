@@ -6,9 +6,43 @@ import (
 	"testing"
 )
 
-func TestAnAddressIsFoundWhateverItsForm(t *testing.T) {
+func TestAnAddressJoinsItsAdvisoryAndTheRangesAroundIt(t *testing.T) {
 	reports, err := openIn(t, "testdata").ThreatReports("::ffff:203.0.113.10")
-	if err != nil || len(reports) != 1 || reports[0].Source != "CISA AA99-001A" || reports[0].Category != CategoryMalicious {
+	if err != nil || len(reports) != 2 {
+		t.Fatalf("reports %+v, %v", reports, err)
+	}
+	if reports[0].Source != "CISA AA99-001A" || reports[0].Category != CategoryMalicious {
+		t.Errorf("the advisory report is %+v", reports[0])
+	}
+	if reports[1].Threat != "Invented Cloud IP ranges" || reports[1].Category != CategoryContext {
+		t.Errorf("the range report is %+v", reports[1])
+	}
+}
+
+func TestARangeReportsEveryListCoveringTheAddress(t *testing.T) {
+	reports, err := openIn(t, "testdata").ThreatReports("198.51.100.5")
+	if err != nil || len(reports) != 2 {
+		t.Fatalf("reports %+v, %v", reports, err)
+	}
+	for _, report := range reports {
+		if report.Category != CategoryContext {
+			t.Errorf("%+v is not context", report)
+		}
+	}
+}
+
+func TestAnAddressPastEveryRangeIsNotFound(t *testing.T) {
+	if _, err := openIn(t, "testdata").ThreatReports("192.0.2.1"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("got %v, want ErrNotFound", err)
+	}
+	if _, err := openIn(t, "testdata").ThreatReports("2001:db9::1"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("an address past the last range: got %v, want ErrNotFound", err)
+	}
+}
+
+func TestAKnownFileHashIsContext(t *testing.T) {
+	reports, err := openIn(t, "testdata").ThreatReports("D41D8CD98F00B204E9800998ECF8427E")
+	if err != nil || len(reports) != 1 || reports[0].Threat != "Hashes for empty files" || reports[0].Category != CategoryContext {
 		t.Fatalf("reports %+v, %v", reports, err)
 	}
 }

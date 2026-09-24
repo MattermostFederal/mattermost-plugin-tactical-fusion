@@ -73,3 +73,4 @@ build/maposm/out/
 /assets/cyber/ip.tsv
 /assets/cyber/epss.tsv
 /assets/cyber/*.unpacking
+/assets/cyber/netlists.tsv

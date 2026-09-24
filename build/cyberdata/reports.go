@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"net/netip"
@@ -17,10 +16,6 @@ const (
 	categoryMalicious = "malicious"
 	categoryContext   = "context"
 
-	torExitList = "tor-exits.txt"
-	torSource   = "Tor Project"
-
-	torMetrics     = "https://metrics.torproject.org/rs.html#search/"
 	cisaAdvisories = "https://www.cisa.gov/news-events/cybersecurity-advisories/"
 )
 
@@ -149,29 +144,6 @@ func highest(a, b string) string {
 		return b
 	}
 	return a
-}
-
-func loadTorExits(path string, index *reportIndex) error {
-	handle, err := os.Open(path) // #nosec G304 -- a feed file under the directory the operator names with -source
-	if err != nil {
-		return err
-	}
-	defer func() { _ = handle.Close() }()
-
-	scanner := bufio.NewScanner(handle)
-	for scanner.Scan() {
-		key, ok := indicatorKey(scanner.Text())
-		if !ok {
-			continue
-		}
-		index.add(key, threatReport{
-			Source:   torSource,
-			Category: categoryContext,
-			Threat:   "Tor exit node",
-			URL:      torMetrics + key,
-		})
-	}
-	return scanner.Err()
 }
 
 type stixAdvisory struct {

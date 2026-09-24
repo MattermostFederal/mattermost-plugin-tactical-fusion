@@ -37,6 +37,8 @@ const (
 	NameWatchlist    = "watchlist"
 	NameCAPEC        = "capec"
 	NameCVEAttack    = "cveattack"
+	NameNetLists     = "netlists"
+	NameHashLists    = "hashlists"
 )
 
 type spec struct {
@@ -56,9 +58,11 @@ var specs = map[string]spec{
 	NameWatchlist:    {fields: 6, inspect: loadWatchlist},
 	NameCAPEC:        {fields: 2},
 	NameCVEAttack:    {fields: 2},
+	NameNetLists:     {fields: 3},
+	NameHashLists:    {fields: 2},
 }
 
-var Names = []string{NameCVE, NameCVEDetail, NameCWEDetail, NameAttackDetail, NameCAPEC, NameCVEAttack, NameEPSS, NameKEV, NameIP, NameAdvisory, NameWatchlist}
+var Names = []string{NameCVE, NameCVEDetail, NameCWEDetail, NameAttackDetail, NameCAPEC, NameCVEAttack, NameEPSS, NameKEV, NameIP, NameAdvisory, NameNetLists, NameHashLists, NameWatchlist}
 
 type Dataset struct {
 	Name      string

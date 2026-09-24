@@ -226,6 +226,16 @@ bundle, and `make cyber-advisories` rebuilds it.
 - A report's category is `malicious` or `context`; only `malicious` makes the
   panel say "reported malicious".
 
+### Context
+
+`netlists.tsv` and `hashlists.tsv` carry `context` reports in the same JSON
+shape: the Tor exit list, and the MISP warninglists named in `warninglists.txt`
+(cloud providers, CDNs, public DNS resolvers, sinkholes, research scanners, and
+the hashes of empty files, EICAR and common false positives). An address is
+looked up by range and a hash by key, and the plugin joins them with the
+advisories. Add or drop a list by editing `warninglists.txt`; the fetch fails on
+a name the pinned MISP commit does not hold.
+
 ### Why abuse.ch is not used
 
 Earlier builds read abuse.ch ThreatFox, Feodo Tracker and MalwareBazaar into

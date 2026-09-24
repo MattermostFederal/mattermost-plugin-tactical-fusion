@@ -328,6 +328,11 @@ cyber-refresh:
 	$(GO) run ./build/cyberdata -only ip -label "IPtoASN ip2asn-combined, fetched $$(date -u +%Y-%m-%d)"
 	gzip -9 -n -c build/cyberdata/out/ip.tsv > assets/cyber/ip.tsv.gz
 	gzip -9 -n -c build/cyberdata/out/epss.tsv > assets/cyber/epss.tsv.gz
+	$(GO) run ./build/cyberdata -only netlists \
+		-label "Tor Project exit list and MISP warninglists $$(cut -c1-12 build/cyberdata/source/misp-warninglists/COMMIT), fetched $$(date -u +%Y-%m-%d)"
+	$(GO) run ./build/cyberdata -only hashlists \
+		-label "MISP warninglists $$(cut -c1-12 build/cyberdata/source/misp-warninglists/COMMIT), fetched $$(date -u +%Y-%m-%d)"
+	gzip -9 -n -c build/cyberdata/out/netlists.tsv > assets/cyber/netlists.tsv.gz
 	$(MAKE) --no-print-directory cyber-advisories
 
 CYBER_RELEASE_DATASETS := cve cvedetail

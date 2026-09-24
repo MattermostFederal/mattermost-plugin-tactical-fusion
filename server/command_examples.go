@@ -112,7 +112,7 @@ var exampleSets = map[string]exampleSet{
 			{label: "Weakness", text: "CWE-79", note: "only identifiers the built-in catalog holds"},
 			{label: "Technique", text: "T1059.001", note: "a sub-technique, which carries its parent and its tactics"},
 			{label: "Tactic", text: "TA0002"},
-			{label: "IP address", text: "8.8.8.8", note: "Google's public resolver: its network, region and city"},
+			{label: "IP address", text: "8.8.8.8", note: "Google's public resolver: its network and place, and the public DNS resolver list naming it"},
 			{label: "Attack address", text: "141.98.9.137", note: "named by CISA advisory AA23-325A as LockBit 3.0's remote address for Citrix Bleed; hosting addresses change hands"},
 			{label: "File hash", text: "01ce9cfebb29596d0ab7c99e8dbadf1a8409750b183e6bf73e0de021b365be13", note: "a BlackSuit (Royal) ransomware sample, a SHA-256 named by CISA advisory AA23-061A"},
 		},

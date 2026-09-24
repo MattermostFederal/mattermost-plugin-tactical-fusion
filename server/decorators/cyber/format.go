@@ -89,6 +89,8 @@ var datasetLabels = map[string]string{
 	intel.NameWatchlist:    "watchlist",
 	intel.NameCAPEC:        "attack pattern",
 	intel.NameCVEAttack:    "CVE to ATT&CK mapping",
+	intel.NameNetLists:     "address context",
+	intel.NameHashLists:    "known file",
 }
 
 const attackBaseURL = "https://attack.mitre.org"

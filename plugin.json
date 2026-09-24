@@ -384,7 +384,7 @@
                         "type": "text",
                         "default": "",
                         "placeholder": "/opt/mattermost/tactical-fusion/cyber",
-                        "help_text": "A directory on this server holding the datasets the enrichment reads: cve.tsv, cvedetail.tsv and watchlist.tsv, and a replacement for any bundled one (kev.tsv, epss.tsv, ip.tsv, cwedetail.tsv, attackdetail.tsv, capec.tsv, cveattack.tsv, advisory.tsv), each also accepted gzipped as .tsv.gz, plus any vendor .mmdb database. Drop a file in and it is read within a few seconds without restarting anything; a file here replaces a bundled one of the same name. Leave this empty to use only the datasets the plugin ships. In a cluster every node must see this directory, because each node answers from the files it can read; a dataset on one node alone enriches for some readers and not others."
+                        "help_text": "A directory on this server holding the datasets the enrichment reads: cve.tsv, cvedetail.tsv and watchlist.tsv, and a replacement for any bundled one (kev.tsv, epss.tsv, ip.tsv, cwedetail.tsv, attackdetail.tsv, capec.tsv, cveattack.tsv, advisory.tsv, netlists.tsv, hashlists.tsv), each also accepted gzipped as .tsv.gz, plus any vendor .mmdb database. Drop a file in and it is read within a few seconds without restarting anything; a file here replaces a bundled one of the same name. Leave this empty to use only the datasets the plugin ships. In a cluster every node must see this directory, because each node answers from the files it can read; a dataset on one node alone enriches for some readers and not others."
                     },
                     {
                         "key": "CyberDatasetsLoaded",

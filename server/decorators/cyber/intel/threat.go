@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/netip"
+	"slices"
 	"strings"
 )
 
@@ -34,17 +35,50 @@ func IndicatorKey(value string) string {
 	return strings.ToLower(value)
 }
 
-var reportDatasets = []string{NameAdvisory}
+var reportDatasets = []string{NameAdvisory, NameHashLists}
+
+const netListFields = 3
+
+func (s *Set) reportsField(name, key string) (string, error) {
+	if name != NameNetLists {
+		row, err := s.lookup(name, key)
+		if err != nil {
+			return "", err
+		}
+		return row[1], nil
+	}
+
+	addr, err := netip.ParseAddr(key)
+	if err != nil {
+		return "", ErrNotFound
+	}
+	dataset, ok := s.datasets[NameNetLists]
+	if !ok {
+		return "", ErrNoDataset
+	}
+	rangeKey := IPKey(addr)
+	row, err := dataset.file.LookupRange(rangeKey)
+	switch {
+	case err != nil:
+		return "", err
+	case len(row) != netListFields || row[0] > rangeKey || rangeKey > row[1]:
+		return "", ErrNotFound
+	}
+	return row[2], nil
+}
 
 func (s *Set) ThreatReports(value string) ([]ThreatReport, error) {
 	key := IndicatorKey(value)
+	if s == nil {
+		return nil, ErrNoDataset
+	}
 
 	var reports []ThreatReport
 	installed := false
 	var firstErr error
 
-	for _, name := range reportDatasets {
-		row, err := s.lookup(name, key)
+	for _, name := range append(slices.Clone(reportDatasets), NameNetLists) {
+		field, err := s.reportsField(name, key)
 		switch {
 		case errors.Is(err, ErrNoDataset):
 			continue
@@ -61,7 +95,7 @@ func (s *Set) ThreatReports(value string) ([]ThreatReport, error) {
 		installed = true
 
 		var found []ThreatReport
-		if err := decodeJSONFields(row[0], []jsonField{{"threat reports", row[1], &found}}); err != nil {
+		if err := decodeJSONFields(key, []jsonField{{"threat reports", field, &found}}); err != nil {
 			if firstErr == nil {
 				firstErr = err
 			}

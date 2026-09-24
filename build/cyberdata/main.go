@@ -132,6 +132,18 @@ func main() {
 			build:  buildCVEAttack,
 			target: func() string { return filepath.Join(*treeDir, "assets", "cyber", "cveattack.tsv") },
 		},
+		{
+			name:   "netlists",
+			source: "misp-warninglists",
+			build:  buildNetLists,
+			target: func() string { return filepath.Join(*outDir, "netlists.tsv") },
+		},
+		{
+			name:   "hashlists",
+			source: "misp-warninglists",
+			build:  buildHashLists,
+			target: func() string { return filepath.Join(*treeDir, "assets", "cyber", "hashlists.tsv") },
+		},
 		kevSliceBuilder("cve"),
 		kevSliceBuilder("cvedetail"),
 	}

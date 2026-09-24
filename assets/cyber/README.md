@@ -23,6 +23,8 @@ The watchlist in particular must never be moved under `public/`.
 | `cveattack.tsv` | The Center for Threat-Informed Defense's mappings of KEV CVEs to ATT&CK techniques, keyed both ways | yes |
 | `LICENSE-mappings-explorer.txt` | The Apache License 2.0 that `cveattack.tsv`'s source is published under | yes |
 | `epss.tsv.gz` | FIRST's Exploit Prediction Scoring System scores and percentiles for every scored CVE, gzipped; unpacked beside itself on first read | yes, as the archive only |
+| `netlists.tsv.gz` | Address-range context: Tor exits and the MISP warninglists in `build/cyberdata/warninglists.txt`, flattened into disjoint ranges, gzipped; unpacked beside itself on first read | yes, as the archive only |
+| `hashlists.tsv` | File-hash context from the MISP warninglists of type `string` in the same list | yes |
 | `ip.tsv.gz` | IPtoASN's address ranges with their autonomous system and country, gzipped; the plugin unpacks it beside itself on first read | yes, as the archive only |
 
 Everything else the decorator reads is too large or changes too fast to bundle
@@ -223,3 +225,19 @@ row carries its own score date, and the panel's Data sources table shows when th
 file was compiled. An operator who wants today's scores drops a fresh `epss.tsv.gz`
 into `CyberDatasetsDir`. The plugin unpacks the archive into `epss.tsv` beside it,
 about 16 MB, which `.gitignore` and the `bundle` target keep out.
+
+### `netlists.tsv.gz` and `hashlists.tsv`
+
+| | |
+|---|---|
+| Upstream | `https://check.torproject.org/torbulkexitlist`, and `https://github.com/MISP/misp-warninglists` at the main branch commit the fetch records in `COMMIT` |
+| Origin | The Tor Project; the MISP project's warninglists |
+| License | Both CC0: Tor Metrics data "is freely available under a CC0 no copyright declaration", and "MISP warning-lists are licensed under CC0 1.0 Universal" |
+| Format | `netlists`: range start and end in the 32 hex digit form `ip.tsv` uses, and a JSON array of reports. `hashlists`: a lowercase digest and a JSON array of reports |
+
+Every report is `context`, never a verdict. The lists read are the ones named in
+`build/cyberdata/warninglists.txt`; `windows-binary-hashes` (790,000 hashes) and
+`nioc-filehash` are left out for size. The generator splits overlapping ranges
+into disjoint segments, each carrying every list that covers it, so an address
+in two lists reports both, and joins adjacent segments that carry the same
+lists. Measured on 2026-09-24: 69,287 rows, 16.6 MB, 0.52 MB gzipped.

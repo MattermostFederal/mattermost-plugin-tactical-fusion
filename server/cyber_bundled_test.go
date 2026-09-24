@@ -183,3 +183,37 @@ func TestTheFileHashExampleIsReportedMaliciousFromTheBundle(t *testing.T) {
 		t.Errorf("the example hash reads %q with reports %+v", d.Headline, d.Reports)
 	}
 }
+
+func TestTheBundledContextNamesAResolverAndAnEmptyFileWithoutCallingThemMalicious(t *testing.T) {
+	set := openBundledCyber(t)
+
+	for value, want := range map[string]string{
+		"8.8.8.8": "public DNS resolvers",
+		"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855": "empty files",
+	} {
+		kind := cyber.KindIP
+		if !strings.Contains(value, ".") {
+			kind = cyber.KindHash
+		}
+		d := cyber.Describe(kind, value, set)
+
+		named := false
+		for _, report := range d.Reports {
+			named = named || strings.Contains(report.Threat, want)
+			if report.Malicious {
+				t.Errorf("%s has a malicious report: %+v", value, report)
+			}
+		}
+		if !named || strings.Contains(d.Headline, "malicious") {
+			t.Errorf("%s reads %q with reports %+v, want context naming %q", value, d.Headline, d.Reports, want)
+		}
+
+		files := map[string]bool{}
+		for _, source := range d.Freshness {
+			files[source.File] = true
+		}
+		if !files["netlists.tsv"] && !files["hashlists.tsv"] {
+			t.Errorf("%s lists no context file among its data sources: %v", value, files)
+		}
+	}
+}
