@@ -153,7 +153,7 @@ func TestEachEventIsAPostOfItsOwn(t *testing.T) {
 	// The Cursor on Target posts sit between the decorator sets and whatever
 	// other format posts after them, so the window is taken from both ends
 	// rather than from the tail.
-	start := len(messages) - len(cotExampleOrder) - p.geoJSONExampleCount() - p.tfrExampleCount() - len(noteExamples)
+	start := len(messages) - len(cotExampleOrder) - p.geoJSONExampleCount() - p.tfrExampleCount() - len(noteExamples) - mcpExampleCount
 	cards := messages[start : start+len(cotExampleOrder)]
 
 	if len(cards) != len(cotExampleOrder) {

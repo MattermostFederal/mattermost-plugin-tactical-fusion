@@ -46,10 +46,19 @@ func mcpExampleMessage() string {
 	return b.String()
 }
 
-func (p *Plugin) mcpExamplesResponse(args *model.CommandArgs) *model.CommandResponse {
+const mcpExampleCount = 1
+
+func (p *Plugin) postMCPExample(args *model.CommandArgs) int {
 	if _, appErr := p.API.CreatePost(examplePost(args, mcpExampleMessage())); appErr != nil {
 		p.API.LogError("tactical-fusion: could not post the agent examples",
 			"error_code", errcode.CommandExamplesPostFailed, "error", appErr.Error())
+		return 1
+	}
+	return 0
+}
+
+func (p *Plugin) mcpExamplesResponse(args *model.CommandArgs) *model.CommandResponse {
+	if p.postMCPExample(args) > 0 {
 		return ephemeralResponse(errcode.WithCode(errcode.CommandExamplesPostFailed,
 			"Could not post the examples to this channel."))
 	}

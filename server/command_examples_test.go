@@ -37,10 +37,13 @@ func TestExamplesPostOneMessagePerSet(t *testing.T) {
 
 	messages := runExamplePosts(t, p)
 
-	want := len(exampleSetOrder) + len(cotExampleOrder) + p.geoJSONExampleCount() + p.tfrExampleCount() + len(noteExamples)
+	want := len(exampleSetOrder) + len(cotExampleOrder) + p.geoJSONExampleCount() + p.tfrExampleCount() + len(noteExamples) + mcpExampleCount
 	if len(messages) != want {
-		t.Fatalf("got %d messages for %d sets plus %d Cursor on Target events plus %d GeoJSON documents plus %d TFRs plus %d notes",
-			len(messages), len(exampleSetOrder), len(cotExampleOrder), p.geoJSONExampleCount(), p.tfrExampleCount(), len(noteExamples))
+		t.Fatalf("got %d messages for %d sets plus %d Cursor on Target events plus %d GeoJSON documents plus %d TFRs plus %d notes plus %d agent prompts",
+			len(messages), len(exampleSetOrder), len(cotExampleOrder), p.geoJSONExampleCount(), p.tfrExampleCount(), len(noteExamples), mcpExampleCount)
+	}
+	if messages[len(messages)-1] != mcpExampleMessage() {
+		t.Errorf("the last message is not the agent prompts:\n%s", first(messages[len(messages)-1]))
 	}
 
 	for i, key := range exampleSetOrder {

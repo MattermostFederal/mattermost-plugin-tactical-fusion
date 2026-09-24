@@ -102,14 +102,15 @@
         </p>
 
         <p>
-            Fourteen posts, and none of them a reply: date-time groups, coordinates, airfields,
+            Fifteen posts, and none of them a reply: date-time groups, coordinates, airfields,
             <a href="reports.html">aviation reports</a>, <a href="frequencies.html">frequencies</a>,
             <a href="cyber.html">cyber context</a>, then three <a href="cot.html">Cursor on Target</a> events and a
             <a href="geojson.html">GeoJSON</a> document, which arrive as cards, and a
             <a href="reports.html#reports-card">temporary flight restriction</a> over Honolulu,
             which arrives as a card with its area drawn on the map, and three posts of
             <a href="notes.html">notes</a>: a glossary of air operations acronyms, two
-            tables, and a weather brief with a launch checklist. Each
+            tables, and a weather brief with a launch checklist, and last the
+            <a href="#examples-mcp">questions for the <code>@fusion</code> agent</a>. Each
             is something you come back to rather than a remark on the one above it. A set with
             nothing left to show is not posted at all.
         </p>
@@ -167,7 +168,8 @@ GEOREF: `GEOREF:XGKP55803503` &rarr; GEOREF:XGKP55803503 - the label is required
         <h3 id="examples-mcp">Questions for the agent: <code>--mcp</code></h3>
 
         <p>
-            <code>/tactical-fusion examples --mcp</code> posts one message holding a question for
+            <code>/tactical-fusion examples --mcp</code> posts only this message, which the
+            plain command also posts last: one message holding a question for
             each kind of thing the plugin knows, each in its own code block and addressed to
             <code>@fusion</code>, the agent <code>make deploy</code> sets up on a development stack
             in the <a href="integration.html#mcp">Mattermost Agents</a> plugin. Copy one into a
