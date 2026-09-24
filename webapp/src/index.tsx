@@ -4,6 +4,7 @@ import type {Store} from 'redux';
 
 import type {PluginRegistry} from 'types/mattermost-webapp';
 
+import CyberDatasets from './admin/CyberDatasets';
 import PackageUploader from './admin/PackageUploader';
 import {registerReportPanel} from './avreport/panel';
 import ReportPostBody from './avreport/ReportPostBody';
@@ -102,6 +103,7 @@ export default class Plugin {
         // only setting type that can carry a file; every other type is a
         // string, a number or a switch.
         registry.registerAdminConsoleCustomSetting('LocationMapPackages', PackageUploader, {showTitle: true});
+        registry.registerAdminConsoleCustomSetting('CyberDatasetsLoaded', CyberDatasets, {showTitle: true});
     }
 
     /**

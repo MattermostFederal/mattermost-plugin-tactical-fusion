@@ -213,6 +213,11 @@ func (p *Plugin) serveAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.URL.Path == cyberDatasetsPath {
+		p.serveCyberDatasets(w, r, userID)
+		return
+	}
+
 	if r.URL.Path == cyberPath {
 		p.serveCyber(w, r)
 		return

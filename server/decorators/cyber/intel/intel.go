@@ -92,6 +92,8 @@ type Set struct {
 	datasets   map[string]*Dataset
 	mmdbs      []*mmdbReader
 	candidates map[string]fingerprint
+	replaced   []string
+	problems   []*FileError
 }
 
 type fingerprint struct {
@@ -172,6 +174,9 @@ func Open(dirs []string) (*Set, []*FileError) {
 					problems = append(problems, &FileError{Path: path, Class: ErrorName, Err: errors.New("the name is not one this build reads")})
 					continue
 				}
+				if earlier, seen := tabular[name]; seen {
+					set.replaced = append(set.replaced, earlier)
+				}
 				tabular[name] = path
 
 			case strings.HasSuffix(entry.Name(), MMDBSuffix):
@@ -202,6 +207,7 @@ func Open(dirs []string) (*Set, []*FileError) {
 		set.mmdbs = append(set.mmdbs, reader)
 	}
 
+	set.problems = problems
 	return set, problems
 }
 

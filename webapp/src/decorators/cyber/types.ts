@@ -93,3 +93,47 @@ export interface CyberReference {
     url: string;
     tags: string;
 }
+
+export interface CyberDirectory {
+    path: string;
+    kind: string;
+}
+
+export interface CyberDatasetFile {
+    name: string;
+    label: string;
+    path: string;
+    kind: string;
+    size: number;
+    records: number;
+    countError: string;
+    generated: string;
+    source: string;
+}
+
+export interface CyberDatabaseFile {
+    path: string;
+    kind: string;
+    type: string;
+    built: string;
+    size: number;
+}
+
+export interface CyberMissingDataset {
+    name: string;
+    label: string;
+}
+
+export interface CyberSkippedFile {
+    path: string;
+    reason: string;
+}
+
+export interface CyberDatasetsResponse {
+    directories: CyberDirectory[];
+    datasets: CyberDatasetFile[];
+    databases: CyberDatabaseFile[];
+    missing: CyberMissingDataset[];
+    replaced: string[];
+    skipped: CyberSkippedFile[];
+}

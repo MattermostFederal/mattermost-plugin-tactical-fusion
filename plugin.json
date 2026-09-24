@@ -384,7 +384,13 @@
                         "type": "text",
                         "default": "",
                         "placeholder": "/opt/mattermost/tactical-fusion/cyber",
-                        "help_text": "A directory on this server holding the datasets the enrichment reads: cve.tsv, epss.tsv, kev.tsv, ip.tsv and watchlist.tsv, plus any vendor .mmdb database. Drop a file in and it is read within a few seconds without restarting anything; a file here replaces a bundled one of the same name. Leave this empty to use only the datasets the plugin ships. In a cluster every node must see this directory, because each node answers from the files it can read; a dataset on one node alone enriches for some readers and not others."
+                        "help_text": "A directory on this server holding the datasets the enrichment reads: cve.tsv, cvedetail.tsv, epss.tsv, ip.tsv, threat.tsv and watchlist.tsv, and a replacement for any bundled one (kev.tsv, cwedetail.tsv, attackdetail.tsv, advisory.tsv), each also accepted gzipped as .tsv.gz, plus any vendor .mmdb database. Drop a file in and it is read within a few seconds without restarting anything; a file here replaces a bundled one of the same name. Leave this empty to use only the datasets the plugin ships. In a cluster every node must see this directory, because each node answers from the files it can read; a dataset on one node alone enriches for some readers and not others."
+                    },
+                    {
+                        "key": "CyberDatasetsLoaded",
+                        "display_name": "Loaded datasets",
+                        "type": "custom",
+                        "help_text": "What this node has loaded from the bundle and from the directory above: each dataset's file, how many records it holds, when it was generated and from what, each vendor database, the bundled files a file in the directory replaces, and every file that was skipped with the reason. Counting reads each file once, so the first view after a dataset changes can take a moment on the full vulnerability set. In a cluster this is the node that answered."
                     }
                 ]
             }

@@ -1336,6 +1336,7 @@
                 <tr><td><a href="#enable-cyber-ip"><code>EnableCyberIP</code></a></td><td><code>203.0.113.7</code></td><td>On</td></tr>
                 <tr><td><a href="#enable-cyber-hash"><code>EnableCyberHash</code></a></td><td>MD5, SHA-1 and SHA-256 digests</td><td>On</td></tr>
                 <tr><td><a href="#cyber-datasets-dir"><code>CyberDatasetsDir</code></a></td><td>Where the enrichment datasets are read from</td><td>Empty</td></tr>
+                <tr><td><a href="#cyber-datasets-loaded"><code>CyberDatasetsLoaded</code></a></td><td>What is loaded, with record counts</td><td>Not a stored value</td></tr>
             </tbody>
         </table>
 
@@ -1491,6 +1492,34 @@
                 that looks like from a reader's side.
             </p>
         </div>
+
+
+        <h3 id="cyber-datasets-loaded" data-setting="CyberDatasetsLoaded">Loaded datasets <code>CyberDatasetsLoaded</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>A report, not a stored value</td></tr>
+                <tr><td>Default</td><td>Whatever this node has loaded</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Shows what this node has read from the bundle and from the
+            <a href="#cyber-datasets-dir">dataset directory</a>: each dataset's file, whether it
+            came with the plugin or from the directory, how many records it holds, its size,
+            and the generated date and source its stamp names. Below that come each vendor
+            <code>.mmdb</code> database with its type and build date, the datasets that are
+            not installed, any bundled file a file in the directory replaces, and every file
+            that was skipped, with the reason and its error code.
+        </p>
+
+        <p>
+            Datasets are searched on disk rather than loaded, so a record count means reading
+            the file once. That happens the first time the list is opened after a dataset
+            changes, and can take a moment on the full vulnerability set; after that the count
+            is kept until the file changes. In a cluster the list is the node that answered,
+            which is how to find a node missing a file the others have.
+        </p>
 
         <h2>Reader settings are not admin settings</h2>
 

@@ -72,6 +72,10 @@ type Credit struct {
 	URL  string
 }
 
+func DatasetLabel(name string) string {
+	return datasetLabels[name]
+}
+
 var datasetLabels = map[string]string{
 	intel.NameCVE:          "vulnerability",
 	intel.NameCVEDetail:    "vulnerability detail",

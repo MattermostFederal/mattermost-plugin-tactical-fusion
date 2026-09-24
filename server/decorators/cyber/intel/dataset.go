@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 )
 
 const (
@@ -69,6 +70,10 @@ type Dataset struct {
 	size int64
 
 	watchlist map[string][]WatchEntry
+
+	countOnce sync.Once
+	records   int
+	countErr  error
 }
 
 type Status struct {

@@ -8,7 +8,10 @@ import (
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
-const cyberPath = apiPath + "/cyber"
+const (
+	cyberPath         = apiPath + "/cyber"
+	cyberDatasetsPath = apiPath + "/cyber/datasets"
+)
 
 type cyberRow struct {
 	Label string `json:"label"`

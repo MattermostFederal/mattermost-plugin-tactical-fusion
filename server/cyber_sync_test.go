@@ -124,17 +124,22 @@ func requireSameShape(t *testing.T, what string, goFields []webappField, webapp 
 }
 
 var cyberStructNames = map[string]string{
-	"cyberRow[]":          "CyberRow[]",
-	"cyberLink[]":         "CyberLink[]",
-	"cyberWatchEntry[]":   "CyberWatchEntry[]",
-	"cyberDataset[]":      "CyberDataset[]",
-	"cyberReference[]":    "CyberReference[]",
-	"cyberVectorMetric[]": "CyberVectorMetric[]",
-	"cyberSection[]":      "CyberSection[]",
-	"cyberItem[]":         "CyberItem[]",
-	"cyberCredit[]":       "CyberCredit[]",
-	"cyberGlance":         "CyberGlance",
-	"cyberReport[]":       "CyberThreatReport[]",
+	"cyberRow[]":            "CyberRow[]",
+	"cyberLink[]":           "CyberLink[]",
+	"cyberWatchEntry[]":     "CyberWatchEntry[]",
+	"cyberDataset[]":        "CyberDataset[]",
+	"cyberReference[]":      "CyberReference[]",
+	"cyberVectorMetric[]":   "CyberVectorMetric[]",
+	"cyberSection[]":        "CyberSection[]",
+	"cyberItem[]":           "CyberItem[]",
+	"cyberCredit[]":         "CyberCredit[]",
+	"cyberGlance":           "CyberGlance",
+	"cyberReport[]":         "CyberThreatReport[]",
+	"cyberDirectory[]":      "CyberDirectory[]",
+	"cyberDatasetFile[]":    "CyberDatasetFile[]",
+	"cyberDatabaseFile[]":   "CyberDatabaseFile[]",
+	"cyberMissingDataset[]": "CyberMissingDataset[]",
+	"cyberSkippedFile[]":    "CyberSkippedFile[]",
 }
 
 func TestWebappCyberResponseShapeMatches(t *testing.T) {
@@ -174,6 +179,22 @@ func TestWebappCyberGlanceShapeMatches(t *testing.T) {
 
 func TestWebappCyberThreatReportShapeMatches(t *testing.T) {
 	requireSameShape(t, "CyberThreatReport", goWireFields(t, cyberReport{}), cyberWebappFields(t, "CyberThreatReport"))
+}
+
+func TestWebappCyberDatasetsShapesMatch(t *testing.T) {
+	for _, shape := range []struct {
+		name  string
+		value any
+	}{
+		{"CyberDatasetsResponse", cyberDatasetsResponse{}},
+		{"CyberDirectory", cyberDirectory{}},
+		{"CyberDatasetFile", cyberDatasetFile{}},
+		{"CyberDatabaseFile", cyberDatabaseFile{}},
+		{"CyberMissingDataset", cyberMissingDataset{}},
+		{"CyberSkippedFile", cyberSkippedFile{}},
+	} {
+		requireSameShape(t, shape.name, goWireFields(t, shape.value), cyberWebappFields(t, shape.name))
+	}
 }
 
 func TestWebappCyberLinkShapeMatches(t *testing.T) {
