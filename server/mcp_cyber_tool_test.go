@@ -213,3 +213,24 @@ func TestTheCyberToolCarriesACreditThroughToItsResult(t *testing.T) {
 		t.Fatalf("credits %+v", got.Credits)
 	}
 }
+
+func TestACutRelatedListSaysHowLongItWas(t *testing.T) {
+	d := cyber.Details{Kind: cyber.KindCVE, Value: mcpCVE}
+	for i := range maxCyberToolItems + 3 {
+		d.Related = append(d.Related, cyber.Link{Kind: cyber.KindAttack, Value: fmt.Sprintf("T%04d", 1000+i)})
+	}
+
+	got := cyberIndicatorResult(mcpCVE, d)
+
+	if len(got.Related) != maxCyberToolItems || got.RelatedTotal != maxCyberToolItems+3 || !got.RelatedTruncated {
+		t.Fatalf("related %d of %d, truncated %v", len(got.Related), got.RelatedTotal, got.RelatedTruncated)
+	}
+}
+
+func TestAShortRelatedListIsNotMarkedCut(t *testing.T) {
+	got := cyberIndicatorResult(mcpCVE, cyber.Details{Related: []cyber.Link{{Kind: cyber.KindCWE, Value: "CWE-79"}}})
+
+	if got.RelatedTotal != 1 || got.RelatedTruncated {
+		t.Fatalf("related total %d, truncated %v", got.RelatedTotal, got.RelatedTruncated)
+	}
+}

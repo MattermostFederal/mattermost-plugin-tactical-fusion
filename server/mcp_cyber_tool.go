@@ -91,13 +91,16 @@ type CyberIndicatorResult struct {
 
 	DataSources []CyberDataSource `json:"data_sources,omitempty" jsonschema:"every dataset file behind this answer and when it was compiled"`
 
-	Facts     []CyberFact        `json:"facts,omitempty"`
-	Vector    []CyberVectorEntry `json:"vector,omitempty"`
-	Related   []CyberRelated     `json:"related,omitempty"`
-	Watchlist []CyberVerdict     `json:"watchlist,omitempty"`
-	Reports   []CyberThreat      `json:"reports,omitempty"`
-	Credits   []CyberCredit      `json:"credits,omitempty"`
-	Sections  []CyberToolSection `json:"sections,omitempty"`
+	Facts   []CyberFact        `json:"facts,omitempty"`
+	Vector  []CyberVectorEntry `json:"vector,omitempty"`
+	Related []CyberRelated     `json:"related,omitempty"`
+
+	RelatedTotal     int                `json:"related_total"`
+	RelatedTruncated bool               `json:"related_truncated"`
+	Watchlist        []CyberVerdict     `json:"watchlist,omitempty"`
+	Reports          []CyberThreat      `json:"reports,omitempty"`
+	Credits          []CyberCredit      `json:"credits,omitempty"`
+	Sections         []CyberToolSection `json:"sections,omitempty"`
 }
 
 type CyberDataSource struct {
@@ -186,6 +189,8 @@ func cyberIndicatorResult(input string, d cyber.Details) CyberIndicatorResult {
 	for _, metric := range d.Vector {
 		result.Vector = append(result.Vector, CyberVectorEntry{Metric: metric.Metric, Value: metric.Value, Severe: metric.Severe})
 	}
+	result.RelatedTotal = len(d.Related)
+	result.RelatedTruncated = len(d.Related) > maxCyberToolItems
 	for _, link := range capped(d.Related) {
 		result.Related = append(result.Related, CyberRelated{Kind: string(link.Kind), Value: link.Value, Label: link.Label})
 	}
