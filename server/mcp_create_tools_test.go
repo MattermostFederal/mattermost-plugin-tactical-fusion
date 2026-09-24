@@ -48,7 +48,7 @@ func TestMCPCreatesACotEventThatReadsBack(t *testing.T) {
 	}
 }
 
-func TestMCPCreatesARedCircleAndAGreenLineInOneMessage(t *testing.T) {
+func TestMCPCreatesARedCircleAGreenLineAndAFriendlyPointInOneMessage(t *testing.T) {
 	p := mcpPlugin(t)
 	circle := pointEvent("THREAT RING", 21.3187, -157.9225)
 	circle.Color = "#ff0000"
@@ -57,12 +57,15 @@ func TestMCPCreatesARedCircleAndAGreenLineInOneMessage(t *testing.T) {
 		Kind: "line", Positions: []GeoJSONPosition{{Lat: 21.3187, Lon: -157.9225}, {Lat: 13.4834, Lon: 144.796}},
 	}}
 
-	got := decodeMCPResult[CreatedCot](t, callMCPTool(t, agentsSession(t, p), "create_cot", CreateCotArgs{Events: []CreateCotEvent{circle, line}}))
+	friendly := pointEvent("GUAM", 13.4834, 144.796)
+	friendly.Affiliation = "friend"
 
-	if len(got.Events) != 2 {
+	got := decodeMCPResult[CreatedCot](t, callMCPTool(t, agentsSession(t, p), "create_cot", CreateCotArgs{Events: []CreateCotEvent{circle, line, friendly}}))
+
+	if len(got.Events) != 3 {
 		t.Fatalf("the message carries %d events:\n%s", len(got.Events), got.XML)
 	}
-	ring, route := got.Events[0], got.Events[1]
+	ring, route, unit := got.Events[0], got.Events[1], got.Events[2]
 	ringShape, _ := ring["geometry"].(map[string]any)
 	routeShape, _ := route["geometry"].(map[string]any)
 	if ring["cot_type"] != "u-d-c-c" || ringShape["kind"] != "ellipse" || ringShape["major_m"] != "40233.6" || ringShape["minor_m"] != "40233.6" {
@@ -73,6 +76,9 @@ func TestMCPCreatesARedCircleAndAGreenLineInOneMessage(t *testing.T) {
 	}
 	if route["lat"] != "21.318700" || route["lon"] != "-157.922500" {
 		t.Errorf("a line with no position is not placed at its first vertex: %v", route)
+	}
+	if unit["cot_type"] != "a-f-G" || unit["affiliation"] != "friend" || unit["geometry"] != nil {
+		t.Errorf("the friendly point reads back as %v", unit)
 	}
 	if !strings.Contains(got.XML, `<color argb="-65536"/>`) || !strings.Contains(got.XML, `<color argb="-16711936"/>`) {
 		t.Errorf("the colors were not written as ATAK argb:\n%s", got.XML)
