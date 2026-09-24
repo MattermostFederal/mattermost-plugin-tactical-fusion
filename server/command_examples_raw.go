@@ -86,15 +86,19 @@ func (p *Plugin) rawExampleMessages(ref time.Time) []string {
 }
 
 func (p *Plugin) examplesCommand(args *model.CommandArgs, option string) *model.CommandResponse {
-	if option != "" && option != rawExamplesOption {
+	if option != "" && option != rawExamplesOption && option != mcpExamplesOption {
 		return ephemeralResponse(errcode.WithCode(errcode.CommandExamplesUnknownOption,
-			"Unknown option. Run examples on its own to post them, or examples "+rawExamplesOption+" to post them as text to copy."))
+			"Unknown option. Run examples on its own to post them, examples "+rawExamplesOption+
+				" to post them as text to copy, or examples "+mcpExamplesOption+" to post questions for the "+mcpExamplesAgent+" agent."))
 	}
 	if refusal := p.refuseUnlessCanPost(args); refusal != nil {
 		return refusal
 	}
-	if option == rawExamplesOption {
+	switch option {
+	case rawExamplesOption:
 		return p.rawExamplesResponse(args)
+	case mcpExamplesOption:
+		return p.mcpExamplesResponse(args)
 	}
 	return p.examplesResponse(args)
 }

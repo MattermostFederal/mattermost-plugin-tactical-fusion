@@ -15,7 +15,7 @@ const subcommandList = "examples, check, note"
 
 func getCommand() *model.Command {
 	autocomplete := model.NewAutocompleteData(commandTrigger, "[command]", "Tactical Fusion commands")
-	autocomplete.AddCommand(model.NewAutocompleteData("examples", "["+rawExamplesOption+"]", "Post a demonstration to this channel, one message per format, for everybody to see; with "+rawExamplesOption+", post the example text as code blocks to copy and paste"))
+	autocomplete.AddCommand(model.NewAutocompleteData("examples", "["+rawExamplesOption+" | "+mcpExamplesOption+"]", "Post a demonstration to this channel, one message per format, for everybody to see; with "+rawExamplesOption+", post the example text as code blocks to copy and paste; with "+mcpExamplesOption+", post a question for the "+mcpExamplesAgent+" agent for each format"))
 	autocomplete.AddCommand(model.NewAutocompleteData("check", "[text]", "Show what would be decorated in some text, and what would not"))
 	autocomplete.AddCommand(model.NewAutocompleteData("note", "[label] | [markdown]", "Post a link whose hover card renders your markdown"))
 
