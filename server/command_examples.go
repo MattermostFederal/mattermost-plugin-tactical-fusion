@@ -229,7 +229,7 @@ func exampleSetLines(tagger *decorators.Tagger, ref time.Time, set exampleSet) [
 	for _, live := range set.live {
 		rows = append(rows, exampleRow{
 			label: live.label,
-			text:  dtg.FormatZulu(ref.Add(live.offset)),
+			text:  exampleLiveText(ref, live),
 			note:  live.note,
 		})
 	}
@@ -254,6 +254,10 @@ func exampleSetLines(tagger *decorators.Tagger, ref time.Time, set exampleSet) [
 	}
 
 	return lines
+}
+
+func exampleLiveText(ref time.Time, live exampleLiveRow) string {
+	return dtg.FormatZulu(ref.Add(live.offset))
 }
 
 func inlineCode(text string) string {

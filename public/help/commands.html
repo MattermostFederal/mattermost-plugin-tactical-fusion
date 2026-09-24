@@ -86,7 +86,10 @@
 
         <h3>Arguments</h3>
 
-        <p>None.</p>
+        <p>
+            None, or <code>--raw</code>. With <code>--raw</code> nothing is posted: see
+            <a href="#examples-raw">Text to copy</a> below.
+        </p>
 
         <h3>What it is for</h3>
 
@@ -97,9 +100,9 @@
         </p>
 
         <p>
-            Thirteen posts, and none of them a reply: date-time groups, coordinates, airfields,
+            Fourteen posts, and none of them a reply: date-time groups, coordinates, airfields,
             <a href="reports.html">aviation reports</a>, <a href="frequencies.html">frequencies</a>,
-            then three <a href="cot.html">Cursor on Target</a> events and a
+            <a href="cyber.html">cyber context</a>, then three <a href="cot.html">Cursor on Target</a> events and a
             <a href="geojson.html">GeoJSON</a> document, which arrive as cards, and a
             <a href="reports.html#reports-card">temporary flight restriction</a> over Honolulu,
             which arrives as a card with its area drawn on the map, and three posts of
@@ -122,6 +125,28 @@ GEOREF: `GEOREF:XGKP55803503` &rarr; GEOREF:XGKP55803503 - the label is required
             <strong>consumed</strong>, so the label and the token together become the link.
             <a href="location.html#location-area">GEOREF and GARS</a> are matched behind their
             labels only; a <a href="location.html#location-area">Plus Code</a> needs none.
+        </p>
+
+        <h3 id="examples-raw">Text to copy: <code>--raw</code></h3>
+
+        <p>
+            <code>/tactical-fusion examples --raw</code> posts nothing. It shows only you one
+            message per format, each a code block holding just the text a person would type:
+            no labels, no notes and no links. Copy a block with its copy button and paste it
+            into any channel, and it decorates exactly as it would if you had typed it, which is
+            the easiest way to demonstrate the plugin live. It needs no permission to post in the
+            channel you run it from.
+        </p>
+
+        <p>
+            The date-time groups are worked out from the moment you run it, as they are in the
+            posted examples, so run it again for a fresh countdown. The Cursor on Target events
+            and the GeoJSON document come already inside their <code>cot</code> and
+            <code>geojson</code> fences, and the block around them uses a longer fence so the
+            copy carries the inner one. The attachment example and the notes are left out: an
+            attachment cannot be pasted, and a note is made with
+            <a href="#note"><code>note</code></a> rather than typed. Formats switched off in the
+            System Console are left out too.
         </p>
 
         <p>
