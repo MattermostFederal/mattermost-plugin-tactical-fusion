@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -18,7 +19,7 @@ func runRawExamples(t *testing.T, p *Plugin, channel string) (*model.CommandResp
 	if !ok {
 		t.Fatal("runRawExamples needs the fake API")
 	}
-	api.created, api.ephemeral = nil, nil
+	api.created, api.created = nil, nil
 
 	response, appErr := p.ExecuteCommand(&plugin.Context{}, &model.CommandArgs{
 		Command:   "/tactical-fusion examples " + rawExamplesOption,
@@ -64,19 +65,34 @@ func codeBlockBody(t *testing.T, message string) string {
 	return blocks[0]
 }
 
-func TestRawExamplesPostNothingAndTellOnlyTheCaller(t *testing.T) {
+func TestRawExamplesPostOneMessagePerFormatToTheChannel(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	response, api := runRawExamples(t, p, testCommandChannel)
+
+	if len(api.created) != len(p.rawExampleMessages(time.Now().UTC())) {
+		t.Fatalf("posted %d messages, want one per format", len(api.created))
+	}
+	if len(api.ephemeral) != 0 {
+		t.Fatalf("--raw also showed %d ephemeral messages", len(api.ephemeral))
+	}
+	for _, post := range api.created {
+		if post.ChannelId != testCommandChannel || post.UserId != "user1" {
+			t.Fatalf("posted %+v, want it in the channel as the caller", post)
+		}
+	}
+	if response.Text != "" {
+		t.Fatalf("the response carries text %q", response.Text)
+	}
+}
+
+func TestRawExamplesNeedPermissionToPostInTheChannel(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 
 	response, api := runRawExamples(t, p, "a-channel-nobody-may-post-in")
 
-	if len(api.created) != 0 {
-		t.Fatalf("--raw posted %d messages to the channel", len(api.created))
-	}
-	if len(api.ephemeral) == 0 {
-		t.Fatal("--raw showed the caller nothing")
-	}
-	if response.Text != "" {
-		t.Fatalf("the response carries text %q as well as the ephemeral posts", response.Text)
+	if len(api.created) != 0 || !strings.Contains(response.Text, "TF-16011") {
+		t.Fatalf("posted %d, response %q", len(api.created), response.Text)
 	}
 }
 
@@ -86,7 +102,7 @@ func TestRawExamplesAreTheTextAPersonTypesAndEachStillDecorates(t *testing.T) {
 	tagger := &decorators.Tagger{Registry: p.decorators, URLPrefix: p.decorateURLPrefix()}
 
 	sets := 0
-	for _, post := range api.ephemeral {
+	for _, post := range api.created {
 		for _, key := range exampleSetOrder {
 			if !strings.HasPrefix(post.Message, "#### "+exampleSets[key].name+"\n") {
 				continue
@@ -128,7 +144,7 @@ func TestEachDateTimeAndCoordinateExampleIsItsOwnBlock(t *testing.T) {
 	for key := range rawExampleSetsOnePerBlock {
 		set := exampleSets[key]
 		want := len(rawExampleSetTexts(tagger, ref, set))
-		for _, post := range api.ephemeral {
+		for _, post := range api.created {
 			if strings.HasPrefix(post.Message, "#### "+set.name+"\n") {
 				if got := len(codeBlocks(t, post.Message)); got != want || want < 2 {
 					t.Errorf("%s: %d blocks, want one for each of its %d examples", key, got, want)
@@ -143,7 +159,7 @@ func TestARawBlockHoldingAFenceIsFencedLongerSoItCopiesWhole(t *testing.T) {
 	_, api := runRawExamples(t, p, testCommandChannel)
 
 	found := false
-	for _, post := range api.ephemeral {
+	for _, post := range api.created {
 		if !strings.HasPrefix(post.Message, "#### Cursor on Target") {
 			continue
 		}
@@ -190,7 +206,25 @@ func TestRawExamplesWithEverythingOffSaySo(t *testing.T) {
 
 	response, api := runRawExamples(t, p, testCommandChannel)
 
-	if !strings.Contains(response.Text, "TF-16003") || len(api.ephemeral) != 0 {
-		t.Fatalf("response %q, %d ephemeral posts", response.Text, len(api.ephemeral))
+	if !strings.Contains(response.Text, "TF-16003") || len(api.created) != 0 {
+		t.Fatalf("response %q, %d posts", response.Text, len(api.created))
+	}
+}
+
+func TestRawExamplesSayHowManyCouldNotBePosted(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	api, _ := p.API.(*fakeAPI)
+	api.createPostErr = model.NewAppError("CreatePost", "test", nil, "refused", 500)
+	api.createPostFailFrom = 2
+
+	response, _ := runRawExamples(t, p, testCommandChannel)
+
+	total := len(p.rawExampleMessages(time.Now().UTC()))
+	want := plural(total-2, "message") + " of " + strconv.Itoa(total)
+	if !strings.Contains(response.Text, want) || !strings.Contains(response.Text, "TF-16006") {
+		t.Fatalf("response %q, want it to say %q", response.Text, want)
+	}
+	if len(api.errors) != total-2 {
+		t.Fatalf("logged %d errors, want %d", len(api.errors), total-2)
 	}
 }

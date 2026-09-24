@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -98,17 +99,17 @@ func (p *Plugin) rawExampleMessages(ref time.Time) []string {
 }
 
 func (p *Plugin) examplesCommand(args *model.CommandArgs, option string) *model.CommandResponse {
-	switch option {
-	case rawExamplesOption:
-		return p.rawExamplesResponse(args)
-	case "":
-		if refusal := p.refuseUnlessCanPost(args); refusal != nil {
-			return refusal
-		}
-		return p.examplesResponse(args)
+	if option != "" && option != rawExamplesOption {
+		return ephemeralResponse(errcode.WithCode(errcode.CommandExamplesUnknownOption,
+			"Unknown option. Run examples on its own to post them, or examples "+rawExamplesOption+" to post them as text to copy."))
 	}
-	return ephemeralResponse(errcode.WithCode(errcode.CommandExamplesUnknownOption,
-		"Unknown option. Run examples on its own to post them, or examples "+rawExamplesOption+" to see them as text to copy."))
+	if refusal := p.refuseUnlessCanPost(args); refusal != nil {
+		return refusal
+	}
+	if option == rawExamplesOption {
+		return p.rawExamplesResponse(args)
+	}
+	return p.examplesResponse(args)
 }
 
 func (p *Plugin) rawExamplesResponse(args *model.CommandArgs) *model.CommandResponse {
@@ -131,12 +132,22 @@ func (p *Plugin) rawExamplesResponse(args *model.CommandArgs) *model.CommandResp
 		}
 	}
 
+	failed := 0
 	for _, message := range messages {
-		p.API.SendEphemeralPost(args.UserId, &model.Post{
-			ChannelId: args.ChannelId,
-			RootId:    args.RootId,
-			Message:   message,
-		})
+		if _, appErr := p.API.CreatePost(examplePost(args, message)); appErr != nil {
+			failed++
+			p.API.LogError("tactical-fusion: could not post a raw examples message",
+				"error_code", errcode.CommandExamplesPostFailed, "error", appErr.Error())
+		}
+	}
+
+	switch {
+	case failed == len(messages):
+		return ephemeralResponse(errcode.WithCode(errcode.CommandExamplesPostFailed,
+			"Could not post the examples to this channel."))
+	case failed > 0:
+		return ephemeralResponse(errcode.WithCode(errcode.CommandExamplesPostFailed,
+			plural(failed, "message")+" of "+strconv.Itoa(len(messages))+" could not be posted, so the examples are incomplete."))
 	}
 	return &model.CommandResponse{}
 }
