@@ -343,7 +343,7 @@ func TestTheDrawnAreaIsAnIrregularOutline(t *testing.T) {
 	var geometry map[string]any
 	for _, event := range renderedEvents(t, cotExampleRich) {
 		if candidate, ok := event["geometry"].(map[string]any); ok {
-			if _, drawn := candidate["points"]; drawn {
+			if _, closed := candidate["closed"]; closed {
 				geometry = candidate
 			}
 		}
@@ -374,5 +374,31 @@ func TestTheDrawnAreaIsAnIrregularOutline(t *testing.T) {
 			t.Errorf("vertex %s is repeated", key)
 		}
 		seen[key] = true
+	}
+}
+
+func TestTheRichExampleAlsoDrawsAnOpenGreenRoute(t *testing.T) {
+	var route map[string]any
+	var color string
+	for _, event := range renderedEvents(t, cotExampleRich) {
+		geometry, ok := event["geometry"].(map[string]any)
+		if !ok {
+			continue
+		}
+		if _, closed := geometry["closed"]; !closed {
+			route = geometry
+			color, _ = event["color_argb"].(string)
+		}
+	}
+	if route == nil {
+		t.Fatal("the rich example draws no open route beside its closed area")
+	}
+
+	points, _ := route["points"].([]any)
+	if len(points) != 4 {
+		t.Errorf("the route has %d waypoints, want 4", len(points))
+	}
+	if color != "#00ff00" {
+		t.Errorf("the route's color is %q, want green", color)
 	}
 }
