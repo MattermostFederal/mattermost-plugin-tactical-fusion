@@ -855,8 +855,18 @@ docker-cyberdata: docker-check
 	fi
 
 ## Deploys the plugin to Docker and drops in every built map area and cyber dataset
+## Configures an @fusion agent in the Docker server's Agents plugin: an OpenAI service with
+## the key in OPENAI_API_KEY and an agent on AGENT_MODEL (gpt-5.5 by default) with structured
+## output on, so the Tactical Fusion MCP tools can be tried from a channel. Skipped when the
+## key is not set or the Agents plugin is not running; saves only what changed.
+##
+## Configures the @fusion AI agent in the Docker server
+.PHONY: docker-agent
+docker-agent: docker-check
+	@$(GO) run ./build/devagent
+
 .PHONY: deploy
-deploy: docker-deploy docker-packages docker-cyberdata
+deploy: docker-deploy docker-packages docker-cyberdata docker-agent
 
 ## Build and deploy to a Mattermost server running at MM_LOCAL_SITEURL
 ## (default http://localhost:8065) via the bundled pluginctl tool. Unlike

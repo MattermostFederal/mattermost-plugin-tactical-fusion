@@ -69,6 +69,7 @@ right-hand sidebar, and a standalone server-rendered page.
 - `plugin.json` generates `server/manifest.go` and `webapp/src/manifest.ts` at build time (both gitignored).
 - `build/mapdata/` (stdlib-only, `make map-data`) generates the country polygons; `build/maptiles/` (containerised, `make map-tiles`) generates the PMTiles basemap and glyph ranges. Both outputs are committed.
 - `build/airportdata/` (stdlib-only, `make airport-data`) filters the upstream airfield CSV. Not in the test path.
+- `build/devagent/` (stdlib-only, `make docker-agent`) configures the Docker stack's Agents plugin through its own API: the OpenAI service, the settings, and the `@fusion` agent. Idempotent; development only.
 - `bridgeclient/` is the importable Go client other plugins call the bridge through. It is a published package, so its exported symbols carry doc comments for pkg.go.dev; that is the only code here that does.
 - `public/help/` is the built-in documentation, served by Mattermost with no route in the server code.
 - `docker-compose.dev.yml` and `docker/` back `make deploy`.
@@ -348,7 +349,7 @@ The token grammar itself is Go-only, so the two sides cannot drift on it.
   slow enough to need that should get `testing.Short()` rather than a bigger
   timeout. The sweeps run in full under `make test`, which is what CI gates on.
 - Local stack: `make docker-setup` (Mattermost plus PostgreSQL on `:8065`,
-  `admin`/`password`), `make deploy` to install into it, `make deploy-local` for
+  `admin`/`password`), `make deploy` to install into it (it also configures an `@fusion` Agents bot on `gpt-5.5` with structured output, channel mention tool calling and the Mattermost MCP server over HTTP on, when `OPENAI_API_KEY` is set; `make docker-agent` alone reruns that), `make deploy-local` for
   your own server, `make docker-logs`/`docker-reset`/`docker-stop`/`docker-down`,
   and `make nuke` to tear everything down.
 
