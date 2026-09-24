@@ -227,7 +227,7 @@ function rowValue(value: string, query: string): React.ReactNode {
     return isCodeLike(value) ? breakAfterSlashes(value) : value;
 }
 
-const Row: React.FC<{label: string; value: string; query: string}> = ({label, value, query}) => {
+const Row: React.FC<{label: string; value: string; query: string; copyable: boolean}> = ({label, value, query, copyable}) => {
     const code = query === '' && isCodeLike(value);
 
     return (
@@ -239,12 +239,14 @@ const Row: React.FC<{label: string; value: string; query: string}> = ({label, va
             <td style={code ? {...styles.td, ...styles.code} : styles.td}>
                 {rowValue(value, query)}
             </td>
-            <td style={styles.copyCell}>
-                <CopyButton
-                    label={`Copy ${label}`}
-                    value={value}
-                />
-            </td>
+            {copyable && (
+                <td style={styles.copyCell}>
+                    <CopyButton
+                        label={`Copy ${label}`}
+                        value={value}
+                    />
+                </td>
+            )}
         </tr>
     );
 };
@@ -525,6 +527,7 @@ function renderBody(state: CyberState): React.ReactNode {
                                 label={row.label}
                                 value={row.value}
                                 query={row.query}
+                                copyable={details.kind !== 'cve'}
                             />
                         ))}
                     </tbody>

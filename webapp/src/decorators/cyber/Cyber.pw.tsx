@@ -244,6 +244,29 @@ test.describe('the readings', () => {
         await expect(panel.getByTestId('cyber-vector')).toHaveCount(0);
     });
 
+    test('offer no copy button for a vulnerability', async ({mount}) => {
+        const panel = await mount(
+            <CyberHarness
+                surface='panel'
+                payload={CVE}
+            />,
+        );
+
+        await expect(panel.getByRole('cell', {name: '10.0 Critical'})).toBeVisible();
+        await expect(panel.getByRole('button', {name: /^Copy /})).toHaveCount(0);
+    });
+
+    test('keep the copy buttons for the other kinds', async ({mount}) => {
+        const panel = await mount(
+            <CyberHarness
+                surface='panel'
+                payload={CWE}
+            />,
+        );
+
+        await expect(panel.getByRole('button', {name: 'Copy CVSS'})).toHaveCount(1);
+    });
+
     test('render a timestamp as a date-time group link', async ({mount}) => {
         const panel = await mount(
             <CyberHarness
