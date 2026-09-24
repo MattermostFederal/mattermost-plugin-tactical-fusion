@@ -26,25 +26,31 @@ untrue.
 > are the work of The MITRE Corporation. Neither MITRE nor ATT&CK is affiliated
 > with or endorses this plugin.
 
-## These two files are a SEED, not the upstream set
+## `cwe.tsv` is generated; `attack.tsv` is still a seed
 
-**The committed files were written by hand, not produced by the generator.**
-The host this feature was built on could not reach `raw.githubusercontent.com`
-or `cwe.mitre.org`: both are refused by the network policy in that environment.
-Rather than ship invented technique names and weakness descriptions, which
-would be worse than shipping none, the files carry only entries that could be
-stated accurately without the upstream source: every enterprise tactic, the
-widely used techniques and sub-techniques, and the CWE Top 25 plus the common
-classes around it.
+`cwe.tsv` is the generator's output from MITRE's research view 1000, fetched
+2026-09-23: 944 weaknesses, each with its name, abstraction, status, the first
+sentence of its description, and its parents in that view.
 
-The cost is real and is the safe direction: an identifier the seed does not
-hold is **left as written** rather than linked to something wrong. That is the
-same rule an airfield code the database does not hold follows.
+**`attack.tsv` was written by hand, not produced by the generator.** The host
+this feature was built on could not reach `raw.githubusercontent.com`. Rather
+than ship invented technique names, which would be worse than shipping none, it
+carries only entries that could be stated accurately without the upstream
+source: every enterprise tactic and the widely used techniques and
+sub-techniques. An identifier it does not hold is **left as written** rather
+than linked to something wrong, the same rule an airfield code the database
+does not hold follows. `go run ./build/cyberdata -only attack` after
+`make cyber-sources` replaces it with the full upstream set.
 
-**Run `make cyber-sources && make cyber-data` on a host with network access and
-commit the result.** That replaces both files wholesale with the full upstream
-set, and nothing else has to change: the reader, the tests and the grammar are
-all written against the format rather than against the contents.
+Either file changes what decorates: the catalog is what `Parse` validates an
+identifier against, so a CWE the new catalog holds and the seed did not now
+becomes a link in messages posted after the change. Messages already posted
+keep what they were given.
+
+The reader refuses autolink triggers (`www.`, `://`) and any character outside
+letters, digits and `_-,.'"()[]/&+:;*=<>`. MITRE's text uses `*`, `=`, `<` and
+`>` in four entries, as in `'filedir*'` and `such as <, >`; every surface that
+prints catalog text escapes it, and a test holds the standalone page to that.
 
 ## How they are produced
 

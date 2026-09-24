@@ -427,3 +427,19 @@ func TestATimestampRowCarriesTheInstantItShows(t *testing.T) {
 		}
 	}
 }
+
+func TestThePageEscapesTheAngleBracketsACatalogSummaryCarries(t *testing.T) {
+	weakness, ok := LookupWeakness("CWE-80")
+	if !ok || !strings.Contains(weakness.Summary, "<, >") {
+		t.Fatalf("CWE-80 no longer carries the brackets this test is about: %+v", weakness)
+	}
+
+	body := renderBody(Describe(KindCWE, "CWE-80", nil))
+
+	if strings.Contains(body, "<, >") {
+		t.Fatalf("the page wrote the summary's brackets unescaped")
+	}
+	if !strings.Contains(body, "&lt;, &gt;") {
+		t.Fatalf("the escaped brackets are missing from the page")
+	}
+}

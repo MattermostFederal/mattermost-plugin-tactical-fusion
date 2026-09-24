@@ -381,7 +381,9 @@ func parentsOf(related string) string {
 		fields := strings.Split(part, ":")
 		for i := 0; i+1 < len(fields); i++ {
 			if fields[i] == "CWE ID" {
-				parents = append(parents, "CWE-"+fields[i+1])
+				if parent := "CWE-" + fields[i+1]; !slices.Contains(parents, parent) {
+					parents = append(parents, parent)
+				}
 				break
 			}
 		}

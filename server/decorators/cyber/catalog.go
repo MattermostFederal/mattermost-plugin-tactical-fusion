@@ -69,7 +69,7 @@ func TechniqueCount() int { return len(techniques) }
 
 func WeaknessCount() int { return len(weaknesses) }
 
-const allowedPunctuation = " _-,.'\"()[]/&+:;"
+const allowedPunctuation = " _-,.'\"()[]/&+:;*=<>"
 
 var autolinkTriggers = []string{"www.", "://"}
 

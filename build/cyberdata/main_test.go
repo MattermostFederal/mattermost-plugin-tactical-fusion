@@ -221,3 +221,11 @@ func TestTheDetailRowsMatchTheGoldenFileTheReaderParses(t *testing.T) {
 		t.Fatalf("the generator's detail rows no longer match %s, which the reader's tests parse; if the change is intended, rerun with -update and fix the reader to match\n got: %s\nwant: %s", detailGolden, body.String(), golden)
 	}
 }
+
+func TestParentsOfNamesEachParentOnceAcrossViews(t *testing.T) {
+	related := "::NATURE:ChildOf:CWE ID:74:VIEW ID:1000:ORDINAL:Primary::NATURE:ChildOf:CWE ID:74:VIEW ID:1003:ORDINAL:Primary::NATURE:ChildOf:CWE ID:20:VIEW ID:1000::NATURE:PeerOf:CWE ID:352:VIEW ID:1000::"
+
+	if got := parentsOf(related); got != "CWE-74,CWE-20" {
+		t.Fatalf("parentsOf = %q, want each ChildOf parent once, in order", got)
+	}
+}

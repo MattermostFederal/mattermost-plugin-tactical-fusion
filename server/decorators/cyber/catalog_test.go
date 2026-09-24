@@ -187,3 +187,23 @@ func TestAttackURLIsDerivedFromTheId(t *testing.T) {
 		}
 	}
 }
+
+func TestTheCatalogAcceptsTheOperatorsMITRETextWrites(t *testing.T) {
+	for _, field := range []string{
+		"Path Equivalence: 'filedir*' (Wildcard)",
+		"such as using == when the .equals() method should be used",
+		"special characters such as <, >",
+	} {
+		if !validText(field) {
+			t.Errorf("refused %q", field)
+		}
+	}
+}
+
+func TestTheCatalogStillRefusesAutolinksAndControlCharacters(t *testing.T) {
+	for _, field := range []string{"see https://cwe.mitre.org", "www.example.com", "tab\there", "bell\a", "back`tick", "pipe|"} {
+		if validText(field) {
+			t.Errorf("accepted %q", field)
+		}
+	}
+}
