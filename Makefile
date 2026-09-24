@@ -131,9 +131,11 @@ release-tag:
 	git tag -a "v$(PLUGIN_VERSION)" -m "Release v$(PLUGIN_VERSION)"
 	@echo "Tag v$(PLUGIN_VERSION) created. Push with: git push origin v$(PLUGIN_VERSION)"
 
-## Full release build: clean, checks, style, tests, build, SBOM audit, CodeQL, bundle with SBOMs, sign, and checksum.
+CYBER_REFRESH ?= 1
+
+## Full release build: checks, a cyber data refresh, clean, style, tests, build, SBOM audit, CodeQL, bundle with SBOMs, sign, and checksum.
 .PHONY: release
-release: release-check clean all sbom-audit codeql-analyze security-gate release-bundle virus-scan release-sign release-checksum
+release: release-check $(if $(filter 1,$(CYBER_REFRESH)),cyber-refresh cyber-release-package) clean all sbom-audit codeql-analyze security-gate release-bundle virus-scan release-sign release-checksum
 	@echo ""
 	@echo "=========================================="
 	@echo "Release build complete!"
@@ -321,12 +323,66 @@ cyber-package:
 	@cd build/cyberdata/out && shasum -a 256 *.tsv.gz > DATASETS.sha256
 	@ls -l build/cyberdata/out/*.tsv.gz build/cyberdata/out/DATASETS.sha256
 
-## Attaches the gzipped cyber datasets to an existing release.
+## Fetches every cyber source afresh and rebuilds all of the data from it: the ATT&CK and
+## CWE catalogs compiled into the plugin and every file bundled under assets/cyber, in the
+## working tree, and the downloadable datasets into build/cyberdata/out. SOURCES.sha256 in
+## out records the digest of each source this run read. `make release` runs it after
+## release-check, so a release ships current data and its tests run against that data;
+## set CYBER_REFRESH=0 to release the committed data instead. The threat feeds are not
+## fetched: abuse.ch's terms leave them to each operator.
+##
+## Rebuilds every cyber dataset, bundled and downloadable, from fresh sources
+.PHONY: cyber-refresh
+cyber-refresh:
+	@mkdir -p build/cyberdata/out
+	rm -f build/cyberdata/out/SOURCES.sha256
+	SOURCES_LOCK="$(CURDIR)/build/cyberdata/out/SOURCES.sha256" ./build/cyberdata/fetch-sources.sh
+	./build/cyberdata/fetch-geo.sh
+	$(GO) run ./build/cyberdata -only attack,cwe,attackdetail,cwedetail,capec,cveattack,epss
+	$(GO) run ./build/cyberdata -only kev -label "CISA KEV catalog $$(sed -n 's/.*"catalogVersion": *"\([^"]*\)".*/\1/p' build/cyberdata/source/known_exploited_vulnerabilities.json | head -1)"
+	$(GO) run ./build/cyberdata -only cve,cvedetail -label "NVD CVE JSON 2.0 feeds, fetched $$(date -u +%Y-%m-%d)"
+	$(GO) run ./build/cyberdata -only cvekev,cvedetailkev
+	$(GO) run ./build/cyberdata -only ip -label "IPtoASN ip2asn-combined, fetched $$(date -u +%Y-%m-%d)"
+	gzip -9 -n -c build/cyberdata/out/ip.tsv > assets/cyber/ip.tsv.gz
+	$(MAKE) --no-print-directory cyber-advisories
+
+CYBER_RELEASE_DATASETS := cve cvedetail epss
+CYBER_RELEASE_DIR := build/cyberdata/release
+
+## Packs the downloadable cyber datasets for a release into build/cyberdata/release: cve,
+## cvedetail and epss gzipped, the DB-IP City Lite database as it is read, the
+## SOURCES.sha256 the refresh wrote, and DATASETS.sha256 over the lot. ip is left out
+## because the bundle carries it, and threat and malware because abuse.ch's terms leave
+## them to each operator.
+##
+## Packs the downloadable cyber datasets for a release
+.PHONY: cyber-release-package
+cyber-release-package:
+	@for dataset in $(CYBER_RELEASE_DATASETS); do \
+		[ -f "build/cyberdata/out/$$dataset.tsv" ] || { echo "error: build/cyberdata/out/$$dataset.tsv is missing; run 'make cyber-refresh' first."; exit 1; }; \
+	done
+	@[ -f build/cyberdata/out/dbip-city-lite.mmdb ] || { echo "error: build/cyberdata/out/dbip-city-lite.mmdb is missing; run 'make cyber-geo' first."; exit 1; }
+	rm -rf $(CYBER_RELEASE_DIR)
+	mkdir -p $(CYBER_RELEASE_DIR)
+	@for dataset in $(CYBER_RELEASE_DATASETS); do \
+		gzip -9 -n -c "build/cyberdata/out/$$dataset.tsv" > "$(CYBER_RELEASE_DIR)/$$dataset.tsv.gz"; \
+	done
+	cp build/cyberdata/out/dbip-city-lite.mmdb $(CYBER_RELEASE_DIR)/
+	@if [ -f build/cyberdata/out/SOURCES.sha256 ]; then cp build/cyberdata/out/SOURCES.sha256 $(CYBER_RELEASE_DIR)/; fi
+	cd $(CYBER_RELEASE_DIR) && shasum -a 256 *.tsv.gz *.mmdb > DATASETS.sha256
+	@ls -l $(CYBER_RELEASE_DIR)
+
+## Attaches the downloadable cyber datasets to an existing release, for a release built
+## without them or a refresh between releases:
+##
+##   make cyber-refresh cyber-release TAG=v0.8.0
+##
+## Uploads the downloadable cyber datasets to a release
 .PHONY: cyber-release
 cyber-release:
 	@[ -n "$(TAG)" ] || { echo "error: set TAG=<release tag>"; exit 1; }
-	@$(MAKE) --no-print-directory cyber-package
-	gh release upload "$(TAG)" build/cyberdata/out/*.tsv.gz build/cyberdata/out/DATASETS.sha256 --clobber
+	@$(MAKE) --no-print-directory cyber-release-package
+	gh release upload "$(TAG)" $(CYBER_RELEASE_DIR)/* --clobber
 
 ## Regenerates the bundled basemap from the Natural Earth source in build/mapdata/source.
 ## The outputs are committed, so a clean checkout builds and an air-gapped `go test` runs

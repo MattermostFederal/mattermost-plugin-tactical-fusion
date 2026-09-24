@@ -4,7 +4,7 @@ set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source_dir="${here}/source"
-lock="${here}/sources.lock"
+lock="${SOURCES_LOCK:-${here}/sources.lock}"
 
 mkdir -p "${source_dir}" "${source_dir}/nvd"
 
@@ -61,10 +61,10 @@ fetch_gz "https://epss.empiricalsecurity.com/epss_scores-current.csv.gz" \
 fetch_gz "https://iptoasn.com/data/ip2asn-combined.tsv.gz" "ip2asn-combined.tsv"
 
 if [ -f "${lock}" ]; then
-    echo "verifying against sources.lock"
+    echo "verifying against ${lock}"
     (cd "${source_dir}" && shasum -a 256 -c "${lock}")
 else
-    echo "no sources.lock yet; writing one from what was just fetched"
+    echo "no ${lock} yet; writing one from what was just fetched"
     (cd "${source_dir}" && shasum -a 256 \
         enterprise-attack.json mobile-attack.json cwe-1000.csv capec-1000.csv \
         kev-attack-enterprise.json kev-attack-mobile.json known_exploited_vulnerabilities.json \

@@ -368,6 +368,13 @@ Releases are automated with **release-please** driven by
   release-please owns them through its Release PR.
 - A release ships when the maintainer merges the open "chore(main): release
   X.Y.Z" PR.
+- `make release` refreshes the cyber data before it builds: `cyber-refresh`
+  fetches every source and rebuilds the embedded catalogs and `assets/cyber` in
+  the working tree, so the shipped data is newer than the tagged commit's, and
+  `cyber-release-package` packs the full `cve`, `cvedetail` and `epss` datasets
+  and DB-IP City Lite into `build/cyberdata/release`, which the workflow
+  attaches to the release. `CYBER_REFRESH=0` releases the committed data. The
+  abuse.ch feeds are never attached.
 
 ## CI and security
 

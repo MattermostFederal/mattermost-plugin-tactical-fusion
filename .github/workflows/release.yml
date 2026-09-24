@@ -1,7 +1,8 @@
 # Fires on a v* tag push (normally created when the release-please PR is
 # merged). Runs the full security-gated release pipeline via `make
 # release`, which chains:
-#   release-check -> clean -> all -> sbom-audit -> codeql-analyze
+#   release-check -> cyber-refresh -> cyber-release-package -> clean
+#   -> all -> sbom-audit -> codeql-analyze
 #   -> security-gate -> release-bundle -> virus-scan -> release-sign
 #   -> release-checksum
 #
@@ -176,6 +177,7 @@ jobs:
             dist/sbom/licenses.json
             dist/codeql-go.sarif
             dist/codeql-js.sarif
+            build/cyberdata/release/*
           fail_on_unmatched_files: false
           generate_release_notes: true
           draft: false
@@ -206,6 +208,23 @@ jobs:
             directory** (`LocationMapPackagesDir`) in the System Console and copy the files
             there, or upload them under **Installed detail areas**. They are separate
             downloads because the whole set is far larger than a plugin bundle may be.
+
+            ### Cyber context datasets
+
+            The bundle carries the MITRE ATT&CK, CWE and CAPEC data, CISA KEV and advisories,
+            the NVD records of every KEV entry, and IPtoASN's address table, all rebuilt from
+            their sources for this release. The full datasets are attached here instead,
+            with `DATASETS.sha256` over them and `SOURCES.sha256` naming the upstream files
+            they were built from:
+
+            - `cve.tsv.gz` and `cvedetail.tsv.gz`: every CVE in NVD (public domain)
+            - `epss.tsv.gz`: FIRST exploit prediction scores
+            - `dbip-city-lite.mmdb`: IP to City Lite by DB-IP.com, CC BY 4.0
+
+            Copy them into the directory named by **Cyber datasets directory**
+            (`CyberDatasetsDir`); the plugin unpacks the `.gz` files itself. The abuse.ch threat
+            feeds are never attached: their terms leave them to each operator, and
+            `make cyber-threat` builds them.
 
             ### Supply-chain artifacts
 

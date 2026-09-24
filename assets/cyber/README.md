@@ -31,6 +31,15 @@ named by the `CyberDatasetsDir` setting: the full `cve.tsv` and `cvedetail.tsv`,
 operator's own `watchlist.tsv`. A file there replaces the bundled one of the same
 name.
 
+## Refreshed at every release
+
+`make release` runs `make cyber-refresh` after its clean-tree check, which fetches
+every source and rebuilds every file here, the two catalogs compiled into the
+plugin, and the downloadable datasets. So a release ships data as current as the
+day it was cut, and the committed copies here are what a development build and
+the tests read between releases. Run `make cyber-refresh` yourself to see what
+the next release will carry, and commit the result if you want the tree to match.
+
 ## Refreshing `kev.tsv`
 
 CISA adds to the catalog most weekdays, so the committed file is a snapshot. Its
