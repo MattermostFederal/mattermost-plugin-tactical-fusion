@@ -15,6 +15,7 @@ The watchlist in particular must never be moved under `public/`.
 | File | What it is | Ships |
 |---|---|---|
 | `kev.tsv` | CISA Known Exploited Vulnerabilities | yes |
+| `cwedetail.tsv` | MITRE CWE research view 1000: each weakness's whole description, background, consequences, mitigations, detection methods and observed examples | yes |
 
 Everything else the decorator reads is too large to bundle and is attached to a
 release instead, for operators to drop into the directory named by the
@@ -40,6 +41,8 @@ the bundled one.
 
 ## Provenance
 
+### `kev.tsv`
+
 | | |
 |---|---|
 | Upstream | `https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json` |
@@ -50,3 +53,22 @@ the bundled one.
 The first line of every file here is a schema stamp. A file carrying no stamp,
 or one built for a different reader, is skipped with `TF-21002` rather than
 misread.
+
+### `cwedetail.tsv`
+
+| | |
+|---|---|
+| Upstream | `https://cwe.mitre.org/data/csv/1000.csv.zip` |
+| Origin | MITRE CWE, research view 1000, fetched 2026-09-23 |
+| License | MITRE CWE terms of use. Redistribution is permitted with attribution. |
+| Format | Seven fields: the id, the whole description, the extended description, then consequences, mitigations, detection methods and observed examples as compact JSON arrays |
+
+> This product uses information from MITRE CWE, the work of The MITRE
+> Corporation. MITRE is not affiliated with and does not endorse this plugin.
+
+The same export produces the `cwe.tsv` catalog compiled into the plugin, so the
+two always name the same weaknesses. Rebuild both together:
+
+```
+go run ./build/cyberdata -only cwe,cwedetail -label "MITRE CWE research view 1000, fetched <date>"
+```

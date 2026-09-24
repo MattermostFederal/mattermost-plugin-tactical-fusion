@@ -73,6 +73,7 @@ func renderBody(d Details) string {
 	writeLines(&b, "Affected, as reported", d.Affected)
 	writeLines(&b, "Affected, per NVD", d.Configurations)
 	writeReferences(&b, d.References)
+	writeSections(&b, d.Sections)
 	writeDatasets(&b, d)
 
 	return b.String()
@@ -142,6 +143,29 @@ func writeLines(b *strings.Builder, title string, lines []string) {
 		b.WriteString(`<li>` + html.EscapeString(line) + `</li>`)
 	}
 	b.WriteString(`</ul></details>`)
+}
+
+func writeSections(b *strings.Builder, sections []Section) {
+	for _, section := range sections {
+		b.WriteString(`<details><summary>` + html.EscapeString(section.Title) + ` (` + strconv.Itoa(len(section.Items)) + `)</summary><ul class="lines">`)
+		for _, item := range section.Items {
+			b.WriteString(`<li>`)
+			switch {
+			case item.Link != nil:
+				b.WriteString(`<a href="` + html.EscapeString(linkHref(*item.Link)) + `"><strong>` + html.EscapeString(item.Head) + `</strong></a>`)
+			case item.Head != "":
+				b.WriteString(`<strong>` + html.EscapeString(item.Head) + `</strong>`)
+			}
+			if item.Text != "" {
+				if item.Head != "" {
+					b.WriteString(`<br>`)
+				}
+				b.WriteString(html.EscapeString(item.Text))
+			}
+			b.WriteString(`</li>`)
+		}
+		b.WriteString(`</ul></details>`)
+	}
 }
 
 func writeReferences(b *strings.Builder, refs []Reference) {

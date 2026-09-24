@@ -5,7 +5,9 @@ import type {
     CyberLink,
     CyberReference,
     CyberResponse,
+    CyberItem,
     CyberRow,
+    CyberSection,
     CyberVectorMetric,
     CyberWatchEntry,
 } from './types';
@@ -159,6 +161,27 @@ function asReferences(value: unknown[]): CyberReference[] {
         filter((ref) => isWebLink(ref.url));
 }
 
+function asItem(entry: unknown): CyberItem {
+    const item = asObject(entry, 'a section item');
+    const kind = asString(item, 'kind');
+    const value = asString(item, 'value');
+    const linked = matchesShape(kind, value);
+
+    return {
+        head: asString(item, 'head'),
+        text: asString(item, 'text'),
+        kind: linked ? kind : '',
+        value: linked ? value : '',
+    };
+}
+
+function asSections(value: unknown[]): CyberSection[] {
+    return value.map((entry) => {
+        const section = asObject(entry, 'a section');
+        return {title: asString(section, 'title'), items: asArray(section, 'items').map(asItem)};
+    });
+}
+
 function asVector(value: unknown[]): CyberVectorMetric[] {
     return value.map((entry) => {
         const metric = asObject(entry, 'a vector metric');
@@ -199,6 +222,7 @@ export function asCyber(body: unknown): CyberResponse {
         affected: asStrings(asArray(wire, 'affected'), 'affected products'),
         configurations: asStrings(asArray(wire, 'configurations'), 'affected configurations'),
         references: asReferences(asArray(wire, 'references')),
+        sections: asSections(asArray(wire, 'sections')),
     };
 }
 

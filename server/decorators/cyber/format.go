@@ -59,11 +59,14 @@ type Details struct {
 	Affected       []string
 	Configurations []string
 	References     []Reference
+
+	Sections []Section
 }
 
 var datasetLabels = map[string]string{
 	intel.NameCVE:       "vulnerability",
 	intel.NameCVEDetail: "vulnerability detail",
+	intel.NameCWEDetail: "weakness detail",
 	intel.NameEPSS:      "exploit prediction",
 	intel.NameKEV:       "known exploited vulnerabilities",
 	intel.NameIP:        "IP address",
@@ -79,7 +82,7 @@ func Describe(kind Kind, value string, set *intel.Set) Details {
 	case KindCVE:
 		describeCVE(&d, set)
 	case KindCWE:
-		describeCWE(&d)
+		describeCWE(&d, set)
 	case KindAttack:
 		describeAttack(&d)
 	case KindIP:
@@ -260,7 +263,7 @@ func kevText(kev intel.KEVRecord) string {
 	return text
 }
 
-func describeCWE(d *Details) {
+func describeCWE(d *Details, set *intel.Set) {
 	weakness, known := LookupWeakness(d.Value)
 	if !known {
 		return
@@ -279,6 +282,8 @@ func describeCWE(d *Details) {
 			d.Related = append(d.Related, weaknessLink(parent))
 		}
 	}
+
+	describeCWEDetail(d, set)
 }
 
 func weaknessLink(id string) Link {

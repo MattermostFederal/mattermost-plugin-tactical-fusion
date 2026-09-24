@@ -10,6 +10,7 @@ import (
 	"net/netip"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"sort"
 	"strconv"
@@ -60,6 +61,13 @@ func main() {
 			source: "cwe-1000.csv",
 			build:  buildCWE,
 			target: func() string { return filepath.Join(*treeDir, "server", "decorators", "cyber", "data", "cwe.tsv") },
+		},
+		{
+			name:   "cwedetail",
+			source: "cwe-1000.csv",
+			build:  buildCWEDetail,
+			target: func() string { return filepath.Join(*treeDir, "assets", "cyber", "cwedetail.tsv") },
+			stamp:  true,
 		},
 		{
 			name:   "kev",
@@ -319,7 +327,7 @@ func buildAttack(source string) ([][]string, error) {
 	return rows, nil
 }
 
-func buildCWE(source string) ([][]string, error) {
+func readCWE(source string) ([]map[string]string, error) {
 	handle, err := os.Open(source)
 	if err != nil {
 		return nil, err
@@ -337,33 +345,230 @@ func buildCWE(source string) ([][]string, error) {
 		return nil, fmt.Errorf("the CWE export is empty")
 	}
 
-	index := map[string]int{}
+	header := make([]string, len(records[0]))
 	for i, name := range records[0] {
-		index[strings.ToLower(strings.TrimSpace(name))] = i
+		header[i] = strings.ToLower(strings.TrimSpace(name))
 	}
 
-	field := func(record []string, name string) string {
-		i, ok := index[name]
-		if !ok || i >= len(record) {
-			return ""
-		}
-		return clean(record[i])
-	}
-
-	var rows [][]string
+	var weaknesses []map[string]string
 	for _, record := range records[1:] {
-		id := field(record, "cwe-id")
-		if id == "" {
+		fields := map[string]string{}
+		for i, value := range record {
+			if i < len(header) {
+				fields[header[i]] = value
+			}
+		}
+		if clean(fields["cwe-id"]) == "" {
 			continue
+		}
+		weaknesses = append(weaknesses, fields)
+	}
+
+	return weaknesses, nil
+}
+
+func buildCWE(source string) ([][]string, error) {
+	weaknesses, err := readCWE(source)
+	if err != nil {
+		return nil, err
+	}
+
+	rows := make([][]string, 0, len(weaknesses))
+	for _, fields := range weaknesses {
+		rows = append(rows, []string{
+			"CWE-" + clean(fields["cwe-id"]),
+			clean(fields["name"]),
+			clean(fields["weakness abstraction"]),
+			clean(fields["status"]),
+			firstSentence(fields["description"]),
+			parentsOf(clean(fields["related weaknesses"])),
+		})
+	}
+
+	return rows, nil
+}
+
+type cweConsequence struct {
+	Scopes     []string `json:"scopes"`
+	Impacts    []string `json:"impacts"`
+	Likelihood string   `json:"likelihood,omitempty"`
+	Note       string   `json:"note,omitempty"`
+}
+
+type cweMitigation struct {
+	Phase         string `json:"phase,omitempty"`
+	Strategy      string `json:"strategy,omitempty"`
+	Description   string `json:"description"`
+	Effectiveness string `json:"effectiveness,omitempty"`
+}
+
+type cweDetection struct {
+	Method        string `json:"method"`
+	Description   string `json:"description"`
+	Effectiveness string `json:"effectiveness,omitempty"`
+}
+
+type cweExample struct {
+	ID          string `json:"id"`
+	Description string `json:"description"`
+}
+
+type packedPair struct {
+	key   string
+	value string
+}
+
+func packedEntries(field string, keys ...string) [][]packedPair {
+	alternatives := strings.Join(keys, "|")
+	entryStart := regexp.MustCompile(`::(?:` + alternatives + `):`)
+	keyStart := regexp.MustCompile(`(?:^|:)(` + alternatives + `):`)
+
+	starts := entryStart.FindAllStringIndex(field, -1)
+	entries := make([][]packedPair, 0, len(starts))
+
+	for i, start := range starts {
+		end := len(field)
+		if i+1 < len(starts) {
+			end = starts[i+1][0]
+		}
+		body := strings.TrimRight(field[start[0]+2:end], ":")
+
+		matches := keyStart.FindAllStringSubmatchIndex(body, -1)
+		var pairs []packedPair
+		for j, match := range matches {
+			valueEnd := len(body)
+			if j+1 < len(matches) {
+				valueEnd = matches[j+1][0]
+			}
+			if value := clean(body[match[1]:valueEnd]); value != "" {
+				pairs = append(pairs, packedPair{key: body[match[2]:match[3]], value: value})
+			}
+		}
+		if len(pairs) > 0 {
+			entries = append(entries, pairs)
+		}
+	}
+
+	return entries
+}
+
+func consequencesOf(field string) []cweConsequence {
+	var out []cweConsequence
+	for _, entry := range packedEntries(field, "SCOPE", "IMPACT", "LIKELIHOOD", "NOTE") {
+		var c cweConsequence
+		for _, pair := range entry {
+			switch pair.key {
+			case "SCOPE":
+				c.Scopes = append(c.Scopes, pair.value)
+			case "IMPACT":
+				c.Impacts = append(c.Impacts, pair.value)
+			case "LIKELIHOOD":
+				c.Likelihood = pair.value
+			case "NOTE":
+				c.Note = pair.value
+			}
+		}
+		out = append(out, c)
+	}
+	return out
+}
+
+func mitigationsOf(field string) []cweMitigation {
+	var out []cweMitigation
+	for _, entry := range packedEntries(field, "PHASE", "STRATEGY", "DESCRIPTION", "EFFECTIVENESS") {
+		var m cweMitigation
+		for _, pair := range entry {
+			switch pair.key {
+			case "PHASE":
+				m.Phase = pair.value
+			case "STRATEGY":
+				m.Strategy = pair.value
+			case "DESCRIPTION":
+				m.Description = pair.value
+			case "EFFECTIVENESS":
+				m.Effectiveness = pair.value
+			}
+		}
+		if m.Description != "" {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
+func detectionsOf(field string) []cweDetection {
+	var out []cweDetection
+	for _, entry := range packedEntries(field, "METHOD", "DESCRIPTION", "EFFECTIVENESS") {
+		var d cweDetection
+		for _, pair := range entry {
+			switch pair.key {
+			case "METHOD":
+				d.Method = pair.value
+			case "DESCRIPTION":
+				d.Description = pair.value
+			case "EFFECTIVENESS":
+				d.Effectiveness = pair.value
+			}
+		}
+		if d.Method != "" || d.Description != "" {
+			out = append(out, d)
+		}
+	}
+	return out
+}
+
+func examplesOf(field string) []cweExample {
+	var out []cweExample
+	for _, entry := range packedEntries(field, "REFERENCE", "DESCRIPTION", "LINK") {
+		var e cweExample
+		for _, pair := range entry {
+			switch pair.key {
+			case "REFERENCE":
+				e.ID = pair.value
+			case "DESCRIPTION":
+				e.Description = pair.value
+			}
+		}
+		if e.ID != "" {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+func buildCWEDetail(source string) ([][]string, error) {
+	weaknesses, err := readCWE(source)
+	if err != nil {
+		return nil, err
+	}
+
+	rows := make([][]string, 0, len(weaknesses))
+	for _, fields := range weaknesses {
+		consequences, err := compactJSON(consequencesOf(fields["common consequences"]))
+		if err != nil {
+			return nil, err
+		}
+		mitigations, err := compactJSON(mitigationsOf(fields["potential mitigations"]))
+		if err != nil {
+			return nil, err
+		}
+		detections, err := compactJSON(detectionsOf(fields["detection methods"]))
+		if err != nil {
+			return nil, err
+		}
+		examples, err := compactJSON(examplesOf(fields["observed examples"]))
+		if err != nil {
+			return nil, err
 		}
 
 		rows = append(rows, []string{
-			"CWE-" + id,
-			field(record, "name"),
-			field(record, "weakness abstraction"),
-			field(record, "status"),
-			firstSentence(field(record, "description")),
-			parentsOf(field(record, "related weaknesses")),
+			"CWE-" + clean(fields["cwe-id"]),
+			clean(fields["description"]),
+			clean(fields["extended description"]),
+			consequences,
+			mitigations,
+			detections,
+			examples,
 		})
 	}
 

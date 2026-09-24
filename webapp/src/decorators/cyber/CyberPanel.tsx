@@ -3,7 +3,7 @@ import React, {useState} from 'react';
 import Badges from './Badges';
 import {KIND_LABELS, isKind, useCyber} from './cyber';
 import type {CyberState} from './cyber';
-import type {CyberLink, CyberReference, CyberVectorMetric} from './types';
+import type {CyberItem, CyberLink, CyberReference, CyberSection, CyberVectorMetric} from './types';
 
 import LinkButton from '../../components/LinkButton';
 import {pluginBaseUrl} from '../../plugin_url';
@@ -142,6 +142,9 @@ const styles: Record<string, React.CSSProperties> = {
         borderBottom: '1px solid rgba(var(--center-channel-color-rgb), 0.04)',
     },
     product: {fontWeight: 600},
+    itemLink: {fontWeight: 600, textAlign: 'left'},
+    itemText: {margin: '2px 0 0'},
+    itemTextAlone: {margin: 0},
     reference: {
         display: 'block',
         whiteSpace: 'nowrap',
@@ -354,6 +357,48 @@ export function rankedReferences(references: CyberReference[]): CyberReference[]
         map(({reference}) => reference);
 }
 
+const SectionItem: React.FC<{item: CyberItem}> = ({item}) => {
+    let head: React.ReactNode = null;
+    if (item.kind !== '' && item.value !== '') {
+        head = (
+            <LinkButton
+                style={styles.itemLink}
+                onClick={() => setSelection({type: 'cyber', payload: {kind: item.kind, value: item.value}})}
+            >{item.head}</LinkButton>
+        );
+    } else if (item.head !== '') {
+        head = <span style={styles.product}>{item.head}</span>;
+    }
+
+    return (
+        <li style={styles.line}>
+            {head}
+            {item.text !== '' && <p style={head ? styles.itemText : styles.itemTextAlone}>{item.text}</p>}
+        </li>
+    );
+};
+
+const Sections: React.FC<{sections: CyberSection[]}> = ({sections}) => (
+    <>
+        {sections.map((section) => (
+            <Collapsible
+                key={section.title}
+                title={section.title}
+                count={section.items.length}
+            >
+                <ul style={styles.list}>
+                    {section.items.map((item, index) => (
+                        <SectionItem
+                            key={`${item.head}:${item.value}:${item.text.slice(0, 40)}:${String(index)}`}
+                            item={item}
+                        />
+                    ))}
+                </ul>
+            </Collapsible>
+        ))}
+    </>
+);
+
 const References: React.FC<{references: CyberReference[]}> = ({references}) => {
     if (references.length === 0) {
         return null;
@@ -517,6 +562,7 @@ function renderBody(state: CyberState): React.ReactNode {
                 lines={details.configurations}
             />
             <References references={details.references}/>
+            <Sections sections={details.sections}/>
         </>
     );
 }

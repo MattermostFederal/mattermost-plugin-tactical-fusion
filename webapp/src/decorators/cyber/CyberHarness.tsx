@@ -3,6 +3,7 @@ import React from 'react';
 import {_resetForTesting as resetCyber} from './cyber';
 import CyberHover from './CyberHover';
 import CyberPanel from './CyberPanel';
+import type {CyberSection} from './types';
 
 import {
     _resetForTesting as resetSelection,
@@ -13,7 +14,7 @@ import type {Selection} from '../selection';
 
 import type {CyberPayload} from './index';
 
-type Reply = 'found' | 'long' | 'bare' | 'status' | 'rejected' | 'failed' | 'hold';
+type Reply = 'found' | 'weakness' | 'long' | 'bare' | 'status' | 'rejected' | 'failed' | 'hold';
 
 const HEADLINE = '10.0 Critical, in KEV';
 const SUMMARY = 'Remote code execution in a logging library.';
@@ -55,6 +56,7 @@ const FOUND = {
         'apache log4j: from 2.0 before 2.3.1, from 2.4 before 2.12.2',
         'siemens sppa-t3000 firmware: all versions (on siemens sppa-t3000)',
     ],
+    sections: [] as CyberSection[],
     references: [
         {url: 'http://packetstormsecurity.com/files/165225/Apache-Log4j2-2.14.1-Remote-Code-Execution.html', tags: 'Third Party Advisory, VDB Entry'},
         {url: 'https://lists.debian.org/debian-lts-announce/2021/12/msg00007.html', tags: 'Mailing List'},
@@ -86,12 +88,40 @@ const NO_DATASET = {
     datasets: [{name: 'cve', label: 'vulnerability', present: false, generated: ''}],
 };
 
+const WEAKNESS = {
+    ...FOUND,
+    kind: 'cwe',
+    value: 'CWE-79',
+    title: 'Cross-site Scripting',
+    score: '',
+    severity: '',
+    exploited: false,
+    vector: [],
+    affected: [],
+    configurations: [],
+    references: [],
+    sections: [
+        {title: 'Mitigations',
+items: [
+            {head: 'Implementation, Output Encoding (effectiveness high)', text: 'Encode it.', kind: '', value: ''},
+        ]},
+        {title: 'Observed examples',
+items: [
+            {head: 'CVE-2021-44228', text: 'An invented example.', kind: 'cve', value: 'CVE-2021-44228'},
+            {head: '[REF-1]', text: 'A citation.', kind: '', value: ''},
+        ]},
+    ],
+};
+
 const LONG = {
     ...FOUND,
     summary: `${SUMMARY} ${'The rest of a long description. '.repeat(20)}`.trim(),
 };
 
 function baseFor(reply: Reply): typeof FOUND {
+    if (reply === 'weakness') {
+        return WEAKNESS;
+    }
     if (reply === 'long') {
         return LONG;
     }

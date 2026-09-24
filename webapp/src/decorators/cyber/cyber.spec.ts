@@ -30,6 +30,7 @@ const FOUND = {
     affected: ['Apache Software Foundation Apache Log4j2: from 2.0-beta9 before 2.15.0'],
     configurations: ['apache log4j: from 2.0 before 2.3.1'],
     references: [{url: 'https://logging.apache.org/log4j/2.x/security.html', tags: 'Vendor Advisory, Patch'}],
+    sections: [{title: 'Observed examples', items: [{head: 'CVE-2021-44228', text: 'x', kind: 'cve', value: 'CVE-2021-44228'}]}],
 };
 
 type Reply = (input?: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
@@ -82,6 +83,20 @@ test.describe('asCyber', () => {
         ].map((query) => ({label: query || 'none', value: 'v', query}));
 
         expect(asCyber({...FOUND, rows}).rows.map((row) => row.query)).toEqual([PUBLISHED_QUERY, '', '', '', '']);
+    });
+
+    test('keeps a section item link only when it names an indicator this plugin issues', () => {
+        const items = [
+            {head: 'a', text: '', kind: 'cve', value: 'CVE-2021-44228'},
+            {head: 'b', text: '', kind: 'cve', value: '[REF-1]'},
+            {head: 'c', text: '', kind: 'bogus', value: 'CVE-2021-44228'},
+            {head: 'd', text: '', kind: '', value: ''},
+        ];
+
+        const parsed = asCyber({...FOUND, sections: [{title: 'Observed examples', items}]});
+
+        expect(parsed.sections[0].items.map((item) => item.kind)).toEqual(['cve', '', '', '']);
+        expect(parsed.sections[0].items.map((item) => item.value)).toEqual(['CVE-2021-44228', '', '', '']);
     });
 
     test('drops a severity it has no color for, so no badge claims one', () => {
@@ -137,6 +152,8 @@ test.describe('asCyber', () => {
             ['no references', {...FOUND, references: undefined}],
             ['no score', {...FOUND, score: undefined}],
             ['no vector', {...FOUND, vector: undefined}],
+            ['no sections', {...FOUND, sections: undefined}],
+            ['a section item with no text', {...FOUND, sections: [{title: 't', items: [{head: 'h', kind: '', value: ''}]}]}],
             ['a vector metric with no value', {...FOUND, vector: [{metric: 'Attack vector', severe: true}]}],
             ['a severity that is not text', {...FOUND, severity: 3}],
             ['a reference with no url', {...FOUND, references: [{tags: 'Patch'}]}],

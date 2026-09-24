@@ -57,6 +57,20 @@ type cyberResponse struct {
 	Affected       []string         `json:"affected"`
 	Configurations []string         `json:"configurations"`
 	References     []cyberReference `json:"references"`
+
+	Sections []cyberSection `json:"sections"`
+}
+
+type cyberSection struct {
+	Title string      `json:"title"`
+	Items []cyberItem `json:"items"`
+}
+
+type cyberItem struct {
+	Head  string `json:"head"`
+	Text  string `json:"text"`
+	Kind  string `json:"kind"`
+	Value string `json:"value"`
 }
 
 type cyberVectorMetric struct {
@@ -118,6 +132,8 @@ func cyberBody(details cyber.Details) cyberResponse {
 		Affected:       append([]string{}, details.Affected...),
 		Configurations: append([]string{}, details.Configurations...),
 		References:     []cyberReference{},
+
+		Sections: []cyberSection{},
 	}
 
 	for _, row := range details.Rows {
@@ -143,9 +159,25 @@ func cyberBody(details cyber.Details) cyberResponse {
 	for _, metric := range details.Vector {
 		body.Vector = append(body.Vector, cyberVectorMetric{Metric: metric.Metric, Value: metric.Value, Severe: metric.Severe})
 	}
+	for _, section := range details.Sections {
+		body.Sections = append(body.Sections, cyberSectionOf(section))
+	}
 	for _, ref := range details.References {
 		body.References = append(body.References, cyberReference{URL: ref.URL, Tags: ref.Tags})
 	}
 
 	return body
+}
+
+func cyberSectionOf(section cyber.Section) cyberSection {
+	items := make([]cyberItem, 0, len(section.Items))
+	for _, item := range section.Items {
+		wire := cyberItem{Head: item.Head, Text: item.Text}
+		if item.Link != nil {
+			wire.Kind = string(item.Link.Kind)
+			wire.Value = item.Link.Value
+		}
+		items = append(items, wire)
+	}
+	return cyberSection{Title: section.Title, Items: items}
 }

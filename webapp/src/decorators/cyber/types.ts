@@ -43,6 +43,19 @@ export interface CyberResponse {
     affected: string[];
     configurations: string[];
     references: CyberReference[];
+    sections: CyberSection[];
+}
+
+export interface CyberSection {
+    title: string;
+    items: CyberItem[];
+}
+
+export interface CyberItem {
+    head: string;
+    text: string;
+    kind: string;
+    value: string;
 }
 
 export interface CyberVectorMetric {

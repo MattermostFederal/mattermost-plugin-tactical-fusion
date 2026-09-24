@@ -4,6 +4,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
@@ -185,40 +186,118 @@ func TestACVEDescriptionIsKeptWholeInEnglish(t *testing.T) {
 	t.Fatal("CVE-2026-0005 was not built")
 }
 
-var updateGolden = flag.Bool("update", false, "rewrite the cvedetail golden file the reader's tests parse")
+var updateGolden = flag.Bool("update", false, "rewrite the detail golden files the reader's tests parse")
 
-const detailGolden = "../../server/decorators/cyber/intel/testdata/cvedetail.tsv"
+const goldenDir = "../../server/decorators/cyber/intel/testdata/"
 
-const detailGoldenStamp = "#tactical-fusion-cyber/1\tcvedetail\t2026-09-01T00:00:00Z\tgolden\n"
+func matchGolden(t *testing.T, name string, rows [][]string) {
+	t.Helper()
 
-func TestTheDetailRowsMatchTheGoldenFileTheReaderParses(t *testing.T) {
-	rows, err := buildCVEDetail(writeNVDFixture(t))
-	if err != nil {
-		t.Fatal(err)
-	}
 	if invalid := checkRows(rows); invalid != nil {
 		t.Fatal(invalid)
 	}
 	sort.Slice(rows, func(i, j int) bool { return rows[i][0] < rows[j][0] })
 
 	var body strings.Builder
-	body.WriteString(detailGoldenStamp)
+	body.WriteString("#tactical-fusion-cyber/1\t" + name + "\t2026-09-01T00:00:00Z\tgolden\n")
 	for _, row := range rows {
 		body.WriteString(strings.Join(row, "\t") + "\n")
 	}
 
+	path := goldenDir + name + ".tsv"
 	if *updateGolden {
-		if written := os.WriteFile(detailGolden, []byte(body.String()), 0o600); written != nil {
+		if written := os.WriteFile(path, []byte(body.String()), 0o600); written != nil {
 			t.Fatal(written)
 		}
 	}
 
-	golden, err := os.ReadFile(detailGolden)
+	golden, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("%v; run go test ./build/cyberdata -run Golden -update", err)
 	}
 	if string(golden) != body.String() {
-		t.Fatalf("the generator's detail rows no longer match %s, which the reader's tests parse; if the change is intended, rerun with -update and fix the reader to match\n got: %s\nwant: %s", detailGolden, body.String(), golden)
+		t.Fatalf("the generator's %s rows no longer match %s, which the reader's tests parse; if the change is intended, rerun with -update and fix the reader to match\n got: %s\nwant: %s", name, path, body.String(), golden)
+	}
+}
+
+func TestTheDetailRowsMatchTheGoldenFileTheReaderParses(t *testing.T) {
+	rows, err := buildCVEDetail(writeNVDFixture(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	matchGolden(t, "cvedetail", rows)
+}
+
+const cweFixture = `CWE-ID,Name,Weakness Abstraction,Status,Description,Extended Description,Related Weaknesses,Common Consequences,Potential Mitigations,Detection Methods,Observed Examples
+9001,"Invented Weakness One",Base,Draft,"The product mishandles an invented input. A second sentence follows.","Background about the invented weakness, with a colon: here.","::NATURE:ChildOf:CWE ID:9002:VIEW ID:1000:ORDINAL:Primary::","::SCOPE:Confidentiality:SCOPE:Integrity:IMPACT:Read Application Data:IMPACT:Modify Memory:LIKELIHOOD:High:NOTE:An invented note.::SCOPE:Availability:IMPACT:DoS: Crash, Exit, or Restart::","::PHASE:Implementation:STRATEGY:Input Validation:DESCRIPTION:Hold every value in a smart pointer class such as std::auto_ptr before use.:EFFECTIVENESS:High::PHASE:Architecture and Design:DESCRIPTION:Pick a design that avoids it.::","::METHOD:Automated Static Analysis:DESCRIPTION:Run an invented analyzer over the code.:EFFECTIVENESS:Moderate::","::REFERENCE:CVE-2099-0001:DESCRIPTION:Invented product mishandles the invented input.:LINK:https://www.cve.org/CVERecord?id=CVE-2099-0001::REFERENCE:[REF-1]:DESCRIPTION:An invented citation.:LINK:https://example.org/ref::"
+9002,"Invented Class",Class,Stable,"The product has an invented class of problem.",,,,,,
+`
+
+func writeCWEFixture(t *testing.T) string {
+	t.Helper()
+
+	path := filepath.Join(t.TempDir(), "cwe-1000.csv")
+	if err := os.WriteFile(path, []byte(cweFixture), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestTheCWEDetailRowsMatchTheGoldenFileTheReaderParses(t *testing.T) {
+	rows, err := buildCWEDetail(writeCWEFixture(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	matchGolden(t, "cwedetail", rows)
+}
+
+func TestAPackedFieldSplitsOnlyWhereAKnownKeyFollows(t *testing.T) {
+	got := mitigationsOf("::PHASE:Implementation:DESCRIPTION:Use std::auto_ptr and std::unique_ptr, see http://x.example/a:b.::PHASE:Testing:DESCRIPTION:Test it.::")
+
+	want := []cweMitigation{
+		{Phase: "Implementation", Description: "Use std::auto_ptr and std::unique_ptr, see http://x.example/a:b."},
+		{Phase: "Testing", Description: "Test it."},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %+v\nwant %+v", got, want)
+	}
+}
+
+func TestAConsequenceKeepsEveryScopeAndImpactItNames(t *testing.T) {
+	got := consequencesOf("::SCOPE:Confidentiality:SCOPE:Integrity:IMPACT:Read Application Data:IMPACT:DoS: Crash, Exit, or Restart:LIKELIHOOD:High::")
+
+	want := []cweConsequence{{
+		Scopes:     []string{"Confidentiality", "Integrity"},
+		Impacts:    []string{"Read Application Data", "DoS: Crash, Exit, or Restart"},
+		Likelihood: "High",
+	}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %+v\nwant %+v", got, want)
+	}
+}
+
+func TestTheCWECatalogAndItsDetailReadTheSameRows(t *testing.T) {
+	source := writeCWEFixture(t)
+
+	catalog, err := buildCWE(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	detail, err := buildCWEDetail(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(catalog) != len(detail) {
+		t.Fatalf("catalog %d rows, detail %d", len(catalog), len(detail))
+	}
+	for i := range catalog {
+		if catalog[i][0] != detail[i][0] {
+			t.Errorf("row %d: catalog %s, detail %s", i, catalog[i][0], detail[i][0])
+		}
+	}
+	if catalog[0][4] != "The product mishandles an invented input." || detail[0][1] != "The product mishandles an invented input. A second sentence follows." {
+		t.Fatalf("the catalog keeps the first sentence and the detail the whole description: %q / %q", catalog[0][4], detail[0][1])
 	}
 }
 

@@ -281,6 +281,45 @@ test.describe('the readings', () => {
     });
 });
 
+test.describe('a weakness', () => {
+    test('shows its detail in collapsed sections', async ({mount}) => {
+        const panel = await mount(
+            <CyberHarness
+                surface='panel'
+                payload={CWE}
+                reply='weakness'
+            />,
+        );
+
+        await expect(section(panel, 'Mitigations')).toHaveText('Mitigations1');
+        await expect(section(panel, 'Observed examples')).toHaveText('Observed examples2');
+        await expect(panel.getByText('Encode it.')).toBeHidden();
+
+        await section(panel, 'Mitigations').click();
+
+        await expect(panel.getByText('Implementation, Output Encoding (effectiveness high)')).toBeVisible();
+        await expect(panel.getByText('Encode it.')).toBeVisible();
+    });
+
+    test('opens an observed CVE in the sidebar, and leaves a citation as text', async ({mount}) => {
+        const panel = await mount(
+            <CyberHarness
+                surface='panel'
+                payload={CWE}
+                reply='weakness'
+            />,
+        );
+
+        await section(panel, 'Observed examples').click();
+
+        await expect(panel.getByRole('button', {name: '[REF-1]'})).toHaveCount(0);
+        await expect(panel.getByText('[REF-1]')).toBeVisible();
+
+        await panel.getByRole('button', {name: 'CVE-2021-44228'}).click();
+        await expect(panel.getByTestId('selection')).toHaveText('cyber:{"kind":"cve","value":"CVE-2021-44228"}');
+    });
+});
+
 test.describe('the detail sections', () => {
     test('are collapsed, each with a count', async ({mount}) => {
         const panel = await mount(
