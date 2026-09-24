@@ -64,6 +64,7 @@ type Details struct {
 	Sections []Section
 	Credits  []Credit
 	Glance   Glance
+	Reports  []Report
 }
 
 type Credit struct {
@@ -76,6 +77,8 @@ var datasetLabels = map[string]string{
 	intel.NameCVEDetail:    "vulnerability detail",
 	intel.NameCWEDetail:    "weakness detail",
 	intel.NameAttackDetail: "ATT&CK detail",
+	intel.NameAdvisory:     "CISA advisory",
+	intel.NameThreat:       "threat feed",
 	intel.NameEPSS:         "exploit prediction",
 	intel.NameKEV:          "known exploited vulnerabilities",
 	intel.NameIP:           "IP address",
@@ -98,6 +101,10 @@ func Describe(kind Kind, value string, set *intel.Set) Details {
 		describeIP(&d, set)
 	case KindHash:
 		describeHash(&d)
+	}
+
+	if kind == KindIP || kind == KindHash {
+		describeThreatReports(&d, set)
 	}
 
 	d.Watchlist = watchlistFor(value, set)

@@ -2,7 +2,7 @@ import React from 'react';
 
 import Badges, {hasBadges} from './Badges';
 import {useCyber} from './cyber';
-import type {CyberResponse, CyberWatchEntry} from './types';
+import type {CyberResponse, CyberThreatReport, CyberWatchEntry} from './types';
 
 import type {CyberPayload} from './index';
 
@@ -80,12 +80,45 @@ const Verdicts: React.FC<{entries: CyberWatchEntry[]}> = ({entries}) => (
 function hasGlance(details: CyberResponse): boolean {
     const {glance} = details;
     return glance.subtitle !== '' || glance.summary !== '' || glance.tags.length > 0 ||
-        glance.facts.length > 0 || glance.status !== '' || details.watchlist.length > 0;
+        glance.facts.length > 0 || glance.status !== '' || details.watchlist.length > 0 || details.reports.length > 0;
 }
+
+function reportedMaliciousText(reports: CyberThreatReport[]): string {
+    const sources = new Set(reports.filter((report) => report.malicious).map((report) => report.source));
+    if (sources.size === 0) {
+        return '';
+    }
+    return sources.size === 1 ? 'Reported malicious' : `Reported malicious by ${sources.size} sources`;
+}
+
+function contextThreats(reports: CyberThreatReport[]): string[] {
+    return [...new Set(reports.filter((report) => !report.malicious).map((report) => report.threat))];
+}
+
+const Reports: React.FC<{reports: CyberThreatReport[]}> = ({reports}) => {
+    const malicious = reportedMaliciousText(reports);
+    return (
+        <>
+            {malicious !== '' && (
+                <span
+                    data-testid='cyber-reported'
+                    style={{...badge, ...VERDICT_STYLES.malicious}}
+                >{malicious}</span>
+            )}
+            {contextThreats(reports).map((threat) => (
+                <span
+                    key={threat}
+                    data-testid='cyber-context'
+                    style={{...badge, ...OTHER_VERDICT}}
+                >{threat}</span>
+            ))}
+        </>
+    );
+};
 
 const GlanceCard: React.FC<{details: CyberResponse}> = ({details}) => {
     const {glance} = details;
-    const showBadges = glance.status !== '' || details.watchlist.length > 0;
+    const showBadges = glance.status !== '' || details.watchlist.length > 0 || details.reports.length > 0;
 
     return (
         <div
@@ -97,6 +130,7 @@ const GlanceCard: React.FC<{details: CyberResponse}> = ({details}) => {
             {showBadges && (
                 <div style={styles.row}>
                     {glance.status !== '' && <span style={styles.status}>{glance.status}</span>}
+                    <Reports reports={details.reports}/>
                     <Verdicts entries={details.watchlist}/>
                 </div>
             )}

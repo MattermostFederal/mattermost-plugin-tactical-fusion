@@ -15,6 +15,7 @@ The watchlist in particular must never be moved under `public/`.
 | File | What it is | Ships |
 |---|---|---|
 | `kev.tsv` | CISA Known Exploited Vulnerabilities | yes |
+| `advisory.tsv` | The IP addresses and file hashes named in the CISA advisories listed in `build/cyberdata/advisories.txt` | yes |
 | `attackdetail.tsv` | MITRE Enterprise ATT&CK: each technique's and tactic's whole description, mitigations, detection strategies and analytics, procedure examples and references | yes |
 | `cwedetail.tsv` | MITRE CWE research view 1000: each weakness's whole description, background, consequences, mitigations, detection methods and observed examples | yes |
 
@@ -100,4 +101,19 @@ instead. It is 7.5 MB, 1.8 MB compressed, and its largest row, `T1105`, is
 ```
 go run ./build/cyberdata -only attack,attackdetail -label "MITRE Enterprise ATT&CK <version>"
 ```
+
+### `advisory.tsv`
+
+| | |
+|---|---|
+| Upstream | Each advisory's STIX JSON, linked from its page under `https://www.cisa.gov/news-events/cybersecurity-advisories/` |
+| Origin | Cybersecurity and Infrastructure Security Agency, United States; the advisories are marked TLP:CLEAR |
+| License | A work of the United States government, so not subject to domestic copyright |
+| Format | Two fields: the indicator (an address in its canonical form, or a lowercase digest) and a compact JSON array of reports, one per advisory naming it |
+
+An advisory is a snapshot: the addresses in it were attacker infrastructure when
+it was written and may be reassigned since. Each report carries the date the
+indicator became valid and the date the advisory was published, and links to
+the advisory. Add an advisory by adding its id to `build/cyberdata/advisories.txt`
+and running `make cyber-advisories`.
 

@@ -32,6 +32,7 @@ const FOUND = {
     references: [{url: 'https://logging.apache.org/log4j/2.x/security.html', tags: 'Vendor Advisory, Patch'}],
     credits: [{text: 'IP Geolocation by DB-IP', url: 'https://db-ip.com'}],
     glance: {subtitle: 's', summary: '', tags: ['t'], facts: ['f'], status: ''},
+    reports: [{source: 'CISA AA99-001A', malicious: true, threat: 't', detail: 'd', url: 'https://www.cisa.gov/x'}],
     sections: [{title: 'Observed examples', items: [{head: 'CVE-2021-44228', text: 'x', kind: 'cve', value: 'CVE-2021-44228', url: ''}]}],
 };
 
@@ -127,6 +128,19 @@ test.describe('asCyber', () => {
         ]);
     });
 
+    test('keeps a report link only when it is a web link, and reads anything but true as not malicious', () => {
+        const reports = [
+            {source: 'a', malicious: true, threat: 't', detail: '', url: 'https://example.org/a'},
+            // eslint-disable-next-line no-script-url
+            {source: 'b', malicious: 'yes', threat: 't', detail: '', url: 'javascript:alert(1)'},
+        ];
+
+        const parsed = asCyber({...FOUND, reports}).reports;
+
+        expect(parsed.map((report) => report.url)).toEqual(['https://example.org/a', '']);
+        expect(parsed.map((report) => report.malicious)).toEqual([true, false]);
+    });
+
     test('drops a severity it has no color for, so no badge claims one', () => {
         for (const severity of ['Critical', 'important', 'red', '']) {
             expect(asCyber({...FOUND, severity}).severity, severity).toBe('');
@@ -183,6 +197,8 @@ test.describe('asCyber', () => {
             ['no sections', {...FOUND, sections: undefined}],
             ['no credits', {...FOUND, credits: undefined}],
             ['no glance', {...FOUND, glance: undefined}],
+            ['no reports', {...FOUND, reports: undefined}],
+            ['a report with no source', {...FOUND, reports: [{malicious: true, threat: 't', detail: '', url: ''}]}],
             ['a glance with a numeric tag', {...FOUND, glance: {subtitle: '', summary: '', tags: [1], facts: [], status: ''}}],
             ['a credit with no text', {...FOUND, credits: [{url: 'https://db-ip.com'}]}],
             ['a section item with no url', {...FOUND, sections: [{title: 't', items: [{head: 'h', text: '', kind: '', value: ''}]}]}],

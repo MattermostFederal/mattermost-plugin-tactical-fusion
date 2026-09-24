@@ -215,6 +215,37 @@ geolocates, so `1.1.1.1` reads US from one and AU from the other, and the panel
 shows DB-IP's and lists both sources. And "Lite" is DB-IP's word for reduced
 accuracy.
 
+## Threat reports
+
+Two datasets share one row shape, the indicator and a JSON array of reports, and
+the plugin joins them for an address or a file hash:
+
+| | Built by | From | Ships |
+|---|---|---|---|
+| `advisory.tsv` | `make cyber-advisories` | The STIX JSON of each CISA advisory in `advisories.txt` | In the bundle |
+| `threat.tsv` | `make cyber-threat` | abuse.ch ThreatFox's full export, abuse.ch Feodo Tracker, the Tor exit list | Drop-in, copied by `make deploy` |
+
+`threat.tsv` never ships. abuse.ch's terms, since November 2025, say "Use of the
+Platforms by companies, networks, or individuals with commercial or for-profit
+needs may require a paid subscription, which will be managed by Spamhaus", so
+whoever runs `make cyber-threat` fetches under their own terms. Each feed is
+optional: a feed that cannot be fetched is skipped with a warning.
+
+Measured on 2026-09-23: the four advisories gave 246 indicators; ThreatFox's
+export held 106,672 indicators, of which the 24,875 addresses and 24,658 file
+hashes are kept (domains and URLs are not indicators the plugin recognizes).
+With Feodo Tracker's 5 addresses and 1,364 Tor exits, `threat.tsv` has 43,929
+rows, 13 MB, 1.4 MB gzipped. Feodo Tracker's list was last updated 2026-03-04.
+
+- One threat is one report whatever port it was seen on: ThreatFox lists a C2
+  once per port, and the generator keeps the ports together, the widest date
+  span and the highest confidence.
+- An address is written in its canonical form, so `::ffff:203.0.113.10` and
+  `203.0.113.10` are one indicator; a digest is lowercased.
+- A Tor exit is recorded as context, not as a verdict, and never makes the
+  panel say "reported malicious".
+- ThreatFox's "Unknown malware" is dropped rather than shown as a malware name.
+
 ## The recent build
 
 `fetch-recent.sh` asks the NVD API for every CVE published in the window and

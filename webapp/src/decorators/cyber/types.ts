@@ -46,6 +46,15 @@ export interface CyberResponse {
     sections: CyberSection[];
     credits: CyberCredit[];
     glance: CyberGlance;
+    reports: CyberThreatReport[];
+}
+
+export interface CyberThreatReport {
+    source: string;
+    malicious: boolean;
+    threat: string;
+    detail: string;
+    url: string;
 }
 
 export interface CyberGlance {

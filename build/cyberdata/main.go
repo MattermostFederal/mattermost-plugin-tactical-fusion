@@ -64,6 +64,20 @@ func main() {
 			target: func() string { return filepath.Join(*treeDir, "server", "decorators", "cyber", "data", "cwe.tsv") },
 		},
 		{
+			name:   "advisory",
+			source: "advisories",
+			build:  buildAdvisory,
+			target: func() string { return filepath.Join(*treeDir, "assets", "cyber", "advisory.tsv") },
+			stamp:  true,
+		},
+		{
+			name:   "threat",
+			source: "threat",
+			build:  buildThreat,
+			target: func() string { return filepath.Join(*outDir, "threat.tsv") },
+			stamp:  true,
+		},
+		{
 			name:   "attackdetail",
 			source: "enterprise-attack.json",
 			build:  buildAttackDetail,

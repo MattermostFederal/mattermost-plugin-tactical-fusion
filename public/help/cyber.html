@@ -213,12 +213,15 @@
         <p>
             <code class="copyable">141.98.9.137</code> is the example of an address from an
             incident: CISA's advisory AA23-325A lists it as the remote address LockBit 3.0
-            affiliates used to exploit Citrix Bleed. Its panel shows the hosting network and
-            location the datasets give, and nothing about the advisory, because no dataset the
-            plugin reads says whether an address is malicious. That is what the
-            <a href="#cyber-datasets">watchlist</a> is for: an address your team has judged
-            carries its verdict in the panel and the hover. Hosting addresses are reassigned, so
-            one named in an old advisory may belong to somebody else today.
+            affiliates used to exploit Citrix Bleed. Its panel lists that under
+            <strong>Threat reports</strong>, linked to the advisory, and its hover says
+            <strong>Reported malicious</strong>. The indicators of the CISA advisories the
+            plugin ships with come in the bundle; addresses and file hashes from abuse.ch
+            ThreatFox and Feodo Tracker, and the Tor exit list, come from
+            <code>threat.tsv</code> when an operator installs it. Every report names its source,
+            and a Tor exit is shown as context rather than as a verdict. Your team's own
+            judgments belong in the <a href="#cyber-datasets">watchlist</a>. Hosting addresses
+            are reassigned, so one named in an old advisory may belong to somebody else today.
         </p>
 
         <div class="alert alert-warning">
@@ -332,6 +335,7 @@
                 <tr><td>Vector, decoded</td><td>The CVSS vector spelled out one metric to a line, for version 2.0, 3.x and 4.0 vectors: how the flaw is reached, what it needs, and what it costs. The most dangerous value of each metric, such as a <strong>Network</strong> attack vector or <strong>None</strong> for privileges required, is marked. A metric the vector leaves undefined is not listed.</td></tr>
                 <tr><td>Watchlist</td><td>Any verdict your own watchlist records for this indicator, with its source, note and date.</td></tr>
                 <tr><td>Related</td><td>Links to the weaknesses, parents and sub-techniques around it, each one opening the same panel.</td></tr>
+                <tr><td>Threat reports</td><td>For an address or a file hash, every report a CISA advisory or a threat feed makes about it: the source, linked to its page, the threat in red when it is malicious, and the malware, ports, confidence and dates. A Tor exit is listed as context. The hover card says <strong>Reported malicious</strong> and counts the sources.</td></tr>
                 <tr><td>Weakness detail</td><td>For a weakness, the whole description in place of its first sentence, then collapsed sections for its background, consequences, mitigations, detection methods and observed examples, each with its count. An observed CVE opens the same panel. Read from the bundled <code>cwedetail.tsv</code>.</td></tr>
                 <tr><td>ATT&amp;CK detail</td><td>For a technique, the whole description, then collapsed sections for its mitigations, its detection analytics with the log sources each reads, its procedure examples, and its references. Mitigations, groups, software, campaigns and citations link out to their pages. A tactic lists its techniques, each opening the same panel. A technique MITRE has revoked names and links its replacement. Read from the bundled <code>attackdetail.tsv</code>.</td></tr>
                 <tr><td>Affected and references</td><td>Collapsed sections, each with its count: the products and versions as the reporting organization lists them and as NVD configures them, then the references, with vendor advisories and patches first and exploits next. Present only when the vulnerability detail dataset is installed.</td></tr>
@@ -369,6 +373,8 @@
                 <tr><td><code>cvedetail.tsv</code></td><td>Affected products and versions, as the reporting organization lists them and as NVD configures them, the references, and which organization reported each weakness</td></tr>
                 <tr><td><code>cwedetail.tsv</code></td><td>For each weakness: its whole description, background, consequences, mitigations, detection methods and observed CVEs. Ships with the plugin</td></tr>
                 <tr><td><code>attackdetail.tsv</code></td><td>For each ATT&amp;CK technique and tactic: its whole description, the mitigations and detection strategies MITRE maps to it with their analytics and log sources, every procedure example from a group, malware, tool or campaign, and its references. Ships with the plugin</td></tr>
+                <tr><td><code>advisory.tsv</code></td><td>The IP addresses and file hashes named in the CISA advisories the plugin ships with, each linked to its advisory. Ships with the plugin</td></tr>
+                <tr><td><code>threat.tsv</code></td><td>IP addresses and file hashes reported by abuse.ch ThreatFox and Feodo Tracker, and the Tor exit list, with the malware, ports, confidence and dates each feed gives. Never shipped: abuse.ch's terms may require a subscription for commercial use, so an operator fetches it under their own terms</td></tr>
                 <tr><td><code>epss.tsv</code></td><td>Exploit prediction scores and percentiles</td></tr>
                 <tr><td><code>kev.tsv</code></td><td>The known exploited vulnerabilities catalog, with its due dates and required actions</td></tr>
                 <tr><td><code>ip.tsv</code></td><td>Autonomous system, country, region and city per address range</td></tr>

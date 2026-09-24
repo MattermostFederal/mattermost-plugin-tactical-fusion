@@ -24,7 +24,7 @@ ul.datasets { list-style: none; padding: 0; margin: 0; font-size: 13px; color: v
 ul.datasets li { margin: 0 0 4px; }
 .verdict { font-weight: 600; }
 table.vector td.value { font-family: inherit; }
-table.vector .severe { color: var(--urgent); font-weight: 600; }
+table.vector .severe, ul.lines .severe { color: var(--urgent); font-weight: 600; }
 details { margin: 22px 0 0; }
 summary { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted);
   cursor: pointer; }
@@ -62,6 +62,7 @@ func renderBody(d Details) string {
 		b.WriteString(`</tbody></table>`)
 	}
 
+	writeReports(&b, d.Reports)
 	writeVector(&b, d.Vector)
 
 	if d.Status != "" {
@@ -103,6 +104,30 @@ func writeWatchlist(b *strings.Builder, d Details) {
 		b.WriteString(`<tr><td>` + html.EscapeString(label) + `</td><td class="value">` + value + `</td></tr>`)
 	}
 	b.WriteString(`</tbody></table>`)
+}
+
+func writeReports(b *strings.Builder, reports []Report) {
+	if len(reports) == 0 {
+		return
+	}
+
+	b.WriteString(`<h2>Threat reports</h2><ul class="lines">`)
+	for _, report := range reports {
+		source := html.EscapeString(report.Source)
+		if report.URL != "" {
+			source = `<a href="` + html.EscapeString(report.URL) + `" rel="noopener noreferrer" target="_blank">` + source + `</a>`
+		}
+		class := "context"
+		if report.Malicious {
+			class = "severe"
+		}
+		b.WriteString(`<li><strong>` + source + `</strong>: <span class="` + class + `">` + html.EscapeString(report.Threat) + `</span>`)
+		if report.Detail != "" {
+			b.WriteString(`<br>` + html.EscapeString(report.Detail))
+		}
+		b.WriteString(`</li>`)
+	}
+	b.WriteString(`</ul>`)
 }
 
 func writeVector(b *strings.Builder, metrics []VectorMetric) {

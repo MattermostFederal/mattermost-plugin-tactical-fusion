@@ -489,6 +489,51 @@ test.describe('the detail sections', () => {
     });
 });
 
+test.describe('threat reports', () => {
+    test('are listed near the top of the panel with their sources', async ({mount}) => {
+        const panel = await mount(
+            <CyberHarness
+                surface='panel'
+                payload={{kind: 'ip', value: '8.8.8.8'}}
+                reply='address'
+            />,
+        );
+
+        const reports = panel.getByTestId('cyber-reports');
+        await expect(reports.getByRole('link', {name: 'CISA AA99-001A'})).toHaveAttribute('href', 'https://www.cisa.gov/news-events/cybersecurity-advisories/aa99-001a');
+        await expect(reports.getByText('Botnet C2', {exact: true})).toHaveCSS('font-weight', '600');
+        await expect(reports.getByText('Tor exit node', {exact: true})).toHaveCSS('font-weight', '400');
+        await expect(reports.getByRole('link', {name: 'Tor Project'})).toHaveCount(0);
+        await expect(panel.locator('a[href^="javascript:"]')).toHaveCount(0);
+    });
+
+    test('mark the hover as reported malicious, counting the sources, and name the context', async ({mount}) => {
+        const card = await mount(
+            <CyberHarness
+                surface='hover'
+                payload={{kind: 'ip', value: '8.8.8.8'}}
+                reply='address'
+            />,
+        );
+
+        await expect(card.getByTestId('cyber-reported')).toHaveText('Reported malicious by 2 sources');
+        await expect(card.getByTestId('cyber-context')).toHaveText('Tor exit node');
+    });
+
+    test('leave the hover without a malicious badge when nothing reports one', async ({mount}) => {
+        const card = await mount(
+            <CyberHarness
+                surface='hover'
+                payload={CWE}
+                reply='weakness'
+            />,
+        );
+
+        await expect(card.getByTestId('cyber-glance')).toBeVisible();
+        await expect(card.getByTestId('cyber-reported')).toHaveCount(0);
+    });
+});
+
 test.describe('the glance card', () => {
     test('shows a weakness with its kind, what it affects and its counts', async ({mount}) => {
         const card = await mount(

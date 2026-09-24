@@ -10,6 +10,7 @@ import type {
     CyberItem,
     CyberRow,
     CyberSection,
+    CyberThreatReport,
     CyberVectorMetric,
     CyberWatchEntry,
 } from './types';
@@ -180,6 +181,20 @@ function asItem(entry: unknown): CyberItem {
     };
 }
 
+function asReports(value: unknown[]): CyberThreatReport[] {
+    return value.map((entry) => {
+        const report = asObject(entry, 'a threat report');
+        const url = asString(report, 'url');
+        return {
+            source: asString(report, 'source'),
+            malicious: report.malicious === true,
+            threat: asString(report, 'threat'),
+            detail: asString(report, 'detail'),
+            url: isWebLink(url) ? url : '',
+        };
+    });
+}
+
 function asGlance(glance: Record<string, unknown>): CyberGlance {
     return {
         subtitle: asString(glance, 'subtitle'),
@@ -248,6 +263,7 @@ export function asCyber(body: unknown): CyberResponse {
         sections: asSections(asArray(wire, 'sections')),
         credits: asCredits(asArray(wire, 'credits')),
         glance: asGlance(asObject(wire.glance, 'a glance')),
+        reports: asReports(asArray(wire, 'reports')),
     };
 }
 

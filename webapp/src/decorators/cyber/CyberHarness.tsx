@@ -3,7 +3,7 @@ import React from 'react';
 import {_resetForTesting as resetCyber} from './cyber';
 import CyberHover from './CyberHover';
 import CyberPanel from './CyberPanel';
-import type {CyberCredit, CyberSection} from './types';
+import type {CyberCredit, CyberSection, CyberThreatReport} from './types';
 
 import {
     _resetForTesting as resetSelection,
@@ -58,6 +58,7 @@ const FOUND = {
     ],
     sections: [] as CyberSection[],
     credits: [] as CyberCredit[],
+    reports: [] as CyberThreatReport[],
     glance: {subtitle: '', summary: '', tags: [] as string[], facts: [] as string[], status: ''},
     references: [
         {url: 'http://packetstormsecurity.com/files/165225/Apache-Log4j2-2.14.1-Remote-Code-Execution.html', tags: 'Third Party Advisory, VDB Entry'},
@@ -158,6 +159,12 @@ const ADDRESS = {
     title: '8.8.8.8',
     headline: 'AS15169 GOOGLE, US',
     glance: {subtitle: 'AS15169 GOOGLE', summary: '', tags: ['Global'], facts: ['Mountain View, California, US'], status: ''},
+    reports: [
+        {source: 'CISA AA99-001A', malicious: true, threat: 'Invented Ransomware Campaign', detail: 'first seen 2026-08-15', url: 'https://www.cisa.gov/news-events/cybersecurity-advisories/aa99-001a'},
+        {source: 'abuse.ch ThreatFox', malicious: true, threat: 'Botnet C2', detail: 'InventedBot · port 443', url: ''},
+        // eslint-disable-next-line no-script-url
+        {source: 'Tor Project', malicious: false, threat: 'Tor exit node', detail: '', url: 'javascript:alert(1)'},
+    ],
     sections: [],
     rows: [{label: 'City', value: 'Mountain View', query: ''}],
     credits: [

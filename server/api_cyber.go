@@ -61,6 +61,15 @@ type cyberResponse struct {
 	Sections []cyberSection `json:"sections"`
 	Credits  []cyberCredit  `json:"credits"`
 	Glance   cyberGlance    `json:"glance"`
+	Reports  []cyberReport  `json:"reports"`
+}
+
+type cyberReport struct {
+	Source    string `json:"source"`
+	Malicious bool   `json:"malicious"`
+	Threat    string `json:"threat"`
+	Detail    string `json:"detail"`
+	URL       string `json:"url"`
 }
 
 type cyberGlance struct {
@@ -151,6 +160,7 @@ func cyberBody(details cyber.Details) cyberResponse {
 
 		Sections: []cyberSection{},
 		Credits:  []cyberCredit{},
+		Reports:  []cyberReport{},
 		Glance: cyberGlance{
 			Subtitle: details.Glance.Subtitle,
 			Summary:  details.Glance.Summary,
@@ -182,6 +192,9 @@ func cyberBody(details cyber.Details) cyberResponse {
 	}
 	for _, metric := range details.Vector {
 		body.Vector = append(body.Vector, cyberVectorMetric{Metric: metric.Metric, Value: metric.Value, Severe: metric.Severe})
+	}
+	for _, report := range details.Reports {
+		body.Reports = append(body.Reports, cyberReport{Source: report.Source, Malicious: report.Malicious, Threat: report.Threat, Detail: report.Detail, URL: report.URL})
 	}
 	for _, credit := range details.Credits {
 		body.Credits = append(body.Credits, cyberCredit{Text: credit.Text, URL: credit.URL})

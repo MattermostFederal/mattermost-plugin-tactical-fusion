@@ -3,7 +3,7 @@ import React, {useState} from 'react';
 import Badges from './Badges';
 import {KIND_LABELS, isKind, useCyber} from './cyber';
 import type {CyberState} from './cyber';
-import type {CyberCredit, CyberItem, CyberLink, CyberReference, CyberSection, CyberVectorMetric} from './types';
+import type {CyberCredit, CyberItem, CyberThreatReport, CyberLink, CyberReference, CyberSection, CyberVectorMetric} from './types';
 
 import LinkButton from '../../components/LinkButton';
 import {pluginBaseUrl} from '../../plugin_url';
@@ -135,6 +135,7 @@ const styles: Record<string, React.CSSProperties> = {
     },
     product: {fontWeight: 600},
     itemLink: {fontWeight: 600, textAlign: 'left'},
+    malicious: {color: 'var(--error-text, #d24b4e)', fontWeight: 600},
     credit: {fontSize: '12px', margin: '20px 0 0', color: 'var(--center-channel-color)', opacity: 0.72},
     creditLink: {color: 'var(--link-color)'},
     itemAnchor: {fontWeight: 600, color: 'var(--link-color)', textDecoration: 'none', overflowWrap: 'anywhere'},
@@ -374,6 +375,41 @@ const SectionItem: React.FC<{item: CyberItem}> = ({item}) => {
     );
 };
 
+const ThreatReports: React.FC<{reports: CyberThreatReport[]}> = ({reports}) => {
+    if (reports.length === 0) {
+        return null;
+    }
+
+    return (
+        <>
+            <p style={styles.heading}>{'Threat reports'}</p>
+            <ul
+                style={styles.list}
+                data-testid='cyber-reports'
+            >
+                {reports.map((report) => (
+                    <li
+                        key={`${report.source}:${report.threat}:${report.detail}`}
+                        style={styles.line}
+                    >
+                        {report.url === '' ? <span style={styles.product}>{report.source}</span> : (
+                            <a
+                                href={report.url}
+                                target='_blank'
+                                rel='noopener noreferrer'
+                                style={styles.itemAnchor}
+                            >{report.source}</a>
+                        )}
+                        {': '}
+                        <span style={report.malicious ? styles.malicious : undefined}>{report.threat}</span>
+                        {report.detail !== '' && <p style={styles.itemText}>{report.detail}</p>}
+                    </li>
+                ))}
+            </ul>
+        </>
+    );
+};
+
 const Credits: React.FC<{credits: CyberCredit[]}> = ({credits}) => (
     <>
         {credits.map((credit) => (
@@ -528,6 +564,7 @@ function renderBody(state: CyberState): React.ReactNode {
                 style={styles.badgesInPanel}
             />
             <Summary text={details.summary}/>
+            <ThreatReports reports={details.reports}/>
 
             {details.rows.length > 0 && (
                 <table style={styles.table}>
