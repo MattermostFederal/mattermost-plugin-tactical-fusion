@@ -15,9 +15,11 @@ import (
 )
 
 const (
-	agentsPluginID = "mattermost-ai"
-	serviceID      = "tactical-fusion-openai"
-	accessAll      = 0
+	agentsPluginID    = "mattermost-ai"
+	fusionPluginID    = "com.mattermost.plugin-tactical-fusion"
+	autoRunEverywhere = "auto_run_everywhere"
+	serviceID         = "tactical-fusion-openai"
+	accessAll         = 0
 )
 
 var (
@@ -244,6 +246,66 @@ func (c *client) ensureAgent() (string, error) {
 	return "created", nil
 }
 
+type toolConfig struct {
+	Name    string `json:"name"`
+	Policy  string `json:"policy"`
+	Enabled bool   `json:"enabled"`
+}
+
+type mcpServer struct {
+	URL         string       `json:"url"`
+	Enabled     bool         `json:"enabled"`
+	ToolConfigs []toolConfig `json:"toolConfigs"`
+	Tools       []struct {
+		Name string `json:"name"`
+	} `json:"tools"`
+}
+
+func (c *client) ensureToolsAutoRun() (string, error) {
+	var listing struct {
+		Servers []mcpServer `json:"servers"`
+	}
+	if _, err := c.do(http.MethodGet, "/plugins/"+agentsPluginID+"/admin/mcp/tools", nil, &listing); err != nil {
+		return "", err
+	}
+
+	for _, server := range listing.Servers {
+		if server.URL != "plugin://"+fusionPluginID+"/mcp" {
+			continue
+		}
+
+		existing := map[string]toolConfig{}
+		for _, config := range server.ToolConfigs {
+			existing[config.Name] = config
+		}
+
+		changed := !server.Enabled
+		configs := make([]toolConfig, 0, len(server.Tools))
+		for _, tool := range server.Tools {
+			config, known := existing[tool.Name]
+			if !known {
+				config = toolConfig{Name: tool.Name, Enabled: true}
+			}
+			if config.Policy != autoRunEverywhere {
+				config.Policy = autoRunEverywhere
+				changed = true
+			}
+			configs = append(configs, config)
+		}
+
+		if !changed {
+			return "all " + fmt.Sprint(len(configs)) + " tools already auto run everywhere", nil
+		}
+		body := map[string]any{"enabled": true, "tool_configs": configs}
+		if _, err := c.do(http.MethodPut, "/plugins/"+agentsPluginID+"/admin/mcp/plugin-servers/"+fusionPluginID, body, nil); err != nil {
+			return "", err
+		}
+		return "all " + fmt.Sprint(len(configs)) + " tools set to auto run everywhere", nil
+	}
+
+	return "the Tactical Fusion MCP server is not registered with Agents yet, so its tools were left alone", nil
+}
+
 func run(apiKey string) error {
 	c := &client{http: &http.Client{Timeout: 30 * time.Second}, base: strings.TrimRight(*siteURL, "/")}
 	if err := c.login(); err != nil {
@@ -272,5 +334,11 @@ func run(apiKey string) error {
 		return err
 	}
 	fmt.Println("  " + serviceNote + "; @" + *botName + " agent " + outcome + " (" + *model + ", structured output on)")
+
+	tools, err := c.ensureToolsAutoRun()
+	if err != nil {
+		return err
+	}
+	fmt.Println("  Tactical Fusion MCP: " + tools)
 	return nil
 }

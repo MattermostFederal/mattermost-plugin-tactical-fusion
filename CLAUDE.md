@@ -349,7 +349,7 @@ The token grammar itself is Go-only, so the two sides cannot drift on it.
   slow enough to need that should get `testing.Short()` rather than a bigger
   timeout. The sweeps run in full under `make test`, which is what CI gates on.
 - Local stack: `make docker-setup` (Mattermost plus PostgreSQL on `:8065`,
-  `admin`/`password`), `make deploy` to install into it (it also configures an `@fusion` Agents bot on `gpt-5.5` with structured output, channel mention tool calling and the Mattermost MCP server over HTTP on, when `OPENAI_API_KEY` is set; `make docker-agent` alone reruns that), `make deploy-local` for
+  `admin`/`password`), `make deploy` to install into it (it also configures an `@fusion` Agents bot on `gpt-5.5` with structured output, channel mention tool calling and the Mattermost MCP server over HTTP on, and every Tactical Fusion tool on auto run everywhere, when `OPENAI_API_KEY` is set; `make docker-agent` alone reruns that), `make deploy-local` for
   your own server, `make docker-logs`/`docker-reset`/`docker-stop`/`docker-down`,
   and `make nuke` to tear everything down.
 

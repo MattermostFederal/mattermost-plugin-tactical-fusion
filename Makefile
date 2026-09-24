@@ -857,8 +857,10 @@ docker-cyberdata: docker-check
 ## Deploys the plugin to Docker and drops in every built map area and cyber dataset
 ## Configures an @fusion agent in the Docker server's Agents plugin: an OpenAI service with
 ## the key in OPENAI_API_KEY and an agent on AGENT_MODEL (gpt-5.5 by default) with structured
-## output on, so the Tactical Fusion MCP tools can be tried from a channel. Skipped when the
-## key is not set or the Agents plugin is not running; saves only what changed.
+## output on, so the Tactical Fusion MCP tools can be tried from a channel. It also turns on
+## channel mention tool calling and the Mattermost MCP server over HTTP, and sets every
+## Tactical Fusion tool to auto run everywhere. Skipped when the key is not set or the Agents
+## plugin is not running; saves only what changed.
 ##
 ## Configures the @fusion AI agent in the Docker server
 .PHONY: docker-agent
