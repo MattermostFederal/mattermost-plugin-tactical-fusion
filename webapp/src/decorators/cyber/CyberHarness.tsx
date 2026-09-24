@@ -58,6 +58,7 @@ const FOUND = {
     ],
     sections: [] as CyberSection[],
     credits: [] as CyberCredit[],
+    glance: {subtitle: '', summary: '', tags: [] as string[], facts: [] as string[], status: ''},
     references: [
         {url: 'http://packetstormsecurity.com/files/165225/Apache-Log4j2-2.14.1-Remote-Code-Execution.html', tags: 'Third Party Advisory, VDB Entry'},
         {url: 'https://lists.debian.org/debian-lts-announce/2021/12/msg00007.html', tags: 'Mailing List'},
@@ -101,16 +102,27 @@ const WEAKNESS = {
     affected: [],
     configurations: [],
     references: [],
+    glance: {
+        subtitle: 'CWE-79 · Base · Stable',
+        summary: 'The product does not neutralize input placed in a web page.',
+        tags: ['Confidentiality', 'Integrity'],
+        facts: ['12 mitigations', '20 observed examples'],
+        status: '',
+    },
     sections: [
-        {title: 'Mitigations',
-items: [
-            {head: 'Implementation, Output Encoding (effectiveness high)', text: 'Encode it.', kind: '', value: '', url: ''},
-        ]},
-        {title: 'Observed examples',
-items: [
-            {head: 'CVE-2021-44228', text: 'An invented example.', kind: 'cve', value: 'CVE-2021-44228', url: ''},
-            {head: '[REF-1]', text: 'A citation.', kind: '', value: '', url: ''},
-        ]},
+        {
+            title: 'Mitigations',
+            items: [
+                {head: 'Implementation, Output Encoding (effectiveness high)', text: 'Encode it.', kind: '', value: '', url: ''},
+            ],
+        },
+        {
+            title: 'Observed examples',
+            items: [
+                {head: 'CVE-2021-44228', text: 'An invented example.', kind: 'cve', value: 'CVE-2021-44228', url: ''},
+                {head: '[REF-1]', text: 'A citation.', kind: '', value: '', url: ''},
+            ],
+        },
     ],
 };
 
@@ -119,13 +131,23 @@ const TECHNIQUE = {
     kind: 'attack',
     value: 'T1059.001',
     title: 'PowerShell',
+    watchlist: [{verdict: 'suspicious', source: 'internal', note: '', updated: '2026-08-01', known: true}],
+    glance: {
+        subtitle: 'T1685 · Technique',
+        summary: 'Adversaries may disable security tools.',
+        tags: ['Defense Impairment'],
+        facts: ['Windows, Linux'],
+        status: 'Revoked by MITRE, replaced by T1685 Disable or Modify Tools',
+    },
     sections: [
-        {title: 'Procedure examples',
-items: [
-            {head: 'G0007 APT28 (group)', text: 'APT28 used PowerShell.', kind: '', value: '', url: 'https://attack.mitre.org/groups/G0007'},
-            // eslint-disable-next-line no-script-url
-            {head: 'Bad Scheme', text: 'Never a link.', kind: '', value: '', url: 'javascript:alert(1)'},
-        ]},
+        {
+            title: 'Procedure examples',
+            items: [
+                {head: 'G0007 APT28 (group)', text: 'APT28 used PowerShell.', kind: '', value: '', url: 'https://attack.mitre.org/groups/G0007'},
+                // eslint-disable-next-line no-script-url
+                {head: 'Bad Scheme', text: 'Never a link.', kind: '', value: '', url: 'javascript:alert(1)'},
+            ],
+        },
     ],
 };
 
@@ -135,6 +157,7 @@ const ADDRESS = {
     value: '8.8.8.8',
     title: '8.8.8.8',
     headline: 'AS15169 GOOGLE, US',
+    glance: {subtitle: 'AS15169 GOOGLE', summary: '', tags: ['Global'], facts: ['Mountain View, California, US'], status: ''},
     sections: [],
     rows: [{label: 'City', value: 'Mountain View', query: ''}],
     credits: [

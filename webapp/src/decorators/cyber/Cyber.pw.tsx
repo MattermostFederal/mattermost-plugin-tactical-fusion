@@ -393,7 +393,7 @@ test.describe('an address', () => {
             />,
         );
 
-        await expect(card.getByText('AS15169 GOOGLE, US')).toBeVisible();
+        await expect(card.getByText('AS15169 GOOGLE', {exact: true})).toBeVisible();
         await expect(card.getByText('IP Geolocation by DB-IP')).toBeVisible();
     });
 });
@@ -486,6 +486,81 @@ test.describe('the detail sections', () => {
 
         await expect(panel.getByText('No vulnerability dataset is installed.').first()).toBeVisible();
         await expect(panel.locator('summary')).toHaveCount(0);
+    });
+});
+
+test.describe('the glance card', () => {
+    test('shows a weakness with its kind, what it affects and its counts', async ({mount}) => {
+        const card = await mount(
+            <CyberHarness
+                surface='hover'
+                payload={CWE}
+                reply='weakness'
+            />,
+        );
+
+        const glance = card.getByTestId('cyber-glance');
+        await expect(glance.getByText('Cross-site Scripting')).toBeVisible();
+        await expect(glance.getByText('CWE-79 · Base · Stable')).toBeVisible();
+        await expect(glance.getByText('The product does not neutralize input placed in a web page.')).toBeVisible();
+        await expect(glance.getByText('Confidentiality', {exact: true})).toBeVisible();
+        await expect(glance.getByText('12 mitigations · 20 observed examples')).toBeVisible();
+    });
+
+    test('shows a retired technique and a watchlist verdict as badges', async ({mount}) => {
+        const card = await mount(
+            <CyberHarness
+                surface='hover'
+                payload={{kind: 'attack', value: 'T1059.001'}}
+                reply='technique'
+            />,
+        );
+
+        await expect(card.getByText('Revoked by MITRE, replaced by T1685 Disable or Modify Tools')).toBeVisible();
+        await expect(card.getByTestId('cyber-verdict')).toHaveText('Watchlist: suspicious');
+        await expect(card.getByText('Defense Impairment', {exact: true})).toBeVisible();
+    });
+
+    test('shows an address with its network, scope, place and credit', async ({mount}) => {
+        const card = await mount(
+            <CyberHarness
+                surface='hover'
+                payload={{kind: 'ip', value: '8.8.8.8'}}
+                reply='address'
+            />,
+        );
+
+        const glance = card.getByTestId('cyber-glance');
+        await expect(glance.getByText('8.8.8.8', {exact: true})).toBeVisible();
+        await expect(glance.getByText('AS15169 GOOGLE', {exact: true})).toBeVisible();
+        await expect(glance.getByText('Global', {exact: true})).toBeVisible();
+        await expect(glance.getByText('Mountain View, California, US')).toBeVisible();
+    });
+
+    test('adds a watchlist verdict to a vulnerability badges', async ({mount}) => {
+        const card = await mount(
+            <CyberHarness
+                surface='hover'
+                payload={CVE}
+            />,
+        );
+
+        await expect(card.getByTestId('cyber-severity')).toBeVisible();
+        await expect(card.getByTestId('cyber-verdict')).toHaveText('Watchlist: malicious');
+        await expect(card.getByTestId('cyber-glance')).toHaveCount(0);
+    });
+
+    test('stays inside the hover width', async ({mount}) => {
+        const card = await mount(
+            <CyberHarness
+                surface='hover'
+                payload={CWE}
+                reply='weakness'
+            />,
+        );
+
+        const box = await card.getByTestId('cyber-glance').boundingBox();
+        expect(box?.width).toBeLessThanOrEqual(360);
     });
 });
 

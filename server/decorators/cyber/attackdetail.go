@@ -22,6 +22,7 @@ func describeAttackDetail(d *Details, set *intel.Set) {
 	if detail.Description != "" {
 		d.Summary = detail.Description
 	}
+	addTechniqueDetailGlance(&d.Glance, detail)
 
 	addSection(d, "Mitigations", attackMitigationItems(detail.Mitigations))
 	addSection(d, "Detection", attackDetectionItems(detail.Detections))

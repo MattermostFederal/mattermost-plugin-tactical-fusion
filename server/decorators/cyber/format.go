@@ -63,6 +63,7 @@ type Details struct {
 
 	Sections []Section
 	Credits  []Credit
+	Glance   Glance
 }
 
 type Credit struct {
@@ -100,6 +101,10 @@ func Describe(kind Kind, value string, set *intel.Set) Details {
 	}
 
 	d.Watchlist = watchlistFor(value, set)
+	if kind == KindHash {
+		algorithm, bytes := hashAlgorithm(value)
+		d.Glance = hashGlance(algorithm, bytes, set, len(d.Watchlist) > 0)
+	}
 	if len(d.Watchlist) > 0 {
 		d.Headline = joinSentence(d.Headline, watchlistHeadline(d.Watchlist))
 	}
@@ -304,6 +309,7 @@ func describeCWE(d *Details, set *intel.Set) {
 	d.Title = weakness.Name
 	d.Summary = weakness.Summary
 	d.Headline = weakness.Name
+	d.Glance = weaknessGlance(weakness)
 
 	addRow(d, "Identifier", weakness.ID)
 	addRow(d, "Abstraction", weakness.Abstraction)
@@ -336,6 +342,7 @@ func describeAttack(d *Details, set *intel.Set) {
 	d.Title = technique.Name
 	d.Summary = technique.Summary
 	d.Headline = joinSentence(attackHeadline(technique), attackRetirement(technique))
+	d.Glance = techniqueGlance(technique)
 
 	addRow(d, "Identifier", technique.ID)
 	addRow(d, "Kind", attackKindText(technique.Kind))
@@ -458,6 +465,7 @@ func describeIP(d *Details, set *intel.Set) {
 	addRow(d, "Region", record.Region)
 	addRow(d, "City", record.City)
 	addRow(d, "Source", strings.Join(record.Sources, ", "))
+	d.Glance = addressGlance(AddressScope(addr), record)
 	for _, attribution := range record.Attributions {
 		d.Credits = append(d.Credits, Credit{Text: attribution.Text, URL: webURL(attribution.URL)})
 	}

@@ -6,6 +6,7 @@ import type {
     CyberReference,
     CyberResponse,
     CyberCredit,
+    CyberGlance,
     CyberItem,
     CyberRow,
     CyberSection,
@@ -179,6 +180,16 @@ function asItem(entry: unknown): CyberItem {
     };
 }
 
+function asGlance(glance: Record<string, unknown>): CyberGlance {
+    return {
+        subtitle: asString(glance, 'subtitle'),
+        summary: asString(glance, 'summary'),
+        tags: asStrings(asArray(glance, 'tags'), 'glance tags'),
+        facts: asStrings(asArray(glance, 'facts'), 'glance facts'),
+        status: asString(glance, 'status'),
+    };
+}
+
 function asCredits(value: unknown[]): CyberCredit[] {
     return value.map((entry) => {
         const credit = asObject(entry, 'a credit');
@@ -236,6 +247,7 @@ export function asCyber(body: unknown): CyberResponse {
         references: asReferences(asArray(wire, 'references')),
         sections: asSections(asArray(wire, 'sections')),
         credits: asCredits(asArray(wire, 'credits')),
+        glance: asGlance(asObject(wire.glance, 'a glance')),
     };
 }
 

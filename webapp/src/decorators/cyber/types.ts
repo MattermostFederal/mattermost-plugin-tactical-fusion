@@ -45,6 +45,15 @@ export interface CyberResponse {
     references: CyberReference[];
     sections: CyberSection[];
     credits: CyberCredit[];
+    glance: CyberGlance;
+}
+
+export interface CyberGlance {
+    subtitle: string;
+    summary: string;
+    tags: string[];
+    facts: string[];
+    status: string;
 }
 
 export interface CyberCredit {

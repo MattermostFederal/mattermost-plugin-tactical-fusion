@@ -133,6 +133,7 @@ var cyberStructNames = map[string]string{
 	"cyberSection[]":      "CyberSection[]",
 	"cyberItem[]":         "CyberItem[]",
 	"cyberCredit[]":       "CyberCredit[]",
+	"cyberGlance":         "CyberGlance",
 }
 
 func TestWebappCyberResponseShapeMatches(t *testing.T) {
@@ -164,6 +165,10 @@ func TestWebappCyberItemShapeMatches(t *testing.T) {
 
 func TestWebappCyberCreditShapeMatches(t *testing.T) {
 	requireSameShape(t, "CyberCredit", goWireFields(t, cyberCredit{}), cyberWebappFields(t, "CyberCredit"))
+}
+
+func TestWebappCyberGlanceShapeMatches(t *testing.T) {
+	requireSameShape(t, "CyberGlance", goWireFields(t, cyberGlance{}), cyberWebappFields(t, "CyberGlance"))
 }
 
 func TestWebappCyberLinkShapeMatches(t *testing.T) {

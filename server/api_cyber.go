@@ -60,6 +60,15 @@ type cyberResponse struct {
 
 	Sections []cyberSection `json:"sections"`
 	Credits  []cyberCredit  `json:"credits"`
+	Glance   cyberGlance    `json:"glance"`
+}
+
+type cyberGlance struct {
+	Subtitle string   `json:"subtitle"`
+	Summary  string   `json:"summary"`
+	Tags     []string `json:"tags"`
+	Facts    []string `json:"facts"`
+	Status   string   `json:"status"`
 }
 
 type cyberCredit struct {
@@ -142,6 +151,13 @@ func cyberBody(details cyber.Details) cyberResponse {
 
 		Sections: []cyberSection{},
 		Credits:  []cyberCredit{},
+		Glance: cyberGlance{
+			Subtitle: details.Glance.Subtitle,
+			Summary:  details.Glance.Summary,
+			Tags:     append([]string{}, details.Glance.Tags...),
+			Facts:    append([]string{}, details.Glance.Facts...),
+			Status:   details.Glance.Status,
+		},
 	}
 
 	for _, row := range details.Rows {

@@ -31,6 +31,7 @@ const FOUND = {
     configurations: ['apache log4j: from 2.0 before 2.3.1'],
     references: [{url: 'https://logging.apache.org/log4j/2.x/security.html', tags: 'Vendor Advisory, Patch'}],
     credits: [{text: 'IP Geolocation by DB-IP', url: 'https://db-ip.com'}],
+    glance: {subtitle: 's', summary: '', tags: ['t'], facts: ['f'], status: ''},
     sections: [{title: 'Observed examples', items: [{head: 'CVE-2021-44228', text: 'x', kind: 'cve', value: 'CVE-2021-44228', url: ''}]}],
 };
 
@@ -181,6 +182,8 @@ test.describe('asCyber', () => {
             ['no vector', {...FOUND, vector: undefined}],
             ['no sections', {...FOUND, sections: undefined}],
             ['no credits', {...FOUND, credits: undefined}],
+            ['no glance', {...FOUND, glance: undefined}],
+            ['a glance with a numeric tag', {...FOUND, glance: {subtitle: '', summary: '', tags: [1], facts: [], status: ''}}],
             ['a credit with no text', {...FOUND, credits: [{url: 'https://db-ip.com'}]}],
             ['a section item with no url', {...FOUND, sections: [{title: 't', items: [{head: 'h', text: '', kind: '', value: ''}]}]}],
             ['a section item with no text', {...FOUND, sections: [{title: 't', items: [{head: 'h', kind: '', value: '', url: ''}]}]}],

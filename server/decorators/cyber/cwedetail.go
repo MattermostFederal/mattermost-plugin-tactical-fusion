@@ -32,6 +32,7 @@ func describeCWEDetail(d *Details, set *intel.Set) {
 	if detail.Description != "" {
 		d.Summary = detail.Description
 	}
+	addWeaknessDetailGlance(&d.Glance, detail)
 
 	addSection(d, "Background", backgroundItems(detail.Extended))
 	addSection(d, "Consequences", consequenceItems(detail.Consequences))
