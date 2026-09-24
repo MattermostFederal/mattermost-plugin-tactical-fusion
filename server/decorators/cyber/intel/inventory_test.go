@@ -103,3 +103,28 @@ func TestANilSetHasAnEmptyInventory(t *testing.T) {
 		t.Fatalf("inventory %+v", inv)
 	}
 }
+
+func TestABrokenConfiguredFileFallsBackToTheBundledOne(t *testing.T) {
+	bundled, configured := t.TempDir(), t.TempDir()
+	writeDataset(t, bundled, NameKEV)
+	if err := os.WriteFile(filepath.Join(configured, NameKEV+Suffix), []byte("not a stamp\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	set, problems := Open([]string{bundled, configured})
+	t.Cleanup(set.Close)
+
+	if !set.Has(NameKEV) {
+		t.Fatal("kev is not installed although the bundled file is good")
+	}
+	inv := set.Inventory()
+	if entry := inventoryEntry(t, inv, NameKEV); entry.Path != filepath.Join(bundled, NameKEV+Suffix) {
+		t.Fatalf("the loaded kev is %s, want the bundled one", entry.Path)
+	}
+	if len(inv.Replaced) != 0 {
+		t.Errorf("the bundled file is reported as replaced by a file that did not open: %v", inv.Replaced)
+	}
+	if len(problems) != 1 || problems[0].Path != filepath.Join(configured, NameKEV+Suffix) || problems[0].Class != ErrorSchema {
+		t.Errorf("problems %v, want the broken configured file", problems)
+	}
+}

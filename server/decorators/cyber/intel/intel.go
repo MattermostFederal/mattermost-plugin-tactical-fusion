@@ -140,7 +140,7 @@ func Open(dirs []string) (*Set, []*FileError) {
 		candidates: scanCandidates(dirs),
 	}
 
-	tabular := map[string]string{}
+	tabular := map[string][]string{}
 	vendor := map[string]string{}
 
 	for _, dir := range dirs {
@@ -174,10 +174,7 @@ func Open(dirs []string) (*Set, []*FileError) {
 					problems = append(problems, &FileError{Path: path, Class: ErrorName, Err: errors.New("the name is not one this build reads")})
 					continue
 				}
-				if earlier, seen := tabular[name]; seen {
-					set.replaced = append(set.replaced, earlier)
-				}
-				tabular[name] = path
+				tabular[name] = append(tabular[name], path)
 
 			case strings.HasSuffix(entry.Name(), MMDBSuffix):
 				vendor[entry.Name()] = path
@@ -185,18 +182,23 @@ func Open(dirs []string) (*Set, []*FileError) {
 		}
 	}
 
-	for name, path := range tabular {
-		dataset, err := openDataset(path)
-		if err != nil {
-			class := ErrorUnreadable
-			if errors.Is(err, ErrSchema) {
-				class = ErrorSchema
+	for name, paths := range tabular {
+		for i := len(paths) - 1; i >= 0; i-- {
+			dataset, err := openDataset(paths[i])
+			if err != nil {
+				class := ErrorUnreadable
+				if errors.Is(err, ErrSchema) {
+					class = ErrorSchema
+				}
+				problems = append(problems, &FileError{Path: paths[i], Class: class, Err: err})
+				continue
 			}
-			problems = append(problems, &FileError{Path: path, Class: class, Err: err})
-			continue
+			set.datasets[name] = dataset
+			set.replaced = append(set.replaced, paths[:i]...)
+			break
 		}
-		set.datasets[name] = dataset
 	}
+	sort.Strings(set.replaced)
 
 	for _, path := range sortedValues(vendor) {
 		reader, err := openMMDB(path)
