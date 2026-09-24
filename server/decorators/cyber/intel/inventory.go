@@ -16,7 +16,6 @@ type DatasetEntry struct {
 	Path      string
 	Size      int64
 	Generated string
-	Source    string
 	Records   int
 	CountErr  error
 }
@@ -101,7 +100,6 @@ func (s *Set) Inventory() Inventory {
 			Path:      dataset.Path,
 			Size:      dataset.size,
 			Generated: dataset.Generated,
-			Source:    dataset.Source,
 			Records:   records,
 			CountErr:  err,
 		})

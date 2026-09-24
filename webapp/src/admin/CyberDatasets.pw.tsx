@@ -5,7 +5,7 @@ import CyberDatasetsHarness from './CyberDatasetsHarness';
 import {expect, test} from '../../playwright/ct-coverage';
 
 test.describe('the loaded datasets', () => {
-    test('list each file with its records, size, date and source', async ({mount}) => {
+    test('list each file with its records, size and date', async ({mount}) => {
         const view = await mount(<CyberDatasetsHarness/>);
 
         const table = view.getByTestId('cyber-datasets');
@@ -19,7 +19,6 @@ test.describe('the loaded datasets', () => {
         const kev = table.getByRole('row').filter({hasText: 'Known exploited'});
         await expect(kev).toContainText('bundled');
         await expect(kev).toContainText('1,721');
-        await expect(kev).toContainText('CISA KEV catalog 2026.09.23');
     });
 
     test('show vendor databases, what is missing, what is replaced and what was skipped', async ({mount}) => {

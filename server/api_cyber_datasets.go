@@ -31,7 +31,6 @@ type cyberDatasetFile struct {
 	Records    int    `json:"records"`
 	CountError string `json:"countError"`
 	Generated  string `json:"generated"`
-	Source     string `json:"source"`
 }
 
 type cyberDatabaseFile struct {
@@ -121,7 +120,6 @@ func (p *Plugin) cyberDatasetsBody() cyberDatasetsResponse {
 			Size:      entry.Size,
 			Records:   entry.Records,
 			Generated: entry.Generated,
-			Source:    entry.Source,
 		}
 		if entry.CountErr != nil {
 			file.CountError = errcode.WithCode(errcode.CyberDataUnreadable, "The records could not be counted: "+entry.CountErr.Error())

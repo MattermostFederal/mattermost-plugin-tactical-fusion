@@ -390,7 +390,7 @@
                         "key": "CyberDatasetsLoaded",
                         "display_name": "Loaded datasets",
                         "type": "custom",
-                        "help_text": "What this node has loaded from the bundle and from the directory above: each dataset's file, how many records it holds, when it was generated and from what, each vendor database, the bundled files a file in the directory replaces, and every file that was skipped with the reason. Counting reads each file once, so the first view after a dataset changes can take a moment on the full vulnerability set. In a cluster this is the node that answered."
+                        "help_text": "What this node has loaded from the bundle and from the directory above: each dataset's file, how many records it holds and when it was generated, each vendor database, the bundled files a file in the directory replaces, and every file that was skipped with the reason. Counting reads each file once, so the first view after a dataset changes can take a moment on the full vulnerability set. In a cluster this is the node that answered."
                     }
                 ]
             }

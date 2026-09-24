@@ -67,7 +67,7 @@ export function asDatasets(body: unknown): CyberDatasetsResponse | null {
 
     const directories = listOf<CyberDirectory>(body.directories, (e) => strings(e, ['path', 'kind']));
     const datasets = listOf<CyberDatasetFile>(body.datasets, (e) =>
-        strings(e, ['name', 'label', 'path', 'kind', 'countError', 'generated', 'source']) && numbers(e, ['size', 'records']));
+        strings(e, ['name', 'label', 'path', 'kind', 'countError', 'generated']) && numbers(e, ['size', 'records']));
     const databases = listOf<CyberDatabaseFile>(body.databases, (e) => strings(e, ['path', 'kind', 'type', 'built']) && numbers(e, ['size']));
     const missing = listOf<CyberMissingDataset>(body.missing, (e) => strings(e, ['name', 'label']));
     const skipped = listOf<CyberSkippedFile>(body.skipped, (e) => strings(e, ['path', 'reason']));
@@ -111,7 +111,6 @@ const Datasets: React.FC<{datasets: CyberDatasetFile[]}> = ({datasets}) => {
                     <th style={{...styles.th, ...styles.number}}>{'Records'}</th>
                     <th style={{...styles.th, ...styles.number}}>{'Size'}</th>
                     <th style={styles.th}>{'Generated'}</th>
-                    <th style={styles.th}>{'Source'}</th>
                 </tr>
             </thead>
             <tbody>
@@ -135,7 +134,6 @@ const Datasets: React.FC<{datasets: CyberDatasetFile[]}> = ({datasets}) => {
                         </td>
                         <td style={{...styles.td, ...styles.number}}>{sizeText(dataset.size)}</td>
                         <td style={{...styles.td, ...styles.date}}>{stampText(dataset.generated)}</td>
-                        <td style={styles.td}>{dataset.source}</td>
                     </tr>
                 ))}
             </tbody>

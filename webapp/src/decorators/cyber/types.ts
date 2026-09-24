@@ -108,7 +108,6 @@ export interface CyberDatasetFile {
     records: number;
     countError: string;
     generated: string;
-    source: string;
 }
 
 export interface CyberDatabaseFile {
