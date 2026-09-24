@@ -15,7 +15,7 @@ const subcommandList = "examples, check, note"
 
 func getCommand() *model.Command {
 	autocomplete := model.NewAutocompleteData(commandTrigger, "[command]", "Tactical Fusion commands")
-	autocomplete.AddCommand(model.NewAutocompleteData("examples", "["+rawExamplesOption+" | "+mcpExamplesOption+"]", "Post a demonstration to this channel, one message per format, for everybody to see; with "+rawExamplesOption+", post the example text as code blocks to copy and paste; with "+mcpExamplesOption+", post a question for the "+mcpExamplesAgent+" agent for each format"))
+	autocomplete.AddCommand(model.NewAutocompleteData("examples", "", "Post a demonstration to this channel, one message per format, for everybody to see"))
 	autocomplete.AddCommand(model.NewAutocompleteData("check", "[text]", "Show what would be decorated in some text, and what would not"))
 	autocomplete.AddCommand(model.NewAutocompleteData("note", "[label] | [markdown]", "Post a link whose hover card renders your markdown"))
 
@@ -37,7 +37,10 @@ func (p *Plugin) ExecuteCommand(_ *plugin.Context, args *model.CommandArgs) (*mo
 
 	switch fields[1] {
 	case "examples":
-		return p.examplesCommand(args, strings.Join(fields[2:], " ")), nil
+		if refusal := p.refuseUnlessCanPost(args); refusal != nil {
+			return refusal, nil
+		}
+		return p.examplesResponse(args), nil
 	case "check":
 		return p.checkResponse(argumentText(args.Command, fields[1])), nil
 	case "note":

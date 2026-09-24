@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	mcpExamplesOption = "--mcp"
-	mcpExamplesAgent  = "@fusion"
+	mcpExamplesAgent = "@fusion"
+	minimumFence     = 3
 )
 
 type agentPrompt struct {
@@ -29,6 +29,20 @@ var agentPrompts = []agentPrompt{
 	{"GeoJSON", "Create GeoJSON with a red 25 mile circle centered on PHIK in Hawaii and a green line from PHIK to PGUM in Guam, and post it."},
 	{"Notes", "Make a note link for ROE that explains the three weapons control statuses, free, tight and hold, in a small table."},
 	{"Any message", "Rewrite this with Tactical Fusion links: TGT01 at 4Q FJ 0906 5962, TOT 241205ZSEP26, divert to PGUM, guard on 243.0."},
+}
+
+func outerFenced(body string) string {
+	longest, run := 0, 0
+	for i := range len(body) {
+		if body[i] != '`' {
+			run = 0
+			continue
+		}
+		run++
+		longest = max(longest, run)
+	}
+	fence := strings.Repeat("`", max(minimumFence, longest+1))
+	return fence + "\n" + strings.TrimRight(body, "\n") + "\n" + fence
 }
 
 func agentPromptText(prompt agentPrompt) string {
@@ -55,12 +69,4 @@ func (p *Plugin) postMCPExample(args *model.CommandArgs) int {
 		return 1
 	}
 	return 0
-}
-
-func (p *Plugin) mcpExamplesResponse(args *model.CommandArgs) *model.CommandResponse {
-	if p.postMCPExample(args) > 0 {
-		return ephemeralResponse(errcode.WithCode(errcode.CommandExamplesPostFailed,
-			"Could not post the examples to this channel."))
-	}
-	return &model.CommandResponse{}
 }

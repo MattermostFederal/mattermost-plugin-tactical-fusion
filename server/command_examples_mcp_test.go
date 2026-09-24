@@ -6,39 +6,34 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/mattermost/mattermost/server/public/model"
-	"github.com/mattermost/mattermost/server/public/plugin"
-
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
 )
 
-func runMCPExamples(t *testing.T, p *Plugin) (*model.CommandResponse, *fakeAPI) {
+func codeBlocks(t *testing.T, message string) []string {
 	t.Helper()
 
-	api, ok := p.API.(*fakeAPI)
-	if !ok {
-		t.Fatal("runMCPExamples needs the fake API")
+	var blocks []string
+	lines := strings.Split(strings.TrimRight(message, "\n"), "\n")
+	for i := 0; i < len(lines); i++ {
+		fence := lines[i]
+		if !strings.HasPrefix(fence, "```") || strings.Trim(fence, "`") != "" {
+			continue
+		}
+		end := i + 1
+		for end < len(lines) && lines[end] != fence {
+			end++
+		}
+		if end == len(lines) {
+			t.Fatalf("a block opened with %q never closes:\n%s", fence, message)
+		}
+		blocks = append(blocks, strings.Join(lines[i+1:end], "\n"))
+		i = end
 	}
-	api.created = nil
-
-	response, appErr := p.ExecuteCommand(&plugin.Context{}, &model.CommandArgs{
-		Command:   "/tactical-fusion examples " + mcpExamplesOption,
-		UserId:    "user1",
-		ChannelId: testCommandChannel,
-	})
-	if appErr != nil {
-		t.Fatalf("ExecuteCommand returned an error: %v", appErr)
-	}
-	return response, api
+	return blocks
 }
 
-func TestMCPExamplesPostOnePromptPerBlockForTheAgent(t *testing.T) {
-	_, api := runMCPExamples(t, newTestPlugin(t, "https://example.com", true))
-
-	if len(api.created) != 1 {
-		t.Fatalf("posted %d messages, want one", len(api.created))
-	}
-	message := api.created[0].Message
+func TestTheAgentExampleHoldsOnePromptPerBlock(t *testing.T) {
+	message := mcpExampleMessage()
 	if !strings.HasPrefix(message, "#### Ask "+mcpExamplesAgent+"\n") {
 		t.Fatalf("the message does not open with its heading:\n%s", message)
 	}
@@ -83,16 +78,17 @@ func TestEveryAirfieldAnAgentPromptNamesIsOneThePluginKnows(t *testing.T) {
 	}
 }
 
-func TestTheUnknownOptionRefusalNamesEveryOption(t *testing.T) {
-	p := newTestPlugin(t, "https://example.com", true)
-
-	response, _ := p.ExecuteCommand(&plugin.Context{}, &model.CommandArgs{
-		Command: "/tactical-fusion examples --nope", UserId: "user1", ChannelId: testCommandChannel,
-	})
-
-	for _, option := range []string{rawExamplesOption, mcpExamplesOption} {
-		if !strings.Contains(response.Text, option) {
-			t.Errorf("the refusal does not mention %s: %q", option, response.Text)
+func TestOuterFencedOutrunsTheLongestFenceInside(t *testing.T) {
+	cases := map[string]string{
+		"plain":            "```",
+		"```cot\nx\n```":   "````",
+		"a ```` b":         "`````",
+		"inline `code` ok": "```",
+	}
+	for body, want := range cases {
+		got := outerFenced(body)
+		if !strings.HasPrefix(got, want+"\n") || !strings.HasSuffix(got, "\n"+want) || strings.HasPrefix(got, want+"`") {
+			t.Errorf("outerFenced(%q) = %q, want fences of %q", body, got, want)
 		}
 	}
 }
