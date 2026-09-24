@@ -3,7 +3,7 @@ import React, {useState} from 'react';
 import Badges from './Badges';
 import {KIND_LABELS, isKind, useCyber} from './cyber';
 import type {CyberState} from './cyber';
-import type {CyberItem, CyberLink, CyberReference, CyberSection, CyberVectorMetric} from './types';
+import type {CyberCredit, CyberItem, CyberLink, CyberReference, CyberSection, CyberVectorMetric} from './types';
 
 import LinkButton from '../../components/LinkButton';
 import {pluginBaseUrl} from '../../plugin_url';
@@ -143,6 +143,8 @@ const styles: Record<string, React.CSSProperties> = {
     },
     product: {fontWeight: 600},
     itemLink: {fontWeight: 600, textAlign: 'left'},
+    credit: {fontSize: '12px', margin: '20px 0 0', color: 'var(--center-channel-color)', opacity: 0.72},
+    creditLink: {color: 'var(--link-color)'},
     itemAnchor: {fontWeight: 600, color: 'var(--link-color)', textDecoration: 'none', overflowWrap: 'anywhere'},
     itemText: {margin: '2px 0 0', whiteSpace: 'pre-line'},
     itemTextAlone: {margin: 0, whiteSpace: 'pre-line'},
@@ -388,6 +390,27 @@ const SectionItem: React.FC<{item: CyberItem}> = ({item}) => {
     );
 };
 
+const Credits: React.FC<{credits: CyberCredit[]}> = ({credits}) => (
+    <>
+        {credits.map((credit) => (
+            <p
+                key={credit.text}
+                style={styles.credit}
+                data-testid='cyber-credit'
+            >
+                {credit.url === '' ? credit.text : (
+                    <a
+                        href={credit.url}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        style={styles.creditLink}
+                    >{credit.text}</a>
+                )}
+            </p>
+        ))}
+    </>
+);
+
 const Sections: React.FC<{sections: CyberSection[]}> = ({sections}) => (
     <>
         {sections.map((section) => (
@@ -573,6 +596,7 @@ function renderBody(state: CyberState): React.ReactNode {
             />
             <References references={details.references}/>
             <Sections sections={details.sections}/>
+            <Credits credits={details.credits}/>
         </>
     );
 }

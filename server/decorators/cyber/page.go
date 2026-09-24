@@ -74,6 +74,7 @@ func renderBody(d Details) string {
 	writeLines(&b, "Affected, per NVD", d.Configurations)
 	writeReferences(&b, d.References)
 	writeSections(&b, d.Sections)
+	writeCredits(&b, d.Credits)
 	writeDatasets(&b, d)
 
 	return b.String()
@@ -143,6 +144,16 @@ func writeLines(b *strings.Builder, title string, lines []string) {
 		b.WriteString(`<li>` + html.EscapeString(line) + `</li>`)
 	}
 	b.WriteString(`</ul></details>`)
+}
+
+func writeCredits(b *strings.Builder, credits []Credit) {
+	for _, credit := range credits {
+		text := html.EscapeString(credit.Text)
+		if credit.URL != "" {
+			text = `<a href="` + html.EscapeString(credit.URL) + `" rel="noopener noreferrer" target="_blank">` + text + `</a>`
+		}
+		b.WriteString(`<p class="note credit">` + text + `</p>`)
+	}
 }
 
 func writeSections(b *strings.Builder, sections []Section) {

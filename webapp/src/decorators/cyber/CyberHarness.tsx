@@ -3,7 +3,7 @@ import React from 'react';
 import {_resetForTesting as resetCyber} from './cyber';
 import CyberHover from './CyberHover';
 import CyberPanel from './CyberPanel';
-import type {CyberSection} from './types';
+import type {CyberCredit, CyberSection} from './types';
 
 import {
     _resetForTesting as resetSelection,
@@ -14,7 +14,7 @@ import type {Selection} from '../selection';
 
 import type {CyberPayload} from './index';
 
-type Reply = 'found' | 'weakness' | 'technique' | 'long' | 'bare' | 'status' | 'rejected' | 'failed' | 'hold';
+type Reply = 'found' | 'weakness' | 'technique' | 'address' | 'long' | 'bare' | 'status' | 'rejected' | 'failed' | 'hold';
 
 const HEADLINE = '10.0 Critical, in KEV';
 const SUMMARY = 'Remote code execution in a logging library.';
@@ -57,6 +57,7 @@ const FOUND = {
         'siemens sppa-t3000 firmware: all versions (on siemens sppa-t3000)',
     ],
     sections: [] as CyberSection[],
+    credits: [] as CyberCredit[],
     references: [
         {url: 'http://packetstormsecurity.com/files/165225/Apache-Log4j2-2.14.1-Remote-Code-Execution.html', tags: 'Third Party Advisory, VDB Entry'},
         {url: 'https://lists.debian.org/debian-lts-announce/2021/12/msg00007.html', tags: 'Mailing List'},
@@ -128,6 +129,21 @@ items: [
     ],
 };
 
+const ADDRESS = {
+    ...WEAKNESS,
+    kind: 'ip',
+    value: '8.8.8.8',
+    title: '8.8.8.8',
+    headline: 'AS15169 GOOGLE, US',
+    sections: [],
+    rows: [{label: 'City', value: 'Mountain View', query: ''}],
+    credits: [
+        {text: 'IP Geolocation by DB-IP', url: 'https://db-ip.com'},
+        // eslint-disable-next-line no-script-url
+        {text: 'A vendor with a bad address', url: 'javascript:alert(1)'},
+    ],
+};
+
 const LONG = {
     ...FOUND,
     summary: `${SUMMARY} ${'The rest of a long description. '.repeat(20)}`.trim(),
@@ -139,6 +155,9 @@ function baseFor(reply: Reply): typeof FOUND {
     }
     if (reply === 'technique') {
         return TECHNIQUE;
+    }
+    if (reply === 'address') {
+        return ADDRESS;
     }
     if (reply === 'long') {
         return LONG;

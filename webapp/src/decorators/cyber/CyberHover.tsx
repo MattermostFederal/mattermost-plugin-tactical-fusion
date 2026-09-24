@@ -12,6 +12,7 @@ const styles: Record<string, React.CSSProperties> = {
         whiteSpace: 'nowrap',
     },
     badges: {flexWrap: 'nowrap'},
+    credit: {display: 'block', fontSize: '11px', opacity: 0.72, marginTop: '2px', whiteSpace: 'nowrap'},
 };
 
 const CyberHover: React.FC<{payload: CyberPayload}> = ({payload}) => {
@@ -30,7 +31,18 @@ const CyberHover: React.FC<{payload: CyberPayload}> = ({payload}) => {
         );
     }
 
-    return <span style={styles.line}>{state.data.headline}</span>;
+    return (
+        <span style={styles.line}>
+            {state.data.headline}
+            {state.data.credits.map((credit) => (
+                <span
+                    key={credit.text}
+                    style={styles.credit}
+                    data-testid='cyber-credit'
+                >{credit.text}</span>
+            ))}
+        </span>
+    );
 };
 
 export default CyberHover;

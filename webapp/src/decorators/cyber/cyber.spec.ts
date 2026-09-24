@@ -30,6 +30,7 @@ const FOUND = {
     affected: ['Apache Software Foundation Apache Log4j2: from 2.0-beta9 before 2.15.0'],
     configurations: ['apache log4j: from 2.0 before 2.3.1'],
     references: [{url: 'https://logging.apache.org/log4j/2.x/security.html', tags: 'Vendor Advisory, Patch'}],
+    credits: [{text: 'IP Geolocation by DB-IP', url: 'https://db-ip.com'}],
     sections: [{title: 'Observed examples', items: [{head: 'CVE-2021-44228', text: 'x', kind: 'cve', value: 'CVE-2021-44228', url: ''}]}],
 };
 
@@ -112,6 +113,19 @@ test.describe('asCyber', () => {
         expect(parsed.sections[0].items.map((item) => item.url)).toEqual(['https://attack.mitre.org/groups/G0007', '', '']);
     });
 
+    test('keeps a credit and its text, and its address only when it is a web link', () => {
+        const credits = [
+            {text: 'IP Geolocation by DB-IP', url: 'https://db-ip.com'},
+            // eslint-disable-next-line no-script-url
+            {text: 'Bad', url: 'javascript:alert(1)'},
+        ];
+
+        expect(asCyber({...FOUND, credits}).credits).toEqual([
+            {text: 'IP Geolocation by DB-IP', url: 'https://db-ip.com'},
+            {text: 'Bad', url: ''},
+        ]);
+    });
+
     test('drops a severity it has no color for, so no badge claims one', () => {
         for (const severity of ['Critical', 'important', 'red', '']) {
             expect(asCyber({...FOUND, severity}).severity, severity).toBe('');
@@ -166,6 +180,8 @@ test.describe('asCyber', () => {
             ['no score', {...FOUND, score: undefined}],
             ['no vector', {...FOUND, vector: undefined}],
             ['no sections', {...FOUND, sections: undefined}],
+            ['no credits', {...FOUND, credits: undefined}],
+            ['a credit with no text', {...FOUND, credits: [{url: 'https://db-ip.com'}]}],
             ['a section item with no url', {...FOUND, sections: [{title: 't', items: [{head: 'h', text: '', kind: '', value: ''}]}]}],
             ['a section item with no text', {...FOUND, sections: [{title: 't', items: [{head: 'h', kind: '', value: '', url: ''}]}]}],
             ['a vector metric with no value', {...FOUND, vector: [{metric: 'Attack vector', severe: true}]}],

@@ -517,3 +517,24 @@ func TestAsPercentMovesTheDecimalPointWithoutRoundingAway(t *testing.T) {
 		}
 	}
 }
+
+func TestThePageLinksACreditToItsVendor(t *testing.T) {
+	body := renderBody(Details{
+		Kind:    KindIP,
+		Value:   "8.8.8.8",
+		Title:   "8.8.8.8",
+		Credits: []Credit{{Text: "IP Geolocation by DB-IP", URL: "https://db-ip.com"}},
+	})
+
+	if !strings.Contains(body, `<a href="https://db-ip.com" rel="noopener noreferrer" target="_blank">IP Geolocation by DB-IP</a>`) {
+		t.Fatalf("the page does not link the credit")
+	}
+}
+
+func TestThePageShowsACreditWithoutAnAddressAsText(t *testing.T) {
+	body := renderBody(Details{Kind: KindIP, Value: "8.8.8.8", Title: "8.8.8.8", Credits: []Credit{{Text: "Data <by> someone"}}})
+
+	if !strings.Contains(body, "Data &lt;by&gt; someone") || strings.Contains(body, "<a href=\"\"") {
+		t.Fatalf("the credit was not escaped text")
+	}
+}

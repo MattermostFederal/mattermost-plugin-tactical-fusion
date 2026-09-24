@@ -179,6 +179,42 @@ database sits in the same directory.
 | Origin | IPtoASN, maintained by Frank Denis |
 | License | Open Data Commons Public Domain Dedication and License (PDDL) 1.0, per the dataset's own metadata on iptoasn.com |
 
+### Region and city: DB-IP City Lite
+
+`ip.tsv` has no region or city. DB-IP's free IP to City Lite database does, and
+it is published in MaxMind's format, so the plugin reads it as it is:
+
+```
+make cyber-geo
+make deploy
+```
+
+`fetch-geo.sh` downloads this month's file, or last month's early in a month
+before DB-IP publishes, checks that it is a MaxMind-format database, and moves
+it into `out/dbip-city-lite.mmdb` in one step. `make deploy` copies `.mmdb`
+files beside the gzipped datasets. It is not gzipped for that trip because the
+plugin unpacks only `.tsv.gz`. Measured on 2026-09-23: 60 MB to download,
+127 MB unpacked, updated monthly.
+
+| | |
+|---|---|
+| Upstream | `https://download.db-ip.com/free/dbip-city-lite-<YYYY-MM>.mmdb.gz` |
+| Origin | DB-IP.com |
+| License | Creative Commons Attribution 4.0 International. "In the case of a web application, you must include a link back to DB-IP.com on pages that display or use results from the database." |
+
+The plugin meets that condition itself. It recognizes a DB-IP database by the
+type its metadata declares, and every answer it contributed to carries the
+credit "IP Geolocation by DB-IP": linked to `https://db-ip.com` in the panel
+and on the page, and as text in the hover card, which cannot be clicked. MaxMind
+GeoLite2 is credited the same way with MaxMind's required sentence. An answer
+the database added nothing to carries no credit.
+
+Two things the numbers do not show. The sources can disagree: iptoasn gives the
+country an address's network is registered in, DB-IP where the address
+geolocates, so `1.1.1.1` reads US from one and AU from the other, and the panel
+shows DB-IP's and lists both sources. And "Lite" is DB-IP's word for reduced
+accuracy.
+
 ## The recent build
 
 `fetch-recent.sh` asks the NVD API for every CVE published in the window and

@@ -62,6 +62,12 @@ type Details struct {
 	References     []Reference
 
 	Sections []Section
+	Credits  []Credit
+}
+
+type Credit struct {
+	Text string
+	URL  string
 }
 
 var datasetLabels = map[string]string{
@@ -452,6 +458,9 @@ func describeIP(d *Details, set *intel.Set) {
 	addRow(d, "Region", record.Region)
 	addRow(d, "City", record.City)
 	addRow(d, "Source", strings.Join(record.Sources, ", "))
+	for _, attribution := range record.Attributions {
+		d.Credits = append(d.Credits, Credit{Text: attribution.Text, URL: webURL(attribution.URL)})
+	}
 
 	if record.Empty() {
 		if scope := AddressScope(addr); scope != scopeGlobal {

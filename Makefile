@@ -255,6 +255,16 @@ cyber-sources:
 cyber-data:
 	$(GO) run ./build/cyberdata
 
+## Fetches DB-IP's free IP to City Lite database into build/cyberdata/out as
+## dbip-city-lite.mmdb, this month's or last month's early in a month. It gives the IP
+## panel a region and city. CC BY 4.0: the panel and the page link back to DB-IP.com
+## whenever it supplied an answer, which is the license's condition.
+##
+## Fetches the DB-IP City Lite database for the IP panel
+.PHONY: cyber-geo
+cyber-geo:
+	./build/cyberdata/fetch-geo.sh
+
 ## Builds the vulnerability datasets from the CVEs NVD published in the last DAYS days, 7
 ## by default and at most 120, into build/cyberdata/recent/cve.tsv and cvedetail.tsv. A
 ## small current set for trying the decorator: it holds nothing older than its window, so
@@ -794,12 +804,13 @@ docker-packages: docker-check
 ## Drops the built cyber datasets into the Docker server for testing
 .PHONY: docker-cyberdata
 docker-cyberdata: docker-check
-	@if ! ls build/cyberdata/out/*.tsv.gz >/dev/null 2>&1; then \
-		echo "No gzipped datasets in build/cyberdata/out/. Build them with 'make cyber-data' and 'make cyber-package'."; \
+	@if [ -z "$$(ls build/cyberdata/out/*.tsv.gz build/cyberdata/out/*.mmdb 2>/dev/null)" ]; then \
+		echo "No datasets in build/cyberdata/out/. Build them with 'make cyber-data' and 'make cyber-package', and 'make cyber-geo' for DB-IP."; \
 	else \
 		mkdir -p $(CYBER_DATA_HOST); \
 		n=0; \
-		for f in build/cyberdata/out/*.tsv.gz; do \
+		for f in build/cyberdata/out/*.tsv.gz build/cyberdata/out/*.mmdb; do \
+			[ -f "$$f" ] || continue; \
 			d="$(CYBER_DATA_HOST)/$$(basename $$f)"; \
 			if [ ! -f "$$d" ] || [ "$$f" -nt "$$d" ]; then \
 				cp "$$f" "$$d"; \
@@ -813,7 +824,7 @@ docker-cyberdata: docker-check
 		$(DOCKER_COMPOSE) exec -T mattermost mmctl --local config patch \
 			/mattermost/data/.cyberdata-patch.json > /dev/null; \
 		rm -f docker/mattermost/data/.cyberdata-patch.json; \
-		echo "CyberDatasetsDir = $(CYBER_DATA_PATH), $$(ls $(CYBER_DATA_HOST)/*.tsv.gz 2>/dev/null | wc -l | tr -d ' ') dropped-in datasets"; \
+		echo "CyberDatasetsDir = $(CYBER_DATA_PATH), $$(ls $(CYBER_DATA_HOST)/*.tsv.gz 2>/dev/null | wc -l | tr -d ' ') dropped-in datasets, $$(ls $(CYBER_DATA_HOST)/*.mmdb 2>/dev/null | wc -l | tr -d ' ') vendor databases"; \
 	fi
 
 ## Deploys the plugin to Docker and drops in every built map area and cyber dataset

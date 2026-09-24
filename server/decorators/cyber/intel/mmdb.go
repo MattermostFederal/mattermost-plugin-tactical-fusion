@@ -12,9 +12,34 @@ import (
 const MMDBSuffix = ".mmdb"
 
 type mmdbReader struct {
-	path   string
-	kind   string
-	reader *maxminddb.Reader
+	path        string
+	kind        string
+	attribution *Attribution
+	reader      *maxminddb.Reader
+}
+
+type Attribution struct {
+	Text string
+	URL  string
+}
+
+var vendorAttributions = []struct {
+	typePrefix  string
+	attribution Attribution
+}{
+	{"dbip", Attribution{Text: "IP Geolocation by DB-IP", URL: "https://db-ip.com"}},
+	{"geolite2", Attribution{Text: "This product includes GeoLite2 data created by MaxMind, available from https://www.maxmind.com", URL: "https://www.maxmind.com"}},
+}
+
+func attributionFor(databaseType string) *Attribution {
+	lowered := strings.ToLower(databaseType)
+	for _, vendor := range vendorAttributions {
+		if strings.HasPrefix(lowered, vendor.typePrefix) {
+			attribution := vendor.attribution
+			return &attribution
+		}
+	}
+	return nil
 }
 
 const (
@@ -50,7 +75,7 @@ func openMMDB(path string) (*mmdbReader, error) {
 		return nil, &UnknownMMDBError{Path: path, DatabaseType: reader.Metadata.DatabaseType}
 	}
 
-	return &mmdbReader{path: path, kind: kind, reader: reader}, nil
+	return &mmdbReader{path: path, kind: kind, attribution: attributionFor(reader.Metadata.DatabaseType), reader: reader}, nil
 }
 
 type UnknownMMDBError struct {

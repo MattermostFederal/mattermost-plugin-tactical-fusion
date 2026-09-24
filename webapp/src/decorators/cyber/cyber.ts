@@ -5,6 +5,7 @@ import type {
     CyberLink,
     CyberReference,
     CyberResponse,
+    CyberCredit,
     CyberItem,
     CyberRow,
     CyberSection,
@@ -178,6 +179,14 @@ function asItem(entry: unknown): CyberItem {
     };
 }
 
+function asCredits(value: unknown[]): CyberCredit[] {
+    return value.map((entry) => {
+        const credit = asObject(entry, 'a credit');
+        const url = asString(credit, 'url');
+        return {text: asString(credit, 'text'), url: isWebLink(url) ? url : ''};
+    });
+}
+
 function asSections(value: unknown[]): CyberSection[] {
     return value.map((entry) => {
         const section = asObject(entry, 'a section');
@@ -226,6 +235,7 @@ export function asCyber(body: unknown): CyberResponse {
         configurations: asStrings(asArray(wire, 'configurations'), 'affected configurations'),
         references: asReferences(asArray(wire, 'references')),
         sections: asSections(asArray(wire, 'sections')),
+        credits: asCredits(asArray(wire, 'credits')),
     };
 }
 

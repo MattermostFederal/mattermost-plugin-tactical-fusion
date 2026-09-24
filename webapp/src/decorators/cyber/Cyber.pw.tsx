@@ -356,6 +356,51 @@ test.describe('a technique', () => {
     });
 });
 
+test.describe('an address', () => {
+    test('credits the vendor whose data it shows, with a link back', async ({mount}) => {
+        const panel = await mount(
+            <CyberHarness
+                surface='panel'
+                payload={{kind: 'ip', value: '8.8.8.8'}}
+                reply='address'
+            />,
+        );
+
+        const link = panel.getByRole('link', {name: 'IP Geolocation by DB-IP'});
+        await expect(link).toBeVisible();
+        await expect(link).toHaveAttribute('href', 'https://db-ip.com');
+        await expect(link).toHaveAttribute('target', '_blank');
+        await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    });
+
+    test('shows a credit whose address is not a web link as text', async ({mount}) => {
+        const panel = await mount(
+            <CyberHarness
+                surface='panel'
+                payload={{kind: 'ip', value: '8.8.8.8'}}
+                reply='address'
+            />,
+        );
+
+        await expect(panel.getByText('A vendor with a bad address')).toBeVisible();
+        await expect(panel.getByRole('link', {name: 'A vendor with a bad address'})).toHaveCount(0);
+        await expect(panel.locator('a[href^="javascript:"]')).toHaveCount(0);
+    });
+
+    test('credits the vendor in the hover card too', async ({mount}) => {
+        const card = await mount(
+            <CyberHarness
+                surface='hover'
+                payload={{kind: 'ip', value: '8.8.8.8'}}
+                reply='address'
+            />,
+        );
+
+        await expect(card.getByText('AS15169 GOOGLE, US')).toBeVisible();
+        await expect(card.getByText('IP Geolocation by DB-IP')).toBeVisible();
+    });
+});
+
 test.describe('the detail sections', () => {
     test('are collapsed, each with a count', async ({mount}) => {
         const panel = await mount(

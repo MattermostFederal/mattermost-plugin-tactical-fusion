@@ -6,6 +6,7 @@ import (
 	"net/netip"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -244,5 +245,63 @@ func TestAFileThatIsNotADatabaseIsRefused(t *testing.T) {
 	}
 	if record, _ := set.IP(netip.MustParseAddr("8.8.8.8")); !record.Empty() {
 		t.Fatalf("a refused database still described an address: %+v", record)
+	}
+}
+
+func TestADBIPDatabaseCreditsDBIPWhenItAnswers(t *testing.T) {
+	dir := t.TempDir()
+	writeMMDB(t, filepath.Join(dir, "dbip-city-lite"+MMDBSuffix), "DBIP-City-Lite", cityRecord(t, "US", "California", "Mountain View"))
+
+	record, err := openIn(t, dir).IP(netip.MustParseAddr("8.8.8.8"))
+	if err != nil {
+		t.Fatalf("lookup: %v", err)
+	}
+
+	want := []Attribution{{Text: "IP Geolocation by DB-IP", URL: "https://db-ip.com"}}
+	if !reflect.DeepEqual(record.Attributions, want) {
+		t.Fatalf("attributions %+v, want %+v", record.Attributions, want)
+	}
+}
+
+func TestEachVendorIsCreditedOnceAndARangeFileIsNotCredited(t *testing.T) {
+	dir := t.TempDir()
+	writeMMDB(t, filepath.Join(dir, "GeoLite2-ASN"+MMDBSuffix), "GeoLite2-ASN", asnRecord(t, 15169, "Google LLC"))
+	writeMMDB(t, filepath.Join(dir, "GeoLite2-City"+MMDBSuffix), "GeoLite2-City", cityRecord(t, "US", "California", "Mountain View"))
+	writeDataset(t, dir, NameIP,
+		ipRow(netip.MustParseAddr("8.8.8.0"), netip.MustParseAddr("8.8.8.255"), "AS15169", "GOOGLE", "US", "", ""),
+	)
+
+	record, err := openIn(t, dir).IP(netip.MustParseAddr("8.8.8.8"))
+	if err != nil {
+		t.Fatalf("lookup: %v", err)
+	}
+
+	if len(record.Attributions) != 1 || record.Attributions[0].URL != "https://www.maxmind.com" {
+		t.Fatalf("attributions %+v, want MaxMind once", record.Attributions)
+	}
+}
+
+func TestAVendorThatAnsweredNothingIsNotCredited(t *testing.T) {
+	dir := t.TempDir()
+	writeMMDB(t, filepath.Join(dir, "dbip-city-lite"+MMDBSuffix), "DBIP-City-Lite", cityRecord(t, "", "", ""))
+	writeDataset(t, dir, NameIP,
+		ipRow(netip.MustParseAddr("8.8.8.0"), netip.MustParseAddr("8.8.8.255"), "AS15169", "GOOGLE", "US", "", ""),
+	)
+
+	record, err := openIn(t, dir).IP(netip.MustParseAddr("8.8.8.8"))
+	if err != nil {
+		t.Fatalf("lookup: %v", err)
+	}
+	if len(record.Attributions) != 0 {
+		t.Fatalf("a database that filled nothing was credited: %+v", record.Attributions)
+	}
+}
+
+func TestAnUnknownVendorGetsNoInventedCredit(t *testing.T) {
+	if got := attributionFor("Acme-City"); got != nil {
+		t.Fatalf("attributionFor invented %+v", got)
+	}
+	if got := attributionFor("GeoIP2-City"); got != nil {
+		t.Fatalf("a paid MaxMind database was given GeoLite2's credit: %+v", got)
 	}
 }

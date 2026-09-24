@@ -44,6 +44,12 @@ export interface CyberResponse {
     configurations: string[];
     references: CyberReference[];
     sections: CyberSection[];
+    credits: CyberCredit[];
+}
+
+export interface CyberCredit {
+    text: string;
+    url: string;
 }
 
 export interface CyberSection {

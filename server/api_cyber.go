@@ -59,6 +59,12 @@ type cyberResponse struct {
 	References     []cyberReference `json:"references"`
 
 	Sections []cyberSection `json:"sections"`
+	Credits  []cyberCredit  `json:"credits"`
+}
+
+type cyberCredit struct {
+	Text string `json:"text"`
+	URL  string `json:"url"`
 }
 
 type cyberSection struct {
@@ -135,6 +141,7 @@ func cyberBody(details cyber.Details) cyberResponse {
 		References:     []cyberReference{},
 
 		Sections: []cyberSection{},
+		Credits:  []cyberCredit{},
 	}
 
 	for _, row := range details.Rows {
@@ -159,6 +166,9 @@ func cyberBody(details cyber.Details) cyberResponse {
 	}
 	for _, metric := range details.Vector {
 		body.Vector = append(body.Vector, cyberVectorMetric{Metric: metric.Metric, Value: metric.Value, Severe: metric.Severe})
+	}
+	for _, credit := range details.Credits {
+		body.Credits = append(body.Credits, cyberCredit{Text: credit.Text, URL: credit.URL})
 	}
 	for _, section := range details.Sections {
 		body.Sections = append(body.Sections, cyberSectionOf(section))

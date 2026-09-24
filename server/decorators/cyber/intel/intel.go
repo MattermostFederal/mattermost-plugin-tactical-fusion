@@ -40,12 +40,13 @@ type KEVRecord struct {
 }
 
 type IPRecord struct {
-	ASN     string
-	ASName  string
-	Country string
-	Region  string
-	City    string
-	Sources []string
+	ASN          string
+	ASName       string
+	Country      string
+	Region       string
+	City         string
+	Sources      []string
+	Attributions []Attribution
 }
 
 func (r IPRecord) Empty() bool {
@@ -376,6 +377,9 @@ func (s *Set) IP(addr netip.Addr) (IPRecord, error) {
 		reader.enrich(addr, &record)
 		if record.fields() != before {
 			record.Sources = appendOnce(record.Sources, filepath.Base(reader.path))
+			if reader.attribution != nil && !slices.Contains(record.Attributions, *reader.attribution) {
+				record.Attributions = append(record.Attributions, *reader.attribution)
+			}
 		}
 	}
 
