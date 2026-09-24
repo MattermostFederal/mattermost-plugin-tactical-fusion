@@ -88,3 +88,11 @@ func TestThePageListsTheReportsWithTheirSources(t *testing.T) {
 		t.Fatalf("the page wrote a javascript: address")
 	}
 }
+
+func TestAMalwareSampleReportNamesItsFile(t *testing.T) {
+	detail := reportDetail(intel.ThreatReport{Malware: "InventedBot", File: "invoice.exe (exe)", FirstSeen: "2026-09-20"})
+
+	if detail != "InventedBot · file invoice.exe (exe) · first seen 2026-09-20" {
+		t.Fatalf("detail %q", detail)
+	}
+}

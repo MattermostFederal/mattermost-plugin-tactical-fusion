@@ -65,3 +65,65 @@ func TestIndicatorKeyAgreesWithTheGenerator(t *testing.T) {
 		}
 	}
 }
+
+const (
+	goldenSampleSHA256 = "1111111111111111111111111111111111111111111111111111111111111111"
+	goldenSampleMD5    = "22222222222222222222222222222222"
+	goldenSampleSHA1   = "3333333333333333333333333333333333333333"
+)
+
+func TestAMalwareSampleIsFoundByAnyOfItsHashes(t *testing.T) {
+	set := openIn(t, "testdata")
+
+	for _, value := range []string{goldenSampleSHA256, strings.ToUpper(goldenSampleMD5), goldenSampleSHA1} {
+		reports, err := set.ThreatReports(value)
+		if err != nil || len(reports) != 1 {
+			t.Fatalf("%s: reports %+v, %v", value, reports, err)
+		}
+		want := ThreatReport{
+			Source:    "abuse.ch MalwareBazaar",
+			Category:  CategoryMalicious,
+			Threat:    "Malware sample",
+			Malware:   "InventedBot",
+			File:      "invoice.exe (exe)",
+			FirstSeen: "2026-09-20",
+			URL:       "https://bazaar.abuse.ch/sample/" + goldenSampleSHA256 + "/",
+		}
+		if reports[0] != want {
+			t.Errorf("%s read back as %+v", value, reports[0])
+		}
+	}
+}
+
+func TestASampleWithNoNameOrFamilyStillSaysWhatItIs(t *testing.T) {
+	reports, err := openIn(t, "testdata").ThreatReports(strings.Repeat("4", 64))
+	if err != nil || len(reports) != 1 || reports[0].File != "elf file" || reports[0].Malware != "" {
+		t.Fatalf("reports %+v, %v", reports, err)
+	}
+}
+
+func TestAHashPointingAtAnotherPointerIsAnErrorRatherThanALoop(t *testing.T) {
+	dir := t.TempDir()
+	writeDataset(t, dir, NameMalware,
+		strings.Repeat("a", 32)+"\t"+strings.Repeat("b", 40)+"\t\t\t\t",
+		strings.Repeat("b", 40)+"\t"+strings.Repeat("c", 64)+"\t\t\t\t",
+	)
+
+	if _, err := openIn(t, dir).ThreatReports(strings.Repeat("a", 32)); err == nil || errors.Is(err, ErrNotFound) {
+		t.Fatalf("got %v, want a read error", err)
+	}
+}
+
+func TestFileTextNamesWhatIsKnown(t *testing.T) {
+	cases := map[[2]string]string{
+		{"invoice.exe", "exe"}: "invoice.exe (exe)",
+		{"invoice.exe", ""}:    "invoice.exe",
+		{"", "elf"}:            "elf file",
+		{"", ""}:               "",
+	}
+	for in, want := range cases {
+		if got := fileText(in[0], in[1]); got != want {
+			t.Errorf("fileText(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

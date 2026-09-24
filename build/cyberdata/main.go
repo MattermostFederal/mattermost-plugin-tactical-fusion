@@ -78,6 +78,13 @@ func main() {
 			stamp:  true,
 		},
 		{
+			name:   "malware",
+			source: "threat",
+			build:  buildMalware,
+			target: func() string { return filepath.Join(*outDir, "malware.tsv") },
+			stamp:  true,
+		},
+		{
 			name:   "attackdetail",
 			source: "enterprise-attack.json",
 			build:  buildAttackDetail,

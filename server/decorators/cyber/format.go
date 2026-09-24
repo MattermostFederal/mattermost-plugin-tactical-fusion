@@ -83,6 +83,7 @@ var datasetLabels = map[string]string{
 	intel.NameAttackDetail: "ATT&CK detail",
 	intel.NameAdvisory:     "CISA advisory",
 	intel.NameThreat:       "threat feed",
+	intel.NameMalware:      "malware sample",
 	intel.NameEPSS:         "exploit prediction",
 	intel.NameKEV:          "known exploited vulnerabilities",
 	intel.NameIP:           "IP address",

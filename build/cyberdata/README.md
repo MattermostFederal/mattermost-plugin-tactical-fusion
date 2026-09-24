@@ -246,6 +246,33 @@ rows, 13 MB, 1.4 MB gzipped. Feodo Tracker's list was last updated 2026-03-04.
   panel say "reported malicious".
 - ThreatFox's "Unknown malware" is dropped rather than shown as a malware name.
 
+### Malware samples
+
+`make cyber-threat` also fetches abuse.ch MalwareBazaar's full export and builds
+`malware.tsv` from it, under the same terms. It is kept apart from `threat.tsv`
+because of its size: measured on 2026-09-24, the export is a 223 MB zip of
+1,141,647 samples from 2020-01-10 on, and a report per hash in `threat.tsv`'s
+JSON shape would have been about 1.2 GB.
+
+Instead each sample is one row keyed by its SHA-256, holding the date it was
+first seen, its file name, its file type and its malware family, and its MD5 and
+SHA-1 are rows that hold only the SHA-256 they belong to. A lookup by any of the
+three finds the sample; a pointer that points at another pointer is refused as a
+read error rather than followed. A file name that is only the hash, and every
+`n/a`, are dropped. The link to the sample's page is built from the SHA-256 when
+it is shown rather than stored.
+
+That gives 3,424,931 rows, 371 MB, 202 MB gzipped: hashes are random hex and
+barely compress. It builds in about 12 seconds with a 3 GB peak. The Loaded
+datasets list in the System Console counts rows, so for this file the count is
+hashes, about three per sample. The first lookup after `make deploy` unpacks it,
+which took 3.6 seconds on the Docker stack; lookups after that took 6 ms.
+
+Two feeds can disagree about one hash: a sample ThreatFox reports as AsyncRAT
+may be RedLineStealer in MalwareBazaar. The panel shows both, each under its
+source, rather than choosing.
+
+
 ## The recent build
 
 `fetch-recent.sh` asks the NVD API for every CVE published in the window and

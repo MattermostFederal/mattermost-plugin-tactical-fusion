@@ -32,6 +32,7 @@ const (
 	NameAttackDetail = "attackdetail"
 	NameAdvisory     = "advisory"
 	NameThreat       = "threat"
+	NameMalware      = "malware"
 	NameEPSS         = "epss"
 	NameKEV          = "kev"
 	NameIP           = "ip"
@@ -50,13 +51,14 @@ var specs = map[string]spec{
 	NameAttackDetail: {fields: 6},
 	NameAdvisory:     {fields: 2},
 	NameThreat:       {fields: 2},
+	NameMalware:      {fields: 6},
 	NameEPSS:         {fields: 4},
 	NameKEV:          {fields: 6},
 	NameIP:           {fields: 7},
 	NameWatchlist:    {fields: 6, inspect: loadWatchlist},
 }
 
-var Names = []string{NameCVE, NameCVEDetail, NameCWEDetail, NameAttackDetail, NameEPSS, NameKEV, NameIP, NameAdvisory, NameThreat, NameWatchlist}
+var Names = []string{NameCVE, NameCVEDetail, NameCWEDetail, NameAttackDetail, NameEPSS, NameKEV, NameIP, NameAdvisory, NameThreat, NameMalware, NameWatchlist}
 
 type Dataset struct {
 	Name      string

@@ -218,7 +218,8 @@
             <strong>Reported malicious</strong>. The indicators of the CISA advisories the
             plugin ships with come in the bundle; addresses and file hashes from abuse.ch
             ThreatFox and Feodo Tracker, and the Tor exit list, come from
-            <code>threat.tsv</code> when an operator installs it. Every report names its source,
+            <code>threat.tsv</code>, and malware samples from abuse.ch MalwareBazaar from
+            <code>malware.tsv</code>, when an operator installs them. Every report names its source,
             and a Tor exit is shown as context rather than as a verdict. Your team's own
             judgments belong in the <a href="#cyber-datasets">watchlist</a>. Hosting addresses
             are reassigned, so one named in an old advisory may belong to somebody else today.
@@ -375,6 +376,7 @@
                 <tr><td><code>attackdetail.tsv</code></td><td>For each ATT&amp;CK technique and tactic: its whole description, the mitigations and detection strategies MITRE maps to it with their analytics and log sources, every procedure example from a group, malware, tool or campaign, and its references. Ships with the plugin</td></tr>
                 <tr><td><code>advisory.tsv</code></td><td>The IP addresses and file hashes named in the CISA advisories the plugin ships with, each linked to its advisory. Ships with the plugin</td></tr>
                 <tr><td><code>threat.tsv</code></td><td>IP addresses and file hashes reported by abuse.ch ThreatFox and Feodo Tracker, and the Tor exit list, with the malware, ports, confidence and dates each feed gives. Never shipped: abuse.ch's terms may require a subscription for commercial use, so an operator fetches it under their own terms</td></tr>
+                <tr><td><code>malware.tsv</code></td><td>Every malware sample in abuse.ch MalwareBazaar, found by its SHA-256, MD5 or SHA-1, with its file name, file type, malware family and the date it was first seen. Never shipped, under the same terms as <code>threat.tsv</code></td></tr>
                 <tr><td><code>epss.tsv</code></td><td>Exploit prediction scores and percentiles</td></tr>
                 <tr><td><code>kev.tsv</code></td><td>The known exploited vulnerabilities catalog, with its due dates and required actions</td></tr>
                 <tr><td><code>ip.tsv</code></td><td>Autonomous system, country, region and city per address range</td></tr>

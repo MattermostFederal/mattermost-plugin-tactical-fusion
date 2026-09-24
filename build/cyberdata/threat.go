@@ -468,3 +468,83 @@ func loadAdvisory(path string, index *reportIndex) error {
 	}
 	return nil
 }
+
+const (
+	malwareBazaarExport = "malwarebazaar-full.zip"
+	notAvailable        = "n/a"
+)
+
+func knownOrEmpty(value string) string {
+	value = clean(value)
+	if strings.EqualFold(value, notAvailable) {
+		return ""
+	}
+	return value
+}
+
+func buildMalware(dir string) ([][]string, error) {
+	path := filepath.Join(dir, malwareBazaarExport)
+	archive, err := zip.OpenReader(path)
+	if err != nil {
+		return nil, fmt.Errorf("%w; run 'make cyber-threat' to fetch it", err)
+	}
+	defer func() { _ = archive.Close() }()
+
+	var rows [][]string
+	seen := map[string]bool{}
+
+	for _, file := range archive.File {
+		if !strings.HasSuffix(file.Name, ".csv") {
+			continue
+		}
+		handle, err := file.Open()
+		if err != nil {
+			return nil, err
+		}
+		rows, err = readMalwareBazaar(handle, rows, seen)
+		_ = handle.Close()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if len(rows) == 0 {
+		return nil, fmt.Errorf("%s holds no samples", malwareBazaarExport)
+	}
+	return rows, nil
+}
+
+func readMalwareBazaar(r io.Reader, rows [][]string, seen map[string]bool) ([][]string, error) {
+	reader := csvBody(r)
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			return rows, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		if len(record) < 9 {
+			continue
+		}
+
+		sha256, ok := indicatorKey(record[1])
+		if !ok || len(sha256) != 64 || seen[sha256] {
+			continue
+		}
+		seen[sha256] = true
+
+		name := knownOrEmpty(record[5])
+		if strings.EqualFold(name, sha256) {
+			name = ""
+		}
+		rows = append(rows, []string{sha256, "", day(record[0]), name, knownOrEmpty(record[6]), knownOrEmpty(record[8])})
+
+		for _, alias := range []string{record[2], record[3]} {
+			if key, ok := indicatorKey(alias); ok && !seen[key] {
+				seen[key] = true
+				rows = append(rows, []string{key, sha256, "", "", "", ""})
+			}
+		}
+	}
+}

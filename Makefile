@@ -266,8 +266,9 @@ cyber-advisories:
 	$(GO) run ./build/cyberdata -only advisory \
 		-label "CISA advisories $$(tr '\n' ' ' < build/cyberdata/advisories.txt | sed 's/ $$//'), fetched $$(date -u +%Y-%m-%d)"
 
-## Fetches the abuse.ch ThreatFox and Feodo Tracker feeds and the Tor Project exit list,
-## builds build/cyberdata/out/threat.tsv from them and packages it for 'make deploy'.
+## Fetches the abuse.ch ThreatFox, MalwareBazaar and Feodo Tracker feeds and the Tor Project
+## exit list, builds build/cyberdata/out/threat.tsv and malware.tsv from them and packages
+## them for 'make deploy'. MalwareBazaar is 223 MB to download and malware.tsv 371 MB.
 ## Never bundled: abuse.ch's terms say commercial use may need a Spamhaus subscription, so
 ## whoever runs this fetches under their own terms.
 ##
@@ -277,6 +278,8 @@ cyber-threat:
 	./build/cyberdata/fetch-threat.sh
 	$(GO) run ./build/cyberdata -only threat \
 		-label "abuse.ch ThreatFox, abuse.ch Feodo Tracker, Tor Project exits, fetched $$(cat build/cyberdata/source/threat/fetched)"
+	$(GO) run ./build/cyberdata -only malware \
+		-label "abuse.ch MalwareBazaar full export, fetched $$(cat build/cyberdata/source/threat/fetched)"
 	$(MAKE) --no-print-directory cyber-package
 
 ## Fetches DB-IP's free IP to City Lite database into build/cyberdata/out as

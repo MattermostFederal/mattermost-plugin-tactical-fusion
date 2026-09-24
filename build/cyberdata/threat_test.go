@@ -126,3 +126,77 @@ func TestAThreatBuildWithNoFeedsIsRefused(t *testing.T) {
 		t.Fatal("built a threat dataset from nothing")
 	}
 }
+
+const (
+	sampleSHA256 = "1111111111111111111111111111111111111111111111111111111111111111"
+	sampleMD5    = "22222222222222222222222222222222"
+	sampleSHA1   = "3333333333333333333333333333333333333333"
+	secondSHA256 = "4444444444444444444444444444444444444444444444444444444444444444"
+)
+
+var malwareBazaarFixture = `################################################################
+# MalwareBazaar full malware samples dump (CSV)                #
+################################################################
+#
+# "first_seen_utc","sha256_hash","md5_hash","sha1_hash","reporter","file_name","file_type_guess","mime_type","signature","clamav","vtpercent","imphash","ssdeep","tlsh"
+"2026-09-20 10:00:00", "` + sampleSHA256 + `", "` + sampleMD5 + `", "` + sampleSHA1 + `", "tester", "invoice.exe", "exe", "application/x-dosexec", "InventedBot", "n/a", "n/a", "n/a", "n/a", "n/a"
+"2026-09-21 10:00:00", "` + strings.ToUpper(secondSHA256) + `", "n/a", "n/a", "tester", "` + secondSHA256 + `", "elf", "application/x-executable", "n/a", "n/a", "n/a", "n/a", "n/a", "n/a"
+"2026-09-22 10:00:00", "` + sampleSHA256 + `", "` + sampleMD5 + `", "` + sampleSHA1 + `", "tester", "duplicate.exe", "exe", "application/x-dosexec", "Other", "n/a", "n/a", "n/a", "n/a", "n/a"
+`
+
+func writeMalwareBazaarFixture(t *testing.T) string {
+	t.Helper()
+
+	dir := t.TempDir()
+	archive, err := os.Create(filepath.Join(dir, malwareBazaarExport)) // #nosec G304 -- a test's own temporary directory
+	if err != nil {
+		t.Fatal(err)
+	}
+	writer := zip.NewWriter(archive)
+	entry, err := writer.Create("full.csv")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := entry.Write([]byte(malwareBazaarFixture)); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := archive.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+func TestTheMalwareRowsMatchTheGoldenFileTheReaderParses(t *testing.T) {
+	rows, err := buildMalware(writeMalwareBazaarFixture(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	matchGolden(t, "malware", rows)
+}
+
+func TestASampleIsKeptOnceWithItsOtherHashesPointingAtIt(t *testing.T) {
+	rows, err := buildMalware(writeMalwareBazaarFixture(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	byKey := map[string][]string{}
+	for _, row := range rows {
+		byKey[row[0]] = row
+	}
+	if len(rows) != 4 {
+		t.Fatalf("%d rows, want two samples and two pointers: %q", len(rows), rows)
+	}
+	if got := byKey[sampleSHA256]; got[3] != "invoice.exe" || got[5] != "InventedBot" {
+		t.Errorf("the first sighting was not kept: %q", got)
+	}
+	if byKey[sampleMD5][1] != sampleSHA256 || byKey[sampleSHA1][1] != sampleSHA256 {
+		t.Errorf("the md5 and sha1 do not point at the sample: %q %q", byKey[sampleMD5], byKey[sampleSHA1])
+	}
+	if got := byKey[secondSHA256]; got[3] != "" || got[5] != "" {
+		t.Errorf("a file name that is only the hash, or n/a, was kept: %q", got)
+	}
+}

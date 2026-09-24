@@ -29,6 +29,9 @@ func seenText(first, last string) string {
 
 func reportDetail(report intel.ThreatReport) string {
 	parts := []string{report.Malware}
+	if report.File != "" {
+		parts = append(parts, "file "+report.File)
+	}
 	if report.Ports != "" {
 		label := "port "
 		if strings.Contains(report.Ports, ",") {
