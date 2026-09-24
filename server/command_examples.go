@@ -114,7 +114,7 @@ var exampleSets = map[string]exampleSet{
 			{label: "Tactic", text: "TA0002"},
 			{label: "IP address", text: "8.8.8.8", note: "Google's public resolver: its network, region and city"},
 			{label: "Attack address", text: "141.98.9.137", note: "named by CISA advisory AA23-325A as LockBit 3.0's remote address for Citrix Bleed; hosting addresses change hands"},
-			{label: "File hash", text: "44d88612fea8a8f36de82e1278abb02f", note: "the EICAR test file, an MD5"},
+			{label: "File hash", text: "ed01ebfbc9eb5bbea545af4d01bf5f1071661840480439c6e5babe8e080e41aa", note: "the WannaCry ransomware, a SHA-256; MalwareBazaar reports it when malware.tsv is installed"},
 		},
 	},
 }

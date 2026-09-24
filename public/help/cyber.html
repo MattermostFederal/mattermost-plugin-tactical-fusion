@@ -95,7 +95,7 @@
                 </tr>
                 <tr>
                     <td><a href="#cyber-hash">File hash</a></td>
-                    <td><code class="copyable">44d88612fea8a8f36de82e1278abb02f</code></td>
+                    <td><code class="copyable">ed01ebfbc9eb5bbea545af4d01bf5f1071661840480439c6e5babe8e080e41aa</code></td>
                     <td>A 32, 40 or 64 digit hexadecimal run</td>
                 </tr>
             </tbody>
@@ -243,9 +243,15 @@
         <p>
             A run of exactly 32, 40 or 64 hexadecimal digits is read as an MD5, SHA-1 or SHA-256
             digest. <code class="copyable">44d88612fea8a8f36de82e1278abb02f</code> is the MD5 of
-            the EICAR test file. The panel names the algorithm and the length, and shows any
-            <a href="#cyber-datasets">watchlist</a> entry for it, because a hash is an identity
-            rather than a record: on its own it says nothing at all.
+            the EICAR test file. The panel names the algorithm and the length. A hash is an
+            identity rather than a record, so everything else comes from the
+            <a href="#cyber-datasets">datasets</a>: the threat reports CISA advisories, abuse.ch
+            ThreatFox and abuse.ch MalwareBazaar make about it, and any watchlist entry.
+            <code class="copyable">ed01ebfbc9eb5bbea545af4d01bf5f1071661840480439c6e5babe8e080e41aa</code>
+            is a WannaCry ransomware sample: with <code>malware.tsv</code> installed its hover
+            says <strong>Reported malicious</strong> and its panel names the family and the file,
+            and it finds the same sample by its MD5 or SHA-1. A hash no dataset knows proves
+            nothing about the file either way.
         </p>
 
         <p>
