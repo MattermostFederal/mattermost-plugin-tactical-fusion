@@ -52,7 +52,7 @@ while [ -z "${total}" ] || [ "${index}" -lt "${total}" ]; do
         --output "${target}" \
         "${api}?pubStartDate=${start}.000Z&pubEndDate=${now}.000Z&noRejected&resultsPerPage=${page_size}&startIndex=${index}"
 
-    reported="$(grep -o '"totalResults":[0-9]*' "${target}" | head -1 | cut -d: -f2)"
+    reported="$({ grep -o '"totalResults":[0-9]*' "${target}" || true; } | head -1 | cut -d: -f2)"
     if [ -z "${reported}" ]; then
         echo "error: NVD answered without a totalResults; the response began:" >&2
         head -c 300 "${target}" >&2
@@ -61,7 +61,7 @@ while [ -z "${total}" ] || [ "${index}" -lt "${total}" ]; do
     fi
     total="${reported}"
 
-    count="$(grep -o '"cve":{"id":"CVE-' "${target}" | wc -l | tr -d ' ')"
+    count="$({ grep -o '"cve":{"id":"CVE-' "${target}" || true; } | wc -l | tr -d ' ')"
     if [ "${count}" -eq 0 ] && [ "${index}" -lt "${total}" ]; then
         echo "error: page ${page} held no CVEs with ${total} reported and ${received} received" >&2
         exit 1

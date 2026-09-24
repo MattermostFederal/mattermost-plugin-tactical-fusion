@@ -14,7 +14,7 @@ while read -r id; do
     [ -n "${id}" ] || continue
     lower="$(printf '%s' "${id}" | tr '[:upper:]' '[:lower:]')"
     page="$(curl --fail --location --silent --show-error --max-time 60 -A 'Mozilla/5.0' "${site}/news-events/cybersecurity-advisories/${lower}")"
-    links="$(printf '%s' "${page}" | grep -oE 'href="/sites/default/files/[^"]*\.stix_\.json"' | sed 's/^href="//; s/"$//' | sort -u)"
+    links="$(printf '%s' "${page}" | { grep -oE 'href="/sites/default/files/[^"]*\.stix_\.json"' || true; } | sed 's/^href="//; s/"$//' | sort -u)"
     if [ -z "${links}" ]; then
         echo "error: ${id} publishes no STIX JSON on its page" >&2
         exit 1

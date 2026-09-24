@@ -293,11 +293,15 @@ map-sources:
 	./build/maptiles/fetch-sources.sh
 
 ## Fetches the upstream security datasets into build/cyberdata/source, which is gitignored,
-## and verifies them against build/cyberdata/sources.lock. Needs network access; nothing in
-## the build, the tests or the plugin at runtime ever reaches the network.
+## and verifies them against build/cyberdata/sources.lock, then the CISA advisories in
+## build/cyberdata/advisories.txt, which `make cyber-data` needs too. Needs network access;
+## nothing in the build, the tests or the plugin at runtime ever reaches the network.
+##
+## Fetches every upstream cyber source, the CISA advisories included
 .PHONY: cyber-sources
 cyber-sources:
 	./build/cyberdata/fetch-sources.sh
+	./build/cyberdata/fetch-advisories.sh
 
 ## Rebuilds the cyber datasets from the sources above: the two embedded catalogs and the
 ## bundled KEV, CWE detail, ATT&CK detail, CAPEC, CVE to ATT&CK and KEV-only CVE files into the tree, and the large ones into build/cyberdata/out for release
