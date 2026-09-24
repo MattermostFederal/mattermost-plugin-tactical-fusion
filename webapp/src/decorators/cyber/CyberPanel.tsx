@@ -2,7 +2,7 @@ import React, {useState} from 'react';
 
 import {KIND_LABELS, isKind, isSeverity, useCyber} from './cyber';
 import type {CyberSeverity, CyberState} from './cyber';
-import type {CyberLink, CyberReference, CyberResponse} from './types';
+import type {CyberLink, CyberReference, CyberResponse, CyberVectorMetric} from './types';
 
 import LinkButton from '../../components/LinkButton';
 import {pluginBaseUrl} from '../../plugin_url';
@@ -167,6 +167,17 @@ const styles: Record<string, React.CSSProperties> = {
     },
     host: {fontWeight: 600},
     path: {color: 'var(--center-channel-color)', opacity: 0.64},
+    vector: {
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1fr) auto',
+        gap: '4px 12px',
+        margin: 0,
+        fontSize: '13px',
+        color: 'var(--center-channel-color)',
+    },
+    vectorMetric: {margin: 0, opacity: 0.72},
+    vectorValue: {margin: 0, textAlign: 'right'},
+    vectorSevere: {color: 'var(--error-text, #d24b4e)', fontWeight: 600},
     tags: {display: 'flex', flexWrap: 'wrap', gap: '4px', margin: '4px 0 0'},
     tag: {
         fontSize: '11px',
@@ -266,6 +277,31 @@ const Badges: React.FC<{details: CyberResponse}> = ({details}) => {
                 >{'Known exploited'}</span>
             )}
         </div>
+    );
+};
+
+const Vector: React.FC<{metrics: CyberVectorMetric[]}> = ({metrics}) => {
+    if (metrics.length === 0) {
+        return null;
+    }
+
+    return (
+        <>
+            <p style={styles.heading}>{'Vector, decoded'}</p>
+            <dl
+                style={styles.vector}
+                data-testid='cyber-vector'
+            >
+                {metrics.map((metric) => (
+                    <React.Fragment key={metric.metric}>
+                        <dt style={styles.vectorMetric}>{metric.metric}</dt>
+                        <dd style={metric.severe ? {...styles.vectorValue, ...styles.vectorSevere} : styles.vectorValue}>
+                            {metric.value}
+                        </dd>
+                    </React.Fragment>
+                ))}
+            </dl>
+        </>
     );
 };
 
@@ -494,6 +530,8 @@ function renderBody(state: CyberState): React.ReactNode {
                     </tbody>
                 </table>
             )}
+
+            <Vector metrics={details.vector}/>
 
             {details.status !== '' && <p style={styles.note}>{details.status}</p>}
 

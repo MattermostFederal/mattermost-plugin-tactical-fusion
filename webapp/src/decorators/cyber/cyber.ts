@@ -6,6 +6,7 @@ import type {
     CyberReference,
     CyberResponse,
     CyberRow,
+    CyberVectorMetric,
     CyberWatchEntry,
 } from './types';
 
@@ -158,6 +159,13 @@ function asReferences(value: unknown[]): CyberReference[] {
         filter((ref) => isWebLink(ref.url));
 }
 
+function asVector(value: unknown[]): CyberVectorMetric[] {
+    return value.map((entry) => {
+        const metric = asObject(entry, 'a vector metric');
+        return {metric: asString(metric, 'metric'), value: asString(metric, 'value'), severe: metric.severe === true};
+    });
+}
+
 function asDatasets(value: unknown[]): CyberDataset[] {
     return value.map((entry) => {
         const dataset = asObject(entry, 'a dataset');
@@ -187,6 +195,7 @@ export function asCyber(body: unknown): CyberResponse {
         score: asString(wire, 'score'),
         severity: asSeverity(asString(wire, 'severity')),
         exploited: wire.exploited === true,
+        vector: asVector(asArray(wire, 'vector')),
         affected: asStrings(asArray(wire, 'affected'), 'affected products'),
         configurations: asStrings(asArray(wire, 'configurations'), 'affected configurations'),
         references: asReferences(asArray(wire, 'references')),

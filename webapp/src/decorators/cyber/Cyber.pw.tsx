@@ -217,6 +217,33 @@ test.describe('the readings', () => {
         await expect(panel.getByText('Vulnerability', {exact: true})).toHaveCount(0);
     });
 
+    test('decode the vector, marking the most dangerous values', async ({mount}) => {
+        const panel = await mount(
+            <CyberHarness
+                surface='panel'
+                payload={CVE}
+            />,
+        );
+
+        const vector = panel.getByTestId('cyber-vector');
+        await expect(vector).toContainText('Attack vector');
+        await expect(vector.getByText('Network', {exact: true})).toHaveCSS('font-weight', '600');
+        await expect(vector.getByText('Required', {exact: true})).toHaveCSS('font-weight', '400');
+    });
+
+    test('decode no vector for a record that has none', async ({mount}) => {
+        const panel = await mount(
+            <CyberHarness
+                surface='panel'
+                payload={CVE}
+                reply='bare'
+            />,
+        );
+
+        await expect(panel.getByText('CVE-2021-44228').first()).toBeVisible();
+        await expect(panel.getByTestId('cyber-vector')).toHaveCount(0);
+    });
+
     test('render a timestamp as a date-time group link', async ({mount}) => {
         const panel = await mount(
             <CyberHarness

@@ -46,6 +46,10 @@ const FOUND = {
     score: '10.0',
     severity: 'critical',
     exploited: true,
+    vector: [
+        {metric: 'Attack vector', value: 'Network', severe: true},
+        {metric: 'User interaction', value: 'Required', severe: false},
+    ],
     affected: ['Apache Software Foundation Apache Log4j2: from 2.0-beta9 before 2.15.0'],
     configurations: [
         'apache log4j: from 2.0 before 2.3.1, from 2.4 before 2.12.2',
@@ -66,6 +70,7 @@ const BARE = {
     score: '',
     severity: '',
     exploited: false,
+    vector: [],
     rows: [],
     related: [],
     watchlist: [],

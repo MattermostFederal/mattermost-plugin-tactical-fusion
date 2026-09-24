@@ -26,6 +26,7 @@ const FOUND = {
     score: '10.0',
     severity: 'critical',
     exploited: true,
+    vector: [{metric: 'Attack vector', value: 'Network', severe: true}],
     affected: ['Apache Software Foundation Apache Log4j2: from 2.0-beta9 before 2.15.0'],
     configurations: ['apache log4j: from 2.0 before 2.3.1'],
     references: [{url: 'https://logging.apache.org/log4j/2.x/security.html', tags: 'Vendor Advisory, Patch'}],
@@ -68,6 +69,7 @@ test.describe('asCyber', () => {
         expect(parsed.score).toBe('10.0');
         expect(parsed.severity).toBe('critical');
         expect(parsed.exploited).toBe(true);
+        expect(parsed.vector).toEqual(FOUND.vector);
     });
 
     test('keeps a date-time group query the decorator accepts and drops any other', () => {
@@ -134,6 +136,8 @@ test.describe('asCyber', () => {
             ['configurations that are not an array', {...FOUND, configurations: 'apache'}],
             ['no references', {...FOUND, references: undefined}],
             ['no score', {...FOUND, score: undefined}],
+            ['no vector', {...FOUND, vector: undefined}],
+            ['a vector metric with no value', {...FOUND, vector: [{metric: 'Attack vector', severe: true}]}],
             ['a severity that is not text', {...FOUND, severity: 3}],
             ['a reference with no url', {...FOUND, references: [{tags: 'Patch'}]}],
         ];

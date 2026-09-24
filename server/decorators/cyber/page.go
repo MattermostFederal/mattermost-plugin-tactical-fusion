@@ -23,6 +23,8 @@ ul.links a { color: var(--accent); }
 ul.datasets { list-style: none; padding: 0; margin: 0; font-size: 13px; color: var(--muted); }
 ul.datasets li { margin: 0 0 4px; }
 .verdict { font-weight: 600; }
+table.vector td.value { font-family: inherit; }
+table.vector .severe { color: var(--urgent); font-weight: 600; }
 details { margin: 22px 0 0; }
 summary { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted);
   cursor: pointer; }
@@ -60,6 +62,8 @@ func renderBody(d Details) string {
 		b.WriteString(`</tbody></table>`)
 	}
 
+	writeVector(&b, d.Vector)
+
 	if d.Status != "" {
 		b.WriteString(`<p class="note">` + html.EscapeString(d.Status) + `</p>`)
 	}
@@ -95,6 +99,22 @@ func writeWatchlist(b *strings.Builder, d Details) {
 		}
 
 		b.WriteString(`<tr><td>` + html.EscapeString(label) + `</td><td class="value">` + value + `</td></tr>`)
+	}
+	b.WriteString(`</tbody></table>`)
+}
+
+func writeVector(b *strings.Builder, metrics []VectorMetric) {
+	if len(metrics) == 0 {
+		return
+	}
+
+	b.WriteString(`<h2>Vector, decoded</h2><table class="vector"><tbody>`)
+	for _, metric := range metrics {
+		value := html.EscapeString(metric.Value)
+		if metric.Severe {
+			value = `<span class="severe">` + value + `</span>`
+		}
+		b.WriteString(`<tr><td>` + html.EscapeString(metric.Metric) + `</td><td class="value">` + value + `</td></tr>`)
 	}
 	b.WriteString(`</tbody></table>`)
 }

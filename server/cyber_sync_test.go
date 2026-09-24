@@ -124,11 +124,12 @@ func requireSameShape(t *testing.T, what string, goFields []webappField, webapp 
 }
 
 var cyberStructNames = map[string]string{
-	"cyberRow[]":        "CyberRow[]",
-	"cyberLink[]":       "CyberLink[]",
-	"cyberWatchEntry[]": "CyberWatchEntry[]",
-	"cyberDataset[]":    "CyberDataset[]",
-	"cyberReference[]":  "CyberReference[]",
+	"cyberRow[]":          "CyberRow[]",
+	"cyberLink[]":         "CyberLink[]",
+	"cyberWatchEntry[]":   "CyberWatchEntry[]",
+	"cyberDataset[]":      "CyberDataset[]",
+	"cyberReference[]":    "CyberReference[]",
+	"cyberVectorMetric[]": "CyberVectorMetric[]",
 }
 
 func TestWebappCyberResponseShapeMatches(t *testing.T) {
@@ -143,6 +144,11 @@ func TestWebappCyberRowShapeMatches(t *testing.T) {
 func TestWebappCyberReferenceShapeMatches(t *testing.T) {
 	requireSameShape(t, "CyberReference",
 		goWireFields(t, cyberReference{}), cyberWebappFields(t, "CyberReference"))
+}
+
+func TestWebappCyberVectorMetricShapeMatches(t *testing.T) {
+	requireSameShape(t, "CyberVectorMetric",
+		goWireFields(t, cyberVectorMetric{}), cyberWebappFields(t, "CyberVectorMetric"))
 }
 
 func TestWebappCyberLinkShapeMatches(t *testing.T) {

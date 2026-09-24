@@ -49,13 +49,20 @@ type cyberResponse struct {
 	Watchlist []cyberWatchEntry `json:"watchlist"`
 	Datasets  []cyberDataset    `json:"datasets"`
 
-	Score     string `json:"score"`
-	Severity  string `json:"severity"`
-	Exploited bool   `json:"exploited"`
+	Score     string              `json:"score"`
+	Severity  string              `json:"severity"`
+	Exploited bool                `json:"exploited"`
+	Vector    []cyberVectorMetric `json:"vector"`
 
 	Affected       []string         `json:"affected"`
 	Configurations []string         `json:"configurations"`
 	References     []cyberReference `json:"references"`
+}
+
+type cyberVectorMetric struct {
+	Metric string `json:"metric"`
+	Value  string `json:"value"`
+	Severe bool   `json:"severe"`
 }
 
 type cyberReference struct {
@@ -106,6 +113,7 @@ func cyberBody(details cyber.Details) cyberResponse {
 		Score:     details.Score,
 		Severity:  details.Severity,
 		Exploited: details.Exploited,
+		Vector:    []cyberVectorMetric{},
 
 		Affected:       append([]string{}, details.Affected...),
 		Configurations: append([]string{}, details.Configurations...),
@@ -131,6 +139,9 @@ func cyberBody(details cyber.Details) cyberResponse {
 			Name: dataset.Name, Label: dataset.Label,
 			Present: dataset.Present, Generated: dataset.Generated,
 		})
+	}
+	for _, metric := range details.Vector {
+		body.Vector = append(body.Vector, cyberVectorMetric{Metric: metric.Metric, Value: metric.Value, Severe: metric.Severe})
 	}
 	for _, ref := range details.References {
 		body.References = append(body.References, cyberReference{URL: ref.URL, Tags: ref.Tags})

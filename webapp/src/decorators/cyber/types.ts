@@ -39,9 +39,16 @@ export interface CyberResponse {
     score: string;
     severity: string;
     exploited: boolean;
+    vector: CyberVectorMetric[];
     affected: string[];
     configurations: string[];
     references: CyberReference[];
+}
+
+export interface CyberVectorMetric {
+    metric: string;
+    value: string;
+    severe: boolean;
 }
 
 export interface CyberReference {

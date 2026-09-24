@@ -54,6 +54,7 @@ type Details struct {
 	Score     string
 	Severity  string
 	Exploited bool
+	Vector    []VectorMetric
 
 	Affected       []string
 	Configurations []string
@@ -186,6 +187,7 @@ func describeCVE(d *Details, set *intel.Set) {
 		d.Headline = severityText(record.Score, record.Severity)
 		d.Score = record.Score
 		d.Severity = severityLevel(record.Severity)
+		d.Vector = DescribeVector(record.Vector)
 	}
 
 	if epss, err := set.EPSS(d.Value); err == nil {
