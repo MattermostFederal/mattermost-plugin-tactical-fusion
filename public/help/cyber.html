@@ -90,7 +90,7 @@
                 </tr>
                 <tr>
                     <td><a href="#cyber-ip">IP address</a></td>
-                    <td><code class="copyable">203.0.113.7</code></td>
+                    <td><code class="copyable">8.8.8.8</code> and <code class="copyable">141.98.9.137</code></td>
                     <td>A parsed IPv4 or IPv6 address, minus loopback and unspecified</td>
                 </tr>
                 <tr>
@@ -208,6 +208,17 @@
             Where the <a href="#cyber-datasets">datasets</a> have something to add, the autonomous
             system, the country, the region and the city come from <code>ip.tsv</code> or from a
             vendor <code>.mmdb</code> database an operator dropped in.
+        </p>
+
+        <p>
+            <code class="copyable">141.98.9.137</code> is the example of an address from an
+            incident: CISA's advisory AA23-325A lists it as the remote address LockBit 3.0
+            affiliates used to exploit Citrix Bleed. Its panel shows the hosting network and
+            location the datasets give, and nothing about the advisory, because no dataset the
+            plugin reads says whether an address is malicious. That is what the
+            <a href="#cyber-datasets">watchlist</a> is for: an address your team has judged
+            carries its verdict in the panel and the hover. Hosting addresses are reassigned, so
+            one named in an old advisory may belong to somebody else today.
         </p>
 
         <div class="alert alert-warning">
