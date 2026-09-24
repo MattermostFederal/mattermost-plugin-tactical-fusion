@@ -446,3 +446,26 @@ func (s *Set) Watchlist(value string) []WatchEntry {
 
 	return dataset.watchlist[value]
 }
+
+type DatabaseBuild struct {
+	Name  string
+	Built time.Time
+}
+
+func (s *Set) DatabaseBuilds() []DatabaseBuild {
+	if s == nil {
+		return nil
+	}
+	builds := make([]DatabaseBuild, 0, len(s.mmdbs))
+	for _, reader := range s.mmdbs {
+		epoch := reader.reader.Metadata.BuildEpoch
+		if epoch == 0 {
+			continue
+		}
+		builds = append(builds, DatabaseBuild{
+			Name:  filepath.Base(reader.path),
+			Built: time.Unix(int64(epoch), 0).UTC(), // #nosec G115 -- a build time in seconds, far inside int64
+		})
+	}
+	return builds
+}

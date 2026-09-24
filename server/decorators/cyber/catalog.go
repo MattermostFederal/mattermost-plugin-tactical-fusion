@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 	"unicode"
+
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/cyber/intel"
 )
 
 //go:embed data/attack.tsv
@@ -51,7 +54,34 @@ var (
 	techniques = mustParseTechniques(attackTSV)
 	weaknesses = mustParseWeaknesses(cweTSV)
 	children   = indexChildren(techniques)
+
+	attackCompiled = catalogCompiled(attackTSV)
+	cweCompiled    = catalogCompiled(cweTSV)
 )
+
+func catalogCompiled(source string) time.Time {
+	stamp, _, stamped := catalogStamp(source)
+	if !stamped {
+		return time.Time{}
+	}
+	fields := strings.Split(stamp, "\t")
+	if len(fields) < 3 {
+		return time.Time{}
+	}
+	compiled, err := time.Parse(time.RFC3339, fields[2])
+	if err != nil {
+		return time.Time{}
+	}
+	return compiled.UTC()
+}
+
+func catalogStamp(source string) (stamp, rest string, stamped bool) {
+	if !strings.HasPrefix(source, intel.SchemaPrefix) {
+		return "", source, false
+	}
+	stamp, rest, _ = strings.Cut(source, "\n")
+	return stamp, rest, true
+}
 
 func LookupTechnique(id string) (Technique, bool) {
 	t, ok := techniques[id]
@@ -117,7 +147,8 @@ func mustParseWeaknesses(source string) map[string]Weakness {
 }
 
 func catalogRows(source string, want int) ([][]string, error) {
-	lines := strings.Split(strings.TrimRight(source, "\n"), "\n")
+	_, body, _ := catalogStamp(source)
+	lines := strings.Split(strings.TrimRight(body, "\n"), "\n")
 	if len(lines) < 2 {
 		return nil, fmt.Errorf("the catalog is empty")
 	}

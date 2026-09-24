@@ -65,6 +65,18 @@ type cyberResponse struct {
 	Credits  []cyberCredit  `json:"credits"`
 	Glance   cyberGlance    `json:"glance"`
 	Reports  []cyberReport  `json:"reports"`
+	Current  cyberCurrent   `json:"current"`
+}
+
+type cyberCurrent struct {
+	Date    string               `json:"date"`
+	Query   string               `json:"query"`
+	Sources []cyberCurrentSource `json:"sources"`
+}
+
+type cyberCurrentSource struct {
+	Label string `json:"label"`
+	Date  string `json:"date"`
 }
 
 type cyberReport struct {
@@ -164,6 +176,7 @@ func cyberBody(details cyber.Details) cyberResponse {
 		Sections: []cyberSection{},
 		Credits:  []cyberCredit{},
 		Reports:  []cyberReport{},
+		Current:  cyberCurrentOf(details.Freshness),
 		Glance: cyberGlance{
 			Subtitle: details.Glance.Subtitle,
 			Summary:  details.Glance.Summary,
@@ -223,4 +236,18 @@ func cyberSectionOf(section cyber.Section) cyberSection {
 		items = append(items, wire)
 	}
 	return cyberSection{Title: section.Title, Items: items}
+}
+
+func cyberCurrentOf(sources []cyber.Freshness) cyberCurrent {
+	current := cyberCurrent{Sources: []cyberCurrentSource{}}
+	oldest, ok := cyber.OldestCompiled(sources)
+	if !ok {
+		return current
+	}
+	current.Date = cyber.CompiledText(oldest)
+	current.Query = dtg.QueryForZulu(oldest)
+	for _, source := range sources {
+		current.Sources = append(current.Sources, cyberCurrentSource{Label: source.Label, Date: cyber.CompiledText(source.Compiled)})
+	}
+	return current
 }

@@ -39,7 +39,6 @@ type builder struct {
 	source string
 	build  func(source string) ([][]string, error)
 	target func() string
-	stamp  bool
 }
 
 func main() {
@@ -68,70 +67,60 @@ func main() {
 			source: "advisories",
 			build:  buildAdvisory,
 			target: func() string { return filepath.Join(*treeDir, "assets", "cyber", "advisory.tsv") },
-			stamp:  true,
 		},
 		{
 			name:   "threat",
 			source: "threat",
 			build:  buildThreat,
 			target: func() string { return filepath.Join(*outDir, "threat.tsv") },
-			stamp:  true,
 		},
 		{
 			name:   "malware",
 			source: "threat",
 			build:  buildMalware,
 			target: func() string { return filepath.Join(*outDir, "malware.tsv") },
-			stamp:  true,
 		},
 		{
 			name:   "attackdetail",
 			source: "enterprise-attack.json",
 			build:  buildAttackDetail,
 			target: func() string { return filepath.Join(*treeDir, "assets", "cyber", "attackdetail.tsv") },
-			stamp:  true,
 		},
 		{
 			name:   "cwedetail",
 			source: "cwe-1000.csv",
 			build:  buildCWEDetail,
 			target: func() string { return filepath.Join(*treeDir, "assets", "cyber", "cwedetail.tsv") },
-			stamp:  true,
 		},
 		{
 			name:   "kev",
 			source: "known_exploited_vulnerabilities.json",
 			build:  buildKEV,
 			target: func() string { return filepath.Join(*treeDir, "assets", "cyber", "kev.tsv") },
-			stamp:  true,
 		},
 		{
 			name:   "cve",
 			source: "nvd",
 			build:  buildCVE,
 			target: func() string { return filepath.Join(*outDir, "cve.tsv") },
-			stamp:  true,
 		},
 		{
 			name:   "cvedetail",
 			source: "nvd",
 			build:  buildCVEDetail,
 			target: func() string { return filepath.Join(*outDir, "cvedetail.tsv") },
-			stamp:  true,
 		},
 		{
 			name:   "epss",
 			source: "epss_scores-current.csv",
 			build:  buildEPSS,
 			target: func() string { return filepath.Join(*outDir, "epss.tsv") },
-			stamp:  true,
 		},
 		{
 			name:   "ip",
 			source: "ip2asn-combined.tsv",
 			build:  buildIP,
 			target: func() string { return filepath.Join(*outDir, "ip.tsv") },
-			stamp:  true,
 		},
 	}
 
@@ -175,11 +164,10 @@ func run(b builder) error {
 	}
 
 	var b2 strings.Builder
-	if b.stamp {
-		fmt.Fprintf(&b2, "%s%d\t%s\t%s\t%s\n",
-			schemaPrefix, schemaVersion, b.name, time.Now().UTC().Format(time.RFC3339), stampSource)
-	} else {
-		b2.WriteString(strings.Join(headerFor(b.name), "\t") + "\n")
+	fmt.Fprintf(&b2, "%s%d\t%s\t%s\t%s\n",
+		schemaPrefix, schemaVersion, b.name, time.Now().UTC().Format(time.RFC3339), stampSource)
+	if header := headerFor(b.name); header != nil {
+		b2.WriteString(strings.Join(header, "\t") + "\n")
 	}
 	for _, row := range rows {
 		b2.WriteString(strings.Join(row, "\t") + "\n")

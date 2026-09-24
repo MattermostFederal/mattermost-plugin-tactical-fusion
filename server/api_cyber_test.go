@@ -65,6 +65,32 @@ func TestCyberAnswersWithTheIndicator(t *testing.T) {
 	}
 }
 
+func TestCyberSaysWhenItsDataWasCompiled(t *testing.T) {
+	p, _ := newAPIPlugin(t)
+
+	rec := call(p, http.MethodGet, cyberURL("attack", "T1059.001"), testUserID, "")
+	var got cyberResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("not a cyber response: %v (%s)", err, rec.Body.String())
+	}
+
+	if !strings.HasSuffix(got.Current.Date, " UTC") || !strings.Contains(got.Current.Query, "dtg=") {
+		t.Errorf("current = %+v", got.Current)
+	}
+	if len(got.Current.Sources) != 1 || got.Current.Sources[0].Label != "MITRE ATT&CK catalog" || got.Current.Sources[0].Date != got.Current.Date {
+		t.Errorf("sources = %+v", got.Current.Sources)
+	}
+}
+
+func TestCyberWithNothingCompiledClaimsNoDate(t *testing.T) {
+	p, _ := newAPIPlugin(t)
+
+	rec := call(p, http.MethodGet, cyberURL("hash", strings.Repeat("a", 64)), testUserID, "")
+	if !strings.Contains(rec.Body.String(), `"current":{"date":"","query":"","sources":[]}`) {
+		t.Errorf("an undated answer is %s", rec.Body.String())
+	}
+}
+
 func TestCyberListsAreNeverNull(t *testing.T) {
 	p, _ := newAPIPlugin(t)
 

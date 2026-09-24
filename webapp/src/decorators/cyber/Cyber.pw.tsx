@@ -27,6 +27,33 @@ test.describe('the panel', () => {
         await expect(panel.getByText('2021-12-10 10:15 UTC')).toBeVisible();
     });
 
+    test('ends with when its oldest dataset was compiled', async ({mount}) => {
+        const panel = await mount(
+            <CyberHarness
+                surface='panel'
+                payload={CVE}
+            />,
+        );
+
+        const current = panel.getByTestId('cyber-current');
+        await expect(current).toHaveText('Current as of 2026-09-24 01:00 UTC');
+        await expect(current.getByRole('link', {name: '2026-09-24 01:00 UTC'})).toBeVisible();
+        await expect(current).toHaveAttribute('title', 'vulnerability: 2026-09-24 13:00 UTC\nknown exploited vulnerabilities: 2026-09-24 01:00 UTC');
+    });
+
+    test('says nothing about currency when no dataset is dated', async ({mount}) => {
+        const panel = await mount(
+            <CyberHarness
+                surface='panel'
+                payload={CVE}
+                reply='status'
+            />,
+        );
+
+        await expect(panel.getByText('No vulnerability dataset is installed.').first()).toBeVisible();
+        await expect(panel.getByTestId('cyber-current')).toHaveCount(0);
+    });
+
     test('leaves the dataset list to the standalone page', async ({mount}) => {
         const panel = await mount(
             <CyberHarness

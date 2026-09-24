@@ -76,6 +76,7 @@ func renderBody(d Details) string {
 	writeReferences(&b, d.References)
 	writeSections(&b, d.Sections)
 	writeCredits(&b, d.Credits)
+	writeCurrent(&b, d.Freshness)
 	writeDatasets(&b, d)
 
 	return b.String()
@@ -243,4 +244,12 @@ func writeDatasets(b *strings.Builder, d Details) {
 		b.WriteString(`<li>` + html.EscapeString(line) + `</li>`)
 	}
 	b.WriteString(`</ul>`)
+}
+
+func writeCurrent(b *strings.Builder, sources []Freshness) {
+	oldest, ok := OldestCompiled(sources)
+	if !ok {
+		return
+	}
+	b.WriteString(`<p class="note credit">Current as of ` + html.EscapeString(CompiledText(oldest)) + `</p>`)
 }

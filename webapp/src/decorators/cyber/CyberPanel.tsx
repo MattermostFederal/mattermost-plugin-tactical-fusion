@@ -3,7 +3,7 @@ import React, {useState} from 'react';
 import Badges from './Badges';
 import {KIND_LABELS, isKind, useCyber} from './cyber';
 import type {CyberState} from './cyber';
-import type {CyberCredit, CyberItem, CyberThreatReport, CyberLink, CyberReference, CyberSection, CyberVectorMetric} from './types';
+import type {CyberCredit, CyberCurrent, CyberItem, CyberThreatReport, CyberLink, CyberReference, CyberSection, CyberVectorMetric} from './types';
 
 import LinkButton from '../../components/LinkButton';
 import {pluginBaseUrl} from '../../plugin_url';
@@ -617,9 +617,27 @@ function renderBody(state: CyberState): React.ReactNode {
             <References references={details.references}/>
             <Sections sections={details.sections}/>
             <Credits credits={details.credits}/>
+            <Current current={details.current}/>
         </>
     );
 }
+
+const Current: React.FC<{current: CyberCurrent}> = ({current}) => {
+    if (current.date === '') {
+        return null;
+    }
+
+    return (
+        <p
+            style={styles.credit}
+            title={current.sources.map((source) => `${source.label}: ${source.date}`).join('\n')}
+            data-testid='cyber-current'
+        >
+            {'Current as of '}
+            {rowValue(current.date, current.query)}
+        </p>
+    );
+};
 
 const CyberPanel: React.FC<{payload: CyberPayload}> = ({payload}) => {
     const state = useCyber(payload.kind, payload.value);

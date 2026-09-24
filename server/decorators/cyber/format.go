@@ -61,10 +61,11 @@ type Details struct {
 	Configurations []string
 	References     []Reference
 
-	Sections []Section
-	Credits  []Credit
-	Glance   Glance
-	Reports  []Report
+	Sections  []Section
+	Credits   []Credit
+	Glance    Glance
+	Reports   []Report
+	Freshness []Freshness
 }
 
 type Credit struct {
@@ -128,6 +129,7 @@ func Describe(kind Kind, value string, set *intel.Set) Details {
 	}
 
 	d.Datasets = datasetStatuses(set)
+	d.Freshness = freshnessFor(d.Kind, set)
 
 	return d
 }

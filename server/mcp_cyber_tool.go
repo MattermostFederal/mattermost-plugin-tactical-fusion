@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -87,6 +88,8 @@ type CyberIndicatorResult struct {
 	Severity  string `json:"severity,omitempty"`
 	Score     string `json:"score,omitempty"`
 	Exploited bool   `json:"exploited"`
+
+	CurrentAsOf string `json:"current_as_of,omitempty" jsonschema:"when the oldest dataset behind this answer was compiled, RFC 3339"`
 
 	Facts     []CyberFact        `json:"facts,omitempty"`
 	Vector    []CyberVectorEntry `json:"vector,omitempty"`
@@ -188,6 +191,10 @@ func cyberIndicatorResult(input string, d cyber.Details) CyberIndicatorResult {
 	}
 	for _, credit := range d.Credits {
 		result.Credits = append(result.Credits, CyberCredit{Text: credit.Text, URL: credit.URL})
+	}
+
+	if oldest, ok := cyber.OldestCompiled(d.Freshness); ok {
+		result.CurrentAsOf = oldest.Format(time.RFC3339)
 	}
 
 	result.Sections = cyberToolSections(d)

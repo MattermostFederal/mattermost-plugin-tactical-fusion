@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/cyber"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/cyber/intel"
@@ -94,6 +95,14 @@ func TestTheCyberToolAnswersAVulnerabilityWithItsSignals(t *testing.T) {
 	}
 	if !strings.Contains(got.Link, "/decorate/cyber?") || !strings.HasPrefix(got.Link, "["+mcpCVE+"](") {
 		t.Errorf("link %q", got.Link)
+	}
+}
+
+func TestTheCyberToolSaysWhenItsDataWasCompiled(t *testing.T) {
+	got := lookupCyber(t, mcpCyberPlugin(t), mcpCVE).Results[0]
+
+	if _, err := time.Parse(time.RFC3339, got.CurrentAsOf); err != nil {
+		t.Errorf("current_as_of %q is not a compile time: %v", got.CurrentAsOf, err)
 	}
 }
 

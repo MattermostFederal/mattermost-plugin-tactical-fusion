@@ -144,7 +144,6 @@ func TestTheLabelReplacesTheSourceInTheStamp(t *testing.T) {
 		source: "nvd",
 		build:  buildCVE,
 		target: func() string { return filepath.Join(out, "cve.tsv") },
-		stamp:  true,
 	})
 	if err != nil {
 		t.Fatal(err)

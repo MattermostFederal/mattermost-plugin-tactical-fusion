@@ -34,6 +34,7 @@ const FOUND = {
     glance: {subtitle: 's', summary: '', tags: ['t'], facts: ['f'], status: ''},
     reports: [{source: 'CISA AA99-001A', malicious: true, threat: 't', detail: 'd', url: 'https://www.cisa.gov/x'}],
     sections: [{title: 'Observed examples', items: [{head: 'CVE-2021-44228', text: 'x', kind: 'cve', value: 'CVE-2021-44228', url: ''}]}],
+    current: {date: '2026-09-24 01:00 UTC', query: PUBLISHED_QUERY, sources: [{label: 'vulnerability', date: '2026-09-24 01:00 UTC'}]},
 };
 
 type Reply = (input?: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
@@ -220,6 +221,19 @@ test.describe('asCyber', () => {
         });
 
         expect(parsed.datasets[0].present).toBe(false);
+    });
+
+    test('reads when the data was compiled, with its date-time group', () => {
+        const parsed = asCyber({...FOUND});
+
+        expect(parsed.current).toEqual(FOUND.current);
+    });
+
+    test('reads a missing or malformed compile date as undated rather than refusing the answer', () => {
+        expect(asCyber({...FOUND, current: undefined}).current.date).toBe('');
+        expect(asCyber({...FOUND, current: {date: 7, query: '', sources: []}}).current.date).toBe('');
+        expect(asCyber({...FOUND, current: {...FOUND.current, query: 'dtg=nonsense'}}).current.query).toBe('');
+        expect(asCyber({...FOUND, current: {...FOUND.current, sources: [{label: 1}]}}).current.sources).toEqual([]);
     });
 });
 
