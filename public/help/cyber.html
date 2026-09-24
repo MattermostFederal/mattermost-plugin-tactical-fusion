@@ -95,7 +95,7 @@
                 </tr>
                 <tr>
                     <td><a href="#cyber-hash">File hash</a></td>
-                    <td><code class="copyable">ed01ebfbc9eb5bbea545af4d01bf5f1071661840480439c6e5babe8e080e41aa</code></td>
+                    <td><code class="copyable">01ce9cfebb29596d0ab7c99e8dbadf1a8409750b183e6bf73e0de021b365be13</code></td>
                     <td>A 32, 40 or 64 digit hexadecimal run</td>
                 </tr>
             </tbody>
@@ -220,11 +220,7 @@
             affiliates used to exploit Citrix Bleed. Its panel lists that under
             <strong>Threat reports</strong>, linked to the advisory, and its hover says
             <strong>Reported malicious</strong>. The indicators of the CISA advisories the
-            plugin ships with come in the bundle; addresses and file hashes from abuse.ch
-            ThreatFox and Feodo Tracker, and the Tor exit list, come from
-            <code>threat.tsv</code>, and malware samples from abuse.ch MalwareBazaar from
-            <code>malware.tsv</code>, when an operator installs them. Every report names its source,
-            and a Tor exit is shown as context rather than as a verdict. Your team's own
+            plugin ships with come in the bundle. Every report names its source. Your team's own
             judgments belong in the <a href="#cyber-datasets">watchlist</a>. Hosting addresses
             are reassigned, so one named in an old advisory may belong to somebody else today.
         </p>
@@ -249,13 +245,9 @@
             digest. <code class="copyable">44d88612fea8a8f36de82e1278abb02f</code> is the MD5 of
             the EICAR test file. The panel names the algorithm and the length. A hash is an
             identity rather than a record, so everything else comes from the
-            <a href="#cyber-datasets">datasets</a>: the threat reports CISA advisories, abuse.ch
-            ThreatFox and abuse.ch MalwareBazaar make about it, and any watchlist entry.
-            <code class="copyable">ed01ebfbc9eb5bbea545af4d01bf5f1071661840480439c6e5babe8e080e41aa</code>
-            is a WannaCry ransomware sample: with <code>malware.tsv</code> installed its hover
-            says <strong>Reported malicious</strong> and its panel names the family and the file,
-            and it finds the same sample by its MD5 or SHA-1. A hash no dataset knows proves
-            nothing about the file either way.
+            <a href="#cyber-datasets">datasets</a>: the threat reports the bundled CISA advisories
+            make about it, and any watchlist entry. A hash no dataset knows proves nothing about
+            the file either way.
         </p>
 
         <p>
@@ -400,8 +392,6 @@
                 <tr><td><code>capec.tsv</code></td><td>MITRE CAPEC attack patterns, found by the CWE and ATT&amp;CK ids each one names. Ships with the plugin</td></tr>
                 <tr><td><code>cveattack.tsv</code></td><td>The Center for Threat-Informed Defense's mappings between known-exploited CVEs and ATT&amp;CK techniques, under the Apache License 2.0. Ships with the plugin</td></tr>
                 <tr><td><code>advisory.tsv</code></td><td>The IP addresses and file hashes named in the CISA advisories the plugin ships with, each linked to its advisory. Ships with the plugin</td></tr>
-                <tr><td><code>threat.tsv</code></td><td>IP addresses and file hashes reported by abuse.ch ThreatFox and Feodo Tracker, and the Tor exit list, with the malware, ports, confidence and dates each feed gives. Never shipped: abuse.ch's terms may require a subscription for commercial use, so an operator fetches it under their own terms</td></tr>
-                <tr><td><code>malware.tsv</code></td><td>Every malware sample in abuse.ch MalwareBazaar, found by its SHA-256, MD5 or SHA-1, with its file name, file type, malware family and the date it was first seen. Never shipped, under the same terms as <code>threat.tsv</code></td></tr>
                 <tr><td><code>epss.tsv</code></td><td>Exploit prediction scores and percentiles from FIRST's Exploit Prediction Scoring System (EPSS). The bundle carries a copy as of its release, gzipped; FIRST rescores daily, so a fresher file here replaces it</td></tr>
                 <tr><td><code>kev.tsv</code></td><td>The known exploited vulnerabilities catalog, with its due dates and required actions</td></tr>
                 <tr><td><code>ip.tsv</code></td><td>Autonomous system, country, region and city per address range. The bundle carries IPtoASN's, gzipped, which a file here replaces</td></tr>

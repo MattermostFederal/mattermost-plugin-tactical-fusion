@@ -15,7 +15,6 @@ import (
 const (
 	mcpCVE     = "CVE-2025-55182"
 	mcpAddress = "203.0.113.10"
-	mcpMD5     = "22222222222222222222222222222222"
 	mcpSHA256  = "1111111111111111111111111111111111111111111111111111111111111111"
 )
 
@@ -47,12 +46,10 @@ func mcpCyberPlugin(t *testing.T) *Plugin {
 	writeCyberDataset(t, dir, intel.NameEPSS, mcpCVE+"\t0.99802\t0.99958\t2026-09-23")
 	writeCyberDataset(t, dir, intel.NameKEV, strings.Join([]string{mcpCVE, "2025-12-05", "2025-12-12", "Known", "Invented", "Patch."}, "\t"))
 	writeCyberDataset(t, dir, intel.NameCVEDetail, mcpCVE+"\t\t\t\t"+referenceRows(12))
-	writeCyberDataset(t, dir, intel.NameThreat, mcpAddress+"\t"+
-		`[{"source":"abuse.ch ThreatFox","category":"malicious","threat":"Botnet C2","malware":"InventedBot","ports":"443"},`+
-		`{"source":"Tor Project","category":"context","threat":"Tor exit node"}]`)
-	writeCyberDataset(t, dir, intel.NameMalware,
-		mcpSHA256+"\t\t2026-09-20\tinvoice.exe\texe\tInventedBot",
-		mcpMD5+"\t"+mcpSHA256+"\t\t\t\t",
+	writeCyberDataset(t, dir, intel.NameAdvisory,
+		mcpSHA256+"\t"+`[{"source":"CISA AA99-001A","category":"malicious","threat":"Malware sample","malware":"InventedBot"}]`,
+		mcpAddress+"\t"+`[{"source":"CISA AA99-001A","category":"malicious","threat":"Botnet C2","malware":"InventedBot","ports":"443"},`+
+			`{"source":"Tor Project","category":"context","threat":"Tor exit node"}]`,
 	)
 
 	p := newTestPlugin(t, "https://example.com", true)
@@ -143,10 +140,10 @@ func TestTheCyberToolAnswersAnAddressWithItsReports(t *testing.T) {
 	}
 }
 
-func TestTheCyberToolFindsAMalwareSampleByItsMD5(t *testing.T) {
-	got := lookupCyber(t, mcpCyberPlugin(t), strings.ToUpper(mcpMD5)).Results[0]
+func TestTheCyberToolAnswersAHashWithItsReports(t *testing.T) {
+	got := lookupCyber(t, mcpCyberPlugin(t), strings.ToUpper(mcpSHA256)).Results[0]
 
-	if len(got.Reports) != 1 || got.Reports[0].Source != "abuse.ch MalwareBazaar" || !strings.Contains(got.Reports[0].Detail, "invoice.exe") {
+	if len(got.Reports) != 1 || got.Reports[0].Source != "CISA AA99-001A" || !got.Reports[0].Malicious {
 		t.Fatalf("reports %+v", got.Reports)
 	}
 }

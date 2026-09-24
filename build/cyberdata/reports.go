@@ -1,15 +1,10 @@
 package main
 
 import (
-	"archive/zip"
 	"bufio"
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net"
 	"net/netip"
-	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -22,18 +17,11 @@ const (
 	categoryMalicious = "malicious"
 	categoryContext   = "context"
 
-	threatFoxExport = "threatfox-full.zip"
-	feodoBlocklist  = "feodo-ipblocklist.csv"
-	torExitList     = "tor-exits.txt"
+	torExitList = "tor-exits.txt"
+	torSource   = "Tor Project"
 
-	threatFoxSource = "abuse.ch ThreatFox"
-	feodoSource     = "abuse.ch Feodo Tracker"
-	torSource       = "Tor Project"
-
-	threatFoxSearch = "https://threatfox.abuse.ch/browse.php?search=ioc%3A"
-	feodoBrowse     = "https://feodotracker.abuse.ch/browse/host/"
-	torMetrics      = "https://metrics.torproject.org/rs.html#search/"
-	cisaAdvisories  = "https://www.cisa.gov/news-events/cybersecurity-advisories/"
+	torMetrics     = "https://metrics.torproject.org/rs.html#search/"
+	cisaAdvisories = "https://www.cisa.gov/news-events/cybersecurity-advisories/"
 )
 
 type threatReport struct {
@@ -63,36 +51,12 @@ func indicatorKey(value string) (string, bool) {
 	return "", false
 }
 
-var threatNames = map[string]string{
-	"botnet_cc":        "Botnet C2",
-	"payload_delivery": "Payload delivery",
-	"payload":          "Malware payload",
-	"cc_skimming":      "Card skimming",
-}
-
-func threatName(raw string) string {
-	if name, ok := threatNames[raw]; ok {
-		return name
-	}
-	return clean(strings.ReplaceAll(raw, "_", " "))
-}
-
 func day(timestamp string) string {
 	timestamp = clean(timestamp)
 	if len(timestamp) >= len("2006-01-02") {
 		return timestamp[:len("2006-01-02")]
 	}
 	return timestamp
-}
-
-var saysNothing = []string{"none", "unknown malware"}
-
-func noneAsEmpty(value string) string {
-	value = clean(value)
-	if slices.ContainsFunc(saysNothing, func(empty string) bool { return strings.EqualFold(value, empty) }) {
-		return ""
-	}
-	return value
 }
 
 type reportIndex struct {
@@ -185,169 +149,6 @@ func highest(a, b string) string {
 		return b
 	}
 	return a
-}
-
-func buildThreat(dir string) ([][]string, error) {
-	var index reportIndex
-	read := 0
-
-	for _, feed := range []struct {
-		file string
-		load func(string, *reportIndex) error
-	}{
-		{threatFoxExport, loadThreatFox},
-		{feodoBlocklist, loadFeodo},
-		{torExitList, loadTorExits},
-	} {
-		path := filepath.Join(dir, feed.file)
-		if _, err := os.Stat(path); err != nil {
-			continue
-		}
-		if err := feed.load(path, &index); err != nil {
-			return nil, fmt.Errorf("%s: %w", feed.file, err)
-		}
-		read++
-	}
-
-	if read == 0 {
-		return nil, fmt.Errorf("no feed in %s; run 'make cyber-threat' to fetch them", dir)
-	}
-
-	return index.rows()
-}
-
-func csvBody(r io.Reader) *csv.Reader {
-	reader := csv.NewReader(commentStripper(r))
-	reader.FieldsPerRecord = -1
-	reader.TrimLeadingSpace = true
-	reader.LazyQuotes = true
-	return reader
-}
-
-func commentStripper(r io.Reader) io.Reader {
-	pr, pw := io.Pipe()
-	go func() {
-		scanner := bufio.NewScanner(r)
-		scanner.Buffer(make([]byte, 1<<20), 1<<20)
-		for scanner.Scan() {
-			line := scanner.Text()
-			if strings.HasPrefix(line, "#") {
-				continue
-			}
-			if _, err := io.WriteString(pw, line+"\n"); err != nil {
-				return
-			}
-		}
-		_ = pw.CloseWithError(scanner.Err())
-	}()
-	return pr
-}
-
-func loadThreatFox(path string, index *reportIndex) error {
-	archive, err := zip.OpenReader(path)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = archive.Close() }()
-
-	for _, file := range archive.File {
-		if !strings.HasSuffix(file.Name, ".csv") {
-			continue
-		}
-		handle, err := file.Open()
-		if err != nil {
-			return err
-		}
-		err = readThreatFox(handle, index)
-		_ = handle.Close()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func readThreatFox(r io.Reader, index *reportIndex) error {
-	reader := csvBody(r)
-	for {
-		record, err := reader.Read()
-		if err == io.EOF {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		if len(record) < 12 {
-			continue
-		}
-
-		value, port := record[2], ""
-		if record[3] == "ip:port" {
-			host, p, err := net.SplitHostPort(record[2])
-			if err != nil {
-				continue
-			}
-			value, port = host, p
-		}
-		key, ok := indicatorKey(value)
-		if !ok {
-			continue
-		}
-
-		index.add(key, threatReport{
-			Source:     threatFoxSource,
-			Category:   categoryMalicious,
-			Threat:     threatName(record[4]),
-			Malware:    noneAsEmpty(record[7]),
-			Confidence: clean(record[9]),
-			Ports:      port,
-			FirstSeen:  day(record[0]),
-			LastSeen:   day(record[8]),
-			URL:        threatFoxSearch + url.QueryEscape(key),
-		})
-	}
-}
-
-func loadFeodo(path string, index *reportIndex) error {
-	handle, err := os.Open(path) // #nosec G304 -- a feed file under the directory the operator names with -source
-	if err != nil {
-		return err
-	}
-	defer func() { _ = handle.Close() }()
-
-	reader := csvBody(handle)
-	header := true
-	for {
-		record, err := reader.Read()
-		if err == io.EOF {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		if header {
-			header = false
-			continue
-		}
-		if len(record) < 6 {
-			continue
-		}
-		key, ok := indicatorKey(record[1])
-		if !ok {
-			continue
-		}
-		index.add(key, threatReport{
-			Source:    feodoSource,
-			Category:  categoryMalicious,
-			Threat:    "Botnet C2",
-			Malware:   clean(record[5]),
-			Ports:     clean(record[2]),
-			Status:    clean(record[3]),
-			FirstSeen: day(record[0]),
-			LastSeen:  day(record[4]),
-			URL:       feodoBrowse + key + "/",
-		})
-	}
 }
 
 func loadTorExits(path string, index *reportIndex) error {
@@ -467,84 +268,4 @@ func loadAdvisory(path string, index *reportIndex) error {
 		}
 	}
 	return nil
-}
-
-const (
-	malwareBazaarExport = "malwarebazaar-full.zip"
-	notAvailable        = "n/a"
-)
-
-func knownOrEmpty(value string) string {
-	value = clean(value)
-	if strings.EqualFold(value, notAvailable) {
-		return ""
-	}
-	return value
-}
-
-func buildMalware(dir string) ([][]string, error) {
-	path := filepath.Join(dir, malwareBazaarExport)
-	archive, err := zip.OpenReader(path)
-	if err != nil {
-		return nil, fmt.Errorf("%w; run 'make cyber-threat' to fetch it", err)
-	}
-	defer func() { _ = archive.Close() }()
-
-	var rows [][]string
-	seen := map[string]bool{}
-
-	for _, file := range archive.File {
-		if !strings.HasSuffix(file.Name, ".csv") {
-			continue
-		}
-		handle, err := file.Open()
-		if err != nil {
-			return nil, err
-		}
-		rows, err = readMalwareBazaar(handle, rows, seen)
-		_ = handle.Close()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if len(rows) == 0 {
-		return nil, fmt.Errorf("%s holds no samples", malwareBazaarExport)
-	}
-	return rows, nil
-}
-
-func readMalwareBazaar(r io.Reader, rows [][]string, seen map[string]bool) ([][]string, error) {
-	reader := csvBody(r)
-	for {
-		record, err := reader.Read()
-		if err == io.EOF {
-			return rows, nil
-		}
-		if err != nil {
-			return nil, err
-		}
-		if len(record) < 9 {
-			continue
-		}
-
-		sha256, ok := indicatorKey(record[1])
-		if !ok || len(sha256) != 64 || seen[sha256] {
-			continue
-		}
-		seen[sha256] = true
-
-		name := knownOrEmpty(record[5])
-		if strings.EqualFold(name, sha256) {
-			name = ""
-		}
-		rows = append(rows, []string{sha256, "", day(record[0]), name, knownOrEmpty(record[6]), knownOrEmpty(record[8])})
-
-		for _, alias := range []string{record[2], record[3]} {
-			if key, ok := indicatorKey(alias); ok && !seen[key] {
-				seen[key] = true
-				rows = append(rows, []string{key, sha256, "", "", "", ""})
-			}
-		}
-	}
 }

@@ -222,9 +222,7 @@ jobs:
             - `dbip-city-lite.mmdb`: IP to City Lite by DB-IP.com, CC BY 4.0
 
             Copy them into the directory named by **Cyber datasets directory**
-            (`CyberDatasetsDir`); the plugin unpacks the `.gz` files itself. The abuse.ch threat
-            feeds are never attached: their terms leave them to each operator, and
-            `make cyber-threat` builds them.
+            (`CyberDatasetsDir`); the plugin unpacks the `.gz` files itself.
 
             ### Supply-chain artifacts
 

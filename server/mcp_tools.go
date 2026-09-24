@@ -99,7 +99,7 @@ func (p *Plugin) registerMCPTools(server *pluginmcp.Server) {
 		Description: "Look up to 25 security indicators at once (CVE, CWE and MITRE ATT&CK ids, IP addresses, and MD5, SHA-1 or SHA-256 file hashes) in the datasets installed on this server. " +
 			"For a CVE: its CVSS score, severity and vector, whether it is in the CISA known exploited vulnerabilities list, its exploit prediction score, and the affected products and references. " +
 			"For a CWE or ATT&CK id: its name and description, related entries, mitigations, detection, observed CVEs and procedure examples. " +
-			"For an address or a hash: the network and place, and every threat report a CISA advisory, abuse.ch ThreatFox or MalwareBazaar, or the Tor exit list makes about it. " +
+			"For an address or a hash: the network and place, and every threat report a CISA advisory makes about it, and context such as a Tor exit or a cloud provider range. " +
 			"Any watchlist verdict the operators recorded is included. Nothing is fetched from the internet. Long lists are cut to 10 items with their full count; each result's link opens the rest. " +
 			"datasets_missing names the datasets that are not installed: an answer without one says nothing about what that dataset would have held.",
 	}, guardTool(p, "lookup_cyber_indicator", p.lookupCyberIndicatorTool))

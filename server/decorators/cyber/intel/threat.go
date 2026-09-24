@@ -34,7 +34,7 @@ func IndicatorKey(value string) string {
 	return strings.ToLower(value)
 }
 
-var reportDatasets = []string{NameAdvisory, NameThreat}
+var reportDatasets = []string{NameAdvisory}
 
 func (s *Set) ThreatReports(value string) ([]ThreatReport, error) {
 	key := IndicatorKey(value)
@@ -70,19 +70,6 @@ func (s *Set) ThreatReports(value string) ([]ThreatReport, error) {
 		reports = append(reports, found...)
 	}
 
-	switch sample, err := s.malwareSample(key); {
-	case err == nil:
-		installed = true
-		reports = append(reports, sample)
-	case errors.Is(err, ErrNotFound):
-		installed = true
-	case !errors.Is(err, ErrNoDataset):
-		installed = true
-		if firstErr == nil {
-			firstErr = err
-		}
-	}
-
 	switch {
 	case len(reports) > 0:
 		return reports, nil
@@ -92,46 +79,4 @@ func (s *Set) ThreatReports(value string) ([]ThreatReport, error) {
 		return nil, ErrNoDataset
 	}
 	return nil, ErrNotFound
-}
-
-const (
-	malwareBazaarSource = "abuse.ch MalwareBazaar"
-	malwareBazaarSample = "https://bazaar.abuse.ch/sample/"
-)
-
-func (s *Set) malwareSample(key string) (ThreatReport, error) {
-	row, err := s.lookup(NameMalware, key)
-	if err != nil {
-		return ThreatReport{}, err
-	}
-	if alias := row[1]; alias != "" {
-		if row, err = s.lookup(NameMalware, alias); err != nil {
-			return ThreatReport{}, err
-		}
-		if row[1] != "" {
-			return ThreatReport{}, fmt.Errorf("%s points at %s, which points on again", key, alias)
-		}
-	}
-
-	return ThreatReport{
-		Source:    malwareBazaarSource,
-		Category:  CategoryMalicious,
-		Threat:    "Malware sample",
-		Malware:   row[5],
-		File:      fileText(row[3], row[4]),
-		FirstSeen: row[2],
-		URL:       malwareBazaarSample + row[0] + "/",
-	}, nil
-}
-
-func fileText(name, fileType string) string {
-	switch {
-	case name != "" && fileType != "":
-		return name + " (" + fileType + ")"
-	case name != "":
-		return name
-	case fileType != "":
-		return fileType + " file"
-	}
-	return ""
 }

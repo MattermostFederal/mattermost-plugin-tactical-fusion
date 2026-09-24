@@ -275,7 +275,7 @@ side moves alone. Change both halves together.
 | The cyber kind vocabulary and its order | `TestWebappCyberKindsMatch` |
 | Each cyber kind's canonical shape expression | `TestWebappCyberShapeExpressionsMatch` |
 | Which reference URLs become links: `isWebURL` and `isWebLink` | `detail_test.go` and `cyber.spec.ts` hold the same table |
-| The `cvedetail.tsv`, `cwedetail.tsv`, `attackdetail.tsv`, `advisory.tsv` and `threat.tsv` row shapes, between `build/cyberdata` and `intel` | The same-named files in `intel/testdata/`, which the generator must reproduce and the reader must parse |
+| The `cvedetail.tsv`, `cwedetail.tsv`, `attackdetail.tsv`, `advisory.tsv`, `capec.tsv` and `cveattack.tsv` row shapes, between `build/cyberdata` and `intel` | The same-named files in `intel/testdata/`, which the generator must reproduce and the reader must parse |
 | The seam zoom: `seamZoom` and `SEAM_ZOOM` in `map/span.ts` | `TestSeamZoomMatchesTheWebapp`, `TestDetailPackagesStartAtTheSeam` |
 | The detail layer set: `DETAIL_SOURCE_LAYERS` in `map/maplibre.ts` | `TestArchiveCarriesEveryLayerTheStyleDraws`, and `style.spec.ts` holds the built style to the same list |
 | The package name grammar: `packageNamePattern` and `PACKAGE_NAME` | `TestWebappPackageNameGrammarMatches` |
@@ -373,8 +373,7 @@ Releases are automated with **release-please** driven by
   the working tree, so the shipped data is newer than the tagged commit's, and
   `cyber-release-package` packs the full `cve` and `cvedetail` datasets
   and DB-IP City Lite into `build/cyberdata/release`, which the workflow
-  attaches to the release. `CYBER_REFRESH=0` releases the committed data. The
-  abuse.ch feeds are never attached.
+  attaches to the release. `CYBER_REFRESH=0` releases the committed data.
 
 ## CI and security
 

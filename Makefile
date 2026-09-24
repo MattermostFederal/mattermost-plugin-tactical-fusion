@@ -268,22 +268,6 @@ cyber-advisories:
 	$(GO) run ./build/cyberdata -only advisory \
 		-label "CISA advisories $$(tr '\n' ' ' < build/cyberdata/advisories.txt | sed 's/ $$//'), fetched $$(date -u +%Y-%m-%d)"
 
-## Fetches the abuse.ch ThreatFox, MalwareBazaar and Feodo Tracker feeds and the Tor Project
-## exit list, builds build/cyberdata/out/threat.tsv and malware.tsv from them and packages
-## them for 'make deploy'. MalwareBazaar is 223 MB to download and malware.tsv 371 MB.
-## Never bundled: abuse.ch's terms say commercial use may need a Spamhaus subscription, so
-## whoever runs this fetches under their own terms.
-##
-## Builds the threat feed dataset for 'make deploy'
-.PHONY: cyber-threat
-cyber-threat:
-	./build/cyberdata/fetch-threat.sh
-	$(GO) run ./build/cyberdata -only threat \
-		-label "abuse.ch ThreatFox, abuse.ch Feodo Tracker, Tor Project exits, fetched $$(cat build/cyberdata/source/threat/fetched)"
-	$(GO) run ./build/cyberdata -only malware \
-		-label "abuse.ch MalwareBazaar full export, fetched $$(cat build/cyberdata/source/threat/fetched)"
-	$(MAKE) --no-print-directory cyber-package
-
 ## Fetches DB-IP's free IP to City Lite database into build/cyberdata/out as
 ## dbip-city-lite.mmdb, this month's or last month's early in a month. It gives the IP
 ## panel a region and city. CC BY 4.0: the panel and the page link back to DB-IP.com
@@ -328,8 +312,7 @@ cyber-package:
 ## working tree, and the downloadable datasets into build/cyberdata/out. SOURCES.sha256 in
 ## out records the digest of each source this run read. `make release` runs it after
 ## release-check, so a release ships current data and its tests run against that data;
-## set CYBER_REFRESH=0 to release the committed data instead. The threat feeds are not
-## fetched: abuse.ch's terms leave them to each operator.
+## set CYBER_REFRESH=0 to release the committed data instead.
 ##
 ## Rebuilds every cyber dataset, bundled and downloadable, from fresh sources
 .PHONY: cyber-refresh
@@ -353,8 +336,7 @@ CYBER_RELEASE_DIR := build/cyberdata/release
 ## Packs the downloadable cyber datasets for a release into build/cyberdata/release: cve
 ## and cvedetail gzipped, the DB-IP City Lite database as it is read, the SOURCES.sha256
 ## the refresh wrote, and DATASETS.sha256 over the lot. ip and epss are left out because
-## the bundle carries them, and threat and malware because abuse.ch's terms leave
-## them to each operator.
+## the bundle carries them.
 ##
 ## Packs the downloadable cyber datasets for a release
 .PHONY: cyber-release-package

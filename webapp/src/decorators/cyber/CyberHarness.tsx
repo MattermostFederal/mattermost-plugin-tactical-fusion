@@ -174,7 +174,7 @@ const ADDRESS = {
     glance: {subtitle: 'AS15169 GOOGLE', summary: '', tags: ['Global'], facts: ['Mountain View, California, US'], status: ''},
     reports: [
         {source: 'CISA AA99-001A', malicious: true, threat: 'Invented Ransomware Campaign', detail: 'first seen 2026-08-15', url: 'https://www.cisa.gov/news-events/cybersecurity-advisories/aa99-001a'},
-        {source: 'abuse.ch ThreatFox', malicious: true, threat: 'Botnet C2', detail: 'InventedBot · port 443', url: ''},
+        {source: 'CISA AA99-002A', malicious: true, threat: 'Botnet C2', detail: 'InventedBot · port 443', url: ''},
         // eslint-disable-next-line no-script-url
         {source: 'Tor Project', malicious: false, threat: 'Tor exit node', detail: '', url: 'javascript:alert(1)'},
     ],

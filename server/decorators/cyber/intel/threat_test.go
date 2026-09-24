@@ -6,40 +6,16 @@ import (
 	"testing"
 )
 
-func TestThreatReportsJoinTheAdvisoriesAndTheFeeds(t *testing.T) {
-	set := openIn(t, "testdata")
-
-	reports, err := set.ThreatReports("::ffff:203.0.113.10")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var sources []string
-	for _, report := range reports {
-		sources = append(sources, report.Source)
-	}
-	if strings.Join(sources, "|") != "CISA AA99-001A|abuse.ch Feodo Tracker|abuse.ch ThreatFox" {
-		t.Fatalf("sources %v, want the advisory first and then each feed", sources)
-	}
-	if reports[2].Ports != "443,8443" || reports[2].Confidence != "100" || reports[2].Category != CategoryMalicious {
-		t.Fatalf("ThreatFox report %+v", reports[2])
-	}
-}
-
-func TestAHashIsFoundWhateverItsCase(t *testing.T) {
-	set := openIn(t, "testdata")
-
-	reports, err := set.ThreatReports(strings.ToUpper("abcdef0123456789abcdef0123456789"))
-	if err != nil || len(reports) != 1 || reports[0].Malware != "InventedBot" {
+func TestAnAddressIsFoundWhateverItsForm(t *testing.T) {
+	reports, err := openIn(t, "testdata").ThreatReports("::ffff:203.0.113.10")
+	if err != nil || len(reports) != 1 || reports[0].Source != "CISA AA99-001A" || reports[0].Category != CategoryMalicious {
 		t.Fatalf("reports %+v, %v", reports, err)
 	}
 }
 
-func TestATorExitIsContextRatherThanAVerdict(t *testing.T) {
-	set := openIn(t, "testdata")
-
-	reports, err := set.ThreatReports("198.51.100.5")
-	if err != nil || len(reports) != 1 || reports[0].Category != CategoryContext {
+func TestAHashIsFoundWhateverItsCase(t *testing.T) {
+	reports, err := openIn(t, "testdata").ThreatReports(strings.Repeat("A", 64))
+	if err != nil || len(reports) != 1 || reports[0].Source != "CISA AA99-001A" {
 		t.Fatalf("reports %+v, %v", reports, err)
 	}
 }
@@ -66,64 +42,21 @@ func TestIndicatorKeyAgreesWithTheGenerator(t *testing.T) {
 	}
 }
 
-const (
-	goldenSampleSHA256 = "1111111111111111111111111111111111111111111111111111111111111111"
-	goldenSampleMD5    = "22222222222222222222222222222222"
-	goldenSampleSHA1   = "3333333333333333333333333333333333333333"
-)
-
-func TestAMalwareSampleIsFoundByAnyOfItsHashes(t *testing.T) {
-	set := openIn(t, "testdata")
-
-	for _, value := range []string{goldenSampleSHA256, strings.ToUpper(goldenSampleMD5), goldenSampleSHA1} {
-		reports, err := set.ThreatReports(value)
-		if err != nil || len(reports) != 1 {
-			t.Fatalf("%s: reports %+v, %v", value, reports, err)
-		}
-		want := ThreatReport{
-			Source:    "abuse.ch MalwareBazaar",
-			Category:  CategoryMalicious,
-			Threat:    "Malware sample",
-			Malware:   "InventedBot",
-			File:      "invoice.exe (exe)",
-			FirstSeen: "2026-09-20",
-			URL:       "https://bazaar.abuse.ch/sample/" + goldenSampleSHA256 + "/",
-		}
-		if reports[0] != want {
-			t.Errorf("%s read back as %+v", value, reports[0])
-		}
-	}
-}
-
-func TestASampleWithNoNameOrFamilyStillSaysWhatItIs(t *testing.T) {
-	reports, err := openIn(t, "testdata").ThreatReports(strings.Repeat("4", 64))
-	if err != nil || len(reports) != 1 || reports[0].File != "elf file" || reports[0].Malware != "" {
-		t.Fatalf("reports %+v, %v", reports, err)
-	}
-}
-
-func TestAHashPointingAtAnotherPointerIsAnErrorRatherThanALoop(t *testing.T) {
+func TestALeftoverAbuseCHDatasetIsSkippedWithAReason(t *testing.T) {
 	dir := t.TempDir()
-	writeDataset(t, dir, NameMalware,
-		strings.Repeat("a", 32)+"\t"+strings.Repeat("b", 40)+"\t\t\t\t",
-		strings.Repeat("b", 40)+"\t"+strings.Repeat("c", 64)+"\t\t\t\t",
-	)
-
-	if _, err := openIn(t, dir).ThreatReports(strings.Repeat("a", 32)); err == nil || errors.Is(err, ErrNotFound) {
-		t.Fatalf("got %v, want a read error", err)
+	for _, name := range []string{"threat", "malware"} {
+		writeDataset(t, dir, name, "203.0.113.10\t[]")
 	}
-}
 
-func TestFileTextNamesWhatIsKnown(t *testing.T) {
-	cases := map[[2]string]string{
-		{"invoice.exe", "exe"}: "invoice.exe (exe)",
-		{"invoice.exe", ""}:    "invoice.exe",
-		{"", "elf"}:            "elf file",
-		{"", ""}:               "",
+	set, problems := Open([]string{dir})
+	t.Cleanup(set.Close)
+
+	if len(problems) != 2 {
+		t.Fatalf("problems %v, want one per leftover file", problems)
 	}
-	for in, want := range cases {
-		if got := fileText(in[0], in[1]); got != want {
-			t.Errorf("fileText(%q) = %q, want %q", in, got, want)
+	for _, problem := range problems {
+		if problem.Class != ErrorName {
+			t.Errorf("%s was not skipped as a name this build does not read: %v", problem.Path, problem)
 		}
 	}
 }

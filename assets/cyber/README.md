@@ -28,7 +28,7 @@ The watchlist in particular must never be moved under `public/`.
 Everything else the decorator reads is too large or changes too fast to bundle
 and is attached to a release instead, for operators to drop into the directory
 named by the `CyberDatasetsDir` setting: the full `cve.tsv` and `cvedetail.tsv`,
-`threat.tsv`, `malware.tsv`, any vendor `.mmdb` database and the
+any vendor `.mmdb` database and the
 operator's own `watchlist.tsv`. A file there replaces the bundled one of the same
 name.
 

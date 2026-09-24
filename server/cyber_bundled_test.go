@@ -175,3 +175,11 @@ func TestTheBundledEPSSScoresACVE(t *testing.T) {
 		t.Errorf("CVE-2021-44228 has no bundled EPSS score: %v", err)
 	}
 }
+
+func TestTheFileHashExampleIsReportedMaliciousFromTheBundle(t *testing.T) {
+	d := cyber.Describe(cyber.KindHash, "01ce9cfebb29596d0ab7c99e8dbadf1a8409750b183e6bf73e0de021b365be13", openBundledCyber(t))
+
+	if !strings.HasSuffix(d.Headline, "reported malicious") || len(d.Reports) == 0 || d.Reports[0].Source != "CISA AA23-061A" {
+		t.Errorf("the example hash reads %q with reports %+v", d.Headline, d.Reports)
+	}
+}

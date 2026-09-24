@@ -9,14 +9,17 @@ import (
 
 const (
 	threatRow = "203.0.113.10\t" +
-		`[{"source":"abuse.ch ThreatFox","category":"malicious","threat":"Botnet C2","malware":"InventedBot","confidence":"100","ports":"443,8443","firstSeen":"2026-08-01","lastSeen":"2026-09-20","url":"https://threatfox.abuse.ch/browse.php?search=ioc%3A203.0.113.10"},` +
+		`[{"source":"CISA AA99-002A","category":"malicious","threat":"Botnet C2","malware":"InventedBot","confidence":"100","ports":"443,8443","firstSeen":"2026-08-01","lastSeen":"2026-09-20","url":"https://www.cisa.gov/news-events/cybersecurity-advisories/aa99-002a"},` +
 		`{"source":"Tor Project","category":"context","threat":"Tor exit node","url":"javascript:alert(1)"}]`
-	advisoryRow = "203.0.113.10\t" +
-		`[{"source":"CISA AA99-001A","category":"malicious","threat":"Invented Ransomware Campaign","status":"Advisory published 2026-09-01","firstSeen":"2026-08-15","url":"https://www.cisa.gov/news-events/cybersecurity-advisories/aa99-001a"}]`
+	advisoryReport = `{"source":"CISA AA99-001A","category":"malicious","threat":"Invented Ransomware Campaign","status":"Advisory published 2026-09-01","firstSeen":"2026-08-15","url":"https://www.cisa.gov/news-events/cybersecurity-advisories/aa99-001a"}`
 )
 
+func addressRow() string {
+	return strings.Replace(threatRow, "\t[", "\t["+advisoryReport+",", 1)
+}
+
 func TestAnAddressCarriesEveryReportAndSaysItIsReportedMalicious(t *testing.T) {
-	set := datasets(t, map[string][]string{intel.NameThreat: {threatRow}, intel.NameAdvisory: {advisoryRow}})
+	set := datasets(t, map[string][]string{intel.NameAdvisory: {addressRow()}})
 
 	d := Describe(KindIP, "203.0.113.10", set)
 
@@ -39,7 +42,7 @@ func TestAnAddressCarriesEveryReportAndSaysItIsReportedMalicious(t *testing.T) {
 
 func TestATorExitAloneIsNotReportedMalicious(t *testing.T) {
 	row := "198.51.100.5\t" + `[{"source":"Tor Project","category":"context","threat":"Tor exit node"}]`
-	set := datasets(t, map[string][]string{intel.NameThreat: {row}})
+	set := datasets(t, map[string][]string{intel.NameAdvisory: {row}})
 
 	d := Describe(KindIP, "198.51.100.5", set)
 
@@ -50,7 +53,7 @@ func TestATorExitAloneIsNotReportedMalicious(t *testing.T) {
 
 func TestAHashCarriesItsReports(t *testing.T) {
 	digest := strings.Repeat("ab", 16)
-	set := datasets(t, map[string][]string{intel.NameThreat: {digest + "\t" + `[{"source":"abuse.ch ThreatFox","category":"malicious","threat":"Malware payload","malware":"InventedBot"}]`}})
+	set := datasets(t, map[string][]string{intel.NameAdvisory: {digest + "\t" + `[{"source":"CISA AA99-002A","category":"malicious","threat":"Malware payload","malware":"InventedBot"}]`}})
 
 	d := Describe(KindHash, strings.ToUpper(digest), set)
 
@@ -60,7 +63,7 @@ func TestAHashCarriesItsReports(t *testing.T) {
 }
 
 func TestAnIndicatorNoFeedNamesCarriesNoReportsAndNoNoise(t *testing.T) {
-	set := datasets(t, map[string][]string{intel.NameThreat: {threatRow}})
+	set := datasets(t, map[string][]string{intel.NameAdvisory: {threatRow}})
 
 	d := Describe(KindIP, "192.0.2.1", set)
 
@@ -70,7 +73,7 @@ func TestAnIndicatorNoFeedNamesCarriesNoReportsAndNoNoise(t *testing.T) {
 }
 
 func TestThePageListsTheReportsWithTheirSources(t *testing.T) {
-	set := datasets(t, map[string][]string{intel.NameThreat: {threatRow}, intel.NameAdvisory: {advisoryRow}})
+	set := datasets(t, map[string][]string{intel.NameAdvisory: {addressRow()}})
 
 	body := renderBody(Describe(KindIP, "203.0.113.10", set))
 

@@ -52,7 +52,7 @@ func describeThreatReports(d *Details, set *intel.Set) {
 	case errors.Is(err, intel.ErrNoDataset), errors.Is(err, intel.ErrNotFound):
 		return
 	case err != nil:
-		addRow(d, "Threat reports", datasetSentence(set, intel.NameThreat, err))
+		addRow(d, "Threat reports", datasetSentence(set, intel.NameAdvisory, err))
 		return
 	}
 

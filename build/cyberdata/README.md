@@ -217,61 +217,29 @@ accuracy.
 
 ## Threat reports
 
-Two datasets share one row shape, the indicator and a JSON array of reports, and
-the plugin joins them for an address or a file hash:
+`advisory.tsv` holds each indicator (an address or a file hash) and a JSON array of
+reports, one per CISA advisory in `advisories.txt` that names it. It ships in the
+bundle, and `make cyber-advisories` rebuilds it.
 
-| | Built by | From | Ships |
-|---|---|---|---|
-| `advisory.tsv` | `make cyber-advisories` | The STIX JSON of each CISA advisory in `advisories.txt` | In the bundle |
-| `threat.tsv` | `make cyber-threat` | abuse.ch ThreatFox's full export, abuse.ch Feodo Tracker, the Tor exit list | Drop-in, copied by `make deploy` |
-
-`threat.tsv` never ships. abuse.ch's terms, since November 2025, say "Use of the
-Platforms by companies, networks, or individuals with commercial or for-profit
-needs may require a paid subscription, which will be managed by Spamhaus", so
-whoever runs `make cyber-threat` fetches under their own terms. Each feed is
-optional: a feed that cannot be fetched is skipped with a warning.
-
-Measured on 2026-09-23: the four advisories gave 246 indicators; ThreatFox's
-export held 106,672 indicators, of which the 24,875 addresses and 24,658 file
-hashes are kept (domains and URLs are not indicators the plugin recognizes).
-With Feodo Tracker's 5 addresses and 1,364 Tor exits, `threat.tsv` has 43,929
-rows, 13 MB, 1.4 MB gzipped. Feodo Tracker's list was last updated 2026-03-04.
-
-- One threat is one report whatever port it was seen on: ThreatFox lists a C2
-  once per port, and the generator keeps the ports together, the widest date
-  span and the highest confidence.
 - An address is written in its canonical form, so `::ffff:203.0.113.10` and
   `203.0.113.10` are one indicator; a digest is lowercased.
-- A Tor exit is recorded as context, not as a verdict, and never makes the
+- A report's category is `malicious` or `context`; only `malicious` makes the
   panel say "reported malicious".
-- ThreatFox's "Unknown malware" is dropped rather than shown as a malware name.
 
-### Malware samples
+### Why abuse.ch is not used
 
-`make cyber-threat` also fetches abuse.ch MalwareBazaar's full export and builds
-`malware.tsv` from it, under the same terms. It is kept apart from `threat.tsv`
-because of its size: measured on 2026-09-24, the export is a 223 MB zip of
-1,141,647 samples from 2020-01-10 on, and a report per hash in `threat.tsv`'s
-JSON shape would have been about 1.2 GB.
+Earlier builds read abuse.ch ThreatFox, Feodo Tracker and MalwareBazaar into
+drop-in `threat.tsv` and `malware.tsv` files. They were removed on 2026-09-24:
+abuse.ch's terms of use require an authenticated account, say commercial use
+"may require a paid subscription, which will be managed by Spamhaus", and forbid
+making "derivative works based on the Platforms" without consent, so the data
+could never ship and each operator would have needed their own agreement. A
+leftover `threat.tsv` or `malware.tsv` in `CyberDatasetsDir` is now skipped as a
+name this build does not read.
 
-Instead each sample is one row keyed by its SHA-256, holding the date it was
-first seen, its file name, its file type and its malware family, and its MD5 and
-SHA-1 are rows that hold only the SHA-256 they belong to. A lookup by any of the
-three finds the sample; a pointer that points at another pointer is refused as a
-read error rather than followed. A file name that is only the hash, and every
-`n/a`, are dropped. The link to the sample's page is built from the SHA-256 when
-it is shown rather than stored.
-
-That gives 3,424,931 rows, 371 MB, 202 MB gzipped: hashes are random hex and
-barely compress. It builds in about 12 seconds with a 3 GB peak. The Loaded
-datasets list in the System Console counts rows, so for this file the count is
-hashes, about three per sample. The first lookup after `make deploy` unpacks it,
-which took 3.6 seconds on the Docker stack; lookups after that took 6 ms.
-
-Two feeds can disagree about one hash: a sample ThreatFox reports as AsyncRAT
-may be RedLineStealer in MalwareBazaar. The panel shows both, each under its
-source, rather than choosing.
-
+Spamhaus DROP was considered in their place and left out: its terms grant no
+license and forbid using the Spamhaus name, which conflicts with the credit its
+product page asks for.
 
 ## The recent build
 

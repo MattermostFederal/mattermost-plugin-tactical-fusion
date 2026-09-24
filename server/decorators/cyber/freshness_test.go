@@ -72,14 +72,14 @@ func TestFreshnessIsEachFilesCompileStampNotADateInTheRows(t *testing.T) {
 
 func TestFreshnessCountsOnlyTheDatasetsThatAnswerTheKind(t *testing.T) {
 	set := compiledDatasets(t, map[string]compiledDataset{
-		intel.NameEPSS:    {"2020-01-01T00:00:00Z", []string{"CVE-2021-44228\t0.975\t0.9998\t2026-09-01"}},
-		intel.NameMalware: {"2026-09-20T00:00:00Z", []string{}},
+		intel.NameEPSS:     {"2020-01-01T00:00:00Z", []string{"CVE-2021-44228\t0.975\t0.9998\t2026-09-01"}},
+		intel.NameAdvisory: {"2026-09-20T00:00:00Z", []string{}},
 	})
 
 	d := Describe(KindHash, strings.Repeat("a", 64), set)
 
-	if got := sourceDates(d); !maps.Equal(got, map[string]string{"malware.tsv": "2026-09-20 00:00 UTC"}) {
-		t.Errorf("a hash lists %v, want the malware file and not the EPSS file", got)
+	if got := sourceDates(d); !maps.Equal(got, map[string]string{"advisory.tsv": "2026-09-20 00:00 UTC"}) {
+		t.Errorf("a hash lists %v, want the advisory file and not the EPSS file", got)
 	}
 }
 
@@ -97,7 +97,7 @@ func TestFreshnessAddsTheWatchlistWhenItIsInstalled(t *testing.T) {
 
 func TestFreshnessSkipsAStampWithNoDate(t *testing.T) {
 	set := compiledDatasets(t, map[string]compiledDataset{
-		intel.NameMalware: {"yesterday", []string{}},
+		intel.NameAdvisory: {"yesterday", []string{}},
 	})
 
 	if got := Describe(KindHash, strings.Repeat("a", 64), set).Freshness; len(got) != 0 {

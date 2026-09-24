@@ -23,8 +23,8 @@ var freshnessDatasets = map[Kind][]string{
 	KindCVE:    {intel.NameCVE, intel.NameCVEDetail, intel.NameEPSS, intel.NameKEV, intel.NameCVEAttack},
 	KindCWE:    {intel.NameCWEDetail, intel.NameCAPEC},
 	KindAttack: {intel.NameAttackDetail, intel.NameCAPEC, intel.NameCVEAttack},
-	KindIP:     {intel.NameIP, intel.NameAdvisory, intel.NameThreat},
-	KindHash:   {intel.NameMalware, intel.NameAdvisory, intel.NameThreat},
+	KindIP:     {intel.NameIP, intel.NameAdvisory},
+	KindHash:   {intel.NameAdvisory},
 }
 
 func freshnessFor(kind Kind, set *intel.Set) []Freshness {

@@ -79,18 +79,6 @@ func main() {
 			target: func() string { return filepath.Join(*treeDir, "assets", "cyber", "advisory.tsv") },
 		},
 		{
-			name:   "threat",
-			source: "threat",
-			build:  buildThreat,
-			target: func() string { return filepath.Join(*outDir, "threat.tsv") },
-		},
-		{
-			name:   "malware",
-			source: "threat",
-			build:  buildMalware,
-			target: func() string { return filepath.Join(*outDir, "malware.tsv") },
-		},
-		{
 			name:   "attackdetail",
 			source: "enterprise-attack.json",
 			build:  acrossAttackDomains(buildAttackDetail),
