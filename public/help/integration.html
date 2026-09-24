@@ -576,9 +576,9 @@ declare global {
             The <strong>Mattermost Agents</strong> plugin discovers this plugin's operations as
             MCP tools and offers them to its
             agents, so an agent answering in a channel can decorate a message it is about to
-            post, build one link, convert a coordinate, look up an airfield, or read the same
-            things the cards read: an aviation report or TFR, a Cursor on Target event, a GeoJSON
-            document, a radio frequency or a date-time group. There is nothing to
+            post, build one link, convert a coordinate, look up an airfield, look up security
+            indicators, or read the same things the cards read: an aviation report or TFR, a
+            Cursor on Target event, a GeoJSON document, a radio frequency or a date-time group. There is nothing to
             configure here: the tools register themselves when Tactical Fusion activates, and an
             administrator enables or disables them per tool in the Agents plugin's own
             <strong>Tools</strong> settings.
@@ -658,6 +658,11 @@ declare global {
                     <td><code>features</code>, each a named point, line or polygon of <code>{lat, lon}</code> positions with an optional <code>color</code> and <code>properties</code>; optionally a document <code>name</code> and <code>description</code></td>
                     <td>The document, a <code>geojson</code> fenced message that renders as a card with a map when posted on its own, and its summary with measured lengths and areas</td>
                 </tr>
+                <tr>
+                    <td><code>lookup_cyber_indicator</code></td>
+                    <td><code>indicators</code>, 1 to 25 CVE, CWE and ATT&amp;CK ids, IP addresses and MD5, SHA-1 or SHA-256 hashes, in any mix</td>
+                    <td>For each, what the <a href="cyber.html">Cyber context</a> panel knows: the name and description, CVSS score, severity and vector, whether it is known exploited, the exploit prediction score, related entries, affected products, mitigations and detection, the threat reports and watchlist verdicts for an address or hash, and a link to cite. Lists are cut to 10 items with their full count. An indicator that is not recognized is answered as such, and <code>datasets_missing</code> names the datasets not installed</td>
+                </tr>
             </tbody>
         </table>
 
@@ -666,7 +671,7 @@ declare global {
             code, so everything under <a href="#rules">Rules worth knowing</a> applies to them
             too: the admin format switches still govern <code>link_token</code>, a link already
             written keeps working after a format is switched off, and the tools that read
-            rather than link (<code>lookup_airfield</code> and every <code>decode</code>,
+            rather than link (both <code>lookup</code> tools and every <code>decode</code>,
             <code>summarize</code>, <code>describe</code> and <code>read</code> tool) answer
             regardless of the switches. Nothing is fetched and nothing is posted: the two
             <code>create</code> tools hand back a message, and the agent decides whether to post it.

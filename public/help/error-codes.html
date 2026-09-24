@@ -689,9 +689,9 @@
         <p>
             Answers to the <a href="integration.html#mcp">Mattermost Agents plugin</a>
             calling this plugin's tools over MCP at <code>/mcp</code>. The first five are
-            activation, shutdown and routing; the last three are a tool declining what it
-            was asked for, which an agent sees as a failed tool call rather than as an
-            answer.
+            activation, shutdown and routing, and the sixth is a tool that failed inside; the
+            rest are a tool declining what it was asked for, which an agent sees as a failed
+            tool call rather than as an answer.
         </p>
 
         <table>
@@ -742,7 +742,7 @@
                 <tr>
                     <td><code>TF-20008</code></td>
                     <td><code>MCPAirportInvalid</code> <span class="level">Tool error</span></td>
-                    <td><code>That is not an airfield code this plugin issued.</code> The <code>lookup_airfield</code> tool was given a value that is not the shape of an ICAO identifier or an IATA code. A well-shaped code the database does not hold is not this: that answers <code>found: false</code>.</td>
+                    <td><code>That is not an ICAO identifier or IATA code.</code> The <code>lookup_airfield</code> tool was given a value that is not the shape of an ICAO identifier or an IATA code. A well-shaped code the database does not hold is not this: that answers <code>found: false</code>.</td>
                 </tr>
                 <tr>
                     <td><code>TF-20009</code></td>
@@ -778,6 +778,11 @@
                     <td><code>TF-20015</code></td>
                     <td><code>MCPCreateGeoJSONInvalid</code> <span class="level">Tool error</span></td>
                     <td><code>Could not build that document: ...</code> The <code>create_geojson</code> tool was given no features or too many, a feature with no name, the wrong number of positions for its kind, a position off the globe, or a color that is not <code>#rrggbb</code>. The message ends with which feature and why.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-20016</code></td>
+                    <td><code>MCPCyberInvalid</code> <span class="level">Tool error</span></td>
+                    <td><code>Give between 1 and 25 indicators.</code> The <code>lookup_cyber_indicator</code> tool was given no indicators, or more than 25. An indicator in the list that is not a CVE, CWE, ATT&amp;CK id, IP address or file hash is not this: it is answered as not recognized, and the others in the list are still looked up.</td>
                 </tr>
             </tbody>
         </table>

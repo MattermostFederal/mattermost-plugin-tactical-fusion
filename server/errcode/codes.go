@@ -409,6 +409,8 @@ const (
 	MCPCreateCotInvalid     = 20014
 	MCPCreateGeoJSONInvalid = 20015
 
+	MCPCyberInvalid = 20016
+
 	// server/cyberdata.go (21000-21999)
 
 	// CyberDataNoBundlePath reports that the plugin cannot locate its own
@@ -576,6 +578,7 @@ var AllCodes = []int{
 	MCPDateTimeInvalid,
 	MCPCreateCotInvalid,
 	MCPCreateGeoJSONInvalid,
+	MCPCyberInvalid,
 
 	CyberDataNoBundlePath,
 	CyberDataUnreadable,

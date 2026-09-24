@@ -17,7 +17,7 @@ import (
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
-const mcpToolBudget = 11
+const mcpToolBudget = 12
 
 func callMCPTool(t *testing.T, session *mcp.ClientSession, name string, args any) *mcp.CallToolResult {
 	t.Helper()
@@ -282,6 +282,7 @@ func TestEveryMCPToolAnswersWithoutAReader(t *testing.T) {
 		"read_date_time":         ReadDateTimeArgs{Text: "141200ZSEP26"},
 		"create_cot":             CreateCotArgs{Callsign: "ALPHA", Lat: 21.3353, Lon: -157.9483},
 		"create_geojson":         CreateGeoJSONArgs{Features: []CreateGeoJSONFeature{{Name: "Supply point", Kind: "point", Positions: []GeoJSONPosition{{Lat: 21.3353, Lon: -157.9483}}}}},
+		"lookup_cyber_indicator": LookupCyberIndicatorArgs{Indicators: []string{"CVE-2021-44228"}},
 	}
 
 	names := toolNames(t, session)
