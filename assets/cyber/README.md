@@ -14,32 +14,29 @@ The watchlist in particular must never be moved under `public/`.
 
 | File | What it is | Ships |
 |---|---|---|
-| `kev.tsv` | CISA Known Exploited Vulnerabilities | yes, once generated |
+| `kev.tsv` | CISA Known Exploited Vulnerabilities | yes |
 
 Everything else the decorator reads is too large to bundle and is attached to a
 release instead, for operators to drop into the directory named by the
 `CyberDatasetsDir` setting: `cve.tsv`, `cvedetail.tsv`, `epss.tsv`, `ip.tsv`, plus any vendor
 `.mmdb` database and the operator's own `watchlist.tsv`.
 
-## `kev.tsv` is not committed yet
+## Refreshing `kev.tsv`
 
-The host this feature was built on could not reach `www.cisa.gov`: it is
-refused by the network policy in that environment. Shipping an invented KEV
-catalog would tell a responder that a vulnerability is or is not being
-exploited in the wild on the strength of nothing, so none was written.
-
-Until it is generated, the decorator behaves exactly as it does on an install
-with no datasets: a CVE still decorates and its panel says **"No known
-exploited vulnerabilities dataset is installed."** rather than implying the
-vulnerability is not listed. That distinction is the whole reason the status
-sentences name the dataset.
-
-To generate and commit it, on a host with network access:
+CISA adds to the catalog most weekdays, so the committed file is a snapshot. Its
+stamp names the catalog version it was built from. To refresh it, on a host with
+network access:
 
 ```
-make cyber-sources
-make cyber-data
+curl -fL -o build/cyberdata/source/known_exploited_vulnerabilities.json \
+  https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json
+go run ./build/cyberdata -only kev -label "CISA KEV catalog <catalogVersion>"
 ```
+
+`make cyber-sources` followed by `make cyber-data` rebuilds it along with
+everything else. An operator who wants a newer catalog than the bundle carries
+drops a `kev.tsv` or `kev.tsv.gz` into `CyberDatasetsDir`; a file there replaces
+the bundled one.
 
 ## Provenance
 
@@ -51,5 +48,5 @@ make cyber-data
 | Format | The stamped, tab separated, bytewise-sorted shape `server/decorators/cyber/intel` reads |
 
 The first line of every file here is a schema stamp. A file carrying no stamp,
-or one built for a different reader, is skipped with `TF-20002` rather than
+or one built for a different reader, is skipped with `TF-21002` rather than
 misread.
