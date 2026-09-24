@@ -8,6 +8,8 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
@@ -30,8 +32,18 @@ func outerFenced(body string) string {
 	return fence + "\n" + strings.TrimRight(body, "\n") + "\n" + fence
 }
 
+var rawExampleSetsOnePerBlock = map[string]bool{dtg.Type: true, location.Type: true}
+
 func rawExampleBlock(heading, body string) string {
 	return "#### " + heading + "\n\n" + outerFenced(body) + "\n"
+}
+
+func rawExampleBlocks(heading string, bodies []string) string {
+	blocks := make([]string, 0, len(bodies))
+	for _, body := range bodies {
+		blocks = append(blocks, outerFenced(body))
+	}
+	return "#### " + heading + "\n\n" + strings.Join(blocks, "\n\n") + "\n"
 }
 
 func rawExampleSetTexts(tagger *decorators.Tagger, ref time.Time, set exampleSet) []string {
@@ -58,7 +70,12 @@ func (p *Plugin) rawExampleMessages(ref time.Time) []string {
 	var messages []string
 	for _, key := range exampleSetOrder {
 		set := exampleSets[key]
-		if texts := rawExampleSetTexts(tagger, ref, set); len(texts) > 0 {
+		texts := rawExampleSetTexts(tagger, ref, set)
+		switch {
+		case len(texts) == 0:
+		case rawExampleSetsOnePerBlock[key]:
+			messages = append(messages, rawExampleBlocks(set.name, texts))
+		default:
 			messages = append(messages, rawExampleBlock(set.name, strings.Join(texts, "\n")))
 		}
 	}

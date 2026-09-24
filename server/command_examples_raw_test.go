@@ -31,22 +31,37 @@ func runRawExamples(t *testing.T, p *Plugin, channel string) (*model.CommandResp
 	return response, api
 }
 
+func codeBlocks(t *testing.T, message string) []string {
+	t.Helper()
+
+	var blocks []string
+	lines := strings.Split(strings.TrimRight(message, "\n"), "\n")
+	for i := 0; i < len(lines); i++ {
+		fence := lines[i]
+		if !strings.HasPrefix(fence, "```") || strings.Trim(fence, "`") != "" {
+			continue
+		}
+		end := i + 1
+		for end < len(lines) && lines[end] != fence {
+			end++
+		}
+		if end == len(lines) {
+			t.Fatalf("a block opened with %q never closes:\n%s", fence, message)
+		}
+		blocks = append(blocks, strings.Join(lines[i+1:end], "\n"))
+		i = end
+	}
+	return blocks
+}
+
 func codeBlockBody(t *testing.T, message string) string {
 	t.Helper()
 
-	lines := strings.Split(strings.TrimRight(message, "\n"), "\n")
-	var open int
-	for i, line := range lines {
-		if strings.HasPrefix(line, "```") {
-			open = i
-			break
-		}
+	blocks := codeBlocks(t, message)
+	if len(blocks) != 1 {
+		t.Fatalf("%d blocks, want one:\n%s", len(blocks), message)
 	}
-	fence := lines[open]
-	if lines[len(lines)-1] != fence {
-		t.Fatalf("the block does not close with its opening fence %q:\n%s", fence, message)
-	}
-	return strings.Join(lines[open+1:len(lines)-1], "\n")
+	return blocks[0]
 }
 
 func TestRawExamplesPostNothingAndTellOnlyTheCaller(t *testing.T) {
@@ -77,19 +92,49 @@ func TestRawExamplesAreTheTextAPersonTypesAndEachStillDecorates(t *testing.T) {
 				continue
 			}
 			sets++
-			body := codeBlockBody(t, post.Message)
-			if strings.Contains(body, "](") || strings.Contains(body, "**") {
-				t.Errorf("the %s block carries a link or a label rather than bare text:\n%s", key, body)
+			blocks := codeBlocks(t, post.Message)
+			if rawExampleSetsOnePerBlock[key] {
+				for _, block := range blocks {
+					if strings.Contains(block, "\n") {
+						t.Errorf("a %s block holds more than one example:\n%s", key, block)
+					}
+				}
+			} else if len(blocks) != 1 {
+				t.Errorf("the %s set is in %d blocks, want one", key, len(blocks))
 			}
-			for line := range strings.SplitSeq(body, "\n") {
-				if tagger.Decorate(line, time.Now().UTC()) == line {
-					t.Errorf("the %s block holds %q, which does not decorate when pasted", key, line)
+			for _, block := range blocks {
+				if strings.Contains(block, "](") || strings.Contains(block, "**") {
+					t.Errorf("a %s block carries a link or a label rather than bare text:\n%s", key, block)
+				}
+				for line := range strings.SplitSeq(block, "\n") {
+					if tagger.Decorate(line, time.Now().UTC()) == line {
+						t.Errorf("a %s block holds %q, which does not decorate when pasted", key, line)
+					}
 				}
 			}
 		}
 	}
 	if sets != len(exampleSetOrder) {
 		t.Fatalf("%d decorator blocks, want one per set (%d)", sets, len(exampleSetOrder))
+	}
+}
+
+func TestEachDateTimeAndCoordinateExampleIsItsOwnBlock(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	_, api := runRawExamples(t, p, testCommandChannel)
+	tagger := &decorators.Tagger{Registry: p.decorators, URLPrefix: p.decorateURLPrefix()}
+	ref := time.Now().UTC()
+
+	for key := range rawExampleSetsOnePerBlock {
+		set := exampleSets[key]
+		want := len(rawExampleSetTexts(tagger, ref, set))
+		for _, post := range api.ephemeral {
+			if strings.HasPrefix(post.Message, "#### "+set.name+"\n") {
+				if got := len(codeBlocks(t, post.Message)); got != want || want < 2 {
+					t.Errorf("%s: %d blocks, want one for each of its %d examples", key, got, want)
+				}
+			}
+		}
 	}
 }
 
