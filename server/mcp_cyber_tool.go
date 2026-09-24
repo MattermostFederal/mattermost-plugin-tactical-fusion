@@ -89,7 +89,7 @@ type CyberIndicatorResult struct {
 	Score     string `json:"score,omitempty"`
 	Exploited bool   `json:"exploited"`
 
-	CurrentAsOf string `json:"current_as_of,omitempty" jsonschema:"when the oldest dataset behind this answer was compiled, RFC 3339"`
+	DataSources []CyberDataSource `json:"data_sources,omitempty" jsonschema:"every dataset file behind this answer and when it was compiled"`
 
 	Facts     []CyberFact        `json:"facts,omitempty"`
 	Vector    []CyberVectorEntry `json:"vector,omitempty"`
@@ -98,6 +98,12 @@ type CyberIndicatorResult struct {
 	Reports   []CyberThreat      `json:"reports,omitempty"`
 	Credits   []CyberCredit      `json:"credits,omitempty"`
 	Sections  []CyberToolSection `json:"sections,omitempty"`
+}
+
+type CyberDataSource struct {
+	Label    string `json:"label"`
+	File     string `json:"file"`
+	Compiled string `json:"compiled" jsonschema:"when the file was compiled, RFC 3339"`
 }
 
 type CyberIndicatorLookup struct {
@@ -193,8 +199,8 @@ func cyberIndicatorResult(input string, d cyber.Details) CyberIndicatorResult {
 		result.Credits = append(result.Credits, CyberCredit{Text: credit.Text, URL: credit.URL})
 	}
 
-	if oldest, ok := cyber.OldestCompiled(d.Freshness); ok {
-		result.CurrentAsOf = oldest.Format(time.RFC3339)
+	for _, source := range d.Freshness {
+		result.DataSources = append(result.DataSources, CyberDataSource{Label: source.Label, File: source.File, Compiled: source.Compiled.Format(time.RFC3339)})
 	}
 
 	result.Sections = cyberToolSections(d)

@@ -65,7 +65,7 @@ func TestCyberAnswersWithTheIndicator(t *testing.T) {
 	}
 }
 
-func TestCyberSaysWhenItsDataWasCompiled(t *testing.T) {
+func TestCyberListsEachDataSourceWithWhenItWasCompiled(t *testing.T) {
 	p, _ := newAPIPlugin(t)
 
 	rec := call(p, http.MethodGet, cyberURL("attack", "T1059.001"), testUserID, "")
@@ -74,19 +74,21 @@ func TestCyberSaysWhenItsDataWasCompiled(t *testing.T) {
 		t.Fatalf("not a cyber response: %v (%s)", err, rec.Body.String())
 	}
 
-	if !strings.HasSuffix(got.Current.Date, " UTC") || !strings.Contains(got.Current.Query, "dtg=") {
-		t.Errorf("current = %+v", got.Current)
+	if len(got.Compiled) != 1 {
+		t.Fatalf("compiled = %+v", got.Compiled)
 	}
-	if len(got.Current.Sources) != 1 || got.Current.Sources[0].Label != "MITRE ATT&CK catalog" || got.Current.Sources[0].Date != got.Current.Date {
-		t.Errorf("sources = %+v", got.Current.Sources)
+	source := got.Compiled[0]
+	if source.Label != "MITRE ATT&CK catalog" || source.File != "attack.tsv (built in)" ||
+		!strings.HasSuffix(source.Date, " UTC") || !strings.Contains(source.Query, "dtg=") {
+		t.Errorf("source = %+v", source)
 	}
 }
 
-func TestCyberWithNothingCompiledClaimsNoDate(t *testing.T) {
+func TestCyberWithNothingCompiledListsNoSources(t *testing.T) {
 	p, _ := newAPIPlugin(t)
 
 	rec := call(p, http.MethodGet, cyberURL("hash", strings.Repeat("a", 64)), testUserID, "")
-	if !strings.Contains(rec.Body.String(), `"current":{"date":"","query":"","sources":[]}`) {
+	if !strings.Contains(rec.Body.String(), `"compiled":[]`) {
 		t.Errorf("an undated answer is %s", rec.Body.String())
 	}
 }

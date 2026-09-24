@@ -31,7 +31,7 @@ untrue.
 Each file opens with the same stamp line a dataset carries,
 `#tactical-fusion-cyber/1<TAB>name<TAB>generated<TAB>source`, above its header row.
 `generated` is when `make cyber-data` compiled the file, and it is what the panel's
-"Current as of" footnote counts for ATT&CK and CWE.
+Data sources table shows for ATT&CK and CWE.
 
 `cwe.tsv` is the generator's output from MITRE's research view 1000, fetched
 2026-09-23: 944 weaknesses, each with its name, abstraction, status, the first

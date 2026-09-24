@@ -135,8 +135,7 @@ var cyberStructNames = map[string]string{
 	"cyberCredit[]":         "CyberCredit[]",
 	"cyberGlance":           "CyberGlance",
 	"cyberReport[]":         "CyberThreatReport[]",
-	"cyberCurrent":          "CyberCurrent",
-	"cyberCurrentSource[]":  "CyberCurrentSource[]",
+	"cyberCompiled[]":       "CyberCompiled[]",
 	"cyberDirectory[]":      "CyberDirectory[]",
 	"cyberDatasetFile[]":    "CyberDatasetFile[]",
 	"cyberDatabaseFile[]":   "CyberDatabaseFile[]",
@@ -183,9 +182,8 @@ func TestWebappCyberThreatReportShapeMatches(t *testing.T) {
 	requireSameShape(t, "CyberThreatReport", goWireFields(t, cyberReport{}), cyberWebappFields(t, "CyberThreatReport"))
 }
 
-func TestWebappCyberCurrentShapeMatches(t *testing.T) {
-	requireSameShape(t, "CyberCurrent", goWireFields(t, cyberCurrent{}), cyberWebappFields(t, "CyberCurrent"))
-	requireSameShape(t, "CyberCurrentSource", goWireFields(t, cyberCurrentSource{}), cyberWebappFields(t, "CyberCurrentSource"))
+func TestWebappCyberCompiledShapeMatches(t *testing.T) {
+	requireSameShape(t, "CyberCompiled", goWireFields(t, cyberCompiled{}), cyberWebappFields(t, "CyberCompiled"))
 }
 
 func TestWebappCyberDatasetsShapesMatch(t *testing.T) {

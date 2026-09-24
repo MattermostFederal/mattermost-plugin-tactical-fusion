@@ -60,14 +60,10 @@ const FOUND = {
     sections: [] as CyberSection[],
     credits: [] as CyberCredit[],
     reports: [] as CyberThreatReport[],
-    current: {
-        date: '2026-09-24 01:00 UTC',
-        query: COMPILED_QUERY,
-        sources: [
-            {label: 'vulnerability', date: '2026-09-24 13:00 UTC'},
-            {label: 'known exploited vulnerabilities', date: '2026-09-24 01:00 UTC'},
-        ],
-    },
+    compiled: [
+        {label: 'vulnerability', file: 'cve.tsv', date: '2026-09-24 13:00 UTC', query: ''},
+        {label: 'known exploited vulnerabilities', file: 'kev.tsv', date: '2026-09-24 01:00 UTC', query: COMPILED_QUERY},
+    ],
     glance: {
         subtitle: 'Published 2021-12-10 · CWE-502',
         summary: SUMMARY,
@@ -105,7 +101,7 @@ const NO_DATASET = {
     headline: 'No vulnerability dataset is installed.',
     status: 'No vulnerability dataset is installed.',
     datasets: [{name: 'cve', label: 'vulnerability', present: false, generated: ''}],
-    current: {date: '', query: '', sources: []},
+    compiled: [],
 };
 
 const WEAKNESS = {

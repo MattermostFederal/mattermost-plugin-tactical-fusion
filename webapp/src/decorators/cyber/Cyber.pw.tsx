@@ -27,7 +27,7 @@ test.describe('the panel', () => {
         await expect(panel.getByText('2021-12-10 10:15 UTC')).toBeVisible();
     });
 
-    test('ends with when its oldest dataset was compiled', async ({mount}) => {
+    test('ends with a data sources link that opens a table of every file and when it was compiled', async ({mount}) => {
         const panel = await mount(
             <CyberHarness
                 surface='panel'
@@ -35,13 +35,21 @@ test.describe('the panel', () => {
             />,
         );
 
-        const current = panel.getByTestId('cyber-current');
-        await expect(current).toHaveText('Current as of 2026-09-24 01:00 UTC');
-        await expect(current.getByRole('link', {name: '2026-09-24 01:00 UTC'})).toBeVisible();
-        await expect(current).toHaveAttribute('title', 'vulnerability: 2026-09-24 13:00 UTC\nknown exploited vulnerabilities: 2026-09-24 01:00 UTC');
+        const sources = panel.getByTestId('cyber-sources');
+        await expect(sources.getByRole('table')).toBeHidden();
+
+        await sources.getByText('Data sources').click();
+
+        const table = sources.getByRole('table');
+        await expect(table).toBeVisible();
+        await expect(table.getByRole('row')).toHaveCount(3);
+        await expect(table.getByText('cve.tsv')).toBeVisible();
+        await expect(table.getByText('kev.tsv')).toBeVisible();
+        await expect(table.getByText('2026-09-24 13:00 UTC')).toBeVisible();
+        await expect(table.getByRole('link', {name: '2026-09-24 01:00 UTC'})).toBeVisible();
     });
 
-    test('says nothing about currency when no dataset is dated', async ({mount}) => {
+    test('shows no data sources link when no file is dated', async ({mount}) => {
         const panel = await mount(
             <CyberHarness
                 surface='panel'
@@ -51,7 +59,7 @@ test.describe('the panel', () => {
         );
 
         await expect(panel.getByText('No vulnerability dataset is installed.').first()).toBeVisible();
-        await expect(panel.getByTestId('cyber-current')).toHaveCount(0);
+        await expect(panel.getByTestId('cyber-sources')).toHaveCount(0);
     });
 
     test('leaves the dataset list to the standalone page', async ({mount}) => {
@@ -484,7 +492,7 @@ test.describe('the detail sections', () => {
 
         await section(panel, 'References').click();
 
-        const hosts = await panel.locator('details a[href]').evaluateAll((links) => links.map((link) => new URL((link as HTMLAnchorElement).href).host));
+        const hosts = await panel.locator('details:not([data-testid="cyber-sources"]) a[href]').evaluateAll((links) => links.map((link) => new URL((link as HTMLAnchorElement).href).host));
         expect(hosts).toEqual(['logging.apache.org', 'packetstormsecurity.com', 'lists.debian.org']);
     });
 

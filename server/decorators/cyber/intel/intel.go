@@ -305,6 +305,16 @@ func (s *Set) Generated(name string) string {
 	return ""
 }
 
+func (s *Set) FileName(name string) string {
+	if s == nil {
+		return ""
+	}
+	if dataset, ok := s.datasets[name]; ok {
+		return filepath.Base(dataset.Path)
+	}
+	return ""
+}
+
 func (s *Set) lookup(name, key string) ([]string, error) {
 	if s == nil {
 		return nil, ErrNoDataset

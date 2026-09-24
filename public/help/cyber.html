@@ -354,10 +354,10 @@
             <p>
                 The page behind an indicator link also lists which datasets are installed and when
                 each was generated, so an empty answer can be told from a missing file. The panel
-                leaves that list out, and ends instead with one line, <em>Current as of</em>, giving
-                the compile time of the oldest file behind that answer. That is when the file was
-                built, not any date inside it, and the embedded ATT&amp;CK and CWE catalogs count by
-                the time the plugin's copy was generated. Hover the line for each file's own time.
+                leaves that list out, and ends instead with a <em>Data sources</em> link that opens a
+                table of every file behind that answer and when each was compiled. That is when the
+                file was built, not any date inside it; the embedded ATT&amp;CK and CWE catalogs show
+                when the plugin's copy was generated, and a vendor IP database its own build date.
             </p>
         </div>
 
@@ -416,7 +416,7 @@
             <p>
                 Every answer comes from a file on this server, which is why an air-gapped install
                 behaves exactly as a connected one does. It also means the enrichment is only as
-                current as the last sync, and the panel ends with when its oldest dataset was compiled so a
+                current as the last sync, and the panel's Data sources table says when each file was compiled so a
                 reader can judge that for themselves.
             </p>
         </div>

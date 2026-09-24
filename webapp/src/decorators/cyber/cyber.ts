@@ -6,8 +6,7 @@ import type {
     CyberReference,
     CyberResponse,
     CyberCredit,
-    CyberCurrent,
-    CyberCurrentSource,
+    CyberCompiled,
     CyberGlance,
     CyberItem,
     CyberRow,
@@ -241,26 +240,22 @@ function asDatasets(value: unknown[]): CyberDataset[] {
     });
 }
 
-export const NOT_DATED: CyberCurrent = {date: '', query: '', sources: []};
-
-function asCurrent(value: unknown): CyberCurrent {
-    if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-        return NOT_DATED;
+function asCompiled(value: unknown): CyberCompiled[] {
+    if (!Array.isArray(value)) {
+        return [];
     }
-    const current = value as Record<string, unknown>;
-    if (typeof current.date !== 'string' || typeof current.query !== 'string' || !Array.isArray(current.sources)) {
-        return NOT_DATED;
-    }
-    const sources = current.sources.filter((entry): entry is CyberCurrentSource =>
-        entry !== null && typeof entry === 'object' &&
-        typeof (entry as Record<string, unknown>).label === 'string' &&
-        typeof (entry as Record<string, unknown>).date === 'string');
 
-    return {
-        date: current.date,
-        query: asDtgQuery(current.query),
-        sources: sources.map(({label, date}) => ({label, date})),
-    };
+    return value.flatMap((entry) => {
+        if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) {
+            return [];
+        }
+        const source = entry as Record<string, unknown>;
+        const {label, file, date, query} = source;
+        if (typeof label !== 'string' || typeof file !== 'string' || typeof date !== 'string' || typeof query !== 'string') {
+            return [];
+        }
+        return [{label, file, date, query: asDtgQuery(query)}];
+    });
 }
 
 export function asCyber(body: unknown): CyberResponse {
@@ -288,7 +283,7 @@ export function asCyber(body: unknown): CyberResponse {
         credits: asCredits(asArray(wire, 'credits')),
         glance: asGlance(asObject(wire.glance, 'a glance')),
         reports: asReports(asArray(wire, 'reports')),
-        current: asCurrent(wire.current),
+        compiled: asCompiled(wire.compiled),
     };
 }
 

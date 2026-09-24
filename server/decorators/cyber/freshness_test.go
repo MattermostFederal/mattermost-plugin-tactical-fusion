@@ -2,6 +2,7 @@ package cyber
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -35,16 +36,15 @@ func compiledDatasets(t *testing.T, files map[string]compiledDataset) *intel.Set
 	return set
 }
 
-func oldestOf(t *testing.T, d Details) string {
-	t.Helper()
-	oldest, ok := OldestCompiled(d.Freshness)
-	if !ok {
-		return ""
+func sourceDates(d Details) map[string]string {
+	dates := map[string]string{}
+	for _, source := range d.Freshness {
+		dates[source.File] = CompiledText(source.Compiled)
 	}
-	return CompiledText(oldest)
+	return dates
 }
 
-func TestFreshnessIsTheOldestCompileStampNotADateInTheRows(t *testing.T) {
+func TestFreshnessIsEachFilesCompileStampNotADateInTheRows(t *testing.T) {
 	set := compiledDatasets(t, map[string]compiledDataset{
 		intel.NameCVE: {"2026-09-24T13:00:00Z", []string{strings.Join([]string{
 			"CVE-2021-44228", "2021-12-10", "2022-01-01", "10.0", "Critical", "CVSS:3.1/AV:N", "", "Log4Shell",
@@ -57,11 +57,16 @@ func TestFreshnessIsTheOldestCompileStampNotADateInTheRows(t *testing.T) {
 
 	d := Describe(KindCVE, "CVE-2021-44228", set)
 
-	if got := oldestOf(t, d); got != "2026-09-23 06:30 UTC" {
-		t.Errorf("the panel is current as of %q, want the EPSS file's compile time", got)
+	want := map[string]string{
+		"cve.tsv":  "2026-09-24 13:00 UTC",
+		"epss.tsv": "2026-09-23 06:30 UTC",
+		"kev.tsv":  "2026-09-24 01:00 UTC",
 	}
-	if len(d.Freshness) != 3 {
-		t.Errorf("the sources are %+v, want the three installed datasets", d.Freshness)
+	if got := sourceDates(d); !maps.Equal(got, want) {
+		t.Errorf("the sources are %v, want %v", got, want)
+	}
+	if d.Freshness[0].Label != "vulnerability" {
+		t.Errorf("the first source is labeled %q", d.Freshness[0].Label)
 	}
 }
 
@@ -73,8 +78,8 @@ func TestFreshnessCountsOnlyTheDatasetsThatAnswerTheKind(t *testing.T) {
 
 	d := Describe(KindHash, strings.Repeat("a", 64), set)
 
-	if got := oldestOf(t, d); got != "2026-09-20 00:00 UTC" {
-		t.Errorf("a hash is current as of %q, want the malware file's time and not the EPSS file's", got)
+	if got := sourceDates(d); !maps.Equal(got, map[string]string{"malware.tsv": "2026-09-20 00:00 UTC"}) {
+		t.Errorf("a hash lists %v, want the malware file and not the EPSS file", got)
 	}
 }
 
@@ -85,8 +90,8 @@ func TestFreshnessAddsTheWatchlistWhenItIsInstalled(t *testing.T) {
 
 	d := Describe(KindHash, strings.Repeat("a", 64), set)
 
-	if got := oldestOf(t, d); got != "2026-01-01 00:00 UTC" {
-		t.Errorf("the watchlist's compile time is not counted: %q", got)
+	if got := sourceDates(d); !maps.Equal(got, map[string]string{"watchlist.tsv": "2026-01-01 00:00 UTC"}) {
+		t.Errorf("the watchlist is not listed: %v", got)
 	}
 }
 
@@ -113,7 +118,7 @@ func TestTheCatalogsCarryTheirCompileTime(t *testing.T) {
 			value = "CWE-79"
 		}
 		d := Describe(kind, value, nil)
-		if len(d.Freshness) != 1 || d.Freshness[0].Compiled.IsZero() {
+		if len(d.Freshness) != 1 || d.Freshness[0].Compiled.IsZero() || d.Freshness[0].File != name+".tsv (built in)" {
 			t.Errorf("the %s catalog carries no compile time: %+v", name, d.Freshness)
 		}
 	}
@@ -136,10 +141,12 @@ func TestACatalogStampIsReadAndAnUnstampedCatalogStillLoads(t *testing.T) {
 	}
 }
 
-func TestThePageSaysWhenItsDataWasCompiled(t *testing.T) {
+func TestThePageListsItsDataSources(t *testing.T) {
 	body := renderBody(Describe(KindCWE, "CWE-79", nil))
 
-	if !strings.Contains(body, "Current as of "+CompiledText(cweCompiled)) {
-		t.Errorf("the page does not say when its data was compiled")
+	for _, want := range []string{"<h2>Data sources</h2>", "cwe.tsv (built in)", CompiledText(cweCompiled)} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the page's data sources lack %q", want)
+		}
 	}
 }

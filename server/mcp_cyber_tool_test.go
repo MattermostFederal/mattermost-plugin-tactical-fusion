@@ -98,11 +98,16 @@ func TestTheCyberToolAnswersAVulnerabilityWithItsSignals(t *testing.T) {
 	}
 }
 
-func TestTheCyberToolSaysWhenItsDataWasCompiled(t *testing.T) {
+func TestTheCyberToolListsItsDataSources(t *testing.T) {
 	got := lookupCyber(t, mcpCyberPlugin(t), mcpCVE).Results[0]
 
-	if _, err := time.Parse(time.RFC3339, got.CurrentAsOf); err != nil {
-		t.Errorf("current_as_of %q is not a compile time: %v", got.CurrentAsOf, err)
+	if len(got.DataSources) == 0 {
+		t.Fatalf("no data sources in %+v", got)
+	}
+	for _, source := range got.DataSources {
+		if _, err := time.Parse(time.RFC3339, source.Compiled); err != nil || source.File == "" || source.Label == "" {
+			t.Errorf("source %+v", source)
+		}
 	}
 }
 

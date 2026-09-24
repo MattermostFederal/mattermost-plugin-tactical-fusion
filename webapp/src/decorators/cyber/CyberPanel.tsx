@@ -3,7 +3,7 @@ import React, {useState} from 'react';
 import Badges from './Badges';
 import {KIND_LABELS, isKind, useCyber} from './cyber';
 import type {CyberState} from './cyber';
-import type {CyberCredit, CyberCurrent, CyberItem, CyberThreatReport, CyberLink, CyberReference, CyberSection, CyberVectorMetric} from './types';
+import type {CyberCompiled, CyberCredit, CyberItem, CyberThreatReport, CyberLink, CyberReference, CyberSection, CyberVectorMetric} from './types';
 
 import LinkButton from '../../components/LinkButton';
 import {pluginBaseUrl} from '../../plugin_url';
@@ -138,6 +138,10 @@ const styles: Record<string, React.CSSProperties> = {
     malicious: {color: 'var(--error-text, #d24b4e)', fontWeight: 600},
     credit: {fontSize: '12px', margin: '20px 0 0', color: 'var(--center-channel-color)', opacity: 0.72},
     creditLink: {color: 'var(--link-color)'},
+    sources: {fontSize: '12px', margin: '20px 0 0'},
+    sourcesToggle: {color: 'var(--link-color)', cursor: 'pointer', width: 'fit-content'},
+    sourceHead: {textAlign: 'left', fontWeight: 600, padding: '6px 8px 6px 0', color: 'var(--center-channel-color)', opacity: 0.72},
+    sourceFile: {fontFamily: 'monospace', fontSize: '11px', opacity: 0.64, overflowWrap: 'anywhere'},
     itemAnchor: {fontWeight: 600, color: 'var(--link-color)', textDecoration: 'none', overflowWrap: 'anywhere'},
     itemText: {margin: '2px 0 0', whiteSpace: 'pre-line'},
     itemTextAlone: {margin: 0, whiteSpace: 'pre-line'},
@@ -617,25 +621,48 @@ function renderBody(state: CyberState): React.ReactNode {
             <References references={details.references}/>
             <Sections sections={details.sections}/>
             <Credits credits={details.credits}/>
-            <Current current={details.current}/>
+            <DataSources sources={details.compiled}/>
         </>
     );
 }
 
-const Current: React.FC<{current: CyberCurrent}> = ({current}) => {
-    if (current.date === '') {
+const DataSources: React.FC<{sources: CyberCompiled[]}> = ({sources}) => {
+    if (sources.length === 0) {
         return null;
     }
 
     return (
-        <p
-            style={styles.credit}
-            title={current.sources.map((source) => `${source.label}: ${source.date}`).join('\n')}
-            data-testid='cyber-current'
+        <details
+            style={styles.sources}
+            data-testid='cyber-sources'
         >
-            {'Current as of '}
-            {rowValue(current.date, current.query)}
-        </p>
+            <summary style={styles.sourcesToggle}>{'Data sources'}</summary>
+            <table style={styles.table}>
+                <thead>
+                    <tr>
+                        <th
+                            scope='col'
+                            style={styles.sourceHead}
+                        >{'Dataset'}</th>
+                        <th
+                            scope='col'
+                            style={styles.sourceHead}
+                        >{'Compiled'}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {sources.map((source) => (
+                        <tr key={`${source.label}:${source.file}`}>
+                            <td style={{...styles.td, paddingRight: '8px'}}>
+                                {source.label}
+                                <div style={styles.sourceFile}>{source.file}</div>
+                            </td>
+                            <td style={styles.td}>{rowValue(source.date, source.query)}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </details>
     );
 };
 

@@ -76,7 +76,7 @@ func renderBody(d Details) string {
 	writeReferences(&b, d.References)
 	writeSections(&b, d.Sections)
 	writeCredits(&b, d.Credits)
-	writeCurrent(&b, d.Freshness)
+	writeSources(&b, d.Freshness)
 	writeDatasets(&b, d)
 
 	return b.String()
@@ -246,10 +246,14 @@ func writeDatasets(b *strings.Builder, d Details) {
 	b.WriteString(`</ul>`)
 }
 
-func writeCurrent(b *strings.Builder, sources []Freshness) {
-	oldest, ok := OldestCompiled(sources)
-	if !ok {
+func writeSources(b *strings.Builder, sources []Freshness) {
+	if len(sources) == 0 {
 		return
 	}
-	b.WriteString(`<p class="note credit">Current as of ` + html.EscapeString(CompiledText(oldest)) + `</p>`)
+	b.WriteString(`<h2>Data sources</h2><table class="sources"><tbody>`)
+	for _, source := range sources {
+		b.WriteString(`<tr><td>` + html.EscapeString(source.Label) + `</td><td class="value">` +
+			html.EscapeString(source.File) + `, compiled ` + html.EscapeString(CompiledText(source.Compiled)) + `</td></tr>`)
+	}
+	b.WriteString(`</tbody></table>`)
 }

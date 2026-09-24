@@ -8,12 +8,15 @@ import (
 
 type Freshness struct {
 	Label    string
+	File     string
 	Compiled time.Time
 }
 
 const (
 	attackCatalogLabel = "MITRE ATT&CK catalog"
 	cweCatalogLabel    = "MITRE CWE catalog"
+	vendorIPLabel      = "vendor IP database"
+	builtInSuffix      = " (built in)"
 )
 
 var freshnessDatasets = map[Kind][]string{
@@ -26,17 +29,17 @@ var freshnessDatasets = map[Kind][]string{
 
 func freshnessFor(kind Kind, set *intel.Set) []Freshness {
 	var sources []Freshness
-	addSource := func(label string, compiled time.Time) {
+	addSource := func(label, file string, compiled time.Time) {
 		if !compiled.IsZero() {
-			sources = append(sources, Freshness{Label: label, Compiled: compiled})
+			sources = append(sources, Freshness{Label: label, File: file, Compiled: compiled})
 		}
 	}
 
 	switch kind {
 	case KindCWE:
-		addSource(cweCatalogLabel, cweCompiled)
+		addSource(cweCatalogLabel, "cwe.tsv"+builtInSuffix, cweCompiled)
 	case KindAttack:
-		addSource(attackCatalogLabel, attackCompiled)
+		addSource(attackCatalogLabel, "attack.tsv"+builtInSuffix, attackCompiled)
 	}
 
 	for _, name := range append(freshnessDatasets[kind], intel.NameWatchlist) {
@@ -47,26 +50,16 @@ func freshnessFor(kind Kind, set *intel.Set) []Freshness {
 		if err != nil {
 			continue
 		}
-		addSource(datasetLabels[name], compiled.UTC())
+		addSource(datasetLabels[name], set.FileName(name), compiled.UTC())
 	}
 
 	if kind == KindIP {
 		for _, database := range set.DatabaseBuilds() {
-			addSource(database.Name, database.Built)
+			addSource(vendorIPLabel, database.Name, database.Built)
 		}
 	}
 
 	return sources
-}
-
-func OldestCompiled(sources []Freshness) (time.Time, bool) {
-	var oldest time.Time
-	for _, source := range sources {
-		if oldest.IsZero() || source.Compiled.Before(oldest) {
-			oldest = source.Compiled
-		}
-	}
-	return oldest, !oldest.IsZero()
 }
 
 func CompiledText(at time.Time) string {

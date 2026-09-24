@@ -47,18 +47,14 @@ export interface CyberResponse {
     credits: CyberCredit[];
     glance: CyberGlance;
     reports: CyberThreatReport[];
-    current: CyberCurrent;
+    compiled: CyberCompiled[];
 }
 
-export interface CyberCurrent {
+export interface CyberCompiled {
+    label: string;
+    file: string;
     date: string;
     query: string;
-    sources: CyberCurrentSource[];
-}
-
-export interface CyberCurrentSource {
-    label: string;
-    date: string;
 }
 
 export interface CyberThreatReport {

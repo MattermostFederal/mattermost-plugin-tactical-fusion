@@ -61,22 +61,18 @@ type cyberResponse struct {
 	Configurations []string         `json:"configurations"`
 	References     []cyberReference `json:"references"`
 
-	Sections []cyberSection `json:"sections"`
-	Credits  []cyberCredit  `json:"credits"`
-	Glance   cyberGlance    `json:"glance"`
-	Reports  []cyberReport  `json:"reports"`
-	Current  cyberCurrent   `json:"current"`
+	Sections []cyberSection  `json:"sections"`
+	Credits  []cyberCredit   `json:"credits"`
+	Glance   cyberGlance     `json:"glance"`
+	Reports  []cyberReport   `json:"reports"`
+	Compiled []cyberCompiled `json:"compiled"`
 }
 
-type cyberCurrent struct {
-	Date    string               `json:"date"`
-	Query   string               `json:"query"`
-	Sources []cyberCurrentSource `json:"sources"`
-}
-
-type cyberCurrentSource struct {
+type cyberCompiled struct {
 	Label string `json:"label"`
+	File  string `json:"file"`
 	Date  string `json:"date"`
+	Query string `json:"query"`
 }
 
 type cyberReport struct {
@@ -176,7 +172,7 @@ func cyberBody(details cyber.Details) cyberResponse {
 		Sections: []cyberSection{},
 		Credits:  []cyberCredit{},
 		Reports:  []cyberReport{},
-		Current:  cyberCurrentOf(details.Freshness),
+		Compiled: cyberCompiledOf(details.Freshness),
 		Glance: cyberGlance{
 			Subtitle: details.Glance.Subtitle,
 			Summary:  details.Glance.Summary,
@@ -238,16 +234,15 @@ func cyberSectionOf(section cyber.Section) cyberSection {
 	return cyberSection{Title: section.Title, Items: items}
 }
 
-func cyberCurrentOf(sources []cyber.Freshness) cyberCurrent {
-	current := cyberCurrent{Sources: []cyberCurrentSource{}}
-	oldest, ok := cyber.OldestCompiled(sources)
-	if !ok {
-		return current
-	}
-	current.Date = cyber.CompiledText(oldest)
-	current.Query = dtg.QueryForZulu(oldest)
+func cyberCompiledOf(sources []cyber.Freshness) []cyberCompiled {
+	compiled := make([]cyberCompiled, 0, len(sources))
 	for _, source := range sources {
-		current.Sources = append(current.Sources, cyberCurrentSource{Label: source.Label, Date: cyber.CompiledText(source.Compiled)})
+		compiled = append(compiled, cyberCompiled{
+			Label: source.Label,
+			File:  source.File,
+			Date:  cyber.CompiledText(source.Compiled),
+			Query: dtg.QueryForZulu(source.Compiled),
+		})
 	}
-	return current
+	return compiled
 }
