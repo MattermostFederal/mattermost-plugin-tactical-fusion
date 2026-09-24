@@ -108,7 +108,7 @@ var exampleSets = map[string]exampleSet{
 		decorator: cyber.Type,
 		name:      "Cyber context",
 		rows: []exampleRow{
-			{label: "Vulnerability", text: "CVE-2021-44228", note: "recognized by shape, so one no dataset holds still links"},
+			{label: "Vulnerability", text: "CVE-2025-55182", note: "React2Shell, critical and known exploited; recognized by shape, so it links with no dataset installed"},
 			{label: "Weakness", text: "CWE-79", note: "only identifiers the built-in catalog holds"},
 			{label: "Technique", text: "T1059.001", note: "a sub-technique, which carries its parent and its tactics"},
 			{label: "Tactic", text: "TA0002"},
