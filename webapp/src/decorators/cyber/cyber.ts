@@ -11,6 +11,7 @@ import type {
 
 import {pluginBaseUrl} from '../../plugin_url';
 import {CACHE_TTL_MS} from '../../preferences/store';
+import {fromParams as dtgFromParams} from '../dtg';
 
 export const KINDS = ['cve', 'cwe', 'attack', 'ip', 'hash'] as const;
 
@@ -90,10 +91,14 @@ function asArray(wire: Record<string, unknown>, field: string): unknown[] {
     return value;
 }
 
+function asDtgQuery(query: string): string {
+    return query !== '' && dtgFromParams(new URLSearchParams(query)) ? query : '';
+}
+
 function asRows(value: unknown[]): CyberRow[] {
     return value.map((entry) => {
         const row = asObject(entry, 'a row');
-        return {label: asString(row, 'label'), value: asString(row, 'value')};
+        return {label: asString(row, 'label'), value: asString(row, 'value'), query: asDtgQuery(asString(row, 'query'))};
     });
 }
 

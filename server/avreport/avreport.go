@@ -250,7 +250,7 @@ func Blob(report Report) map[string]any {
 		"station_name": report.StationName,
 		"issued":       zuluText(report.IssuedAt),
 		"issued_at":    strconv.FormatInt(report.Instant(), 10),
-		"issued_query": dtgQuery(report.IssuedAt),
+		"issued_query": dtg.QueryForZulu(report.IssuedAt),
 		"inferred":     report.Inferred,
 		"summary":      report.Summary,
 		"flags":        stringsAny(report.Flags),
@@ -271,23 +271,12 @@ func rowsAny(rows []Row) []any {
 	out := make([]any, 0, len(rows))
 	for _, row := range rows {
 		entry := map[string]any{"label": row.Label, "value": row.Value}
-		if query := dtgQuery(row.At); query != "" {
+		if query := dtg.QueryForZulu(row.At); query != "" {
 			entry["query"] = query
 		}
 		out = append(out, entry)
 	}
 	return out
-}
-
-func dtgQuery(at time.Time) string {
-	if at.IsZero() {
-		return ""
-	}
-	params, ok := dtg.ParamsForZulu(at)
-	if !ok {
-		return ""
-	}
-	return params.Encode()
 }
 
 func periodsAny(periods []Period) []any {

@@ -2,11 +2,17 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/cyber/intel"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
@@ -120,5 +126,37 @@ func TestCyberAnswersWhileTheDecoratorIsOff(t *testing.T) {
 	rec := call(p, http.MethodGet, cyberURL("cwe", "CWE-79"), testUserID, "")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200 with everything switched off", rec.Code)
+	}
+}
+
+func TestCyberLinksATimestampRowToTheDateTimeGroupDecorator(t *testing.T) {
+	dir := t.TempDir()
+	body := fmt.Sprintf("%s%d\t%s\t2026-09-01T00:00:00Z\ttest\n", intel.SchemaPrefix, intel.SchemaVersion, intel.NameCVE) +
+		strings.Join([]string{
+			"CVE-2025-55182", "2025-12-03T16:15:56.463", "2025-12-10", "10.0", "Critical", "AV:N", "", "React2Shell",
+		}, "\t") + "\n"
+	if err := os.WriteFile(filepath.Join(dir, intel.NameCVE+intel.Suffix), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	p := withDatasetDir(t, dir)
+
+	rec := call(p, http.MethodGet, cyberURL("cve", "CVE-2025-55182"), testUserID, "")
+	var got cyberResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("not a cyber response: %v (%s)", err, rec.Body.String())
+	}
+
+	want := dtg.QueryForZulu(time.Date(2025, 12, 3, 16, 16, 0, 0, time.UTC))
+	for _, row := range got.Rows {
+		switch row.Label {
+		case "Published":
+			if row.Query != want {
+				t.Errorf("published query = %q, want %q", row.Query, want)
+			}
+		default:
+			if row.Query != "" {
+				t.Errorf("%s carries the query %q although it names no instant", row.Label, row.Query)
+			}
+		}
 	}
 }

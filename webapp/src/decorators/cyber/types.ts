@@ -1,6 +1,7 @@
 export interface CyberRow {
     label: string;
     value: string;
+    query: string;
 }
 
 export interface CyberLink {

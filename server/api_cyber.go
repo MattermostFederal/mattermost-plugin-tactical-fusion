@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/cyber"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
@@ -12,6 +13,7 @@ const cyberPath = apiPath + "/cyber"
 type cyberRow struct {
 	Label string `json:"label"`
 	Value string `json:"value"`
+	Query string `json:"query"`
 }
 
 type cyberLink struct {
@@ -111,7 +113,7 @@ func cyberBody(details cyber.Details) cyberResponse {
 	}
 
 	for _, row := range details.Rows {
-		body.Rows = append(body.Rows, cyberRow{Label: row.Label, Value: row.Value})
+		body.Rows = append(body.Rows, cyberRow{Label: row.Label, Value: row.Value, Query: dtg.QueryForZulu(row.At)})
 	}
 	for _, link := range details.Related {
 		body.Related = append(body.Related, cyberLink{

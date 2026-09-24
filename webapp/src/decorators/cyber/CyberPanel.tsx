@@ -5,6 +5,8 @@ import type {CyberSeverity, CyberState} from './cyber';
 import type {CyberLink, CyberReference, CyberResponse} from './types';
 
 import LinkButton from '../../components/LinkButton';
+import {pluginBaseUrl} from '../../plugin_url';
+import HoverLink from '../HoverLink';
 import CopyButton from '../location/CopyButton';
 import {setSelection} from '../selection';
 
@@ -16,15 +18,6 @@ const SUMMARY_CLAMP_LINES = 6;
 const SUMMARY_CLAMP_CHARS = 420;
 
 const styles: Record<string, React.CSSProperties> = {
-    kind: {
-        fontSize: '11px',
-        textTransform: 'uppercase',
-        letterSpacing: '0.08em',
-        fontWeight: 600,
-        opacity: 0.6,
-        color: 'var(--center-channel-color)',
-        margin: '0 0 4px',
-    },
     title: {
         fontSize: '20px',
         lineHeight: '26px',
@@ -216,8 +209,15 @@ function breakAfterSlashes(value: string): React.ReactNode[] {
     return nodes;
 }
 
-const Row: React.FC<{label: string; value: string}> = ({label, value}) => {
-    const code = isCodeLike(value);
+function rowValue(value: string, query: string): React.ReactNode {
+    if (query !== '') {
+        return <HoverLink href={`${pluginBaseUrl()}/decorate/dtg?${query}`}>{value}</HoverLink>;
+    }
+    return isCodeLike(value) ? breakAfterSlashes(value) : value;
+}
+
+const Row: React.FC<{label: string; value: string; query: string}> = ({label, value, query}) => {
+    const code = query === '' && isCodeLike(value);
 
     return (
         <tr>
@@ -226,7 +226,7 @@ const Row: React.FC<{label: string; value: string}> = ({label, value}) => {
                 style={styles.th}
             >{label}</th>
             <td style={code ? {...styles.td, ...styles.code} : styles.td}>
-                {code ? breakAfterSlashes(value) : value}
+                {rowValue(value, query)}
             </td>
             <td style={styles.copyCell}>
                 <CopyButton
@@ -460,7 +460,7 @@ const Related: React.FC<{links: CyberLink[]}> = ({links}) => {
     );
 };
 
-function renderBody(state: CyberState, kind: string): React.ReactNode {
+function renderBody(state: CyberState): React.ReactNode {
     if (state.status === 'loading') {
         return <p style={styles.note}>{'Looking this indicator up...'}</p>;
     }
@@ -475,7 +475,6 @@ function renderBody(state: CyberState, kind: string): React.ReactNode {
 
     return (
         <>
-            {isKind(kind) && <p style={styles.kind}>{KIND_LABELS[kind]}</p>}
             <p style={styles.title}>{details.title}</p>
             {details.title !== details.value && <p style={styles.value}>{details.value}</p>}
             <Badges details={details}/>
@@ -489,6 +488,7 @@ function renderBody(state: CyberState, kind: string): React.ReactNode {
                                 key={row.label}
                                 label={row.label}
                                 value={row.value}
+                                query={row.query}
                             />
                         ))}
                     </tbody>
@@ -536,7 +536,7 @@ const CyberPanel: React.FC<{payload: CyberPayload}> = ({payload}) => {
 
     return (
         <div aria-label={isKind(payload.kind) ? KIND_LABELS[payload.kind] : 'Cyber context'}>
-            {renderBody(state, payload.kind)}
+            {renderBody(state)}
         </div>
     );
 };

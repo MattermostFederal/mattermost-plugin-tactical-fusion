@@ -478,3 +478,17 @@ func TestParamsForZuluRefusesAnInstantItCannotSpell(t *testing.T) {
 		}
 	}
 }
+
+func TestQueryForZuluIsEmptyForAnInstantWithNoLink(t *testing.T) {
+	for _, instant := range []time.Time{{}, time.Date(1999, 12, 31, 23, 59, 0, 0, time.UTC)} {
+		if got := QueryForZulu(instant); got != "" {
+			t.Errorf("QueryForZulu(%v) = %q, want no link", instant, got)
+		}
+	}
+
+	instant := time.Date(2025, 12, 3, 16, 16, 0, 0, time.UTC)
+	params, _ := ParamsForZulu(instant)
+	if got := QueryForZulu(instant); got == "" || got != params.Encode() {
+		t.Fatalf("QueryForZulu = %q, want the encoded params %q", got, params.Encode())
+	}
+}

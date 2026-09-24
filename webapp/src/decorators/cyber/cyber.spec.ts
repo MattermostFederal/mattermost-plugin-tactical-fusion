@@ -7,6 +7,8 @@ import {
     _setFetchTimeoutForTesting as setFetchTimeout,
 } from './cyber';
 
+const PUBLISHED_QUERY = 'a=&dtg=101015ZDEC21&t=1639131300000&z=Z';
+
 const FOUND = {
     kind: 'cve',
     value: 'CVE-2021-44228',
@@ -14,7 +16,10 @@ const FOUND = {
     headline: '10.0 Critical, in KEV',
     summary: 'Remote code execution in a logging library.',
     status: '',
-    rows: [{label: 'CVSS', value: '10.0 Critical'}],
+    rows: [
+        {label: 'CVSS', value: '10.0 Critical', query: ''},
+        {label: 'Published', value: '2021-12-10 10:15 UTC', query: PUBLISHED_QUERY},
+    ],
     related: [{kind: 'cwe', value: 'CWE-502', label: 'CWE-502 Deserialization of Untrusted Data'}],
     watchlist: [{verdict: 'malicious', source: 'internal', note: '', updated: '2026-08-01', known: true}],
     datasets: [{name: 'cve', label: 'vulnerability', present: true, generated: '2026-09-01T00:00:00Z'}],
@@ -65,6 +70,18 @@ test.describe('asCyber', () => {
         expect(parsed.exploited).toBe(true);
     });
 
+    test('keeps a date-time group query the decorator accepts and drops any other', () => {
+        const rows = [
+            PUBLISHED_QUERY,
+            'dtg=101015ZDEC21&t=-1&z=Z',
+            'not=a&query',
+            'a=&dtg=101015ZDEC21&t=1639131300000&z=Z&o=0',
+            '',
+        ].map((query) => ({label: query || 'none', value: 'v', query}));
+
+        expect(asCyber({...FOUND, rows}).rows.map((row) => row.query)).toEqual([PUBLISHED_QUERY, '', '', '', '']);
+    });
+
     test('drops a severity it has no color for, so no badge claims one', () => {
         for (const severity of ['Critical', 'important', 'red', '']) {
             expect(asCyber({...FOUND, severity}).severity, severity).toBe('');
@@ -107,7 +124,8 @@ test.describe('asCyber', () => {
             ['no kind', {...FOUND, kind: undefined}],
             ['a numeric value', {...FOUND, value: 7}],
             ['rows that are not an array', {...FOUND, rows: {}}],
-            ['a row with no label', {...FOUND, rows: [{value: 'x'}]}],
+            ['a row with no label', {...FOUND, rows: [{value: 'x', query: ''}]}],
+            ['a row with no query', {...FOUND, rows: [{label: 'l', value: 'x'}]}],
             ['a link with no kind', {...FOUND, related: [{value: 'x', label: 'y'}]}],
             ['a watchlist entry with no verdict', {...FOUND, watchlist: [{source: 's', note: '', updated: '', known: true}]}],
             ['a dataset with no name', {...FOUND, datasets: [{label: 'l', present: true, generated: ''}]}],

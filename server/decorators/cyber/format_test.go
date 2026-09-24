@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/cyber/intel"
 )
@@ -382,18 +383,47 @@ func TestSeverityLevelNamesOnlyALevelItKnows(t *testing.T) {
 	}
 }
 
-func TestNVDTimestampDropsTheSecondsAndNamesTheZone(t *testing.T) {
+func TestNVDTimestampRoundsToTheMinuteAndNamesTheZone(t *testing.T) {
 	cases := map[string]string{
 		"2021-12-10T10:15:09.143": "2021-12-10 10:15 UTC",
-		"2021-12-10T10:15:09":     "2021-12-10 10:15 UTC",
+		"2021-12-10T10:15:45":     "2021-12-10 10:16 UTC",
+		"2021-12-31T23:59:30":     "2022-01-01 00:00 UTC",
 		"2021-12-10":              "2021-12-10",
 		"":                        "",
 		"not a time":              "not a time",
 	}
 
 	for value, want := range cases {
-		if got := nvdTimestamp(value); got != want {
+		if got, _ := nvdTimestamp(value); got != want {
 			t.Errorf("nvdTimestamp(%q) = %q, want %q", value, got, want)
+		}
+	}
+}
+
+func TestATimestampRowCarriesTheInstantItShows(t *testing.T) {
+	set := datasets(t, map[string][]string{
+		intel.NameCVE: {strings.Join([]string{
+			"CVE-2025-55182", "2025-12-03T16:15:56.463", "2025-12-10", "10.0", "Critical", "AV:N", "", "React2Shell",
+		}, "\t")},
+	})
+
+	d := Describe(KindCVE, "CVE-2025-55182", set)
+
+	for _, row := range d.Rows {
+		switch row.Label {
+		case "Published":
+			want := time.Date(2025, 12, 3, 16, 16, 0, 0, time.UTC)
+			if !row.At.Equal(want) || row.Value != "2025-12-03 16:16 UTC" {
+				t.Fatalf("published %q at %v, want %v", row.Value, row.At, want)
+			}
+		case "Last modified":
+			if !row.At.IsZero() {
+				t.Fatalf("a date with no time was given the instant %v, a time it never carried", row.At)
+			}
+		default:
+			if !row.At.IsZero() {
+				t.Fatalf("%s carries an instant", row.Label)
+			}
 		}
 	}
 }

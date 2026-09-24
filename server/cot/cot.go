@@ -360,12 +360,12 @@ func addTimes(props map[string]any, event Event) {
 	if startOK {
 		props["time"] = zuluText(start, event.Time)
 		props["time_at"] = strconv.FormatInt(start.UnixMilli(), 10)
-		putIfSet(props, "time_q", dtgQuery(start))
+		putIfSet(props, "time_q", dtg.QueryForZulu(start))
 	}
 
 	if begin, ok := instantOf(event.Start); ok {
 		props["start"] = zuluText(begin, event.Start)
-		putIfSet(props, "start_q", dtgQuery(begin))
+		putIfSet(props, "start_q", dtg.QueryForZulu(begin))
 	}
 
 	stale, staleOK := instantOf(event.Stale)
@@ -375,7 +375,7 @@ func addTimes(props map[string]any, event Event) {
 
 	props["stale"] = zuluText(stale, event.Stale)
 	props["stale_at"] = strconv.FormatInt(stale.UnixMilli(), 10)
-	putIfSet(props, "stale_q", dtgQuery(stale))
+	putIfSet(props, "stale_q", dtg.QueryForZulu(stale))
 }
 
 // zuluText is the date-time group, or what the event said when the grammar
@@ -393,22 +393,6 @@ func zuluText(instant time.Time, raw string) string {
 	}
 
 	return sanitize(raw, maxFieldRunes)
-}
-
-// dtgQuery is the date-time group decorator's own link params, or "" for an
-// instant its grammar cannot spell.
-//
-// Built here rather than in the webapp for the reason the position pair is: the
-// page re-derives everything from the canonical token and refuses a set that
-// does not round trip, and only the package that owns the grammar can produce
-// one that does.
-func dtgQuery(t time.Time) string {
-	params, ok := dtg.ParamsForZulu(t)
-	if !ok {
-		return ""
-	}
-
-	return params.Encode()
 }
 
 // decimalShape is what a lat or lon must look like before it is shown as one.

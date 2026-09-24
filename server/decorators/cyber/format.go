@@ -15,6 +15,7 @@ import (
 type Row struct {
 	Label string
 	Value string
+	At    time.Time
 }
 
 type Link struct {
@@ -145,6 +146,14 @@ func addRow(d *Details, label, value string) {
 	d.Rows = append(d.Rows, Row{Label: label, Value: value})
 }
 
+func addTimeRow(d *Details, label, raw string) {
+	if strings.TrimSpace(raw) == "" {
+		return
+	}
+	text, at := nvdTimestamp(raw)
+	d.Rows = append(d.Rows, Row{Label: label, Value: text, At: at})
+}
+
 func joinSentence(first, second string) string {
 	switch {
 	case first == "":
@@ -163,8 +172,8 @@ func describeCVE(d *Details, set *intel.Set) {
 		d.Status = datasetSentence(set, intel.NameCVE, err)
 	} else {
 		d.Summary = record.Summary
-		addRow(d, "Published", nvdTimestamp(record.Published))
-		addRow(d, "Last modified", nvdTimestamp(record.Modified))
+		addTimeRow(d, "Published", record.Published)
+		addTimeRow(d, "Last modified", record.Modified)
 		addRow(d, "CVSS", severityText(record.Score, record.Severity))
 		addRow(d, "Vector", record.Vector)
 
@@ -220,12 +229,13 @@ func severityLevel(severity string) string {
 
 const nvdTimestampLayout = "2006-01-02T15:04:05.999999999"
 
-func nvdTimestamp(value string) string {
+func nvdTimestamp(value string) (string, time.Time) {
 	parsed, err := time.Parse(nvdTimestampLayout, value)
 	if err != nil {
-		return value
+		return value, time.Time{}
 	}
-	return parsed.Format("2006-01-02 15:04") + " UTC"
+	minute := parsed.Round(time.Minute)
+	return minute.Format("2006-01-02 15:04") + " UTC", minute
 }
 
 func epssText(epss intel.EPSSRecord) string {

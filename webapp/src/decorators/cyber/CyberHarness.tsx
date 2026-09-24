@@ -18,6 +18,8 @@ type Reply = 'found' | 'long' | 'bare' | 'status' | 'rejected' | 'failed' | 'hol
 const HEADLINE = '10.0 Critical, in KEV';
 const SUMMARY = 'Remote code execution in a logging library.';
 
+const PUBLISHED_QUERY = 'a=&dtg=101015ZDEC21&t=1639131300000&z=Z';
+
 const FOUND = {
     kind: 'cve',
     value: 'CVE-2021-44228',
@@ -26,8 +28,8 @@ const FOUND = {
     summary: SUMMARY,
     status: '',
     rows: [
-        {label: 'CVSS', value: '10.0 Critical'},
-        {label: 'Published', value: '2021-12-10'},
+        {label: 'CVSS', value: '10.0 Critical', query: ''},
+        {label: 'Published', value: '2021-12-10 10:15 UTC', query: PUBLISHED_QUERY},
     ],
     related: [{kind: 'cwe', value: 'CWE-502', label: 'CWE-502 Deserialization of Untrusted Data'}],
     watchlist: [{

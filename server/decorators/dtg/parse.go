@@ -201,6 +201,14 @@ func ParamsForZulu(t time.Time) (url.Values, bool) {
 	return (&Decorator{}).Parse(token, t)
 }
 
+func QueryForZulu(t time.Time) string {
+	params, ok := ParamsForZulu(t)
+	if !ok {
+		return ""
+	}
+	return params.Encode()
+}
+
 // FormatZulu renders an instant as a Zulu long-form DTG, e.g. 091630ZAUG26.
 //
 // The result always parses back through this package, so callers generating

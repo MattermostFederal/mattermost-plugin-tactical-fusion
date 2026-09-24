@@ -5,6 +5,7 @@ import CyberHarness from './CyberHarness';
 
 import {expect, test} from '../../../playwright/ct-coverage';
 
+const PUBLISHED_QUERY = 'a=&dtg=101015ZDEC21&t=1639131300000&z=Z';
 const HEADLINE = '10.0 Critical, in KEV';
 const SUMMARY = 'Remote code execution in a logging library.';
 
@@ -23,7 +24,7 @@ test.describe('the panel', () => {
         await expect(panel.getByText('CVE-2021-44228').first()).toBeVisible();
         await expect(panel.getByText(SUMMARY)).toBeVisible();
         await expect(panel.getByRole('cell', {name: '10.0 Critical'})).toBeVisible();
-        await expect(panel.getByText('2021-12-10')).toBeVisible();
+        await expect(panel.getByText('2021-12-10 10:15 UTC')).toBeVisible();
     });
 
     test('leaves the dataset list to the standalone page', async ({mount}) => {
@@ -145,7 +146,6 @@ test.describe('the header', () => {
             />,
         );
 
-        await expect(panel.getByText('Vulnerability', {exact: true})).toBeVisible();
         await expect(panel.getByTestId('cyber-severity')).toHaveText('10.0Critical');
         await expect(panel.getByTestId('cyber-exploited')).toHaveText('Known exploited');
     });
@@ -201,6 +201,33 @@ test.describe('the header', () => {
         const link = panel.getByRole('button', {name: 'CWE-502 Deserialization of Untrusted Data'});
         await expect(link).toBeVisible();
         await expect(link).toHaveCSS('text-align', 'left');
+    });
+});
+
+test.describe('the readings', () => {
+    test('leave the kind to the sidebar header rather than repeating it', async ({mount}) => {
+        const panel = await mount(
+            <CyberHarness
+                surface='panel'
+                payload={CVE}
+            />,
+        );
+
+        await expect(panel.getByText(SUMMARY)).toBeVisible();
+        await expect(panel.getByText('Vulnerability', {exact: true})).toHaveCount(0);
+    });
+
+    test('render a timestamp as a date-time group link', async ({mount}) => {
+        const panel = await mount(
+            <CyberHarness
+                surface='panel'
+                payload={CVE}
+            />,
+        );
+
+        const link = panel.getByRole('link', {name: '2021-12-10 10:15 UTC'});
+        await expect(link).toHaveAttribute('href', new RegExp(`/decorate/dtg\\?${PUBLISHED_QUERY.replace(/[?]/g, '\\?')}$`));
+        await expect(panel.getByRole('cell', {name: '10.0 Critical'}).getByRole('link')).toHaveCount(0);
     });
 });
 
