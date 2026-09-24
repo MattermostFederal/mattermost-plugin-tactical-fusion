@@ -143,8 +143,9 @@ const styles: Record<string, React.CSSProperties> = {
     },
     product: {fontWeight: 600},
     itemLink: {fontWeight: 600, textAlign: 'left'},
-    itemText: {margin: '2px 0 0'},
-    itemTextAlone: {margin: 0},
+    itemAnchor: {fontWeight: 600, color: 'var(--link-color)', textDecoration: 'none', overflowWrap: 'anywhere'},
+    itemText: {margin: '2px 0 0', whiteSpace: 'pre-line'},
+    itemTextAlone: {margin: 0, whiteSpace: 'pre-line'},
     reference: {
         display: 'block',
         whiteSpace: 'nowrap',
@@ -365,6 +366,15 @@ const SectionItem: React.FC<{item: CyberItem}> = ({item}) => {
                 style={styles.itemLink}
                 onClick={() => setSelection({type: 'cyber', payload: {kind: item.kind, value: item.value}})}
             >{item.head}</LinkButton>
+        );
+    } else if (item.url !== '' && item.head !== '') {
+        head = (
+            <a
+                href={item.url}
+                target='_blank'
+                rel='noopener noreferrer'
+                style={styles.itemAnchor}
+            >{item.head}</a>
         );
     } else if (item.head !== '') {
         head = <span style={styles.product}>{item.head}</span>;

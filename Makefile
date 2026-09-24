@@ -247,7 +247,7 @@ cyber-sources:
 	./build/cyberdata/fetch-sources.sh
 
 ## Rebuilds the cyber datasets from the sources above: the two embedded catalogs and the
-## bundled KEV and CWE detail files into the tree, and the large ones into build/cyberdata/out for release
+## bundled KEV, CWE detail and ATT&CK detail files into the tree, and the large ones into build/cyberdata/out for release
 ## assets. Deliberately NOT a prerequisite of test, for the same reason airport-data is not:
 ## the transform is filter and sort, and its drift is a missing row, which is visible and
 ## benign rather than an invisible failure on an HTTPS install.

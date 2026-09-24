@@ -315,6 +315,7 @@ func TestAnAttackSummaryDropsCitationsAndMarkup(t *testing.T) {
 		"Adversaries may read `/proc` and <code>/sys</code>. More.":                     "Adversaries may read /proc and /sys.",
 		"Adversaries may use [Invented Tool](https://attack.example/S9999). More.":      "Adversaries may use Invented Tool.",
 		"Adversaries may “pass the hash” – the malware’s way. More.":                    "Adversaries may \"pass the hash\" - the malware's way.",
+		"Adversaries may pivot\u2014quietly\u2014onward. More.":                         "Adversaries may pivot - quietly - onward.",
 	}
 
 	for description, want := range cases {
@@ -364,5 +365,38 @@ func TestTheAttackCatalogKeepsRetiredEntriesWithTheirReplacement(t *testing.T) {
 	}
 	if got := byID["T9999.001"]; got[4] != "" {
 		t.Errorf("a sub-technique whose parent the catalog lacks kept the dangling parent %q", got[4])
+	}
+}
+
+const stixDetailFixture = `{"objects":[
+{"id":"x-mitre-tactic--1","type":"x-mitre-tactic","name":"Invented Tactic","description":"The adversary is inventing.","x_mitre_shortname":"a","external_references":[{"source_name":"mitre-attack","external_id":"TA9001","url":"https://attack.example/tactics/TA9001"}]},
+{"id":"attack-pattern--1","type":"attack-pattern","name":"Invented Technique","description":"Adversaries may invent things.(Citation: Invented Report) See [Invented Tool](https://attack.example/software/S9001).","kill_chain_phases":[{"kill_chain_name":"mitre-attack","phase_name":"a"}],"external_references":[{"source_name":"mitre-attack","external_id":"T9001","url":"https://attack.example/techniques/T9001"},{"source_name":"Invented Report","url":"https://example.org/report","description":"Invented, A. (2026). A report. Retrieved September 1, 2026."},{"source_name":"Alias Only","description":"(Citation: Invented Report)"}]},
+{"id":"course-of-action--1","type":"course-of-action","name":"Invented Mitigation","external_references":[{"source_name":"mitre-attack","external_id":"M9001","url":"https://attack.example/mitigations/M9001"}]},
+{"id":"x-mitre-analytic--1","type":"x-mitre-analytic","name":"Analytic 9001","description":"Watch for invented events.","x_mitre_platforms":["Linux"],"x_mitre_log_source_references":[{"name":"auditd:SYSCALL","channel":"execve"}],"x_mitre_mutable_elements":[{"field":"Threshold","description":"How many."}],"external_references":[{"source_name":"mitre-attack","external_id":"AN9001"}]},
+{"id":"x-mitre-detection-strategy--1","type":"x-mitre-detection-strategy","name":"Invented Detection","x_mitre_analytic_refs":["x-mitre-analytic--1"],"external_references":[{"source_name":"mitre-attack","external_id":"DET9001","url":"https://attack.example/detectionstrategies/DET9001"}]},
+{"id":"intrusion-set--1","type":"intrusion-set","name":"Invented Group","external_references":[{"source_name":"mitre-attack","external_id":"G9001","url":"https://attack.example/groups/G9001"}]},
+{"id":"intrusion-set--gone","type":"intrusion-set","name":"Retired Group","revoked":true,"external_references":[{"source_name":"mitre-attack","external_id":"G9002"}]},
+{"id":"relationship--1","type":"relationship","relationship_type":"mitigates","source_ref":"course-of-action--1","target_ref":"attack-pattern--1","description":"Turn the invention off.(Citation: Invented Report)"},
+{"id":"relationship--2","type":"relationship","relationship_type":"detects","source_ref":"x-mitre-detection-strategy--1","target_ref":"attack-pattern--1"},
+{"id":"relationship--3","type":"relationship","relationship_type":"uses","source_ref":"intrusion-set--1","target_ref":"attack-pattern--1","description":"[Invented Group](https://attack.example/groups/G9001) has invented things."},
+{"id":"relationship--4","type":"relationship","relationship_type":"uses","source_ref":"intrusion-set--gone","target_ref":"attack-pattern--1","description":"A retired group's procedure."}
+]}`
+
+func TestTheAttackDetailRowsMatchTheGoldenFileTheReaderParses(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "enterprise-attack.json")
+	if err := os.WriteFile(path, []byte(stixDetailFixture), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	rows, err := buildAttackDetail(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	matchGolden(t, "attackdetail", rows)
+}
+
+func TestAnAttackNameCarriesNoTypographicDash(t *testing.T) {
+	if got := attackName("Drive-by Compromise \u2014 Behavior-based \u2013 multi-signal"); got != "Drive-by Compromise - Behavior-based - multi-signal" {
+		t.Fatalf("attackName = %q", got)
 	}
 }

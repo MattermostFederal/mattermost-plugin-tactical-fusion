@@ -14,7 +14,7 @@ import type {Selection} from '../selection';
 
 import type {CyberPayload} from './index';
 
-type Reply = 'found' | 'weakness' | 'long' | 'bare' | 'status' | 'rejected' | 'failed' | 'hold';
+type Reply = 'found' | 'weakness' | 'technique' | 'long' | 'bare' | 'status' | 'rejected' | 'failed' | 'hold';
 
 const HEADLINE = '10.0 Critical, in KEV';
 const SUMMARY = 'Remote code execution in a logging library.';
@@ -103,12 +103,27 @@ const WEAKNESS = {
     sections: [
         {title: 'Mitigations',
 items: [
-            {head: 'Implementation, Output Encoding (effectiveness high)', text: 'Encode it.', kind: '', value: ''},
+            {head: 'Implementation, Output Encoding (effectiveness high)', text: 'Encode it.', kind: '', value: '', url: ''},
         ]},
         {title: 'Observed examples',
 items: [
-            {head: 'CVE-2021-44228', text: 'An invented example.', kind: 'cve', value: 'CVE-2021-44228'},
-            {head: '[REF-1]', text: 'A citation.', kind: '', value: ''},
+            {head: 'CVE-2021-44228', text: 'An invented example.', kind: 'cve', value: 'CVE-2021-44228', url: ''},
+            {head: '[REF-1]', text: 'A citation.', kind: '', value: '', url: ''},
+        ]},
+    ],
+};
+
+const TECHNIQUE = {
+    ...WEAKNESS,
+    kind: 'attack',
+    value: 'T1059.001',
+    title: 'PowerShell',
+    sections: [
+        {title: 'Procedure examples',
+items: [
+            {head: 'G0007 APT28 (group)', text: 'APT28 used PowerShell.', kind: '', value: '', url: 'https://attack.mitre.org/groups/G0007'},
+            // eslint-disable-next-line no-script-url
+            {head: 'Bad Scheme', text: 'Never a link.', kind: '', value: '', url: 'javascript:alert(1)'},
         ]},
     ],
 };
@@ -121,6 +136,9 @@ const LONG = {
 function baseFor(reply: Reply): typeof FOUND {
     if (reply === 'weakness') {
         return WEAKNESS;
+    }
+    if (reply === 'technique') {
+        return TECHNIQUE;
     }
     if (reply === 'long') {
         return LONG;

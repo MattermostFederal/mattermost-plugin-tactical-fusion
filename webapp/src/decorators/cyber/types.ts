@@ -56,6 +56,7 @@ export interface CyberItem {
     text: string;
     kind: string;
     value: string;
+    url: string;
 }
 
 export interface CyberVectorMetric {

@@ -71,6 +71,7 @@ type cyberItem struct {
 	Text  string `json:"text"`
 	Kind  string `json:"kind"`
 	Value string `json:"value"`
+	URL   string `json:"url"`
 }
 
 type cyberVectorMetric struct {
@@ -172,7 +173,7 @@ func cyberBody(details cyber.Details) cyberResponse {
 func cyberSectionOf(section cyber.Section) cyberSection {
 	items := make([]cyberItem, 0, len(section.Items))
 	for _, item := range section.Items {
-		wire := cyberItem{Head: item.Head, Text: item.Text}
+		wire := cyberItem{Head: item.Head, Text: item.Text, URL: item.URL}
 		if item.Link != nil {
 			wire.Kind = string(item.Link.Kind)
 			wire.Value = item.Link.Value

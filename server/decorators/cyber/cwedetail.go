@@ -16,6 +16,7 @@ type Item struct {
 	Head string
 	Text string
 	Link *Link
+	URL  string
 }
 
 func describeCWEDetail(d *Details, set *intel.Set) {

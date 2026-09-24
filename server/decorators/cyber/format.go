@@ -64,13 +64,14 @@ type Details struct {
 }
 
 var datasetLabels = map[string]string{
-	intel.NameCVE:       "vulnerability",
-	intel.NameCVEDetail: "vulnerability detail",
-	intel.NameCWEDetail: "weakness detail",
-	intel.NameEPSS:      "exploit prediction",
-	intel.NameKEV:       "known exploited vulnerabilities",
-	intel.NameIP:        "IP address",
-	intel.NameWatchlist: "watchlist",
+	intel.NameCVE:          "vulnerability",
+	intel.NameCVEDetail:    "vulnerability detail",
+	intel.NameCWEDetail:    "weakness detail",
+	intel.NameAttackDetail: "ATT&CK detail",
+	intel.NameEPSS:         "exploit prediction",
+	intel.NameKEV:          "known exploited vulnerabilities",
+	intel.NameIP:           "IP address",
+	intel.NameWatchlist:    "watchlist",
 }
 
 const attackBaseURL = "https://attack.mitre.org"
@@ -84,7 +85,7 @@ func Describe(kind Kind, value string, set *intel.Set) Details {
 	case KindCWE:
 		describeCWE(&d, set)
 	case KindAttack:
-		describeAttack(&d)
+		describeAttack(&d, set)
 	case KindIP:
 		describeIP(&d, set)
 	case KindHash:
@@ -295,7 +296,7 @@ func weaknessLink(id string) Link {
 	return Link{Kind: KindCWE, Value: id, Label: label}
 }
 
-func describeAttack(d *Details) {
+func describeAttack(d *Details, set *intel.Set) {
 	technique, known := LookupTechnique(d.Value)
 	if !known {
 		return
@@ -337,6 +338,11 @@ func describeAttack(d *Details) {
 		d.Related = append([]Link{techniqueLink(replacement.ID)}, d.Related...)
 	}
 	addRow(d, "Reference", AttackURL(technique))
+
+	if technique.Kind == techniqueKindTactic {
+		addSection(d, "Techniques", tacticTechniqueItems(technique.ID))
+	}
+	describeAttackDetail(d, set)
 }
 
 func attackHeadline(technique Technique) string {

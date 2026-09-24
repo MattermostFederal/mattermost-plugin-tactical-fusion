@@ -15,6 +15,7 @@ The watchlist in particular must never be moved under `public/`.
 | File | What it is | Ships |
 |---|---|---|
 | `kev.tsv` | CISA Known Exploited Vulnerabilities | yes |
+| `attackdetail.tsv` | MITRE Enterprise ATT&CK: each technique's and tactic's whole description, mitigations, detection strategies and analytics, procedure examples and references | yes |
 | `cwedetail.tsv` | MITRE CWE research view 1000: each weakness's whole description, background, consequences, mitigations, detection methods and observed examples | yes |
 
 Everything else the decorator reads is too large to bundle and is attached to a
@@ -72,3 +73,31 @@ two always name the same weaknesses. Rebuild both together:
 ```
 go run ./build/cyberdata -only cwe,cwedetail -label "MITRE CWE research view 1000, fetched <date>"
 ```
+
+### `attackdetail.tsv`
+
+| | |
+|---|---|
+| Upstream | `https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json` |
+| Origin | MITRE ATT&CK, enterprise domain, version 19.2, fetched 2026-09-23 |
+| License | MITRE ATT&CK terms of use. Redistribution is permitted with attribution. |
+| Format | Six fields: the id, the whole description, then references, mitigations, detection strategies and procedure examples as compact JSON arrays |
+
+> This product uses information from MITRE ATT&CK, the work of The MITRE
+> Corporation. Neither MITRE nor ATT&CK is affiliated with or endorses this
+> plugin.
+
+Kept: every technique, sub-technique and tactic the `attack.tsv` catalog holds,
+retired ones included; the mitigations, detection strategies and procedure
+examples MITRE relates to each, from active objects only, each with its
+attack.mitre.org address; every analytic of a detection strategy with its
+platforms, log sources and tunable fields; and every citation with an address
+or a description. Dropped: contributors, version stamps, STIX object ids, and
+the citation markers inside the text, whose sources are listed as references
+instead. It is 7.5 MB, 1.8 MB compressed, and its largest row, `T1105`, is
+110 KB. Rebuild it with the catalog, from the same file:
+
+```
+go run ./build/cyberdata -only attack,attackdetail -label "MITRE Enterprise ATT&CK <version>"
+```
+

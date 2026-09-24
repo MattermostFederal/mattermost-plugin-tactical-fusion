@@ -167,11 +167,14 @@ function asItem(entry: unknown): CyberItem {
     const value = asString(item, 'value');
     const linked = matchesShape(kind, value);
 
+    const url = asString(item, 'url');
+
     return {
         head: asString(item, 'head'),
         text: asString(item, 'text'),
         kind: linked ? kind : '',
         value: linked ? value : '',
+        url: isWebLink(url) ? url : '',
     };
 }
 

@@ -153,6 +153,8 @@ func writeSections(b *strings.Builder, sections []Section) {
 			switch {
 			case item.Link != nil:
 				b.WriteString(`<a href="` + html.EscapeString(linkHref(*item.Link)) + `"><strong>` + html.EscapeString(item.Head) + `</strong></a>`)
+			case item.URL != "":
+				b.WriteString(`<a href="` + html.EscapeString(item.URL) + `" rel="noopener noreferrer" target="_blank"><strong>` + html.EscapeString(item.Head) + `</strong></a>`)
 			case item.Head != "":
 				b.WriteString(`<strong>` + html.EscapeString(item.Head) + `</strong>`)
 			}
@@ -160,7 +162,7 @@ func writeSections(b *strings.Builder, sections []Section) {
 				if item.Head != "" {
 					b.WriteString(`<br>`)
 				}
-				b.WriteString(html.EscapeString(item.Text))
+				b.WriteString(strings.ReplaceAll(html.EscapeString(item.Text), "\n", "<br>"))
 			}
 			b.WriteString(`</li>`)
 		}

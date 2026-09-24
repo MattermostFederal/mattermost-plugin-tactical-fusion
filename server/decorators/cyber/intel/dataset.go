@@ -25,13 +25,14 @@ var ErrSchema = errors.New("cyber: the file does not carry this reader's schema 
 var NamePattern = regexp.MustCompile(`^[a-z][a-z0-9]*$`)
 
 const (
-	NameCVE       = "cve"
-	NameCVEDetail = "cvedetail"
-	NameCWEDetail = "cwedetail"
-	NameEPSS      = "epss"
-	NameKEV       = "kev"
-	NameIP        = "ip"
-	NameWatchlist = "watchlist"
+	NameCVE          = "cve"
+	NameCVEDetail    = "cvedetail"
+	NameCWEDetail    = "cwedetail"
+	NameAttackDetail = "attackdetail"
+	NameEPSS         = "epss"
+	NameKEV          = "kev"
+	NameIP           = "ip"
+	NameWatchlist    = "watchlist"
 )
 
 type spec struct {
@@ -40,16 +41,17 @@ type spec struct {
 }
 
 var specs = map[string]spec{
-	NameCVE:       {fields: 8},
-	NameCVEDetail: {fields: 5},
-	NameCWEDetail: {fields: 7},
-	NameEPSS:      {fields: 4},
-	NameKEV:       {fields: 6},
-	NameIP:        {fields: 7},
-	NameWatchlist: {fields: 6, inspect: loadWatchlist},
+	NameCVE:          {fields: 8},
+	NameCVEDetail:    {fields: 5},
+	NameCWEDetail:    {fields: 7},
+	NameAttackDetail: {fields: 6},
+	NameEPSS:         {fields: 4},
+	NameKEV:          {fields: 6},
+	NameIP:           {fields: 7},
+	NameWatchlist:    {fields: 6, inspect: loadWatchlist},
 }
 
-var Names = []string{NameCVE, NameCVEDetail, NameCWEDetail, NameEPSS, NameKEV, NameIP, NameWatchlist}
+var Names = []string{NameCVE, NameCVEDetail, NameCWEDetail, NameAttackDetail, NameEPSS, NameKEV, NameIP, NameWatchlist}
 
 type Dataset struct {
 	Name      string

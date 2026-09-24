@@ -63,25 +63,34 @@ func (s *Set) CVEDetail(id string) (CVEDetail, error) {
 	}
 
 	detail := CVEDetail{ID: row[0]}
-	fields := []struct {
-		name string
-		raw  string
-		into any
-	}{
+	fields := []jsonField{
 		{"weaknesses", row[1], &detail.Weaknesses},
 		{"configurations", row[2], &detail.Configurations},
 		{"affected", row[3], &detail.Affected},
 		{"references", row[4], &detail.References},
 	}
 
+	if err := decodeJSONFields(id, fields); err != nil {
+		return CVEDetail{}, err
+	}
+
+	return detail, nil
+}
+
+type jsonField struct {
+	name string
+	raw  string
+	into any
+}
+
+func decodeJSONFields(id string, fields []jsonField) error {
 	for _, field := range fields {
 		if field.raw == "" {
 			continue
 		}
 		if err := json.Unmarshal([]byte(field.raw), field.into); err != nil {
-			return CVEDetail{}, fmt.Errorf("the %s of %s are not the shape this build reads: %w", field.name, id, err)
+			return fmt.Errorf("the %s of %s are not the shape this build reads: %w", field.name, id, err)
 		}
 	}
-
-	return detail, nil
+	return nil
 }

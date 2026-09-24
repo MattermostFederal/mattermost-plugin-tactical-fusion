@@ -322,6 +322,7 @@
                 <tr><td>Watchlist</td><td>Any verdict your own watchlist records for this indicator, with its source, note and date.</td></tr>
                 <tr><td>Related</td><td>Links to the weaknesses, parents and sub-techniques around it, each one opening the same panel.</td></tr>
                 <tr><td>Weakness detail</td><td>For a weakness, the whole description in place of its first sentence, then collapsed sections for its background, consequences, mitigations, detection methods and observed examples, each with its count. An observed CVE opens the same panel. Read from the bundled <code>cwedetail.tsv</code>.</td></tr>
+                <tr><td>ATT&amp;CK detail</td><td>For a technique, the whole description, then collapsed sections for its mitigations, its detection analytics with the log sources each reads, its procedure examples, and its references. Mitigations, groups, software, campaigns and citations link out to their pages. A tactic lists its techniques, each opening the same panel. A technique MITRE has revoked names and links its replacement. Read from the bundled <code>attackdetail.tsv</code>.</td></tr>
                 <tr><td>Affected and references</td><td>Collapsed sections, each with its count: the products and versions as the reporting organization lists them and as NVD configures them, then the references, with vendor advisories and patches first and exploits next. Present only when the vulnerability detail dataset is installed.</td></tr>
             </tbody>
         </table>
@@ -356,6 +357,7 @@
                 <tr><td><code>cve.tsv</code></td><td>Vulnerability records: summary, dates, CVSS score and vector, and the weaknesses each one names</td></tr>
                 <tr><td><code>cvedetail.tsv</code></td><td>Affected products and versions, as the reporting organization lists them and as NVD configures them, the references, and which organization reported each weakness</td></tr>
                 <tr><td><code>cwedetail.tsv</code></td><td>For each weakness: its whole description, background, consequences, mitigations, detection methods and observed CVEs. Ships with the plugin</td></tr>
+                <tr><td><code>attackdetail.tsv</code></td><td>For each ATT&amp;CK technique and tactic: its whole description, the mitigations and detection strategies MITRE maps to it with their analytics and log sources, every procedure example from a group, malware, tool or campaign, and its references. Ships with the plugin</td></tr>
                 <tr><td><code>epss.tsv</code></td><td>Exploit prediction scores and percentiles</td></tr>
                 <tr><td><code>kev.tsv</code></td><td>The known exploited vulnerabilities catalog, with its due dates and required actions</td></tr>
                 <tr><td><code>ip.tsv</code></td><td>Autonomous system, country, region and city per address range</td></tr>
@@ -365,8 +367,8 @@
         </table>
 
         <p>
-            <code>kev.tsv</code> and <code>cwedetail.tsv</code> are small enough to ship inside the
-            bundle, and a file of the same name in the configured directory replaces the bundled
+            <code>kev.tsv</code>, <code>cwedetail.tsv</code> and <code>attackdetail.tsv</code> are small
+            enough to ship inside the bundle, and a file of the same name in the configured directory replaces the bundled
             one. Both are snapshots, stamped with the catalog they were built from. Remove one and
             the panel says that dataset is not installed rather than implying the indicator is
             not in it. That distinction is deliberate, and it is why each sentence names the

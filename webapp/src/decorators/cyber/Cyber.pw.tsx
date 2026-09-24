@@ -320,6 +320,42 @@ test.describe('a weakness', () => {
     });
 });
 
+test.describe('a technique', () => {
+    test('links a procedure example out to ATT&CK in a new tab', async ({mount}) => {
+        const panel = await mount(
+            <CyberHarness
+                surface='panel'
+                payload={{kind: 'attack', value: 'T1059.001'}}
+                reply='technique'
+            />,
+        );
+
+        await section(panel, 'Procedure examples').click();
+
+        const link = panel.getByRole('link', {name: 'G0007 APT28 (group)'});
+        await expect(link).toHaveAttribute('href', 'https://attack.mitre.org/groups/G0007');
+        await expect(link).toHaveAttribute('target', '_blank');
+        await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+        await expect(panel.getByText('APT28 used PowerShell.')).toBeVisible();
+    });
+
+    test('never links an item whose address is not a web link', async ({mount}) => {
+        const panel = await mount(
+            <CyberHarness
+                surface='panel'
+                payload={{kind: 'attack', value: 'T1059.001'}}
+                reply='technique'
+            />,
+        );
+
+        await section(panel, 'Procedure examples').click();
+
+        await expect(panel.getByText('Bad Scheme')).toBeVisible();
+        await expect(panel.getByRole('link', {name: 'Bad Scheme'})).toHaveCount(0);
+        await expect(panel.locator('a[href^="javascript:"]')).toHaveCount(0);
+    });
+});
+
 test.describe('the detail sections', () => {
     test('are collapsed, each with a count', async ({mount}) => {
         const panel = await mount(

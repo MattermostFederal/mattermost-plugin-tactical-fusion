@@ -63,6 +63,13 @@ func main() {
 			target: func() string { return filepath.Join(*treeDir, "server", "decorators", "cyber", "data", "cwe.tsv") },
 		},
 		{
+			name:   "attackdetail",
+			source: "enterprise-attack.json",
+			build:  buildAttackDetail,
+			target: func() string { return filepath.Join(*treeDir, "assets", "cyber", "attackdetail.tsv") },
+			stamp:  true,
+		},
+		{
 			name:   "cwedetail",
 			source: "cwe-1000.csv",
 			build:  buildCWEDetail,
@@ -233,6 +240,9 @@ type stixBundle struct {
 
 type stixObject struct {
 	ID                 string          `json:"id"`
+	AnalyticRefs       []string        `json:"x_mitre_analytic_refs"`
+	LogSources         []stixLogSource `json:"x_mitre_log_source_references"`
+	Tunables           []stixTunable   `json:"x_mitre_mutable_elements"`
 	Type               string          `json:"type"`
 	RelationshipType   string          `json:"relationship_type"`
 	SourceRef          string          `json:"source_ref"`
@@ -254,8 +264,31 @@ type stixKillChain struct {
 }
 
 type stixReference struct {
-	SourceName string `json:"source_name"`
-	ExternalID string `json:"external_id"`
+	SourceName  string `json:"source_name"`
+	ExternalID  string `json:"external_id"`
+	URL         string `json:"url"`
+	Description string `json:"description"`
+}
+
+type stixLogSource struct {
+	Name    string `json:"name"`
+	Channel string `json:"channel"`
+}
+
+type stixTunable struct {
+	Field       string `json:"field"`
+	Description string `json:"description"`
+}
+
+func readSTIX(source string) (stixBundle, error) {
+	raw, err := os.ReadFile(source) // #nosec G304 -- a source file under the directory the operator names with -source
+	if err != nil {
+		return stixBundle{}, err
+	}
+
+	var bundle stixBundle
+	err = json.Unmarshal(raw, &bundle)
+	return bundle, err
 }
 
 func attackID(o stixObject) string {
@@ -290,24 +323,27 @@ var (
 	attackMarkup       = regexp.MustCompile("</?code>|`")
 )
 
-var typographicPunctuation = strings.NewReplacer("\u2018", "'", "\u2019", "'", "\u201c", `"`, "\u201d", `"`, "\u2013", "-")
+var typographicPunctuation = strings.NewReplacer("\u2018", "'", "\u2019", "'", "\u201c", `"`, "\u201d", `"`, "\u2013", "-", "\u2014", " - ")
 
-func attackSummary(description string) string {
-	plain := attackCitation.ReplaceAllString(description, "")
+func attackText(text string) string {
+	plain := attackCitation.ReplaceAllString(text, "")
 	plain = typographicPunctuation.Replace(plain)
 	plain = attackMarkdownLink.ReplaceAllString(plain, "$1")
 	plain = attackMarkup.ReplaceAllString(plain, "")
-	return firstSentence(plain)
+	return clean(plain)
+}
+
+func attackName(name string) string {
+	return clean(typographicPunctuation.Replace(name))
+}
+
+func attackSummary(description string) string {
+	return firstSentence(attackText(description))
 }
 
 func buildAttack(source string) ([][]string, error) {
-	raw, err := os.ReadFile(source)
+	bundle, err := readSTIX(source)
 	if err != nil {
-		return nil, err
-	}
-
-	var bundle stixBundle
-	if err := json.Unmarshal(raw, &bundle); err != nil {
 		return nil, err
 	}
 
@@ -343,7 +379,7 @@ func buildAttack(source string) ([][]string, error) {
 		switch o.Type {
 		case "x-mitre-tactic":
 			rows = append(rows, []string{
-				id, typographicPunctuation.Replace(clean(o.Name)), "tactic", "", "", "", attackSummary(o.Description), status, replacedBy[o.ID],
+				id, attackName(o.Name), "tactic", "", "", "", attackSummary(o.Description), status, replacedBy[o.ID],
 			})
 
 		case "attack-pattern":
@@ -365,13 +401,188 @@ func buildAttack(source string) ([][]string, error) {
 			}
 
 			rows = append(rows, []string{
-				id, typographicPunctuation.Replace(clean(o.Name)), kind, strings.Join(tactics, ","), parent,
+				id, attackName(o.Name), kind, strings.Join(tactics, ","), parent,
 				strings.Join(o.Platforms, ","), attackSummary(o.Description), status, replacedBy[o.ID],
 			})
 		}
 	}
 
 	return keepResolvableParents(rows), nil
+}
+
+type attackReference struct {
+	Source      string `json:"source"`
+	URL         string `json:"url,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+type attackMitigation struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	URL         string `json:"url,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+type attackLogSource struct {
+	Name    string `json:"name"`
+	Channel string `json:"channel,omitempty"`
+}
+
+type attackTunable struct {
+	Field       string `json:"field"`
+	Description string `json:"description,omitempty"`
+}
+
+type attackAnalytic struct {
+	ID          string            `json:"id"`
+	Platforms   []string          `json:"platforms,omitempty"`
+	Description string            `json:"description,omitempty"`
+	LogSources  []attackLogSource `json:"logSources,omitempty"`
+	Tunables    []attackTunable   `json:"tunables,omitempty"`
+}
+
+type attackDetection struct {
+	ID        string           `json:"id"`
+	Name      string           `json:"name"`
+	URL       string           `json:"url,omitempty"`
+	Analytics []attackAnalytic `json:"analytics,omitempty"`
+}
+
+type attackProcedure struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Kind        string `json:"kind"`
+	URL         string `json:"url,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+var procedureKinds = map[string]string{
+	"intrusion-set": "group",
+	"malware":       "malware",
+	"tool":          "tool",
+	"campaign":      "campaign",
+}
+
+func attackURL(o stixObject) string {
+	for _, ref := range o.ExternalReferences {
+		if ref.SourceName == "mitre-attack" {
+			return ref.URL
+		}
+	}
+	return ""
+}
+
+func attackReferences(o stixObject) []attackReference {
+	var refs []attackReference
+	for _, ref := range o.ExternalReferences {
+		if ref.SourceName == "mitre-attack" {
+			continue
+		}
+		description := attackText(ref.Description)
+		if ref.URL == "" && description == "" {
+			continue
+		}
+		refs = append(refs, attackReference{Source: attackName(ref.SourceName), URL: ref.URL, Description: description})
+	}
+	return refs
+}
+
+func attackAnalytics(strategy stixObject, byID map[string]stixObject) []attackAnalytic {
+	var analytics []attackAnalytic
+	for _, ref := range strategy.AnalyticRefs {
+		analytic, ok := byID[ref]
+		if !ok {
+			continue
+		}
+		entry := attackAnalytic{ID: attackID(analytic), Platforms: analytic.Platforms, Description: attackText(analytic.Description)}
+		for _, source := range analytic.LogSources {
+			entry.LogSources = append(entry.LogSources, attackLogSource{Name: attackName(source.Name), Channel: attackText(source.Channel)})
+		}
+		for _, tunable := range analytic.Tunables {
+			entry.Tunables = append(entry.Tunables, attackTunable{Field: attackName(tunable.Field), Description: attackText(tunable.Description)})
+		}
+		analytics = append(analytics, entry)
+	}
+	slices.SortStableFunc(analytics, func(a, b attackAnalytic) int { return strings.Compare(a.ID, b.ID) })
+	return analytics
+}
+
+func buildAttackDetail(source string) ([][]string, error) {
+	bundle, err := readSTIX(source)
+	if err != nil {
+		return nil, err
+	}
+
+	byID := map[string]stixObject{}
+	for _, o := range bundle.Objects {
+		byID[o.ID] = o
+	}
+
+	mitigations := map[string][]attackMitigation{}
+	detections := map[string][]attackDetection{}
+	procedures := map[string][]attackProcedure{}
+
+	for _, r := range bundle.Objects {
+		if r.Type != "relationship" || attackStatus(r) != attackActive {
+			continue
+		}
+		from, ok := byID[r.SourceRef]
+		if !ok || attackStatus(from) != attackActive || attackID(from) == "" {
+			continue
+		}
+
+		switch r.RelationshipType {
+		case "mitigates":
+			mitigations[r.TargetRef] = append(mitigations[r.TargetRef], attackMitigation{
+				ID: attackID(from), Name: attackName(from.Name), URL: attackURL(from), Description: attackText(r.Description),
+			})
+		case "detects":
+			detections[r.TargetRef] = append(detections[r.TargetRef], attackDetection{
+				ID: attackID(from), Name: attackName(from.Name), URL: attackURL(from), Analytics: attackAnalytics(from, byID),
+			})
+		case "uses":
+			kind, known := procedureKinds[from.Type]
+			if !known {
+				continue
+			}
+			procedures[r.TargetRef] = append(procedures[r.TargetRef], attackProcedure{
+				ID: attackID(from), Name: attackName(from.Name), Kind: kind, URL: attackURL(from), Description: attackText(r.Description),
+			})
+		}
+	}
+
+	var rows [][]string
+	for _, o := range bundle.Objects {
+		id := attackID(o)
+		if id == "" || (o.Type != "attack-pattern" && o.Type != "x-mitre-tactic") {
+			continue
+		}
+
+		slices.SortStableFunc(mitigations[o.ID], func(a, b attackMitigation) int { return strings.Compare(a.ID, b.ID) })
+		slices.SortStableFunc(detections[o.ID], func(a, b attackDetection) int { return strings.Compare(a.ID, b.ID) })
+		slices.SortStableFunc(procedures[o.ID], func(a, b attackProcedure) int { return strings.Compare(a.ID, b.ID) })
+
+		references, err := compactJSON(attackReferences(o))
+		if err != nil {
+			return nil, err
+		}
+		mitigationField, err := compactJSON(mitigations[o.ID])
+		if err != nil {
+			return nil, err
+		}
+		detectionField, err := compactJSON(detections[o.ID])
+		if err != nil {
+			return nil, err
+		}
+		procedureField, err := compactJSON(procedures[o.ID])
+		if err != nil {
+			return nil, err
+		}
+
+		rows = append(rows, []string{id, attackText(o.Description), references, mitigationField, detectionField, procedureField})
+	}
+
+	return rows, nil
 }
 
 func keepResolvableParents(rows [][]string) [][]string {
