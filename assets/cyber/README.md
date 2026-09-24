@@ -134,7 +134,15 @@ An advisory is a snapshot: the addresses in it were attacker infrastructure when
 it was written and may be reassigned since. Each report carries the date the
 indicator became valid and the date the advisory was published, and links to
 the advisory. Add an advisory by adding its id to `build/cyberdata/advisories.txt`
-and running `make cyber-advisories`.
+and running `make cyber-advisories`; an advisory whose page publishes no STIX
+JSON fails the fetch, and one that publishes several (AA23-319A publishes two)
+is read whole.
+
+The list is the #StopRansomware and joint advisories that publish STIX JSON:
+twenty, measured on 2026-09-24, giving 1,571 indicators and 0.5 MB. Their
+addresses age fastest, since attacker infrastructure changes hands; the hashes
+stay true. Advisories that publish indicators only as STIX XML or CSV, such as
+LockBit 3.0 (AA23-075A), BianLian and Volt Typhoon, are not read.
 
 
 ### `cve.tsv` and `cvedetail.tsv`
