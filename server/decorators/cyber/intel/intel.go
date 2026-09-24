@@ -305,6 +305,16 @@ func (s *Set) Generated(name string) string {
 	return ""
 }
 
+const KEVSlicePrefix = "KEV entries only, from "
+
+func (s *Set) IsKEVSlice(name string) bool {
+	if s == nil {
+		return false
+	}
+	dataset, ok := s.datasets[name]
+	return ok && strings.HasPrefix(dataset.Source, KEVSlicePrefix)
+}
+
 func (s *Set) FileName(name string) string {
 	if s == nil {
 		return ""

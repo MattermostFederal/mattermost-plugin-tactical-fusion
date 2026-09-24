@@ -6,8 +6,10 @@ import (
 	"encoding/csv"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"net/netip"
 	"os"
 	"path/filepath"
@@ -35,10 +37,18 @@ var (
 )
 
 type builder struct {
-	name   string
-	source string
-	build  func(source string) ([][]string, error)
-	target func() string
+	name       string
+	source     string
+	build      func(source string) ([][]string, error)
+	target     func() string
+	sourcePath func() string
+	stamp      func() (stampFields, error)
+}
+
+type stampFields struct {
+	name      string
+	generated string
+	source    string
 }
 
 func main() {
@@ -122,6 +132,8 @@ func main() {
 			build:  buildIP,
 			target: func() string { return filepath.Join(*outDir, "ip.tsv") },
 		},
+		kevSliceBuilder("cve"),
+		kevSliceBuilder("cvedetail"),
 	}
 
 	for _, b := range builders {
@@ -138,6 +150,9 @@ func main() {
 
 func run(b builder) error {
 	source := filepath.Join(*sourceDir, b.source)
+	if b.sourcePath != nil {
+		source = b.sourcePath()
+	}
 	if _, err := os.Stat(source); err != nil {
 		return fmt.Errorf("%w; run 'make cyber-sources' first", err)
 	}
@@ -158,14 +173,19 @@ func run(b builder) error {
 		return err
 	}
 
-	stampSource := b.source
+	stamp := stampFields{name: b.name, generated: time.Now().UTC().Format(time.RFC3339), source: b.source}
 	if *label != "" {
-		stampSource = *label
+		stamp.source = *label
+	}
+	if b.stamp != nil {
+		if stamp, err = b.stamp(); err != nil {
+			return err
+		}
 	}
 
 	var b2 strings.Builder
 	fmt.Fprintf(&b2, "%s%d\t%s\t%s\t%s\n",
-		schemaPrefix, schemaVersion, b.name, time.Now().UTC().Format(time.RFC3339), stampSource)
+		schemaPrefix, schemaVersion, stamp.name, stamp.generated, stamp.source)
 	if header := headerFor(b.name); header != nil {
 		b2.WriteString(strings.Join(header, "\t") + "\n")
 	}
@@ -1459,4 +1479,89 @@ func buildIP(source string) ([][]string, error) {
 func ipKey(addr netip.Addr) string {
 	as16 := addr.Unmap().As16()
 	return hex.EncodeToString(as16[:])
+}
+
+const kevSlicePrefix = "KEV entries only, from "
+
+func kevSliceBuilder(name string) builder {
+	full := func() string { return filepath.Join(*outDir, name+".tsv") }
+
+	return builder{
+		name:       name + "kev",
+		source:     name + ".tsv",
+		sourcePath: full,
+		build: func(path string) ([][]string, error) {
+			return kevSlice(path, filepath.Join(*treeDir, "assets", "cyber", "kev.tsv"))
+		},
+		target: func() string { return filepath.Join(*treeDir, "assets", "cyber", name+".tsv") },
+		stamp:  func() (stampFields, error) { return sliceStamp(full(), name) },
+	}
+}
+
+func sliceStamp(full, name string) (stampFields, error) {
+	handle, err := os.Open(full)
+	if err != nil {
+		return stampFields{}, err
+	}
+	defer func() { _ = handle.Close() }()
+
+	first, err := bufio.NewReader(handle).ReadString('\n')
+	if err != nil {
+		return stampFields{}, fmt.Errorf("reading the stamp of %s: %w", full, err)
+	}
+	fields := strings.Split(strings.TrimRight(first, "\n"), "\t")
+	if len(fields) != 4 || !strings.HasPrefix(fields[0], schemaPrefix) || fields[1] != name {
+		return stampFields{}, fmt.Errorf("%s does not carry a %s stamp", full, name)
+	}
+
+	return stampFields{name: name, generated: fields[2], source: kevSlicePrefix + fields[3]}, nil
+}
+
+func kevSlice(full, kev string) ([][]string, error) {
+	wanted, err := firstColumn(kev)
+	if err != nil {
+		return nil, err
+	}
+
+	handle, err := os.Open(full)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = handle.Close() }()
+
+	var rows [][]string
+	reader := bufio.NewReader(handle)
+	for {
+		line, err := reader.ReadString('\n')
+		line = strings.TrimRight(line, "\n")
+		if line != "" && !strings.HasPrefix(line, schemaPrefix) {
+			id, _, _ := strings.Cut(line, "\t")
+			if wanted[id] {
+				rows = append(rows, strings.Split(line, "\t"))
+			}
+		}
+		if errors.Is(err, io.EOF) {
+			return rows, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+}
+
+func firstColumn(path string) (map[string]bool, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := map[string]bool{}
+	for _, line := range strings.Split(string(raw), "\n") {
+		if line == "" || strings.HasPrefix(line, schemaPrefix) {
+			continue
+		}
+		id, _, _ := strings.Cut(line, "\t")
+		ids[id] = true
+	}
+	return ids, nil
 }

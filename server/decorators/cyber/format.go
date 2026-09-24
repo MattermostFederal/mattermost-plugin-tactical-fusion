@@ -162,6 +162,11 @@ func datasetSentence(set *intel.Set, name string, err error) string {
 			"The "+label+" dataset is installed and could not be read.")
 	}
 
+	if set.IsKEVSlice(name) {
+		return "Not in the bundled " + label + " dataset, which holds only the CVEs in CISA KEV. " +
+			"Install the full " + label + " dataset for the rest."
+	}
+
 	generated := set.Generated(name)
 	if generated == "" {
 		return "Not in the " + label + " dataset."

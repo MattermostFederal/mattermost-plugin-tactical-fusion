@@ -432,3 +432,36 @@ func TestAnEPSSValueInExponentFormIsWrittenAsAPlainDecimal(t *testing.T) {
 		}
 	}
 }
+
+func TestTheKEVSliceKeepsOnlyKEVRowsAndTheFullFilesCompileTime(t *testing.T) {
+	out, tree := t.TempDir(), t.TempDir()
+	savedOut, savedTree := *outDir, *treeDir
+	t.Cleanup(func() { *outDir, *treeDir = savedOut, savedTree })
+	*outDir, *treeDir = out, tree
+
+	full := schemaPrefix + "1\tcve\t2026-09-01T00:00:00Z\tnvd\n" +
+		"CVE-2021-0001\ta\n" + "CVE-2021-44228\tb\n" + "CVE-2022-0002\tc\n"
+	if err := os.WriteFile(filepath.Join(out, "cve.tsv"), []byte(full), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	kev := schemaPrefix + "1\tkev\t2026-09-24T00:00:00Z\tCISA\n" + "CVE-2021-44228\tx\n" + "CVE-2099-0001\ty\n"
+	if err := os.MkdirAll(filepath.Join(tree, "assets", "cyber"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tree, "assets", "cyber", "kev.tsv"), []byte(kev), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := run(kevSliceBuilder("cve")); err != nil {
+		t.Fatal(err)
+	}
+
+	raw, err := os.ReadFile(filepath.Join(tree, "assets", "cyber", "cve.tsv"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := schemaPrefix + "1\tcve\t2026-09-01T00:00:00Z\t" + kevSlicePrefix + "nvd\n" + "CVE-2021-44228\tb\n"
+	if string(raw) != want {
+		t.Errorf("the slice is\n%q\nwant\n%q", raw, want)
+	}
+}

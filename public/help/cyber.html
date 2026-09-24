@@ -405,7 +405,10 @@
         <p>
             <code>kev.tsv</code>, <code>cwedetail.tsv</code> and <code>attackdetail.tsv</code> are small
             enough to ship inside the bundle, and a file of the same name in the configured directory replaces the bundled
-            one. Both are snapshots, stamped with the catalog they were built from. Remove one and
+            one. The bundle also carries <code>cve.tsv</code> and <code>cvedetail.tsv</code> cut down
+            to the CVEs in the known exploited catalog, so those have full detail on a fresh install; any other
+            CVE says the bundled set holds only those, and installing the full files replaces the slice. Each is a
+            snapshot, stamped with when it was compiled. Remove one and
             the panel says that dataset is not installed rather than implying the indicator is
             not in it. That distinction is deliberate, and it is why each sentence names the
             dataset it is talking about.
