@@ -8,7 +8,6 @@ import type {CyberCredit, CyberItem, CyberLink, CyberReference, CyberSection, Cy
 import LinkButton from '../../components/LinkButton';
 import {pluginBaseUrl} from '../../plugin_url';
 import HoverLink from '../HoverLink';
-import CopyButton from '../location/CopyButton';
 import {setSelection} from '../selection';
 
 import type {CyberPayload} from './index';
@@ -75,13 +74,6 @@ const styles: Record<string, React.CSSProperties> = {
         borderTop: RULE,
     },
     code: {fontFamily: MONOSPACE, fontSize: '12px'},
-    copyCell: {
-        width: '24px',
-        padding: '6px 0 6px 8px',
-        verticalAlign: 'top',
-        textAlign: 'right',
-        borderTop: RULE,
-    },
     heading: {
         fontSize: '11px',
         textTransform: 'uppercase',
@@ -210,7 +202,7 @@ function rowValue(value: string, query: string): React.ReactNode {
     return isCodeLike(value) ? breakAfterSlashes(value) : value;
 }
 
-const Row: React.FC<{label: string; value: string; query: string; copyable: boolean}> = ({label, value, query, copyable}) => {
+const Row: React.FC<{label: string; value: string; query: string}> = ({label, value, query}) => {
     const code = query === '' && isCodeLike(value);
 
     return (
@@ -222,14 +214,6 @@ const Row: React.FC<{label: string; value: string; query: string; copyable: bool
             <td style={code ? {...styles.td, ...styles.code} : styles.td}>
                 {rowValue(value, query)}
             </td>
-            {copyable && (
-                <td style={styles.copyCell}>
-                    <CopyButton
-                        label={`Copy ${label}`}
-                        value={value}
-                    />
-                </td>
-            )}
         </tr>
     );
 };
@@ -554,7 +538,6 @@ function renderBody(state: CyberState): React.ReactNode {
                                 label={row.label}
                                 value={row.value}
                                 query={row.query}
-                                copyable={details.kind !== 'cve'}
                             />
                         ))}
                     </tbody>
