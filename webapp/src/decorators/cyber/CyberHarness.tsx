@@ -235,7 +235,6 @@ function paramOf(url: string, name: string): string {
 }
 
 let onRequest: (() => void) | null = null;
-let setups = 0;
 
 const testStore = {
     getState: () => ({}),
@@ -253,8 +252,7 @@ const CyberHarness: React.FC<{
     const [requests, setRequests] = React.useState(0);
     const [shown, setShown] = React.useState(payload);
 
-    React.useState(() => {
-        setups += 1;
+    const [realFetch] = React.useState(() => {
         resetCyber();
         resetSelection();
 
@@ -288,8 +286,11 @@ const CyberHarness: React.FC<{
             } as unknown as Response;
         }) as typeof globalThis.fetch;
 
-        return setups;
+        return real;
     });
+    React.useEffect(() => () => {
+        globalThis.fetch = realFetch;
+    }, [realFetch]);
 
     const [selection, setSelected] = React.useState<Selection | null>(null);
     React.useEffect(() => subscribe(setSelected), []);
