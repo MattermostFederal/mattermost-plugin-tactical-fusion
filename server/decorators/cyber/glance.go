@@ -136,3 +136,78 @@ func nonEmpty(value string) []string {
 	}
 	return []string{value}
 }
+
+const dateLength = len("2006-01-02")
+
+func dateOf(timestamp string) string {
+	if len(timestamp) >= dateLength {
+		return timestamp[:dateLength]
+	}
+	return timestamp
+}
+
+func vulnerabilityGlance(record intel.CVERecord, vector []VectorMetric) Glance {
+	g := Glance{Summary: record.Summary}
+
+	subtitle := []string{}
+	if published := dateOf(record.Published); published != "" {
+		subtitle = append(subtitle, "Published "+published)
+	}
+	subtitle = append(subtitle, record.Weaknesses...)
+	g.Subtitle = strings.Join(subtitle, glanceSeparator)
+
+	g.Tags = exposureTags(vector)
+	return g
+}
+
+func exposureTags(vector []VectorMetric) []string {
+	var tags []string
+	for _, metric := range vector {
+		switch metric.Metric {
+		case "Attack vector":
+			tags = append(tags, metric.Value)
+		case "Privileges required":
+			if metric.Value == "None" {
+				tags = append(tags, "No privileges")
+			} else {
+				tags = append(tags, metric.Value+" privileges")
+			}
+		case "Authentication":
+			if metric.Value == "None" {
+				tags = append(tags, "No authentication")
+			} else {
+				tags = append(tags, metric.Value+" authentication")
+			}
+		case "User interaction":
+			switch metric.Value {
+			case "None":
+				tags = append(tags, "No user interaction")
+			case "Required":
+				tags = append(tags, "User interaction required")
+			default:
+				tags = append(tags, metric.Value+" user interaction")
+			}
+		}
+	}
+	return tags
+}
+
+func addEPSSGlance(g *Glance, epss intel.EPSSRecord) {
+	if probability, ok := asPercent(epss.Score); ok {
+		addFact(g, "EPSS "+probability)
+	}
+}
+
+func addKEVGlance(g *Glance, kev intel.KEVRecord) {
+	if kev.DueDate != "" {
+		addFact(g, "KEV due "+kev.DueDate)
+	}
+	if strings.EqualFold(kev.Ransomware, "known") {
+		addFact(g, "Ransomware use known")
+	}
+}
+
+func addVulnerabilityDetailGlance(g *Glance, d *Details) {
+	addCount(g, len(d.Affected), "affected product", "affected products")
+	addCount(g, len(d.References), "reference", "references")
+}

@@ -215,10 +215,12 @@ func describeCVE(d *Details, set *intel.Set) {
 		d.Score = record.Score
 		d.Severity = severityLevel(record.Severity)
 		d.Vector = DescribeVector(record.Vector)
+		d.Glance = vulnerabilityGlance(record, d.Vector)
 	}
 
 	if epss, err := set.EPSS(d.Value); err == nil {
 		addRow(d, "EPSS", epssText(epss))
+		addEPSSGlance(&d.Glance, epss)
 	}
 
 	if kev, err := set.KEV(d.Value); err == nil {
@@ -228,9 +230,11 @@ func describeCVE(d *Details, set *intel.Set) {
 		addRow(d, "Required action", kev.Action)
 		d.Headline = joinSentence(d.Headline, "in KEV")
 		d.Exploited = true
+		addKEVGlance(&d.Glance, kev)
 	}
 
 	describeCVEDetail(d, set, recordFound)
+	addVulnerabilityDetailGlance(&d.Glance, d)
 }
 
 func severityText(score, severity string) string {

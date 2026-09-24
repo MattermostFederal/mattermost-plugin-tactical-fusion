@@ -26,6 +26,7 @@ const styles: Record<string, React.CSSProperties> = {
         whiteSpace: 'nowrap',
     },
     badges: {flexWrap: 'nowrap'},
+    inline: {display: 'contents'},
     credit: {display: 'block', fontSize: '11px', opacity: 0.72, marginTop: '2px', whiteSpace: 'nowrap'},
     card: {
         width: `${CARD_WIDTH_PX}px`,
@@ -118,7 +119,8 @@ const Reports: React.FC<{reports: CyberThreatReport[]}> = ({reports}) => {
 
 const GlanceCard: React.FC<{details: CyberResponse}> = ({details}) => {
     const {glance} = details;
-    const showBadges = glance.status !== '' || details.watchlist.length > 0 || details.reports.length > 0;
+    const severity = hasBadges(details);
+    const showBadges = severity || glance.status !== '' || details.watchlist.length > 0 || details.reports.length > 0;
 
     return (
         <div
@@ -129,6 +131,12 @@ const GlanceCard: React.FC<{details: CyberResponse}> = ({details}) => {
             {glance.subtitle !== '' && <span style={styles.subtitle}>{glance.subtitle}</span>}
             {showBadges && (
                 <div style={styles.row}>
+                    {severity && (
+                        <Badges
+                            details={details}
+                            style={styles.inline}
+                        />
+                    )}
                     {glance.status !== '' && <span style={styles.status}>{glance.status}</span>}
                     <Reports reports={details.reports}/>
                     <Verdicts entries={details.watchlist}/>
@@ -166,6 +174,10 @@ const CyberHover: React.FC<{payload: CyberPayload}> = ({payload}) => {
 
     const details = state.data;
 
+    if (hasGlance(details)) {
+        return <GlanceCard details={details}/>;
+    }
+
     if (hasBadges(details)) {
         return (
             <div style={{...styles.row, flexWrap: 'nowrap'}}>
@@ -176,10 +188,6 @@ const CyberHover: React.FC<{payload: CyberPayload}> = ({payload}) => {
                 <Verdicts entries={details.watchlist}/>
             </div>
         );
-    }
-
-    if (hasGlance(details)) {
-        return <GlanceCard details={details}/>;
     }
 
     return <span style={styles.line}>{details.headline}</span>;

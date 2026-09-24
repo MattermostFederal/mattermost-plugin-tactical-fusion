@@ -107,3 +107,59 @@ func TestAPlaceNamesACityAndRegionOfTheSameNameOnce(t *testing.T) {
 		}
 	}
 }
+
+func TestAVulnerabilityGlanceGathersItsDatesExposureAndSignals(t *testing.T) {
+	set := datasets(t, map[string][]string{
+		intel.NameCVE: {strings.Join([]string{
+			"CVE-2025-55182", "2025-12-03T16:15:56.463", "2025-12-10", "10.0", "Critical",
+			"CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H", "CWE-502", "Remote code execution in an invented framework.",
+		}, "\t")},
+		intel.NameEPSS: {"CVE-2025-55182\t0.99802\t0.99958\t2026-09-23"},
+		intel.NameKEV:  {strings.Join([]string{"CVE-2025-55182", "2025-12-05", "2025-12-12", "Known", "Invented Framework", "Patch."}, "\t")},
+		intel.NameCVEDetail: {"CVE-2025-55182\t\t\t" +
+			`[{"vendor":"Invented","product":"Framework","versions":[{"version":"19.0.0","status":"affected"}]}]` + "\t" +
+			`[{"url":"https://example.org/a","tags":["Patch"]},{"url":"https://example.org/b"}]`},
+	})
+
+	g := Describe(KindCVE, "CVE-2025-55182", set).Glance
+
+	if g.Subtitle != "Published 2025-12-03 · CWE-502" {
+		t.Errorf("subtitle %q", g.Subtitle)
+	}
+	if g.Summary != "Remote code execution in an invented framework." {
+		t.Errorf("summary %q", g.Summary)
+	}
+	if !reflect.DeepEqual(g.Tags, []string{"Network", "No privileges", "No user interaction"}) {
+		t.Errorf("tags %v", g.Tags)
+	}
+	want := []string{"EPSS 99.802%", "KEV due 2025-12-12", "Ransomware use known", "1 affected product", "2 references"}
+	if !reflect.DeepEqual(g.Facts, want) {
+		t.Errorf("facts %v, want %v", g.Facts, want)
+	}
+}
+
+func TestACVSS2VectorGivesItsAuthenticationAsExposure(t *testing.T) {
+	if got := exposureTags(DescribeVector("AV:L/AC:M/Au:S/C:P/I:N/A:N")); !reflect.DeepEqual(got, []string{"Local", "Single authentication"}) {
+		t.Fatalf("tags %v", got)
+	}
+	if got := exposureTags(DescribeVector("CVSS:4.0/AV:A/AC:L/AT:N/PR:L/UI:A/VC:H/VI:N/VA:N/SC:N/SI:N/SA:N")); !reflect.DeepEqual(got, []string{"Adjacent network", "Low privileges", "Active user interaction"}) {
+		t.Fatalf("tags %v", got)
+	}
+}
+
+func TestAVulnerabilityNoDatasetHoldsHasAnEmptyGlance(t *testing.T) {
+	g := Describe(KindCVE, "CVE-2099-0001", nil).Glance
+
+	if g.Subtitle != "" || g.Summary != "" || len(g.Tags) != 0 || len(g.Facts) != 0 {
+		t.Fatalf("glance %+v, want nothing invented", g)
+	}
+}
+
+func TestAKEVListingWithoutKnownRansomwareSaysNothingAboutIt(t *testing.T) {
+	var g Glance
+	addKEVGlance(&g, intel.KEVRecord{DueDate: "2025-12-12", Ransomware: "Unknown"})
+
+	if !reflect.DeepEqual(g.Facts, []string{"KEV due 2025-12-12"}) {
+		t.Fatalf("facts %v", g.Facts)
+	}
+}

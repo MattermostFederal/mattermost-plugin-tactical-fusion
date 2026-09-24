@@ -14,7 +14,7 @@ import type {Selection} from '../selection';
 
 import type {CyberPayload} from './index';
 
-type Reply = 'found' | 'weakness' | 'technique' | 'address' | 'long' | 'bare' | 'status' | 'rejected' | 'failed' | 'hold';
+type Reply = 'found' | 'badges' | 'weakness' | 'technique' | 'address' | 'long' | 'bare' | 'status' | 'rejected' | 'failed' | 'hold';
 
 const HEADLINE = '10.0 Critical, in KEV';
 const SUMMARY = 'Remote code execution in a logging library.';
@@ -59,7 +59,13 @@ const FOUND = {
     sections: [] as CyberSection[],
     credits: [] as CyberCredit[],
     reports: [] as CyberThreatReport[],
-    glance: {subtitle: '', summary: '', tags: [] as string[], facts: [] as string[], status: ''},
+    glance: {
+        subtitle: 'Published 2021-12-10 · CWE-502',
+        summary: SUMMARY,
+        tags: ['Network', 'No privileges', 'No user interaction'],
+        facts: ['EPSS 97.5%', 'KEV due 2021-12-24'],
+        status: '',
+    },
     references: [
         {url: 'http://packetstormsecurity.com/files/165225/Apache-Log4j2-2.14.1-Remote-Code-Execution.html', tags: 'Third Party Advisory, VDB Entry'},
         {url: 'https://lists.debian.org/debian-lts-announce/2021/12/msg00007.html', tags: 'Mailing List'},
@@ -71,6 +77,7 @@ const FOUND = {
 
 const BARE = {
     ...FOUND,
+    glance: {subtitle: '', summary: '', tags: [] as string[], facts: [] as string[], status: ''},
     summary: '',
     score: '',
     severity: '',
@@ -179,7 +186,16 @@ const LONG = {
     summary: `${SUMMARY} ${'The rest of a long description. '.repeat(20)}`.trim(),
 };
 
+const BADGES_ONLY = {
+    ...FOUND,
+    watchlist: [],
+    glance: {subtitle: '', summary: '', tags: [] as string[], facts: [] as string[], status: ''},
+};
+
 function baseFor(reply: Reply): typeof FOUND {
+    if (reply === 'badges') {
+        return BADGES_ONLY;
+    }
     if (reply === 'weakness') {
         return WEAKNESS;
     }

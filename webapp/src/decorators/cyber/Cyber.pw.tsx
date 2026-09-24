@@ -590,9 +590,9 @@ test.describe('the glance card', () => {
             />,
         );
 
-        await expect(card.getByTestId('cyber-severity')).toBeVisible();
-        await expect(card.getByTestId('cyber-verdict')).toHaveText('Watchlist: malicious');
-        await expect(card.getByTestId('cyber-glance')).toHaveCount(0);
+        const glance = card.getByTestId('cyber-glance');
+        await expect(glance.getByTestId('cyber-severity')).toBeVisible();
+        await expect(glance.getByTestId('cyber-verdict')).toHaveText('Watchlist: malicious');
     });
 
     test('stays inside the hover width', async ({mount}) => {
@@ -610,7 +610,7 @@ test.describe('the glance card', () => {
 });
 
 test.describe('the hover card', () => {
-    test('shows a vulnerability as the badges the panel shows', async ({mount}) => {
+    test('shows a vulnerability with the badges the panel shows, then what it is and how it is reached', async ({mount}) => {
         const card = await mount(
             <CyberHarness
                 surface='hover'
@@ -618,10 +618,28 @@ test.describe('the hover card', () => {
             />,
         );
 
-        await expect(card.getByTestId('cyber-severity')).toHaveText('10.0Critical');
-        await expect(card.getByTestId('cyber-exploited')).toHaveText('Known exploited');
+        const glance = card.getByTestId('cyber-glance');
+        await expect(glance.getByText('CVE-2021-44228', {exact: true})).toBeVisible();
+        await expect(glance.getByTestId('cyber-severity')).toHaveText('10.0Critical');
+        await expect(glance.getByTestId('cyber-exploited')).toHaveText('Known exploited');
+        await expect(glance.getByText('Published 2021-12-10 · CWE-502')).toBeVisible();
+        await expect(glance.getByText(SUMMARY)).toBeVisible();
+        await expect(glance.getByText('No user interaction', {exact: true})).toBeVisible();
+        await expect(glance.getByText('EPSS 97.5% · KEV due 2021-12-24')).toBeVisible();
         await expect(card.getByText(HEADLINE)).toHaveCount(0);
-        await expect(card.getByText(SUMMARY)).toHaveCount(0);
+    });
+
+    test('keeps a vulnerability with only badges to the badges alone', async ({mount}) => {
+        const card = await mount(
+            <CyberHarness
+                surface='hover'
+                payload={CVE}
+                reply='badges'
+            />,
+        );
+
+        await expect(card.getByTestId('cyber-severity')).toBeVisible();
+        await expect(card.getByTestId('cyber-glance')).toHaveCount(0);
     });
 
     test('keeps the badges on one line', async ({mount}) => {
