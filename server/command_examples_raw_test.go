@@ -1,6 +1,7 @@
 package main
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -109,15 +110,6 @@ func TestRawExamplesAreTheTextAPersonTypesAndEachStillDecorates(t *testing.T) {
 			}
 			sets++
 			blocks := codeBlocks(t, post.Message)
-			if rawExampleSetsOnePerBlock[key] {
-				for _, block := range blocks {
-					if strings.Contains(block, "\n") {
-						t.Errorf("a %s block holds more than one example:\n%s", key, block)
-					}
-				}
-			} else if len(blocks) != 1 {
-				t.Errorf("the %s set is in %d blocks, want one", key, len(blocks))
-			}
 			for _, block := range blocks {
 				if strings.Contains(block, "](") || strings.Contains(block, "**") {
 					t.Errorf("a %s block carries a link or a label rather than bare text:\n%s", key, block)
@@ -135,21 +127,33 @@ func TestRawExamplesAreTheTextAPersonTypesAndEachStillDecorates(t *testing.T) {
 	}
 }
 
-func TestEachDateTimeAndCoordinateExampleIsItsOwnBlock(t *testing.T) {
+func TestEveryDecoratorExampleIsItsOwnBlock(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 	_, api := runRawExamples(t, p, testCommandChannel)
 	tagger := &decorators.Tagger{Registry: p.decorators, URLPrefix: p.decorateURLPrefix()}
 	ref := time.Now().UTC()
 
-	for key := range rawExampleSetsOnePerBlock {
+	for _, key := range exampleSetOrder {
 		set := exampleSets[key]
-		want := len(rawExampleSetTexts(tagger, ref, set))
+		texts := rawExampleSetTexts(tagger, ref, set)
+		found := false
 		for _, post := range api.created {
-			if strings.HasPrefix(post.Message, "#### "+set.name+"\n") {
-				if got := len(codeBlocks(t, post.Message)); got != want || want < 2 {
-					t.Errorf("%s: %d blocks, want one for each of its %d examples", key, got, want)
+			if !strings.HasPrefix(post.Message, "#### "+set.name+"\n") {
+				continue
+			}
+			found = true
+			blocks := codeBlocks(t, post.Message)
+			if len(blocks) != len(texts) {
+				t.Errorf("%s: %d blocks for %d examples", key, len(blocks), len(texts))
+			}
+			for _, block := range blocks {
+				if !slices.Contains(texts, block) {
+					t.Errorf("%s: the block %q is not one whole example", key, block)
 				}
 			}
+		}
+		if !found {
+			t.Errorf("no %s message", key)
 		}
 	}
 }

@@ -9,8 +9,6 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
-	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
-	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
@@ -31,12 +29,6 @@ func outerFenced(body string) string {
 	}
 	fence := strings.Repeat("`", max(minimumFence, longest+1))
 	return fence + "\n" + strings.TrimRight(body, "\n") + "\n" + fence
-}
-
-var rawExampleSetsOnePerBlock = map[string]bool{dtg.Type: true, location.Type: true}
-
-func rawExampleBlock(heading, body string) string {
-	return "#### " + heading + "\n\n" + outerFenced(body) + "\n"
 }
 
 func rawExampleBlocks(heading string, bodies []string) string {
@@ -71,28 +63,23 @@ func (p *Plugin) rawExampleMessages(ref time.Time) []string {
 	var messages []string
 	for _, key := range exampleSetOrder {
 		set := exampleSets[key]
-		texts := rawExampleSetTexts(tagger, ref, set)
-		switch {
-		case len(texts) == 0:
-		case rawExampleSetsOnePerBlock[key]:
+		if texts := rawExampleSetTexts(tagger, ref, set); len(texts) > 0 {
 			messages = append(messages, rawExampleBlocks(set.name, texts))
-		default:
-			messages = append(messages, rawExampleBlock(set.name, strings.Join(texts, "\n")))
 		}
 	}
 
 	for _, message := range p.tfrExampleMessages() {
-		messages = append(messages, rawExampleBlock("Temporary flight restriction", message))
+		messages = append(messages, rawExampleBlocks("Temporary flight restriction", []string{message}))
 	}
 	if p.cotEnabled() {
 		for _, example := range cotExampleOrder {
 			if example.file == "" {
-				messages = append(messages, rawExampleBlock("Cursor on Target", cotFenced(example.source, cotFenceInfo)))
+				messages = append(messages, rawExampleBlocks("Cursor on Target", []string{cotFenced(example.source, cotFenceInfo)}))
 			}
 		}
 	}
 	if p.geoJSONEnabled() {
-		messages = append(messages, rawExampleBlock("GeoJSON", fenced(geoJSONFenceInfo, geoJSONExample)))
+		messages = append(messages, rawExampleBlocks("GeoJSON", []string{fenced(geoJSONFenceInfo, geoJSONExample)}))
 	}
 
 	return messages
