@@ -1,0 +1,4 @@
+#tactical-fusion-cyber/1	capec	2026-09-01T00:00:00Z	golden
+CWE-20	[{"id":"CAPEC-9001","name":"Invented Pattern","abstraction":"Detailed","severity":"Medium","likelihood":"Low","summary":"An invented pattern."}]
+CWE-79	[{"id":"CAPEC-63","name":"Cross-Site Scripting (XSS)","abstraction":"Standard","severity":"Very High","likelihood":"High","summary":"An adversary embeds scripts."},{"id":"CAPEC-9001","name":"Invented Pattern","abstraction":"Detailed","severity":"Medium","likelihood":"Low","summary":"An invented pattern."}]
+T1059.001	[{"id":"CAPEC-9001","name":"Invented Pattern","abstraction":"Detailed","severity":"Medium","likelihood":"Low","summary":"An invented pattern."}]

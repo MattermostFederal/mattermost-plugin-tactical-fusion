@@ -19,6 +19,9 @@ The watchlist in particular must never be moved under `public/`.
 | `attackdetail.tsv` | MITRE Enterprise and Mobile ATT&CK: each technique's and tactic's whole description, mitigations, detection strategies and analytics, procedure examples and references | yes |
 | `cwedetail.tsv` | MITRE CWE research view 1000: each weakness's whole description, background, consequences, mitigations, detection methods and observed examples | yes |
 | `cve.tsv`, `cvedetail.tsv` | The NVD records of every CVE in `kev.tsv`, and only those | yes |
+| `capec.tsv` | MITRE CAPEC attack patterns, keyed by the CWE ids and ATT&CK technique ids each one names | yes |
+| `cveattack.tsv` | The Center for Threat-Informed Defense's mappings of KEV CVEs to ATT&CK techniques, keyed both ways | yes |
+| `LICENSE-mappings-explorer.txt` | The Apache License 2.0 that `cveattack.tsv`'s source is published under | yes |
 | `ip.tsv.gz` | IPtoASN's address ranges with their autonomous system and country, gzipped; the plugin unpacks it beside itself on first read | yes, as the archive only |
 
 Everything else the decorator reads is too large or changes too fast to bundle
@@ -156,4 +159,40 @@ of the bundle. Rebuild it with `make cyber-sources`, then:
 ```
 go run ./build/cyberdata -only ip -label "IPtoASN ip2asn-combined, fetched <date>"
 gzip -9 -c build/cyberdata/out/ip.tsv > assets/cyber/ip.tsv.gz
+```
+
+### `capec.tsv`
+
+| | |
+|---|---|
+| Upstream | `https://capec.mitre.org/data/csv/1000.csv.zip` |
+| Origin | MITRE CAPEC, mechanism of attack view 1000 |
+| License | MITRE CAPEC terms of use. Redistribution is permitted with attribution. |
+| Format | Two fields: a CWE id or an ATT&CK technique id, and a compact JSON array of the patterns that name it, each with its id, name, abstraction, typical severity, likelihood and the first sentence of its description |
+
+> This product uses information from MITRE CAPEC, the work of The MITRE
+> Corporation. MITRE is not affiliated with and does not endorse this plugin.
+
+Deprecated and obsolete patterns are left out. CAPEC ids are not decorated in
+messages; the CWE and ATT&CK panels list the patterns under **Attack patterns**,
+each linking to its page on capec.mitre.org.
+
+### `cveattack.tsv`
+
+| | |
+|---|---|
+| Upstream | `mappings/kev/attack-16.1/kev-07.28.2025/{enterprise,mobile}/` in `https://github.com/center-for-threat-informed-defense/mappings-explorer`, pinned to commit `e51d7f595db675df064ffc2b5c35c88f98eb3688` |
+| Origin | MITRE Center for Threat-Informed Defense, Mappings Explorer, KEV to ATT&CK 16.1 |
+| License | Apache License 2.0, shipped beside it as `LICENSE-mappings-explorer.txt` |
+| Format | Two fields: a CVE id or an ATT&CK technique id, and a compact JSON array of what it maps to, each with the other id and its mapping types (exploitation technique, primary impact, secondary impact) |
+
+> © 2024 MITRE. Approved for public release. Document number(s) CT0104.
+> Licensed under the Apache License, Version 2.0.
+
+Each mapping is written under both ids, so the CVE panel links its techniques
+under **Related** and the technique panel lists its CVEs under **Known exploited
+vulnerabilities**. Rebuild both files with `make cyber-sources`, then:
+
+```
+go run ./build/cyberdata -only capec,cveattack
 ```

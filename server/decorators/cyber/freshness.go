@@ -20,9 +20,9 @@ const (
 )
 
 var freshnessDatasets = map[Kind][]string{
-	KindCVE:    {intel.NameCVE, intel.NameCVEDetail, intel.NameEPSS, intel.NameKEV},
-	KindCWE:    {intel.NameCWEDetail},
-	KindAttack: {intel.NameAttackDetail},
+	KindCVE:    {intel.NameCVE, intel.NameCVEDetail, intel.NameEPSS, intel.NameKEV, intel.NameCVEAttack},
+	KindCWE:    {intel.NameCWEDetail, intel.NameCAPEC},
+	KindAttack: {intel.NameAttackDetail, intel.NameCAPEC, intel.NameCVEAttack},
 	KindIP:     {intel.NameIP, intel.NameAdvisory, intel.NameThreat},
 	KindHash:   {intel.NameMalware, intel.NameAdvisory, intel.NameThreat},
 }

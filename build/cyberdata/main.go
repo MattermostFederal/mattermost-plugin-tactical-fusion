@@ -132,6 +132,18 @@ func main() {
 			build:  buildIP,
 			target: func() string { return filepath.Join(*outDir, "ip.tsv") },
 		},
+		{
+			name:   "capec",
+			source: "capec-1000.csv",
+			build:  buildCAPEC,
+			target: func() string { return filepath.Join(*treeDir, "assets", "cyber", "capec.tsv") },
+		},
+		{
+			name:   "cveattack",
+			source: "kev-attack-enterprise.json",
+			build:  buildCVEAttack,
+			target: func() string { return filepath.Join(*treeDir, "assets", "cyber", "cveattack.tsv") },
+		},
 		kevSliceBuilder("cve"),
 		kevSliceBuilder("cvedetail"),
 	}
@@ -632,6 +644,21 @@ func keepResolvableParents(rows [][]string) [][]string {
 }
 
 func readCWE(source string) ([]map[string]string, error) {
+	records, err := readCSVFields(source, "the CWE export")
+	if err != nil {
+		return nil, err
+	}
+
+	var weaknesses []map[string]string
+	for _, fields := range records {
+		if clean(fields["cwe-id"]) != "" {
+			weaknesses = append(weaknesses, fields)
+		}
+	}
+	return weaknesses, nil
+}
+
+func readCSVFields(source, what string) ([]map[string]string, error) {
 	handle, err := os.Open(source)
 	if err != nil {
 		return nil, err
@@ -646,15 +673,15 @@ func readCWE(source string) ([]map[string]string, error) {
 		return nil, err
 	}
 	if len(records) < 2 {
-		return nil, fmt.Errorf("the CWE export is empty")
+		return nil, fmt.Errorf("%s is empty", what)
 	}
 
 	header := make([]string, len(records[0]))
 	for i, name := range records[0] {
-		header[i] = strings.ToLower(strings.TrimSpace(name))
+		header[i] = strings.ToLower(strings.TrimPrefix(strings.TrimSpace(name), "'"))
 	}
 
-	var weaknesses []map[string]string
+	all := make([]map[string]string, 0, len(records)-1)
 	for _, record := range records[1:] {
 		fields := map[string]string{}
 		for i, value := range record {
@@ -662,13 +689,10 @@ func readCWE(source string) ([]map[string]string, error) {
 				fields[header[i]] = value
 			}
 		}
-		if clean(fields["cwe-id"]) == "" {
-			continue
-		}
-		weaknesses = append(weaknesses, fields)
+		all = append(all, fields)
 	}
 
-	return weaknesses, nil
+	return all, nil
 }
 
 func buildCWE(source string) ([][]string, error) {

@@ -138,3 +138,34 @@ func TestTheBundledCyberDataStaysInsideItsBudget(t *testing.T) {
 		t.Errorf("the bundled cyber data is %d bytes compressed, over the %d byte budget", total, maxBundledCyberBytes)
 	}
 }
+
+func TestTheBundledMappingsReachTheirPanels(t *testing.T) {
+	set := openBundledCyber(t)
+
+	log4shell := cyber.Describe(cyber.KindCVE, "CVE-2021-44228", set)
+	linksT1190 := false
+	for _, link := range log4shell.Related {
+		linksT1190 = linksT1190 || (link.Kind == cyber.KindAttack && link.Value == "T1190")
+	}
+	if !linksT1190 {
+		t.Errorf("CVE-2021-44228 does not link T1190: %+v", log4shell.Related)
+	}
+
+	for _, want := range []struct {
+		kind    cyber.Kind
+		value   string
+		section string
+	}{
+		{cyber.KindCWE, "CWE-79", "Attack patterns"},
+		{cyber.KindAttack, "T1574.010", "Attack patterns"},
+		{cyber.KindAttack, "T1190", "Known exploited vulnerabilities"},
+	} {
+		found := false
+		for _, section := range cyber.Describe(want.kind, want.value, set).Sections {
+			found = found || section.Title == want.section
+		}
+		if !found {
+			t.Errorf("%s has no %q section", want.value, want.section)
+		}
+	}
+}

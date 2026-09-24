@@ -89,6 +89,8 @@ var datasetLabels = map[string]string{
 	intel.NameKEV:          "known exploited vulnerabilities",
 	intel.NameIP:           "IP address",
 	intel.NameWatchlist:    "watchlist",
+	intel.NameCAPEC:        "attack pattern",
+	intel.NameCVEAttack:    "CVE to ATT&CK mapping",
 }
 
 const attackBaseURL = "https://attack.mitre.org"
@@ -242,6 +244,7 @@ func describeCVE(d *Details, set *intel.Set) {
 	}
 
 	describeCVEDetail(d, set, recordFound)
+	describeMappedTechniques(d, set)
 	addVulnerabilityDetailGlance(&d.Glance, d)
 }
 
@@ -345,6 +348,7 @@ func describeCWE(d *Details, set *intel.Set) {
 	}
 
 	describeCWEDetail(d, set)
+	describeAttackPatterns(d, set)
 }
 
 func weaknessLink(id string) Link {
@@ -404,6 +408,8 @@ func describeAttack(d *Details, set *intel.Set) {
 		addSection(d, "Techniques", tacticTechniqueItems(technique.ID))
 	}
 	describeAttackDetail(d, set)
+	describeAttackPatterns(d, set)
+	describeExploitedVulnerabilities(d, set)
 }
 
 func attackHeadline(technique Technique) string {

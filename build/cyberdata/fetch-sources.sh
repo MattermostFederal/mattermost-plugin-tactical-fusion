@@ -33,6 +33,18 @@ curl --fail --location --silent --show-error --output "${source_dir}/cwe-1000.cs
     "https://cwe.mitre.org/data/csv/1000.csv.zip"
 unzip -p "${source_dir}/cwe-1000.csv.zip" > "${source_dir}/cwe-1000.csv"
 
+echo "fetching capec-1000.csv"
+curl --fail --location --silent --show-error --output "${source_dir}/capec-1000.csv.zip" \
+    "https://capec.mitre.org/data/csv/1000.csv.zip"
+unzip -p "${source_dir}/capec-1000.csv.zip" > "${source_dir}/capec-1000.csv"
+
+mappings_commit="e51d7f595db675df064ffc2b5c35c88f98eb3688"
+mappings_path="mappings/kev/attack-16.1/kev-07.28.2025"
+for domain in enterprise mobile; do
+    fetch "https://raw.githubusercontent.com/center-for-threat-informed-defense/mappings-explorer/${mappings_commit}/${mappings_path}/${domain}/kev-07.28.2025_attack-16.1-${domain}.json" \
+        "kev-attack-${domain}.json"
+done
+
 fetch "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json" \
     "known_exploited_vulnerabilities.json"
 
@@ -54,7 +66,8 @@ if [ -f "${lock}" ]; then
 else
     echo "no sources.lock yet; writing one from what was just fetched"
     (cd "${source_dir}" && shasum -a 256 \
-        enterprise-attack.json mobile-attack.json cwe-1000.csv known_exploited_vulnerabilities.json \
+        enterprise-attack.json mobile-attack.json cwe-1000.csv capec-1000.csv \
+        kev-attack-enterprise.json kev-attack-mobile.json known_exploited_vulnerabilities.json \
         epss_scores-current.csv ip2asn-combined.tsv > "${lock}")
 fi
 
