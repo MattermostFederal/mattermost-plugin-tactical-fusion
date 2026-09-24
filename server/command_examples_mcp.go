@@ -25,7 +25,7 @@ var agentPrompts = []agentPrompt{
 	{"Aviation reports", "Decode this METAR and tell me whether VFR flight is possible: METAR PHNL 241153Z 06012G20KT 10SM FEW025 SCT045 BKN080 27/19 A3002 RMK AO2"},
 	{"Frequencies", "What are 121.5, 243.0 and 8992 kHz used for, and which bands and channel spacing are they in?"},
 	{"Cyber context", "Triage these indicators from an alert and tell me which are known exploited or reported malicious, with the sources: CVE-2025-55182, 141.98.9.137, ed01ebfbc9eb5bbea545af4d01bf5f1071661840480439c6e5babe8e080e41aa, T1059.001"},
-	{"Cursor on Target", "Create a hostile ground CoT event named TGT01 at PHIK in Hawaii with a 25 mile circular error that goes stale in 30 minutes, and post it."},
+	{"Cursor on Target", "Create CoT with a red 25 mile threat circle centered on PHIK in Hawaii and a green line from PHIK to PGUM in Guam, and post it."},
 	{"GeoJSON", "Create GeoJSON with a red 25 mile circle centered on PHIK in Hawaii and a green line from PHIK to PGUM in Guam, and post it."},
 	{"Notes", "Make a note link for ROE that explains the three weapons control statuses, free, tight and hold, in a small table."},
 	{"Any message", "Rewrite this with Tactical Fusion links: TGT01 at 4Q FJ 0906 5962, TOT 241205ZSEP26, divert to PGUM, guard on 243.0."},

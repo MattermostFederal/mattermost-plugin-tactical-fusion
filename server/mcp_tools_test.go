@@ -280,7 +280,7 @@ func TestEveryMCPToolAnswersWithoutAReader(t *testing.T) {
 		"summarize_geojson":      SummarizeGeoJSONArgs{Document: geoJSONExample},
 		"describe_frequency":     DescribeFrequencyArgs{Frequency: "121.5"},
 		"read_date_time":         ReadDateTimeArgs{Text: "141200ZSEP26"},
-		"create_cot":             CreateCotArgs{Callsign: "ALPHA", Lat: 21.3353, Lon: -157.9483},
+		"create_cot":             CreateCotArgs{Events: []CreateCotEvent{pointEvent("ALPHA", 21.3353, -157.9483)}},
 		"create_geojson":         CreateGeoJSONArgs{Features: []CreateGeoJSONFeature{{Name: "Supply point", Kind: "point", Positions: []GeoJSONPosition{{Lat: 21.3353, Lon: -157.9483}}}}},
 		"lookup_cyber_indicator": LookupCyberIndicatorArgs{Indicators: []string{"CVE-2021-44228"}},
 	}

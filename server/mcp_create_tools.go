@@ -26,6 +26,8 @@ const (
 	maxCreatedTextRunes    = 256
 	createdCotHow          = "h-e"
 	cotUnknownMeasure      = "9999999.0"
+	cotDrawnCircleType     = "u-d-c-c"
+	cotDrawnShapeType      = "u-d-f"
 )
 
 var (
@@ -41,23 +43,35 @@ var (
 )
 
 type CreateCotArgs struct {
-	Callsign     string  `json:"callsign" jsonschema:"the name the event is shown under, such as ALPHA or TGT01"`
-	Lat          float64 `json:"lat" jsonschema:"latitude in decimal degrees, -90 to 90"`
-	Lon          float64 `json:"lon" jsonschema:"longitude in decimal degrees, -180 to 180"`
-	Type         string  `json:"type,omitempty" jsonschema:"an exact CoT type such as a-h-G-U-C-A; when empty the type is built from affiliation and dimension"`
-	Affiliation  string  `json:"affiliation,omitempty" jsonschema:"friend, hostile, neutral, unknown, suspect, assumed-friend or pending; default unknown"`
-	Dimension    string  `json:"dimension,omitempty" jsonschema:"ground, air, sea, subsurface or space; default ground"`
-	Remarks      string  `json:"remarks,omitempty" jsonschema:"free text remarks, up to 256 characters"`
-	StaleMinutes int     `json:"stale_minutes,omitempty" jsonschema:"how long the event stays current, in minutes; default 10, at most one week"`
-	HAE          float64 `json:"hae,omitempty" jsonschema:"height above the ellipsoid in meters; zero when unknown"`
-	CE           float64 `json:"ce,omitempty" jsonschema:"circular error in meters; zero when unknown"`
+	Events       []CreateCotEvent `json:"events" jsonschema:"1 to 32 events, written in order into one message"`
+	StaleMinutes int              `json:"stale_minutes,omitempty" jsonschema:"how long the events stay current, in minutes; default 10, at most one week"`
+}
+
+type CreateCotEvent struct {
+	Callsign    string          `json:"callsign" jsonschema:"the name the event is shown under, such as ALPHA, TGT01 or OBJ AREA"`
+	Lat         *float64        `json:"lat,omitempty" jsonschema:"latitude in decimal degrees, -90 to 90; required for a point or a circle, and a line or polygon defaults to its first position"`
+	Lon         *float64        `json:"lon,omitempty" jsonschema:"longitude in decimal degrees, -180 to 180; required with lat"`
+	Type        string          `json:"type,omitempty" jsonschema:"an exact CoT type such as a-h-G-U-C-A; when empty a point is built from affiliation and dimension, a circle is u-d-c-c and a line or polygon u-d-f"`
+	Affiliation string          `json:"affiliation,omitempty" jsonschema:"friend, hostile, neutral, unknown, suspect, assumed-friend or pending; default unknown"`
+	Dimension   string          `json:"dimension,omitempty" jsonschema:"ground, air, sea, subsurface or space; default ground"`
+	Remarks     string          `json:"remarks,omitempty" jsonschema:"free text remarks, up to 256 characters"`
+	HAE         float64         `json:"hae,omitempty" jsonschema:"height above the ellipsoid in meters; zero when unknown"`
+	CE          float64         `json:"ce,omitempty" jsonschema:"circular error in meters; zero when unknown"`
+	Color       string          `json:"color,omitempty" jsonschema:"a #rrggbb color the event and its shape are drawn in"`
+	Shape       *CreateCotShape `json:"shape,omitempty" jsonschema:"a shape to draw instead of a plain point"`
+}
+
+type CreateCotShape struct {
+	Kind         string            `json:"kind" jsonschema:"circle, line or polygon"`
+	RadiusMeters float64           `json:"radius_meters,omitempty" jsonschema:"a circle's radius in meters, centered on the event's lat and lon"`
+	Positions    []GeoJSONPosition `json:"positions,omitempty" jsonschema:"two or more positions in order for a line, three or more around a polygon (it is closed for you)"`
 }
 
 type CreatedCot struct {
-	XML      string         `json:"xml" jsonschema:"the event as CoT XML"`
-	Message  string         `json:"message" jsonschema:"the event in a cot fenced code block; posted as a message on its own it renders as a Tactical Fusion card"`
-	FitsPost bool           `json:"fits_post"`
-	Event    map[string]any `json:"event" jsonschema:"the event read back, as decode_cot describes it"`
+	XML      string           `json:"xml" jsonschema:"the events as CoT XML"`
+	Message  string           `json:"message" jsonschema:"the events in a cot fenced code block; posted as a message on its own it renders as a Tactical Fusion card with a map"`
+	FitsPost bool             `json:"fits_post"`
+	Events   []map[string]any `json:"events" jsonschema:"the events read back, as decode_cot describes them"`
 }
 
 type CreateGeoJSONArgs struct {
@@ -92,36 +106,26 @@ func (p *Plugin) createCotTool(_ context.Context, _ *mcp.CallToolRequest, in Cre
 	if reason == "" {
 		events, err := cot.Parse([]byte(source))
 		described := objects(cot.Props(events, cot.Source{Kind: cot.SourceFence})["events"])
-		if err == nil && len(described) == 1 {
+		if err == nil && len(described) == len(in.Events) {
 			message := fenced(cotFenceInfo, source)
 			return nil, CreatedCot{
 				XML:      source,
 				Message:  message,
 				FitsPost: utf8.RuneCountInString(message) <= safePostRunes,
-				Event:    described[0],
+				Events:   described,
 			}, nil
 		}
-		reason = "the event it built did not read back."
+		reason = "the events it built did not read back."
 	}
-	return toolRefusal(errcode.MCPCreateCotInvalid, "Could not build that event: "+reason), CreatedCot{Event: map[string]any{}}, nil
+	return toolRefusal(errcode.MCPCreateCotInvalid, "Could not build that event: "+reason), CreatedCot{Events: []map[string]any{}}, nil
 }
 
 func cotSource(in CreateCotArgs, now time.Time) (string, string) {
-	callsign := strings.TrimSpace(in.Callsign)
 	switch {
-	case callsign == "" || utf8.RuneCountInString(callsign) > maxCreatedTextRunes:
-		return "", "a callsign is required, up to 256 characters."
-	case !validLatLon(in.Lat, in.Lon):
-		return "", "lat must be -90 to 90 and lon -180 to 180."
-	case utf8.RuneCountInString(in.Remarks) > maxCreatedTextRunes:
-		return "", "remarks are at most 256 characters."
+	case len(in.Events) == 0 || len(in.Events) > cot.MaxEvents:
+		return "", "give 1 to " + strconv.Itoa(cot.MaxEvents) + " events."
 	case in.StaleMinutes < 0 || in.StaleMinutes > maxCotStaleMinutes:
 		return "", "stale_minutes must be 1 to 10080."
-	}
-
-	cotType, reason := cotTypeFor(in)
-	if reason != "" {
-		return "", reason
 	}
 
 	stale := in.StaleMinutes
@@ -129,26 +133,161 @@ func cotSource(in CreateCotArgs, now time.Time) (string, string) {
 		stale = defaultCotStaleMinutes
 	}
 	at := now.Truncate(time.Second)
+	timing := ` time="` + at.Format(time.RFC3339) + `" start="` + at.Format(time.RFC3339) + `"` +
+		` stale="` + at.Add(time.Duration(stale)*time.Minute).Format(time.RFC3339) + `"`
+
+	var source strings.Builder
+	vertices := 0
+	for i, event := range in.Events {
+		written, count, reason := cotEventSource(event, timing)
+		if reason != "" {
+			return "", "event " + strconv.Itoa(i+1) + ": " + reason
+		}
+		vertices += count
+		if vertices > cot.MaxVertices {
+			return "", "the shapes have more than " + strconv.Itoa(cot.MaxVertices) + " positions between them."
+		}
+		if i > 0 {
+			source.WriteString("\n")
+		}
+		source.WriteString(written)
+	}
+	if source.Len() > cot.MaxSourceBytes {
+		return "", "the events are larger than " + strconv.Itoa(cot.MaxSourceBytes/1024) + " KB."
+	}
+	return source.String(), ""
+}
+
+func cotEventSource(in CreateCotEvent, timing string) (string, int, string) {
+	callsign := strings.TrimSpace(in.Callsign)
+	switch {
+	case callsign == "" || utf8.RuneCountInString(callsign) > maxCreatedTextRunes:
+		return "", 0, "a callsign is required, up to 256 characters."
+	case utf8.RuneCountInString(in.Remarks) > maxCreatedTextRunes:
+		return "", 0, "remarks are at most 256 characters."
+	}
+
+	shape, count, reason := cotShapeSource(in.Shape)
+	if reason != "" {
+		return "", 0, reason
+	}
+	lat, lon, reason := cotEventPosition(in)
+	if reason != "" {
+		return "", 0, reason
+	}
+	cotType, reason := cotTypeFor(in)
+	if reason != "" {
+		return "", 0, reason
+	}
+	color, reason := cotColor(in.Color)
+	if reason != "" {
+		return "", 0, reason
+	}
 
 	var detail strings.Builder
 	detail.WriteString(`<contact callsign="` + xmlText(callsign) + `"/>`)
+	if color != "" {
+		detail.WriteString(`<color argb="` + color + `"/>`)
+	}
+	detail.WriteString(shape)
 	if remarks := strings.TrimSpace(in.Remarks); remarks != "" {
 		detail.WriteString(`<remarks>` + xmlText(remarks) + `</remarks>`)
 	}
 
-	return `<event version="2.0" uid="TF-` + model.NewId() + `" type="` + cotType + `" how="` + createdCotHow + `"` +
-		` time="` + at.Format(time.RFC3339) + `" start="` + at.Format(time.RFC3339) + `"` +
-		` stale="` + at.Add(time.Duration(stale)*time.Minute).Format(time.RFC3339) + `">` +
-		`<point lat="` + decimal(in.Lat) + `" lon="` + decimal(in.Lon) + `" hae="` + measure(in.HAE) + `" ce="` + measure(in.CE) + `" le="` + cotUnknownMeasure + `"/>` +
-		`<detail>` + detail.String() + `</detail></event>`, ""
+	return `<event version="2.0" uid="TF-` + model.NewId() + `" type="` + cotType + `" how="` + createdCotHow + `"` + timing + `>` +
+		`<point lat="` + decimal(lat) + `" lon="` + decimal(lon) + `" hae="` + measure(in.HAE) + `" ce="` + measure(in.CE) + `" le="` + cotUnknownMeasure + `"/>` +
+		`<detail>` + detail.String() + `</detail></event>`, count, ""
 }
 
-func cotTypeFor(in CreateCotArgs) (string, string) {
+func cotEventPosition(in CreateCotEvent) (float64, float64, string) {
+	if in.Lat != nil && in.Lon != nil {
+		if !validLatLon(*in.Lat, *in.Lon) {
+			return 0, 0, "lat must be -90 to 90 and lon -180 to 180."
+		}
+		return *in.Lat, *in.Lon, ""
+	}
+	if in.Lat == nil && in.Lon == nil && in.Shape != nil && len(in.Shape.Positions) > 0 && cotShapeKind(in.Shape) != cotShapeCircle {
+		first := in.Shape.Positions[0]
+		return first.Lat, first.Lon, ""
+	}
+	return 0, 0, "lat and lon are required for a point or a circle."
+}
+
+const (
+	cotShapeCircle  = "circle"
+	cotShapeLine    = "line"
+	cotShapePolygon = "polygon"
+
+	maxCotCircleMeters = 20_000_000
+	opaqueArgbOffset   = 1 << 24
+)
+
+func cotShapeKind(shape *CreateCotShape) string {
+	return strings.ToLower(strings.TrimSpace(shape.Kind))
+}
+
+func cotShapeSource(shape *CreateCotShape) (string, int, string) {
+	if shape == nil {
+		return "", 0, ""
+	}
+
+	switch cotShapeKind(shape) {
+	case cotShapeCircle:
+		radius := shape.RadiusMeters
+		if math.IsNaN(radius) || radius <= 0 || radius > maxCotCircleMeters {
+			return "", 0, "a circle takes a radius_meters above 0 and at most 20000000."
+		}
+		axis := strconv.FormatFloat(radius, 'f', 1, 64)
+		return `<shape><ellipse major="` + axis + `" minor="` + axis + `" angle="0"/></shape>`, 0, ""
+
+	case cotShapeLine, cotShapePolygon:
+		closed := cotShapeKind(shape) == cotShapePolygon
+		positions := shape.Positions
+		switch {
+		case !closed && len(positions) < 2:
+			return "", 0, "a line takes at least two positions."
+		case closed && len(positions) < 3:
+			return "", 0, "a polygon takes at least three positions."
+		}
+
+		var polyline strings.Builder
+		polyline.WriteString(`<shape><polyline closed="` + strconv.FormatBool(closed) + `">`)
+		for _, position := range positions {
+			if !validLatLon(position.Lat, position.Lon) {
+				return "", 0, "lat must be -90 to 90 and lon -180 to 180."
+			}
+			polyline.WriteString(`<vertex lat="` + decimal(position.Lat) + `" lon="` + decimal(position.Lon) + `"/>`)
+		}
+		polyline.WriteString(`</polyline></shape>`)
+		return polyline.String(), len(positions), ""
+	}
+	return "", 0, "a shape's kind must be circle, line or polygon."
+}
+
+func cotColor(raw string) (string, string) {
+	color := strings.TrimSpace(raw)
+	if color == "" {
+		return "", ""
+	}
+	if !colorShape.MatchString(color) {
+		return "", "color must be #rrggbb."
+	}
+	rgb, _ := strconv.ParseInt(color[1:], 16, 64)
+	return strconv.FormatInt(rgb-opaqueArgbOffset, 10), ""
+}
+
+func cotTypeFor(in CreateCotEvent) (string, string) {
 	if raw := strings.TrimSpace(in.Type); raw != "" {
 		if !cotTypeShape.MatchString(raw) {
 			return "", "type must be a CoT type such as a-h-G-U-C-A."
 		}
 		return raw, ""
+	}
+	if in.Shape != nil {
+		if cotShapeKind(in.Shape) == cotShapeCircle {
+			return cotDrawnCircleType, ""
+		}
+		return cotDrawnShapeType, ""
 	}
 
 	affiliation := strings.ToLower(strings.TrimSpace(in.Affiliation))

@@ -1158,6 +1158,13 @@ function geodesicRing(
     return ring;
 }
 
+export function ellipseOutline(
+    lat: number, lon: number, majorMeters: number, minorMeters: number, angleDeg: number,
+): Array<{lat: number; lon: number}> | null {
+    const ring = geodesicRing(lat, lon, majorMeters, minorMeters, angleDeg);
+    return ring === null ? null : ring.map(([ringLon, ringLat]) => ({lat: ringLat, lon: ringLon}));
+}
+
 /**
  * An ellipse on the ground, from the axes the event stated.
  *

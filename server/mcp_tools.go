@@ -86,7 +86,7 @@ func (p *Plugin) registerMCPTools(server *pluginmcp.Server) {
 
 	pluginmcp.AddTool(server, &mcp.Tool{
 		Name:        "create_cot",
-		Description: "Build a Cursor on Target event for a callsign at a latitude and longitude, from an exact CoT type or from an affiliation (friend, hostile, neutral, unknown) and a dimension (ground, air, sea). Returns the XML, a message that renders as a Tactical Fusion card when posted on its own, and the event read back in words.",
+		Description: "Build one message of up to 32 Cursor on Target events. Each is a point for a callsign, typed exactly or from an affiliation (friend, hostile, neutral, unknown) and a dimension (ground, air, sea), or a drawn shape: a circle of a radius in meters around a position, a line, or a polygon, each in an optional #rrggbb color. Returns the XML, a message that renders as a Tactical Fusion card with a map when posted on its own, and the events read back in words.",
 	}, guardTool(p, "create_cot", p.createCotTool))
 
 	pluginmcp.AddTool(server, &mcp.Tool{

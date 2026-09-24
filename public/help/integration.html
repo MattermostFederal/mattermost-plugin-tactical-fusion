@@ -650,8 +650,8 @@ declare global {
                 </tr>
                 <tr>
                     <td><code>create_cot</code></td>
-                    <td><code>callsign</code>, <code>lat</code>, <code>lon</code>, and either an exact <code>type</code> or an <code>affiliation</code> and <code>dimension</code>; optionally <code>remarks</code>, <code>stale_minutes</code>, <code>hae</code>, <code>ce</code></td>
-                    <td>The event as XML, a <code>cot</code> fenced message that renders as a card when posted on its own, and the event read back in words</td>
+                    <td><code>events</code>, 1 to 32, each a <code>callsign</code> with a <code>lat</code> and <code>lon</code>, either an exact <code>type</code> or an <code>affiliation</code> and <code>dimension</code>, and optionally <code>remarks</code>, <code>hae</code>, <code>ce</code>, a <code>#rrggbb</code> <code>color</code> and a <code>shape</code>: a <code>circle</code> of <code>radius_meters</code>, or a <code>line</code> or <code>polygon</code> of <code>{lat, lon}</code> positions; optionally <code>stale_minutes</code> for them all</td>
+                    <td>The events as XML, a <code>cot</code> fenced message that renders as a card with a map when posted on its own, and each event read back in words</td>
                 </tr>
                 <tr>
                     <td><code>create_geojson</code></td>

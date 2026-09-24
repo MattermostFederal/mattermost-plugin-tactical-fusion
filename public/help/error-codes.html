@@ -772,7 +772,7 @@
                 <tr>
                     <td><code>TF-20014</code></td>
                     <td><code>MCPCreateCotInvalid</code> <span class="level">Tool error</span></td>
-                    <td><code>Could not build that event: ...</code> The <code>create_cot</code> tool was missing a callsign, given a position off the globe, an affiliation or dimension it does not know, a malformed type, a stale time over a week, or remarks over 256 characters. The message ends with which.</td>
+                    <td><code>Could not build that event: ...</code> The <code>create_cot</code> tool was given no events or more than 32, an event missing a callsign or a position, a position off the globe, an affiliation or dimension it does not know, a malformed type or color, remarks over 256 characters, a shape it cannot draw (a circle with no radius, a line of fewer than two positions, a polygon of fewer than three, more than 512 positions in all), or a stale time over a week. The message ends with which event and why.</td>
                 </tr>
                 <tr>
                     <td><code>TF-20015</code></td>
