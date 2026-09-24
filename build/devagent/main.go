@@ -246,16 +246,10 @@ func (c *client) ensureAgent() (string, error) {
 	return "created", nil
 }
 
-type toolConfig struct {
-	Name    string `json:"name"`
-	Policy  string `json:"policy"`
-	Enabled bool   `json:"enabled"`
-}
-
 type mcpServer struct {
-	URL         string       `json:"url"`
-	Enabled     bool         `json:"enabled"`
-	ToolConfigs []toolConfig `json:"toolConfigs"`
+	URL         string           `json:"url"`
+	Enabled     bool             `json:"enabled"`
+	ToolConfigs []map[string]any `json:"toolConfigs"`
 	Tools       []struct {
 		Name string `json:"name"`
 	} `json:"tools"`
@@ -274,20 +268,22 @@ func (c *client) ensureToolsAutoRun() (string, error) {
 			continue
 		}
 
-		existing := map[string]toolConfig{}
+		existing := map[string]map[string]any{}
 		for _, config := range server.ToolConfigs {
-			existing[config.Name] = config
+			if name, ok := config["name"].(string); ok {
+				existing[name] = config
+			}
 		}
 
 		changed := !server.Enabled
-		configs := make([]toolConfig, 0, len(server.Tools))
+		configs := make([]map[string]any, 0, len(server.Tools))
 		for _, tool := range server.Tools {
 			config, known := existing[tool.Name]
 			if !known {
-				config = toolConfig{Name: tool.Name, Enabled: true}
+				config = map[string]any{"name": tool.Name, "enabled": true}
 			}
-			if config.Policy != autoRunEverywhere {
-				config.Policy = autoRunEverywhere
+			if config["policy"] != autoRunEverywhere {
+				config["policy"] = autoRunEverywhere
 				changed = true
 			}
 			configs = append(configs, config)
