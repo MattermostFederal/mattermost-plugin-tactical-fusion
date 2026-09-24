@@ -308,3 +308,61 @@ func TestParentsOfNamesEachParentOnceAcrossViews(t *testing.T) {
 		t.Fatalf("parentsOf = %q, want each ChildOf parent once, in order", got)
 	}
 }
+
+func TestAnAttackSummaryDropsCitationsAndMarkup(t *testing.T) {
+	cases := map[string]string{
+		"Adversaries may obfuscate traffic.(Citation: Invented Report 2026) More text.": "Adversaries may obfuscate traffic.",
+		"Adversaries may read `/proc` and <code>/sys</code>. More.":                     "Adversaries may read /proc and /sys.",
+		"Adversaries may use [Invented Tool](https://attack.example/S9999). More.":      "Adversaries may use Invented Tool.",
+		"Adversaries may “pass the hash” – the malware’s way. More.":                    "Adversaries may \"pass the hash\" - the malware's way.",
+	}
+
+	for description, want := range cases {
+		if got := attackSummary(description); got != want {
+			t.Errorf("attackSummary(%q) = %q, want %q", description, got, want)
+		}
+	}
+}
+
+const stixFixture = `{"objects":[
+{"id":"x-mitre-tactic--1","type":"x-mitre-tactic","name":"Invented Tactic B","description":"B.","x_mitre_shortname":"b","external_references":[{"source_name":"mitre-attack","external_id":"TA9002"}]},
+{"id":"x-mitre-tactic--2","type":"x-mitre-tactic","name":"Invented Tactic A","description":"A.","x_mitre_shortname":"a","external_references":[{"source_name":"mitre-attack","external_id":"TA9001"}]},
+{"id":"attack-pattern--old","type":"attack-pattern","name":"Old Technique","description":"Old.","revoked":true,"external_references":[{"source_name":"mitre-attack","external_id":"T9001"}]},
+{"id":"attack-pattern--new","type":"attack-pattern","name":"New Technique","description":"New.","kill_chain_phases":[{"kill_chain_name":"mitre-attack","phase_name":"b"},{"kill_chain_name":"mitre-attack","phase_name":"a"}],"external_references":[{"source_name":"mitre-attack","external_id":"T9002"}]},
+{"id":"attack-pattern--gone","type":"attack-pattern","name":"Gone","description":"Gone.","x_mitre_deprecated":true,"external_references":[{"source_name":"mitre-attack","external_id":"T9003"}]},
+{"id":"attack-pattern--orphan","type":"attack-pattern","name":"Orphan","description":"Orphan.","x_mitre_is_subtechnique":true,"revoked":true,"external_references":[{"source_name":"mitre-attack","external_id":"T9999.001"}]},
+{"id":"relationship--1","type":"relationship","relationship_type":"revoked-by","source_ref":"attack-pattern--old","target_ref":"attack-pattern--new"}
+]}`
+
+func TestTheAttackCatalogKeepsRetiredEntriesWithTheirReplacement(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "enterprise-attack.json")
+	if err := os.WriteFile(path, []byte(stixFixture), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	rows, err := buildAttack(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	byID := map[string][]string{}
+	for _, row := range rows {
+		if len(row) != len(headers["attack"]) {
+			t.Fatalf("%s has %d fields, want %d", row[0], len(row), len(headers["attack"]))
+		}
+		byID[row[0]] = row
+	}
+
+	if got := byID["T9001"]; got[7] != "revoked" || got[8] != "T9002" {
+		t.Errorf("revoked row %q", got)
+	}
+	if got := byID["T9003"]; got[7] != "deprecated" || got[8] != "" {
+		t.Errorf("deprecated row %q", got)
+	}
+	if got := byID["T9002"]; got[3] != "TA9001,TA9002" || got[7] != "active" {
+		t.Errorf("active row %q, want its tactics sorted by id", got)
+	}
+	if got := byID["T9999.001"]; got[4] != "" {
+		t.Errorf("a sub-technique whose parent the catalog lacks kept the dangling parent %q", got[4])
+	}
+}

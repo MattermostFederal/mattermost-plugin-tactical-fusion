@@ -15,14 +15,15 @@ var attackTSV string
 var cweTSV string
 
 type Technique struct {
-	ID        string
-	Name      string
-	Kind      string
-	Tactics   []string
-	Parent    string
-	Platforms []string
-	Summary   string
-	Status    string
+	ID         string
+	Name       string
+	Kind       string
+	Tactics    []string
+	Parent     string
+	Platforms  []string
+	Summary    string
+	Status     string
+	ReplacedBy string
 }
 
 type Weakness struct {
@@ -34,7 +35,13 @@ type Weakness struct {
 	Parents     []string
 }
 
+const attackColumns = 9
+
 const (
+	StatusActive     = "active"
+	StatusRevoked    = "revoked"
+	StatusDeprecated = "deprecated"
+
 	techniqueKindTactic       = "tactic"
 	techniqueKindTechnique    = "technique"
 	techniqueKindSubTechnique = "subtechnique"
@@ -69,7 +76,7 @@ func TechniqueCount() int { return len(techniques) }
 
 func WeaknessCount() int { return len(weaknesses) }
 
-const allowedPunctuation = " _-,.'\"()[]/&+:;*=<>"
+const allowedPunctuation = " _-,.'\"()[]/&+:;*=<>\\~$"
 
 var autolinkTriggers = []string{"www.", "://"}
 
@@ -140,7 +147,7 @@ func splitList(field string) []string {
 }
 
 func parseTechniques(source string) (map[string]Technique, error) {
-	rows, err := catalogRows(source, 8)
+	rows, err := catalogRows(source, attackColumns)
 	if err != nil {
 		return nil, fmt.Errorf("reading the ATT&CK catalog: %w", err)
 	}
@@ -148,14 +155,15 @@ func parseTechniques(source string) (map[string]Technique, error) {
 	out := make(map[string]Technique, len(rows))
 	for _, row := range rows {
 		t := Technique{
-			ID:        row[0],
-			Name:      row[1],
-			Kind:      row[2],
-			Tactics:   splitList(row[3]),
-			Parent:    row[4],
-			Platforms: splitList(row[5]),
-			Summary:   row[6],
-			Status:    row[7],
+			ID:         row[0],
+			Name:       row[1],
+			Kind:       row[2],
+			Tactics:    splitList(row[3]),
+			Parent:     row[4],
+			Platforms:  splitList(row[5]),
+			Summary:    row[6],
+			Status:     row[7],
+			ReplacedBy: row[8],
 		}
 
 		switch t.Kind {
@@ -178,6 +186,11 @@ func parseTechniques(source string) (map[string]Technique, error) {
 	}
 
 	for _, t := range out {
+		if t.ReplacedBy != "" {
+			if _, ok := out[t.ReplacedBy]; !ok {
+				return nil, fmt.Errorf("%s is replaced by %s, which the catalog does not hold", t.ID, t.ReplacedBy)
+			}
+		}
 		if t.Parent != "" {
 			if _, ok := out[t.Parent]; !ok {
 				return nil, fmt.Errorf("%s names parent %s, which the catalog does not hold", t.ID, t.Parent)

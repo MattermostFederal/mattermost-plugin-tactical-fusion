@@ -303,7 +303,7 @@ func describeAttack(d *Details) {
 
 	d.Title = technique.Name
 	d.Summary = technique.Summary
-	d.Headline = attackHeadline(technique)
+	d.Headline = joinSentence(attackHeadline(technique), attackRetirement(technique))
 
 	addRow(d, "Identifier", technique.ID)
 	addRow(d, "Kind", attackKindText(technique.Kind))
@@ -325,11 +325,17 @@ func describeAttack(d *Details) {
 	}
 
 	for _, child := range SubTechniquesOf(technique.ID) {
-		d.Related = append(d.Related, techniqueLink(child.ID))
+		if child.Status == StatusActive {
+			d.Related = append(d.Related, techniqueLink(child.ID))
+		}
 	}
 
 	addRow(d, "Platforms", strings.Join(technique.Platforms, ", "))
-	addRow(d, "Status", technique.Status)
+	addRow(d, "Status", attackStatusText(technique.Status))
+	if replacement, ok := LookupTechnique(technique.ReplacedBy); ok {
+		addRow(d, "Replaced by", replacement.ID+" "+replacement.Name)
+		d.Related = append([]Link{techniqueLink(replacement.ID)}, d.Related...)
+	}
 	addRow(d, "Reference", AttackURL(technique))
 }
 
@@ -341,6 +347,28 @@ func attackHeadline(technique Technique) string {
 	}
 
 	return technique.Name
+}
+
+func attackStatusText(status string) string {
+	switch status {
+	case StatusActive:
+		return "Active"
+	case StatusRevoked:
+		return "Revoked by MITRE"
+	case StatusDeprecated:
+		return "Deprecated by MITRE"
+	}
+	return status
+}
+
+func attackRetirement(technique Technique) string {
+	if technique.Status == StatusActive || technique.Status == "" {
+		return ""
+	}
+	if technique.ReplacedBy != "" {
+		return technique.Status + ", see " + technique.ReplacedBy
+	}
+	return technique.Status
 }
 
 func attackKindText(kind string) string {

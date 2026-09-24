@@ -443,3 +443,55 @@ func TestThePageEscapesTheAngleBracketsACatalogSummaryCarries(t *testing.T) {
 		t.Fatalf("the escaped brackets are missing from the page")
 	}
 }
+
+func TestARevokedTechniqueNamesAndLinksItsReplacement(t *testing.T) {
+	d := Describe(KindAttack, "T1562", nil)
+
+	if d.Headline != "Impair Defenses, revoked, see T1685" {
+		t.Fatalf("headline %q", d.Headline)
+	}
+	if got := rowValue(d, "Status"); got != "Revoked by MITRE" {
+		t.Fatalf("status %q", got)
+	}
+	if got := rowValue(d, "Replaced by"); got != "T1685 Disable or Modify Tools" {
+		t.Fatalf("replaced by %q", got)
+	}
+	if len(d.Related) == 0 || d.Related[0].Value != "T1685" {
+		t.Fatalf("the replacement is not the first related link: %+v", d.Related)
+	}
+}
+
+func TestADeprecatedTechniqueSaysSoWithoutInventingAReplacement(t *testing.T) {
+	d := Describe(KindAttack, "T1043", nil)
+
+	if got := rowValue(d, "Status"); got != "Deprecated by MITRE" {
+		t.Fatalf("status %q", got)
+	}
+	if got := rowValue(d, "Replaced by"); got != "" {
+		t.Fatalf("a deprecated technique MITRE names no replacement for was given one: %q", got)
+	}
+	if d.Headline != "Commonly Used Port, deprecated" {
+		t.Fatalf("headline %q", d.Headline)
+	}
+}
+
+func TestAnActiveTechniqueListsOnlyItsActiveSubTechniques(t *testing.T) {
+	d := Describe(KindAttack, "T1053", nil)
+
+	for _, link := range d.Related {
+		if link.Value == "T1053.001" || link.Value == "T1053.004" {
+			t.Fatalf("a retired sub-technique is listed: %s", link.Value)
+		}
+	}
+	if rowValue(d, "Status") != "Active" {
+		t.Fatalf("status %q", rowValue(d, "Status"))
+	}
+}
+
+func TestALinkAlreadyPostedForARetiredTechniqueStillResolves(t *testing.T) {
+	for _, id := range []string{"T1562", "T1562.001", "T1053.001", "T1043"} {
+		if !RecognizeAs(KindAttack, id) {
+			t.Errorf("%s no longer resolves", id)
+		}
+	}
+}

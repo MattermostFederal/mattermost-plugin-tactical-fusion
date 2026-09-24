@@ -139,16 +139,17 @@ func TestSubTechniquesAreListedUnderTheirParent(t *testing.T) {
 
 func TestBadCatalogDataIsRefused(t *testing.T) {
 	cases := map[string]string{
-		"no rows":            "id\tname\tkind\ttactics\tparent\tplatforms\tsummary\tstatus\n",
-		"wrong field count":  "id\tname\tkind\ttactics\tparent\tplatforms\tsummary\tstatus\nT1059\tShell\n",
-		"unknown kind":       "id\tname\tkind\ttactics\tparent\tplatforms\tsummary\tstatus\nT1059\tShell\twidget\t\t\t\ts\tactive\n",
-		"malformed id":       "id\tname\tkind\ttactics\tparent\tplatforms\tsummary\tstatus\nX1059\tShell\ttechnique\t\t\t\ts\tactive\n",
-		"missing name":       "id\tname\tkind\ttactics\tparent\tplatforms\tsummary\tstatus\nT1059\t\ttechnique\t\t\t\ts\tactive\n",
-		"dangling parent":    "id\tname\tkind\ttactics\tparent\tplatforms\tsummary\tstatus\nT1059.001\tPS\tsubtechnique\t\tT9999\t\ts\tactive\n",
-		"dangling tactic":    "id\tname\tkind\ttactics\tparent\tplatforms\tsummary\tstatus\nT1059\tShell\ttechnique\tTA9999\t\t\ts\tactive\n",
-		"refused character":  "id\tname\tkind\ttactics\tparent\tplatforms\tsummary\tstatus\nT1059\tShell\ttechnique\t\t\t\thttps://x\tactive\n",
-		"duplicate id":       "id\tname\tkind\ttactics\tparent\tplatforms\tsummary\tstatus\nT1059\tA\ttechnique\t\t\t\ts\tactive\nT1059\tB\ttechnique\t\t\t\ts\tactive\n",
-		"a tactic that isnt": "id\tname\tkind\ttactics\tparent\tplatforms\tsummary\tstatus\nTA0002\tExec\ttactic\t\t\t\ts\tactive\nT1059\tShell\ttechnique\tT1059\t\t\ts\tactive\n",
+		"no rows":              "id\tname\tkind\ttactics\tparent\tplatforms\tsummary\tstatus\treplaced_by\n",
+		"wrong field count":    "id\tname\tkind\ttactics\tparent\tplatforms\tsummary\tstatus\treplaced_by\nT1059\tShell\n",
+		"unknown kind":         "id\tname\tkind\ttactics\tparent\tplatforms\tsummary\tstatus\treplaced_by\nT1059\tShell\twidget\t\t\t\ts\tactive\t\n",
+		"malformed id":         "id\tname\tkind\ttactics\tparent\tplatforms\tsummary\tstatus\treplaced_by\nX1059\tShell\ttechnique\t\t\t\ts\tactive\t\n",
+		"missing name":         "id\tname\tkind\ttactics\tparent\tplatforms\tsummary\tstatus\treplaced_by\nT1059\t\ttechnique\t\t\t\ts\tactive\t\n",
+		"dangling parent":      "id\tname\tkind\ttactics\tparent\tplatforms\tsummary\tstatus\treplaced_by\nT1059.001\tPS\tsubtechnique\t\tT9999\t\ts\tactive\t\n",
+		"dangling tactic":      "id\tname\tkind\ttactics\tparent\tplatforms\tsummary\tstatus\treplaced_by\nT1059\tShell\ttechnique\tTA9999\t\t\ts\tactive\t\n",
+		"refused character":    "id\tname\tkind\ttactics\tparent\tplatforms\tsummary\tstatus\treplaced_by\nT1059\tShell\ttechnique\t\t\t\thttps://x\tactive\t\n",
+		"duplicate id":         "id\tname\tkind\ttactics\tparent\tplatforms\tsummary\tstatus\treplaced_by\nT1059\tA\ttechnique\t\t\t\ts\tactive\t\nT1059\tB\ttechnique\t\t\t\ts\tactive\t\n",
+		"dangling replacement": "id\tname\tkind\ttactics\tparent\tplatforms\tsummary\tstatus\treplaced_by\nT1059\tShell\ttechnique\t\t\t\ts\trevoked\tT9999\n",
+		"a tactic that isnt":   "id\tname\tkind\ttactics\tparent\tplatforms\tsummary\tstatus\treplaced_by\nTA0002\tExec\ttactic\t\t\t\ts\tactive\t\nT1059\tShell\ttechnique\tT1059\t\t\ts\tactive\t\n",
 	}
 
 	for name, source := range cases {

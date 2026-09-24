@@ -166,7 +166,7 @@ func run(b builder) error {
 }
 
 var headers = map[string][]string{
-	"attack": {"id", "name", "kind", "tactics", "parent", "platforms", "summary", "status"},
+	"attack": {"id", "name", "kind", "tactics", "parent", "platforms", "summary", "status", "replaced_by"},
 	"cwe":    {"id", "name", "abstraction", "status", "summary", "parents"},
 }
 
@@ -232,7 +232,11 @@ type stixBundle struct {
 }
 
 type stixObject struct {
+	ID                 string          `json:"id"`
 	Type               string          `json:"type"`
+	RelationshipType   string          `json:"relationship_type"`
+	SourceRef          string          `json:"source_ref"`
+	TargetRef          string          `json:"target_ref"`
 	Name               string          `json:"name"`
 	Description        string          `json:"description"`
 	Revoked            bool            `json:"revoked"`
@@ -264,6 +268,38 @@ func attackID(o stixObject) string {
 	return ""
 }
 
+const (
+	attackActive     = "active"
+	attackRevoked    = "revoked"
+	attackDeprecated = "deprecated"
+)
+
+func attackStatus(o stixObject) string {
+	switch {
+	case o.Revoked:
+		return attackRevoked
+	case o.Deprecated:
+		return attackDeprecated
+	}
+	return attackActive
+}
+
+var (
+	attackCitation     = regexp.MustCompile(`\(Citation:[^)]*\)`)
+	attackMarkdownLink = regexp.MustCompile(`\[([^\]]*)\]\([^)]*\)`)
+	attackMarkup       = regexp.MustCompile("</?code>|`")
+)
+
+var typographicPunctuation = strings.NewReplacer("\u2018", "'", "\u2019", "'", "\u201c", `"`, "\u201d", `"`, "\u2013", "-")
+
+func attackSummary(description string) string {
+	plain := attackCitation.ReplaceAllString(description, "")
+	plain = typographicPunctuation.Replace(plain)
+	plain = attackMarkdownLink.ReplaceAllString(plain, "$1")
+	plain = attackMarkup.ReplaceAllString(plain, "")
+	return firstSentence(plain)
+}
+
 func buildAttack(source string) ([][]string, error) {
 	raw, err := os.ReadFile(source)
 	if err != nil {
@@ -275,29 +311,39 @@ func buildAttack(source string) ([][]string, error) {
 		return nil, err
 	}
 
+	idOf := map[string]string{}
 	tacticByShortName := map[string]string{}
 	for _, o := range bundle.Objects {
-		if o.Type == "x-mitre-tactic" && !o.Revoked && !o.Deprecated {
-			tacticByShortName[o.ShortName] = attackID(o)
+		id := attackID(o)
+		if id == "" {
+			continue
+		}
+		idOf[o.ID] = id
+		if o.Type == "x-mitre-tactic" && attackStatus(o) == attackActive {
+			tacticByShortName[o.ShortName] = id
+		}
+	}
+
+	replacedBy := map[string]string{}
+	for _, o := range bundle.Objects {
+		if o.Type == "relationship" && o.RelationshipType == "revoked-by" {
+			replacedBy[o.SourceRef] = idOf[o.TargetRef]
 		}
 	}
 
 	var rows [][]string
 
 	for _, o := range bundle.Objects {
-		if o.Revoked || o.Deprecated {
-			continue
-		}
-
 		id := attackID(o)
 		if id == "" {
 			continue
 		}
+		status := attackStatus(o)
 
 		switch o.Type {
 		case "x-mitre-tactic":
 			rows = append(rows, []string{
-				id, clean(o.Name), "tactic", "", "", "", firstSentence(o.Description), "active",
+				id, typographicPunctuation.Replace(clean(o.Name)), "tactic", "", "", "", attackSummary(o.Description), status, replacedBy[o.ID],
 			})
 
 		case "attack-pattern":
@@ -310,6 +356,7 @@ func buildAttack(source string) ([][]string, error) {
 					tactics = append(tactics, tactic)
 				}
 			}
+			slices.Sort(tactics)
 
 			kind, parent := "technique", ""
 			if o.IsSubtechnique {
@@ -318,13 +365,29 @@ func buildAttack(source string) ([][]string, error) {
 			}
 
 			rows = append(rows, []string{
-				id, clean(o.Name), kind, strings.Join(tactics, ","), parent,
-				strings.Join(o.Platforms, ","), firstSentence(o.Description), "active",
+				id, typographicPunctuation.Replace(clean(o.Name)), kind, strings.Join(tactics, ","), parent,
+				strings.Join(o.Platforms, ","), attackSummary(o.Description), status, replacedBy[o.ID],
 			})
 		}
 	}
 
-	return rows, nil
+	return keepResolvableParents(rows), nil
+}
+
+func keepResolvableParents(rows [][]string) [][]string {
+	known := map[string]bool{}
+	for _, row := range rows {
+		known[row[0]] = true
+	}
+	for _, row := range rows {
+		if row[4] != "" && !known[row[4]] {
+			row[4] = ""
+		}
+		if row[8] != "" && !known[row[8]] {
+			row[8] = ""
+		}
+	}
+	return rows
 }
 
 func readCWE(source string) ([]map[string]string, error) {

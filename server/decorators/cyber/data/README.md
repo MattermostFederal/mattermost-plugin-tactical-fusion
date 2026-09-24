@@ -26,30 +26,47 @@ untrue.
 > are the work of The MITRE Corporation. Neither MITRE nor ATT&CK is affiliated
 > with or endorses this plugin.
 
-## `cwe.tsv` is generated; `attack.tsv` is still a seed
+## Both files are generated
 
 `cwe.tsv` is the generator's output from MITRE's research view 1000, fetched
 2026-09-23: 944 weaknesses, each with its name, abstraction, status, the first
 sentence of its description, and its parents in that view.
 
-**`attack.tsv` was written by hand, not produced by the generator.** The host
-this feature was built on could not reach `raw.githubusercontent.com`. Rather
-than ship invented technique names, which would be worse than shipping none, it
-carries only entries that could be stated accurately without the upstream
-source: every enterprise tactic and the widely used techniques and
-sub-techniques. An identifier it does not hold is **left as written** rather
-than linked to something wrong, the same rule an airfield code the database
-does not hold follows. `go run ./build/cyberdata -only attack` after
-`make cyber-sources` replaces it with the full upstream set.
+`attack.tsv` is the generator's output from Enterprise ATT&CK 19.2, fetched
+2026-09-23: 15 tactics, 222 techniques and 475 sub-techniques that are active,
+plus 149 revoked and 12 deprecated entries. Earlier builds shipped a hand-written
+seed of 123 entries because the build host could not reach
+`raw.githubusercontent.com`; every id the seed held is still here.
+
+### Retired ATT&CK entries are kept
+
+A link to a technique is written into the stored message, so dropping a
+technique MITRE retires would break every link to it already posted. ATT&CK 19
+revoked Impair Defenses, `T1562`, in favor of `T1685`, and the seed had shipped
+it. A retired entry keeps its row with `revoked` or `deprecated` in `status`,
+and a revoked one names its successor in `replaced_by`, from MITRE's
+`revoked-by` relationship. The panel says the entry is retired and links the
+replacement; an active technique lists only its active sub-techniques.
+
+### What the generator changes in ATT&CK's text
+
+- `(Citation: ...)` markers are removed before the first sentence is taken,
+  since one sits between most first sentences and the next.
+- Markdown links become their text, and backticks and `<code>` tags are
+  dropped.
+- Typographic quotes and the en dash become their ASCII forms.
+- Each entry's tactics are sorted by id, since ATT&CK lists a sub-technique's
+  tactics in a different order from its parent's.
 
 Either file changes what decorates: the catalog is what `Parse` validates an
-identifier against, so a CWE the new catalog holds and the seed did not now
+identifier against, so an id the new catalog holds and the seed did not now
 becomes a link in messages posted after the change. Messages already posted
 keep what they were given.
 
 The reader refuses autolink triggers (`www.`, `://`) and any character outside
-letters, digits and `_-,.'"()[]/&+:;*=<>`. MITRE's text uses `*`, `=`, `<` and
-`>` in four entries, as in `'filedir*'` and `such as <, >`; every surface that
+letters, digits and `_-,.'"()[]/&+:;*=<>\~$`. MITRE's text uses `*`, `=`, `<` and
+`>` in four CWE entries, as in `'filedir*'` and `such as <, >`, and ATT&CK uses
+`\` in registry paths, `~` in `~/.bash_history` and `$` once; every surface that
 prints catalog text escapes it, and a test holds the standalone page to that.
 
 ## How they are produced
