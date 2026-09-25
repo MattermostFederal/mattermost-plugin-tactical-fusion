@@ -370,8 +370,11 @@ Releases are automated with **release-please** driven by
   X.Y.Z" PR.
 - `make release` refreshes the cyber data before it builds: `cyber-refresh`
   fetches every source and rebuilds the embedded catalogs and `assets/cyber` in
-  the working tree, so the shipped data is newer than the tagged commit's, and
-  `cyber-release-package` packs the full `cve` and `cvedetail` datasets
+  the working tree, so the shipped data is newer than the tagged commit's, except
+  `advisory.tsv`: `www.cisa.gov` answers 403 to the advisory pages from GitHub's
+  runners, so that file is rebuilt on a workstation with `make cyber-advisories`
+  and ships as committed. `cyber-release-package` packs the full `cve` and
+  `cvedetail` datasets
   and DB-IP City Lite into `build/cyberdata/release`, which the workflow
   attaches to the release. `CYBER_REFRESH=0` releases the committed data.
 - A release publishes two bundles. The standard one must stay under Mattermost's
