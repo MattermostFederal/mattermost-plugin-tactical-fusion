@@ -5,7 +5,7 @@
 Adding the GitHub label `preview` to a pull request stands up a throwaway
 Mattermost server on AWS with that PR's plugin bundle installed, reachable at
 `https://<app>-pr<N>.<preview-domain>` (for this repo,
-`https://tactical-fusion-pr49.mmfed-preview.com`), and posts the URL as a PR
+`https://tactical-fusion-pr49.mattermostfed-preview.com`), and posts the URL as a PR
 comment. Pushing more commits redeploys the bundle onto the same server.
 Removing the label or closing the PR tears it down.
 
@@ -44,7 +44,7 @@ GitHub or AWS, and no way to attack the org's production hostnames.
   write to the `main` branch cache scope, which `release.yml` restores while
   holding the plugin signing key, so that path is ruled out.
 - **Separate registrable domain.** Previews live under a dedicated domain
-  (`mmfed-preview.com`, or whatever is available) registered in the
+  (`mattermostfed-preview.com`, or whatever is available) registered in the
   `mfi-preview` account, not under `mattermostfed.com`. `chat.` and `hub.`
   already exist there; a same-site preview running fork code could set
   `Domain=.mattermostfed.com` cookies, sit inside those apps' SameSite CSRF
