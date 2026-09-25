@@ -233,7 +233,7 @@ func (p *Plugin) OnConfigurationChange() error {
 
 	p.setConfiguration(configuration)
 
-	p.forgetCyberDatasets()
+	p.reloadCyberDatasets()
 
 	return nil
 }

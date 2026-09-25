@@ -238,3 +238,41 @@ func TestARefreshThatAForgetOvertookIsDropped(t *testing.T) {
 		t.Fatal("a refresh started before the configuration changed replaced the cleared set")
 	}
 }
+
+func TestAConfigurationChangeKeepsServingTheOldSetUntilTheNewOneOpens(t *testing.T) {
+	oldDir, newDir := t.TempDir(), t.TempDir()
+	writeKEV(t, newDir)
+	p := withDatasetDir(t, oldDir)
+	old := p.cyberIntel()
+
+	config := p.getConfiguration().Clone()
+	config.CyberDatasetsDir = newDir
+	p.setConfiguration(config)
+	p.reloadCyberDatasets()
+
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		set := p.cyberIntel()
+		if set.Has(intel.NameKEV) {
+			return
+		}
+		if set != old {
+			t.Fatal("the caller got a set that is neither the old one nor the reopened one")
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the reopen after the configuration change never replaced the old set")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func TestAConfigurationChangeBeforeAnyLookupOpensNothing(t *testing.T) {
+	p := withDatasetDir(t, t.TempDir())
+	p.reloadCyberDatasets()
+
+	p.cyber.lock.Lock()
+	defer p.cyber.lock.Unlock()
+	if p.cyber.set != nil || p.cyber.refreshing {
+		t.Fatal("a configuration change opened datasets nobody had asked for")
+	}
+}

@@ -77,6 +77,20 @@ func (p *Plugin) refreshCyberDatasets(dirs []string, generation int) {
 	p.cyber.checked = time.Now()
 }
 
+func (p *Plugin) reloadCyberDatasets() {
+	p.cyber.lock.Lock()
+	if p.cyber.set == nil {
+		p.cyber.lock.Unlock()
+		return
+	}
+	p.cyber.generation++
+	generation := p.cyber.generation
+	p.cyber.refreshing = true
+	p.cyber.lock.Unlock()
+
+	go p.refreshCyberDatasets(p.cyberDirs(), generation)
+}
+
 func (p *Plugin) warmCyberDatasets() {
 	if _, err := p.API.GetBundlePath(); err != nil {
 		return
