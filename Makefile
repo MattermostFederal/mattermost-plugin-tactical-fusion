@@ -784,6 +784,7 @@ MAP_PACKAGE_PATH := /mattermost/data/$(MAP_PACKAGE_DIR)
 
 CYBER_DATA_DIR ?= cyber-datasets
 CYBER_DATA_HOST := docker/mattermost/data/$(CYBER_DATA_DIR)
+MATTERMOST_CONTAINER_UID ?= 2000
 CYBER_DATA_PATH := /mattermost/data/$(CYBER_DATA_DIR)
 
 ## Start Mattermost and PostgreSQL containers
@@ -941,7 +942,15 @@ docker-cyberdata: docker-check
 		echo "No datasets in build/cyberdata/out/. Build them with 'make cyber-data' and 'make cyber-package', and 'make cyber-geo' for DB-IP."; \
 	else \
 		mkdir -p $(CYBER_DATA_HOST); \
-		chmod a+rwx $(CYBER_DATA_HOST); \
+		chmod 0755 $(CYBER_DATA_HOST); \
+		if [ "$$(uname)" = "Linux" ]; then \
+			if command -v setfacl >/dev/null 2>&1; then \
+				setfacl -m u:$(MATTERMOST_CONTAINER_UID):rwx,d:u:$(MATTERMOST_CONTAINER_UID):rwx $(CYBER_DATA_HOST); \
+			else \
+				echo "  warning: setfacl is not installed, so the Mattermost container (UID $(MATTERMOST_CONTAINER_UID)) may not be able to unpack datasets in $(CYBER_DATA_HOST)"; \
+				echo "  install the acl package, or run: sudo chown $(MATTERMOST_CONTAINER_UID) $(CYBER_DATA_HOST)"; \
+			fi; \
+		fi; \
 		n=0; \
 		for f in build/cyberdata/out/*.tsv.gz build/cyberdata/out/*.mmdb; do \
 			[ -f "$$f" ] || continue; \
