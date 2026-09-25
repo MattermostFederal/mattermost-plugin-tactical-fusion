@@ -62,13 +62,20 @@ GitHub or AWS, and no way to attack the org's production hostnames.
 - **Server**: stock `mattermost/mattermost-enterprise-edition` plus
   `postgres:14-alpine` with the environment from `docker-compose.dev.yml`, and
   Caddy in front for automatic Let's Encrypt HTTPS. No ALB, no ACM, no license.
+- **Access**: previews are open servers. Anyone with the link creates an
+  account and joins team `test`, which is public. The box is disposable and
+  lives at most seven days, so open sign-up costs nothing worth protecting.
 - **Admin**: username `admin`; the password is unique per preview, derived as
   `HMAC-SHA256(PREVIEW_ADMIN_SECRET, FQDN)` encoded as 24 alphanumeric
   characters. The key is stored twice: as the org secret the workflow uses,
   and in Secrets Manager in `mfi-preview` as `pr-preview/admin-secret`, which
   `scripts/preview password <fqdn>` reads so anyone with Identity Center
   access to the account can derive a password. The instance role has no
-  Secrets Manager permission. It is never posted, never in the
+  Secrets Manager permission. The `ready` comment also carries the password
+  encrypted with `age` to the GitHub SSH keys (`github.com/<login>.keys`,
+  ed25519 and RSA) of the person who added the label and the PR author, so
+  neither needs AWS access or a shared secret; users without published keys
+  fall back to the helper. It is never posted, never in the
   Mattermost container's environment, and a captured one opens one preview
   only. Team `test`.
 - **Bundle delivery**: the workflow uploads the bundle to S3 under a random
