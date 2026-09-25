@@ -55,6 +55,7 @@ const (
 	maposmGenerator   = "build/maposm/build.sh"
 	maposmRegions     = "build/maposm/regions.txt"
 	bundledProfile    = "bundled"
+	releaseProfile    = "release"
 )
 
 // A `NAME="${NAME:-N}"` default out of a generator, which is where a build
@@ -264,6 +265,35 @@ func TestOnlyBundledRegionsAreCommitted(t *testing.T) {
 				"assets; delete this file rather than raising a budget to fit it",
 				path, maposmRegions, bundledProfile)
 		}
+	}
+}
+
+func TestTheReleaseProfileIsEveryRowThatIsNotBundled(t *testing.T) {
+	raw, err := os.ReadFile("../../../" + maposmRegions) // #nosec G304 -- a generator path named by this test
+	if err != nil {
+		t.Fatalf("cannot read %s: %v", maposmRegions, err)
+	}
+
+	released := 0
+	for line := range strings.SplitSeq(string(raw), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 2 || strings.HasPrefix(fields[0], "#") {
+			continue
+		}
+		profiles := strings.Split(fields[1], ",")
+		bundled := slices.Contains(profiles, bundledProfile)
+		release := slices.Contains(profiles, releaseProfile)
+		switch {
+		case bundled && release:
+			t.Errorf("%s is bundled and also carries %q, so a release would rebuild a committed archive", fields[0], releaseProfile)
+		case !bundled && !release:
+			t.Errorf("%s ships as a release asset but lacks the %q profile, so no release would ever build it", fields[0], releaseProfile)
+		case release:
+			released++
+		}
+	}
+	if released == 0 {
+		t.Fatalf("no row in %s carries the %q profile", maposmRegions, releaseProfile)
 	}
 }
 

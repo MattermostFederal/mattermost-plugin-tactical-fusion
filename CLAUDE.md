@@ -380,6 +380,12 @@ Releases are automated with **release-please** driven by
   does not. `release-full-bundle` builds `<id>-<version>-full.tar.gz`: the same
   bundle with the full `cve`/`cvedetail` in place of the KEV slices and DB-IP
   City Lite added, deliberately over the limit, for air-gapped installs.
+- A `maps` job in `release.yml`, beside the plugin build, runs `make
+  map-release`: every `release`-profile row of `build/maposm/regions.txt` built
+  from one fresh Geofabrik cut (`latest-cut.sh` picks the newest date every
+  extract shares), each held under the 512 MiB package upload limit, attached
+  with `PACKAGES.sha256` and `MAP-SOURCES.lock`. The bundled Hawaii and Guam
+  archives are never rebuilt by a release.
 
 ## CI and security
 

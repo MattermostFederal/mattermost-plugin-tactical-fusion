@@ -243,12 +243,50 @@ map-osm:
 		-e ALLOW_MIXED_DATES="$(ALLOW_MIXED_DATES)" \
 		tf-maposm:$(PLANETILER_OMT_VERSION) build/maposm/build.sh
 
+MAP_RELEASE_PROFILE ?= release
+MAP_RELEASE_DIR := build/maposm/release
+MAX_MAP_PACKAGE_BYTES ?= 536870912
+
+## Builds every release-asset map package from one fresh Geofabrik cut and packs them into
+## build/maposm/release with PACKAGES.sha256 and MAP-SOURCES.lock, the lock they were built
+## from. latest-cut.sh picks the newest date every extract in the profile shares, because
+## Geofabrik rolls regions over through the day and build.sh refuses to merge two cuts. The
+## lock in build/maposm/sources.lock is re-pinned to that cut for the rows in scope; commit it
+## or leave it. The release workflow runs this in its own job; MAP_RELEASE_PROFILE builds a
+## smaller set locally, e.g. MAP_RELEASE_PROFILE=taiwan. Each package must fit under
+## MAX_MAP_PACKAGE_BYTES, the 512 MiB maxUploadBytes in server/packages.go. Needs Docker,
+## network access and about 50 GB of free disk for the full set.
+##
+## Builds every release-asset map package from the latest shared Geofabrik cut
+.PHONY: map-release
+map-release:
+	@cut=$$(PROFILE=$(MAP_RELEASE_PROFILE) ./build/maposm/latest-cut.sh) && \
+		echo "building $(MAP_RELEASE_PROFILE) from the Geofabrik cut $$cut" && \
+		PROFILE=$(MAP_RELEASE_PROFILE) PIN_DATE=$$cut UPDATE_LOCK=1 ./build/maposm/fetch-sources.sh
+	$(MAKE) --no-print-directory map-osm PROFILE=$(MAP_RELEASE_PROFILE)
+	rm -rf $(MAP_RELEASE_DIR)
+	mkdir -p $(MAP_RELEASE_DIR)
+	@for name in $$(grep -v '^#' build/maposm/regions.txt | awk -v p="$(MAP_RELEASE_PROFILE)" 'NF && index("," $$2 ",", "," p ",") { print $$1 }'); do \
+		archive="build/maposm/out/$$name.pmtiles"; \
+		[ -f "$$archive" ] || { echo "error: $$archive was not built"; exit 1; }; \
+		size=$$(wc -c < "$$archive" | tr -d ' '); \
+		if [ "$$size" -gt $(MAX_MAP_PACKAGE_BYTES) ]; then \
+			echo "error: $$archive is $$size bytes, over the $(MAX_MAP_PACKAGE_BYTES) byte package upload limit"; \
+			exit 1; \
+		fi; \
+		cp "$$archive" $(MAP_RELEASE_DIR)/; \
+		echo "  $$name: $$size bytes"; \
+	done
+	cp build/maposm/sources.lock $(MAP_RELEASE_DIR)/MAP-SOURCES.lock
+	cd $(MAP_RELEASE_DIR) && shasum -a 256 *.pmtiles MAP-SOURCES.lock > PACKAGES.sha256
+	@ls -l $(MAP_RELEASE_DIR)
+
 ## Attaches the release-asset map packages in build/maposm/out/ to an existing
 ## GitHub release, with a checksum file beside them.
 ##
-## Manual and post-release by design: the release workflow can neither download
-## the ~10 GB of extracts nor spend the hours of tiling these need, so the
-## archives are built on a workstation and uploaded afterwards.
+## The release workflow builds and attaches these itself through map-release; this
+## is for attaching a set built on a workstation, e.g. to replace one after a
+## release.
 ##
 ##   make map-publish TAG=v0.3.0
 ##

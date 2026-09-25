@@ -218,9 +218,11 @@ jobs:
 
             ### Map packages
 
-            The plugin bundles two offline detail-map areas (Hawaii and Guam). Additional areas are
-            attached to this release as separate `.pmtiles` assets, with `PACKAGES.sha256`
-            beside them. Download only what you need, then set **Detail map package
+            The plugin bundles two offline detail-map areas (Hawaii and Guam). Every other area is
+            built from OpenStreetMap for this release and attached as a separate `.pmtiles` asset,
+            with `PACKAGES.sha256` beside them and `MAP-SOURCES.lock` naming the Geofabrik extracts
+            and the one cut they were built from. The map assets arrive a little after the plugin
+            bundle, since they build in their own job. Download only what you need, then set **Detail map package
             directory** (`LocationMapPackagesDir`) in the System Console and copy the files
             there, or upload them under **Installed detail areas**. They are separate
             downloads because the whole set is far larger than a plugin bundle may be.
@@ -247,3 +249,39 @@ jobs:
             - **CodeQL SARIF**: `codeql-go.sarif` / `codeql-js.sarif` are the static-analysis results that gated this build. Also embedded under `security/` inside the tarball.
 
             ### Auto-generated changelog
+
+  maps:
+    runs-on: ubuntu-latest-4-cores
+    timeout-minutes: 300
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build the map packages from the latest shared Geofabrik cut
+        run: make map-release
+
+      - name: Attach the map packages to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for attempt in $(seq 1 60); do
+            if gh release view "$RELEASE_TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+              gh release upload "$RELEASE_TAG" build/maposm/release/* --repo "${{ github.repository }}" --clobber
+              exit 0
+            fi
+            echo "waiting for the build job to create release $RELEASE_TAG ($attempt/60)"
+            sleep 60
+          done
+          echo "error: release $RELEASE_TAG was never created, so the map packages were not attached"
+          exit 1
