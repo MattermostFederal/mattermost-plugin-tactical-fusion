@@ -538,11 +538,17 @@ repo filter, assumes `GithubActionsPreview`, runs `scripts/preview reap`.
 8. Org Actions event policy: GitHub disables `pull_request_target` by default
    on public repositories from November 2, 2026 unless an explicit enterprise,
    organization, or repository event policy allows it (workflow execution
-   protections, generally available September 17, 2026). Configure an
-   organization policy that allows `pull_request_target` for the plugin repos
-   before adopting. The repos' action allowlist already permits GitHub-owned
-   and verified-creator actions plus `opentofu/setup-opentofu`, which covers
-   every action the workflow uses.
+   protections, generally available September 17, 2026). The org policy
+   "Allow pull_request_target for plugin previews" (Organization settings,
+   Actions, Policies; also `POST /orgs/{org}/actions/policies`) targets
+   `mattermost-plugin-*` with a `restrict_action_events` rule. That rule is
+   an allowlist, so it lists every event those repos use (`push`,
+   `pull_request`, `pull_request_target`, `schedule`, `workflow_dispatch`,
+   `workflow_call`, `release`, and the rest); omitting an event blocks every
+   run triggered by that event in the targeted repos. A plugin repo outside that name
+   pattern needs its own policy before adopting. The repos' action allowlist
+   already permits GitHub-owned and verified-creator actions plus
+   `opentofu/setup-opentofu`, which covers every action the workflow uses.
 9. Per plugin repo: `gh label create preview --color 0E8A16 --description "Deploy a preview environment for this PR"`,
    copy `templates/preview.yml`, merge, label a PR.
 
