@@ -383,7 +383,7 @@ Releases are automated with **release-please** driven by
   does not. `release-full-bundle` builds `<id>-<version>-full.tar.gz`: the same
   bundle with the full `cve`/`cvedetail` in place of the KEV slices and DB-IP
   City Lite added, deliberately over the limit, for air-gapped installs.
-- A `maps` job in `release.yml`, beside the plugin build, runs `make
+- A `maps` job in `release.yml`, which starts once the plugin build succeeds, runs `make
   map-release`: every `release`-profile row of `build/maposm/regions.txt` built
   from one fresh Geofabrik cut (`latest-cut.sh` picks the newest date every
   extract shares), each held under the 512 MiB package upload limit, attached
@@ -402,6 +402,12 @@ Suppress a false-positive CVE in `.grype.yaml` with a documented reason, never
 blanket-ignore, and note that suppression is not available for anything that
 ships and runs in the reader's browser (MapLibre): the process there is upgrade
 or pin.
+
+`make virus-scan` (`build/virus-scan.sh`) unpacks each bundle and fails on any
+ClamAV finding `build/virus-allowlist.txt` does not name as a (path glob,
+signature) pair, and on any scan error. Allow a pair only for a proven false
+positive, with the reason and how it was found; the bundled MITRE ATT&CK text is
+the one entry today.
 
 GitHub Actions are pinned to full commit SHAs with a `# vX.Y.Z` comment. Resolve
 the tag to its SHA when adding or bumping one, and keep the comment accurate.
