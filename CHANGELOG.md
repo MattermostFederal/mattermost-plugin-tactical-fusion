@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.8.0](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/compare/v0.7.0...v0.8.0) (2026-09-25)
+
+
+### Features
+
+* add the cyber context decorator ([#50](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/50)) ([1fba0ca](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/1fba0ca71baf2d33a516cbe7385765d662d8ee28))
+
+
+### Dependencies
+
+* **actions:** bump github/codeql-action/upload-sarif ([#48](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/48)) ([a744791](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/a744791a81a322e2df6a9138bd7cfe9b760e82b4))
+* **webapp:** bump the npm-minor-patch group across 1 directory with 7 updates ([#55](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/55)) ([ec6ad5b](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/ec6ad5b47d2bd754b2a73ce52a7bfbeea4bbb0b2))
+
 ## [0.7.0](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/compare/v0.6.0...v0.7.0) (2026-09-23)
 
 
