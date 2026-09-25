@@ -31,11 +31,41 @@ for extract in $extracts; do
     fi
 done
 
-for extract in $extracts; do
-    if ! curl -fsSI --retry 3 -o /dev/null "${BASE}/${extract}-${oldest}.osm.pbf"; then
-        echo "error: ${extract} has no extract cut on ${oldest}, the newest date every region shares" >&2
-        exit 1
+MAX_LOOKBACK_DAYS="${MAX_LOOKBACK_DAYS:-14}"
+
+previous_day() {
+    if date -u -d "20${1} -1 day" +%y%m%d >/dev/null 2>&1; then
+        date -u -d "20${1} -1 day" +%y%m%d
+    else
+        date -u -j -v-1d -f %Y%m%d "20${1}" +%y%m%d
     fi
+}
+
+status_of() {
+    curl -sSI -L --retry 3 -o /dev/null -w '%{http_code}' "$1" || echo "000"
+}
+
+cut="$oldest"
+for _ in $(seq 0 "$MAX_LOOKBACK_DAYS"); do
+    missing=""
+    for extract in $extracts; do
+        code=$(status_of "${BASE}/${extract}-${cut}.osm.pbf")
+        case "$code" in
+            200) ;;
+            404) missing="$extract"; break ;;
+            *)
+                echo "error: asking Geofabrik for ${extract}-${cut} answered HTTP ${code}" >&2
+                exit 1
+                ;;
+        esac
+    done
+    if [ -z "$missing" ]; then
+        echo "$cut"
+        exit 0
+    fi
+    echo "  ${missing} has no extract cut on ${cut}; trying the day before" >&2
+    cut=$(previous_day "$cut")
 done
 
-echo "$oldest"
+echo "error: no cut in the ${MAX_LOOKBACK_DAYS} days before ${oldest} is published for every extract in '${PROFILE}'" >&2
+exit 1
