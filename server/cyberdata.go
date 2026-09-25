@@ -69,10 +69,11 @@ func (p *Plugin) refreshCyberDatasets(dirs []string, generation int) {
 	p.cyber.lock.Lock()
 	defer p.cyber.lock.Unlock()
 
-	p.cyber.refreshing = false
 	if p.cyber.generation != generation {
+		set.Close()
 		return
 	}
+	p.cyber.refreshing = false
 	p.cyber.set = set
 	p.cyber.checked = time.Now()
 }
@@ -162,4 +163,5 @@ func (p *Plugin) forgetCyberDatasets() {
 	p.cyber.set = nil
 	p.cyber.checked = time.Time{}
 	p.cyber.generation++
+	p.cyber.refreshing = false
 }

@@ -276,3 +276,39 @@ func TestAConfigurationChangeBeforeAnyLookupOpensNothing(t *testing.T) {
 		t.Fatal("a configuration change opened datasets nobody had asked for")
 	}
 }
+
+func TestAStaleRefreshLeavesTheCurrentRefreshGuarded(t *testing.T) {
+	dir := t.TempDir()
+	writeKEV(t, dir)
+	p := withDatasetDir(t, dir)
+	p.cyberIntel()
+
+	p.cyber.lock.Lock()
+	stale := p.cyber.generation
+	p.cyber.generation++
+	p.cyber.refreshing = true
+	p.cyber.lock.Unlock()
+
+	p.refreshCyberDatasets(p.cyberDirs(), stale)
+
+	p.cyber.lock.Lock()
+	defer p.cyber.lock.Unlock()
+	if !p.cyber.refreshing {
+		t.Fatal("a stale refresh cleared the guard of the refresh that superseded it, so a second one could start")
+	}
+}
+
+func TestAForgetReleasesTheRefreshGuard(t *testing.T) {
+	p := withDatasetDir(t, t.TempDir())
+	p.cyber.lock.Lock()
+	p.cyber.refreshing = true
+	p.cyber.lock.Unlock()
+
+	p.forgetCyberDatasets()
+
+	p.cyber.lock.Lock()
+	defer p.cyber.lock.Unlock()
+	if p.cyber.refreshing {
+		t.Fatal("a forget left the refresh guard set, so no later change could ever reopen the datasets")
+	}
+}
