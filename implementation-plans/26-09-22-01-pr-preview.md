@@ -415,8 +415,13 @@ and the tag is protected by ruleset.
   not the public IP of a live managed instance. No age test: Route53 records
   carry no timestamp, and a stale record is the takeover window. Summary to
   `$GITHUB_STEP_SUMMARY`.
-- `password <fqdn>`: prints the derived password for maintainers who hold
-  `PREVIEW_ADMIN_SECRET`.
+- `password <fqdn>`: prints the derived password. It uses
+  `PREVIEW_ADMIN_SECRET` from the environment when set (the workflow), and
+  otherwise reads `pr-preview/admin-secret` from Secrets Manager in
+  `mfi-preview`, which needs `secretsmanager:GetSecretValue` on that secret.
+  The `AdministratorAccess` permission set that Identity Center grants on
+  `mfi-preview` includes it; the preview instance role and
+  `GithubActionsPreview` do not.
 - Output hygiene: SSM output is truncated to 4 KB, stripped of control
   characters, and printed inside `::stop-commands::<random>`. Only the exit
   code is trusted. Nothing from the bundle or the instance enters the comment.
@@ -519,9 +524,14 @@ repo filter, assumes `GithubActionsPreview`, runs `scripts/preview reap`.
    installed on pr-preview only) and `mmf-preview-reaper` (Pull requests
    write, Metadata read, installed on every plugin repo). Org variable
    `PREVIEW_CHECKOUT_APP_ID`, org secret `PREVIEW_CHECKOUT_APP_PRIVATE_KEY`.
-6. Org variable `PREVIEW_AWS_ROLE_ARN`; org secret `PREVIEW_ADMIN_SECRET` (32
-   or more random characters). Visibility must include public repos. Steps 5
-   and 6 need an org admin.
+6. Org variable `PREVIEW_AWS_ROLE_ARN`. Generate one `PREVIEW_ADMIN_SECRET`
+   value (32 or more random characters) and store the same value in two
+   places: the org secret `PREVIEW_ADMIN_SECRET`, which the workflow uses to
+   derive passwords, and Secrets Manager in `mfi-preview` as
+   `pr-preview/admin-secret`, which the password helper reads. Rotate both
+   copies together; a preview created before a rotation keeps the password
+   derived from the old value. Visibility of the org secret must include
+   public repos. Steps 5 and 6 need an org admin.
 7. Tag pr-preview `v1`. `v1` is a moving major tag guarded by the ruleset:
    the env contract only gains fields within `v1`; a breaking change means
    `v2` and editing every copied workflow.
