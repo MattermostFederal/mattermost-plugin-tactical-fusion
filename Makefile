@@ -406,7 +406,10 @@ cyber-package:
 ## working tree, and the downloadable datasets into build/cyberdata/out. SOURCES.sha256 in
 ## out records the digest of each source this run read. `make release` runs it after
 ## release-check, so a release ships current data and its tests run against that data;
-## set CYBER_REFRESH=0 to release the committed data instead.
+## set CYBER_REFRESH=0 to release the committed data instead. The one exception is
+## advisory.tsv: each CISA advisory is a fixed, published document, and www.cisa.gov
+## answers 403 to the advisory pages from GitHub's runners, so the committed file ships as
+## it is and `make cyber-advisories` rebuilds it on a workstation when advisories.txt changes.
 ##
 ## Rebuilds every cyber dataset, bundled and downloadable, from fresh sources
 .PHONY: cyber-refresh
@@ -427,7 +430,6 @@ cyber-refresh:
 	$(GO) run ./build/cyberdata -only hashlists \
 		-label "MISP warninglists $$(cut -c1-12 build/cyberdata/source/misp-warninglists/COMMIT), fetched $$(date -u +%Y-%m-%d)"
 	gzip -9 -n -c build/cyberdata/out/netlists.tsv > assets/cyber/netlists.tsv.gz
-	$(MAKE) --no-print-directory cyber-advisories
 
 CYBER_RELEASE_DATASETS := cve cvedetail
 CYBER_RELEASE_DIR := build/cyberdata/release
