@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.2](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/compare/v0.8.1...v0.8.2) (2026-09-25)
+
+
+### Bug Fixes
+
+* **build:** accept ClamAV's false positive on the bundled ATT&CK text and build maps after the plugin ([#59](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/59)) ([490dce1](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/490dce1cad065311e03742d5e435e295460f92c0))
+
 ## [0.8.1](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/compare/v0.8.0...v0.8.1) (2026-09-25)
 
 
