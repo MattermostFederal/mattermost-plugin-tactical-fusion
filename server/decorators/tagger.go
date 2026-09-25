@@ -117,6 +117,52 @@ var inlineProtectedRes = []*regexp.Regexp{
 	// reader's link.
 	regexp.MustCompile(`[a-zA-Z][a-zA-Z0-9+.\-]*://[^\s<>]+`),
 	regexp.MustCompile(`\bwww\.[^\s<>]+`),
+
+	emailAddressRe,
+}
+
+var emailAddressRe = regexp.MustCompile(`[\w.+\-]+@[\w\-]+(?:\.[\w\-]+)+`)
+
+type sigilProtected struct {
+	expr  *regexp.Regexp
+	sigil rune
+}
+
+var sigilProtectedRes = []sigilProtected{
+	{regexp.MustCompile(`@[\w.\-]+`), '@'},
+	{regexp.MustCompile(`~[\w.\-]+`), '~'},
+	{regexp.MustCompile(`#[\p{L}][\p{L}\p{N}_.\-]*`), '#'},
+}
+
+func sigilRanges(message string) []byteRange {
+	var ranges []byteRange
+
+	for _, protected := range sigilProtectedRes {
+		for _, m := range protected.expr.FindAllStringIndex(message, -1) {
+			before, _ := utf8.DecodeLastRuneInString(message[:m[0]])
+			if before == protected.sigil || isASCIIWord(before) {
+				continue
+			}
+			ranges = append(ranges, byteRange{m[0], m[1]})
+		}
+	}
+
+	return ranges
+}
+
+func isASCIIWord(r rune) bool {
+	switch {
+	case r == '_':
+		return true
+	case r >= '0' && r <= '9':
+		return true
+	case r >= 'a' && r <= 'z':
+		return true
+	case r >= 'A' && r <= 'Z':
+		return true
+	default:
+		return false
+	}
 }
 
 // Characters that would otherwise be re-parsed as markdown inside a link
@@ -291,6 +337,7 @@ func findProtectedRanges(message string) []byteRange {
 	ranges := blockRanges(message)
 	ranges = append(ranges, codeSpanRanges(message)...)
 	ranges = append(ranges, usmtfRanges(message)...)
+	ranges = append(ranges, sigilRanges(message)...)
 
 	for _, re := range inlineProtectedRes {
 		for _, m := range re.FindAllStringIndex(message, -1) {

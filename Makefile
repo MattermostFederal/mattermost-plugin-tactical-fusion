@@ -29,6 +29,8 @@ PLANETILER_OMT_SHA256 ?= 246cd5c9c10102a3bcc58465ae7dde5b97aa4cee6524ea25788e233
 include build/setup.mk
 
 BUNDLE_NAME ?= $(PLUGIN_ID)-$(PLUGIN_VERSION).tar.gz
+FULL_BUNDLE_NAME ?= $(PLUGIN_ID)-$(PLUGIN_VERSION)-full.tar.gz
+MAX_BUNDLE_BYTES ?= 104857600
 
 # Include custom makefile, if present
 ifneq ($(wildcard build/custom.mk),)
@@ -78,9 +80,12 @@ release-check:
 ## Generate SHA256 checksum for the release bundle.
 .PHONY: release-checksum
 release-checksum:
-	@echo "Generating SHA256 checksum..."
-	@cd dist && shasum -a 256 $(BUNDLE_NAME) > $(BUNDLE_NAME).sha256
-	@echo "Checksum: $$(cat dist/$(BUNDLE_NAME).sha256)"
+	@echo "Generating SHA256 checksums..."
+	@cd dist && for bundle in $(BUNDLE_NAME) $(FULL_BUNDLE_NAME); do \
+		[ -f "$$bundle" ] || continue; \
+		shasum -a 256 "$$bundle" > "$$bundle.sha256"; \
+		echo "Checksum: $$(cat "$$bundle.sha256")"; \
+	done
 
 ## Include SBOMs and CodeQL results in the release bundle and repackage.
 .PHONY: release-bundle
@@ -112,13 +117,60 @@ release-bundle:
 .PHONY: release-sign
 release-sign:
 	@if [ -n "$(PLUGIN_SIGNING_KEY)" ]; then \
-		echo "Signing plugin bundle with GPG key $(PLUGIN_SIGNING_KEY)..."; \
-		gpg -u $(PLUGIN_SIGNING_KEY) --verbose --personal-digest-preferences SHA256 --detach-sign dist/$(BUNDLE_NAME); \
-		echo "Signature: dist/$(BUNDLE_NAME).sig"; \
+		for bundle in $(BUNDLE_NAME) $(FULL_BUNDLE_NAME); do \
+			[ -f "dist/$$bundle" ] || continue; \
+			echo "Signing dist/$$bundle with GPG key $(PLUGIN_SIGNING_KEY)..."; \
+			gpg -u $(PLUGIN_SIGNING_KEY) --verbose --personal-digest-preferences SHA256 --detach-sign "dist/$$bundle"; \
+			echo "Signature: dist/$$bundle.sig"; \
+		done; \
 	else \
 		echo "PLUGIN_SIGNING_KEY not set, skipping signing."; \
 		echo "To sign, set PLUGIN_SIGNING_KEY to your GPG key ID."; \
 	fi
+
+## Fails when the plugin bundle is larger than MAX_BUNDLE_BYTES, Mattermost's default
+## FileSettings.MaxFileSize of 100 MiB, which gates plugin upload: a bigger bundle is refused
+## by every install that has not raised it. The full bundle is exempt and says so in the
+## release notes.
+##
+## Fails when the plugin bundle exceeds the default upload limit
+.PHONY: bundle-size-check
+bundle-size-check:
+	@[ -f dist/$(BUNDLE_NAME) ] || { echo "ERROR: dist/$(BUNDLE_NAME) does not exist; run 'make dist' first."; exit 1; }
+	@size=$$(wc -c < dist/$(BUNDLE_NAME) | tr -d ' '); \
+	if [ "$$size" -gt $(MAX_BUNDLE_BYTES) ]; then \
+		echo "ERROR: dist/$(BUNDLE_NAME) is $$size bytes, over the $(MAX_BUNDLE_BYTES) byte default upload limit."; \
+		echo "Every install that has not raised FileSettings.MaxFileSize would refuse it."; \
+		exit 1; \
+	fi; \
+	echo "dist/$(BUNDLE_NAME) is $$size bytes, $$(( $(MAX_BUNDLE_BYTES) - size )) under the default upload limit."
+
+## Builds dist/<id>-<version>-full.tar.gz for installs that would rather raise their upload
+## limit than copy datasets by hand: the finished bundle with the full cve and cvedetail
+## datasets in place of the KEV-only slices, and the DB-IP City Lite database, all from
+## build/cyberdata/release. It is over the default upload limit on purpose, so it is never
+## the default download.
+##
+## Builds the full release bundle, with every downloadable cyber dataset inside
+.PHONY: release-full-bundle
+release-full-bundle:
+	@for file in cve.tsv.gz cvedetail.tsv.gz dbip-city-lite.mmdb; do \
+		[ -f "$(CYBER_RELEASE_DIR)/$$file" ] || { echo "error: $(CYBER_RELEASE_DIR)/$$file is missing; run 'make cyber-refresh cyber-release-package' first."; exit 1; }; \
+	done
+	@[ -d dist/$(PLUGIN_ID) ] || { echo "error: dist/$(PLUGIN_ID) is missing; run 'make dist' first."; exit 1; }
+	rm -rf dist/full
+	mkdir -p dist/full
+	cp -R dist/$(PLUGIN_ID) dist/full/
+	rm -f dist/full/$(PLUGIN_ID)/$(ASSETS_DIR)/cyber/cve.tsv dist/full/$(PLUGIN_ID)/$(ASSETS_DIR)/cyber/cvedetail.tsv
+	cp $(CYBER_RELEASE_DIR)/cve.tsv.gz $(CYBER_RELEASE_DIR)/cvedetail.tsv.gz $(CYBER_RELEASE_DIR)/dbip-city-lite.mmdb dist/full/$(PLUGIN_ID)/$(ASSETS_DIR)/cyber/
+	rm -f dist/$(FULL_BUNDLE_NAME)
+ifeq ($(shell uname),Darwin)
+	tar --disable-copyfile -czf dist/$(FULL_BUNDLE_NAME) -C dist/full $(PLUGIN_ID)
+else
+	tar -czf dist/$(FULL_BUNDLE_NAME) -C dist/full $(PLUGIN_ID)
+endif
+	rm -rf dist/full
+	@echo "full bundle built at: dist/$(FULL_BUNDLE_NAME), $$(wc -c < dist/$(FULL_BUNDLE_NAME) | tr -d ' ') bytes"
 
 ## Create a git tag for the release version.
 .PHONY: release-tag
@@ -131,9 +183,11 @@ release-tag:
 	git tag -a "v$(PLUGIN_VERSION)" -m "Release v$(PLUGIN_VERSION)"
 	@echo "Tag v$(PLUGIN_VERSION) created. Push with: git push origin v$(PLUGIN_VERSION)"
 
-## Full release build: clean, checks, style, tests, build, SBOM audit, CodeQL, bundle with SBOMs, sign, and checksum.
+CYBER_REFRESH ?= 1
+
+## Full release build: checks, a cyber data refresh, clean, style, tests, build, SBOM audit, CodeQL, bundle with SBOMs, the full bundle, sign, and checksum.
 .PHONY: release
-release: release-check clean all sbom-audit codeql-analyze security-gate release-bundle virus-scan release-sign release-checksum
+release: release-check $(if $(filter 1,$(CYBER_REFRESH)),cyber-refresh cyber-release-package) clean all sbom-audit codeql-analyze security-gate release-bundle bundle-size-check $(if $(filter 1,$(CYBER_REFRESH)),release-full-bundle) virus-scan release-sign release-checksum
 	@echo ""
 	@echo "=========================================="
 	@echo "Release build complete!"
@@ -239,6 +293,141 @@ osm-sources:
 map-sources:
 	./build/maptiles/fetch-sources.sh
 
+## Fetches the upstream security datasets into build/cyberdata/source, which is gitignored,
+## and verifies them against build/cyberdata/sources.lock, then the CISA advisories in
+## build/cyberdata/advisories.txt, which `make cyber-data` needs too. Needs network access;
+## nothing in the build, the tests or the plugin at runtime ever reaches the network.
+##
+## Fetches every upstream cyber source, the CISA advisories included
+.PHONY: cyber-sources
+cyber-sources:
+	./build/cyberdata/fetch-sources.sh
+	./build/cyberdata/fetch-advisories.sh
+
+## Rebuilds the cyber datasets from the sources above: the two embedded catalogs and the
+## bundled KEV, CWE detail, ATT&CK detail, CAPEC, CVE to ATT&CK and KEV-only CVE files into the tree, and the large ones into build/cyberdata/out for release
+## assets. Deliberately NOT a prerequisite of test, for the same reason airport-data is not:
+## the transform is filter and sort, and its drift is a missing row, which is visible and
+## benign rather than an invisible failure on an HTTPS install.
+.PHONY: cyber-data
+cyber-data:
+	$(GO) run ./build/cyberdata
+
+## Fetches the STIX indicators of every CISA advisory listed in
+## build/cyberdata/advisories.txt and rebuilds assets/cyber/advisory.tsv, which ships in
+## the bundle: a US government work, marked TLP:CLEAR. Add an advisory by adding its id.
+##
+## Rebuilds the bundled CISA advisory indicators
+.PHONY: cyber-advisories
+cyber-advisories:
+	./build/cyberdata/fetch-advisories.sh
+	$(GO) run ./build/cyberdata -only advisory \
+		-label "CISA advisories $$(tr '\n' ' ' < build/cyberdata/advisories.txt | sed 's/ $$//'), fetched $$(date -u +%Y-%m-%d)"
+
+## Fetches DB-IP's free IP to City Lite database into build/cyberdata/out as
+## dbip-city-lite.mmdb, this month's or last month's early in a month. It gives the IP
+## panel a region and city. CC BY 4.0: the panel and the page link back to DB-IP.com
+## whenever it supplied an answer, which is the license's condition.
+##
+## Fetches the DB-IP City Lite database for the IP panel
+.PHONY: cyber-geo
+cyber-geo:
+	./build/cyberdata/fetch-geo.sh
+
+## Builds the vulnerability datasets from the CVEs NVD published in the last DAYS days, 7
+## by default and at most 120, into build/cyberdata/recent/cve.tsv and cvedetail.tsv. A
+## small current set for trying the decorator: it holds nothing older than its window, so
+## an older CVE reads as not in the dataset. Its stamp names the window. Set NVD_API_KEY to
+## raise NVD's rate limit.
+##
+##   make cyber-recent DAYS=7
+##
+## Builds a vulnerability dataset from the last DAYS days of NVD
+.PHONY: cyber-recent
+cyber-recent:
+	DAYS="$(DAYS)" ./build/cyberdata/fetch-recent.sh
+	$(GO) run ./build/cyberdata -source build/cyberdata/recent -out build/cyberdata/recent \
+		-only cve,cvedetail -label "$$(cat build/cyberdata/recent/window)"
+
+## Gzips each dataset in build/cyberdata/out and writes DATASETS.sha256 over the archives.
+## Operators drop the .tsv.gz files into the directory named by CyberDatasetsDir, and the
+## plugin unpacks each one beside itself. -n leaves the name and time out of the archive,
+## so the same dataset always packs to the same bytes.
+.PHONY: cyber-package
+cyber-package:
+	@ls build/cyberdata/out/*.tsv >/dev/null 2>&1 || { \
+		echo "error: no datasets in build/cyberdata/out; run 'make cyber-data' first."; \
+		exit 1; \
+	}
+	@cd build/cyberdata/out && for dataset in *.tsv; do gzip -9 -n -c "$$dataset" > "$$dataset.gz"; done
+	@cd build/cyberdata/out && shasum -a 256 *.tsv.gz > DATASETS.sha256
+	@ls -l build/cyberdata/out/*.tsv.gz build/cyberdata/out/DATASETS.sha256
+
+## Fetches every cyber source afresh and rebuilds all of the data from it: the ATT&CK and
+## CWE catalogs compiled into the plugin and every file bundled under assets/cyber, in the
+## working tree, and the downloadable datasets into build/cyberdata/out. SOURCES.sha256 in
+## out records the digest of each source this run read. `make release` runs it after
+## release-check, so a release ships current data and its tests run against that data;
+## set CYBER_REFRESH=0 to release the committed data instead.
+##
+## Rebuilds every cyber dataset, bundled and downloadable, from fresh sources
+.PHONY: cyber-refresh
+cyber-refresh:
+	@mkdir -p build/cyberdata/out
+	rm -f build/cyberdata/out/SOURCES.sha256
+	SOURCES_LOCK="$(CURDIR)/build/cyberdata/out/SOURCES.sha256" ./build/cyberdata/fetch-sources.sh
+	./build/cyberdata/fetch-geo.sh
+	$(GO) run ./build/cyberdata -only attack,cwe,attackdetail,cwedetail,capec,cveattack,epss
+	$(GO) run ./build/cyberdata -only kev -label "CISA KEV catalog $$(sed -n 's/.*"catalogVersion": *"\([^"]*\)".*/\1/p' build/cyberdata/source/known_exploited_vulnerabilities.json | head -1)"
+	$(GO) run ./build/cyberdata -only cve,cvedetail -label "NVD CVE JSON 2.0 feeds, fetched $$(date -u +%Y-%m-%d)"
+	$(GO) run ./build/cyberdata -only cvekev,cvedetailkev
+	$(GO) run ./build/cyberdata -only ip -label "IPtoASN ip2asn-combined, fetched $$(date -u +%Y-%m-%d)"
+	gzip -9 -n -c build/cyberdata/out/ip.tsv > assets/cyber/ip.tsv.gz
+	gzip -9 -n -c build/cyberdata/out/epss.tsv > assets/cyber/epss.tsv.gz
+	$(GO) run ./build/cyberdata -only netlists \
+		-label "Tor Project exit list and MISP warninglists $$(cut -c1-12 build/cyberdata/source/misp-warninglists/COMMIT), fetched $$(date -u +%Y-%m-%d)"
+	$(GO) run ./build/cyberdata -only hashlists \
+		-label "MISP warninglists $$(cut -c1-12 build/cyberdata/source/misp-warninglists/COMMIT), fetched $$(date -u +%Y-%m-%d)"
+	gzip -9 -n -c build/cyberdata/out/netlists.tsv > assets/cyber/netlists.tsv.gz
+	$(MAKE) --no-print-directory cyber-advisories
+
+CYBER_RELEASE_DATASETS := cve cvedetail
+CYBER_RELEASE_DIR := build/cyberdata/release
+
+## Packs the downloadable cyber datasets for a release into build/cyberdata/release: cve
+## and cvedetail gzipped, the DB-IP City Lite database as it is read, the SOURCES.sha256
+## the refresh wrote, and DATASETS.sha256 over the lot. ip and epss are left out because
+## the bundle carries them.
+##
+## Packs the downloadable cyber datasets for a release
+.PHONY: cyber-release-package
+cyber-release-package:
+	@for dataset in $(CYBER_RELEASE_DATASETS); do \
+		[ -f "build/cyberdata/out/$$dataset.tsv" ] || { echo "error: build/cyberdata/out/$$dataset.tsv is missing; run 'make cyber-refresh' first."; exit 1; }; \
+	done
+	@[ -f build/cyberdata/out/dbip-city-lite.mmdb ] || { echo "error: build/cyberdata/out/dbip-city-lite.mmdb is missing; run 'make cyber-geo' first."; exit 1; }
+	rm -rf $(CYBER_RELEASE_DIR)
+	mkdir -p $(CYBER_RELEASE_DIR)
+	@for dataset in $(CYBER_RELEASE_DATASETS); do \
+		gzip -9 -n -c "build/cyberdata/out/$$dataset.tsv" > "$(CYBER_RELEASE_DIR)/$$dataset.tsv.gz"; \
+	done
+	cp build/cyberdata/out/dbip-city-lite.mmdb $(CYBER_RELEASE_DIR)/
+	@if [ -f build/cyberdata/out/SOURCES.sha256 ]; then cp build/cyberdata/out/SOURCES.sha256 $(CYBER_RELEASE_DIR)/; fi
+	cd $(CYBER_RELEASE_DIR) && shasum -a 256 *.tsv.gz *.mmdb > DATASETS.sha256
+	@ls -l $(CYBER_RELEASE_DIR)
+
+## Attaches the downloadable cyber datasets to an existing release, for a release built
+## without them or a refresh between releases:
+##
+##   make cyber-refresh cyber-release TAG=v0.8.0
+##
+## Uploads the downloadable cyber datasets to a release
+.PHONY: cyber-release
+cyber-release:
+	@[ -n "$(TAG)" ] || { echo "error: set TAG=<release tag>"; exit 1; }
+	@$(MAKE) --no-print-directory cyber-release-package
+	gh release upload "$(TAG)" $(CYBER_RELEASE_DIR)/* --clobber
+
 ## Regenerates the bundled basemap from the Natural Earth source in build/mapdata/source.
 ## The outputs are committed, so a clean checkout builds and an air-gapped `go test` runs
 ## without this target. Run it only when the source or the generator changes.
@@ -315,6 +504,11 @@ bundle:
 	./build/bin/manifest dist
 ifneq ($(wildcard $(ASSETS_DIR)/.),)
 	cp -r $(ASSETS_DIR) dist/$(PLUGIN_ID)/
+	@# A test run unpacks a bundled .tsv.gz beside itself; ship only the archive.
+	@for archive in dist/$(PLUGIN_ID)/$(ASSETS_DIR)/cyber/*.tsv.gz; do \
+		[ -e "$$archive" ] || continue; \
+		rm -f "$${archive%.gz}" "$${archive%.gz}.unpacking"; \
+	done
 endif
 ifneq ($(HAS_PUBLIC),)
 	cp -r public dist/$(PLUGIN_ID)/
@@ -453,6 +647,7 @@ else
 endif
 
 	@echo plugin built at: dist/$(BUNDLE_NAME)
+	@$(MAKE) --no-print-directory bundle-size-check
 
 ## Builds and bundles the plugin.
 .PHONY: dist
@@ -586,6 +781,11 @@ MM_PORT ?= 8065
 MAP_PACKAGE_DIR ?= map-packages
 MAP_PACKAGE_HOST := docker/mattermost/data/$(MAP_PACKAGE_DIR)
 MAP_PACKAGE_PATH := /mattermost/data/$(MAP_PACKAGE_DIR)
+
+CYBER_DATA_DIR ?= cyber-datasets
+CYBER_DATA_HOST := docker/mattermost/data/$(CYBER_DATA_DIR)
+MATTERMOST_CONTAINER_UID ?= 2000
+CYBER_DATA_PATH := /mattermost/data/$(CYBER_DATA_DIR)
 
 ## Start Mattermost and PostgreSQL containers
 .PHONY: docker-start
@@ -730,9 +930,61 @@ docker-packages: docker-check
 		echo "LocationMapPackagesDir = $(MAP_PACKAGE_PATH), $$(ls $(MAP_PACKAGE_HOST)/*.pmtiles 2>/dev/null | wc -l | tr -d ' ') dropped-in areas"; \
 	fi
 
-## Deploys the plugin to Docker and drops in every built map area
+## Copies the gzipped cyber datasets in build/cyberdata/out into the Docker server's drop-in
+## directory and points CyberDatasetsDir at it. The plugin unpacks each archive beside itself
+## on the first lookup after, so the directory has to be writable by the server (a failure
+## is logged as TF-21006). Only archives whose source is newer are copied, so a redeploy is cheap.
+##
+## Drops the built cyber datasets into the Docker server for testing
+.PHONY: docker-cyberdata
+docker-cyberdata: docker-check
+	@if [ -z "$$(ls build/cyberdata/out/*.tsv.gz build/cyberdata/out/*.mmdb 2>/dev/null)" ]; then \
+		echo "No datasets in build/cyberdata/out/. Build them with 'make cyber-data' and 'make cyber-package', and 'make cyber-geo' for DB-IP."; \
+	else \
+		mkdir -p $(CYBER_DATA_HOST); \
+		chmod 0755 $(CYBER_DATA_HOST); \
+		if [ "$$(uname)" = "Linux" ]; then \
+			if command -v setfacl >/dev/null 2>&1; then \
+				setfacl -m u:$(MATTERMOST_CONTAINER_UID):rwx,d:u:$(MATTERMOST_CONTAINER_UID):rwx $(CYBER_DATA_HOST); \
+			else \
+				echo "  warning: setfacl is not installed, so the Mattermost container (UID $(MATTERMOST_CONTAINER_UID)) may not be able to unpack datasets in $(CYBER_DATA_HOST)"; \
+				echo "  install the acl package, or run: sudo chown $(MATTERMOST_CONTAINER_UID) $(CYBER_DATA_HOST)"; \
+			fi; \
+		fi; \
+		n=0; \
+		for f in build/cyberdata/out/*.tsv.gz build/cyberdata/out/*.mmdb; do \
+			[ -f "$$f" ] || continue; \
+			d="$(CYBER_DATA_HOST)/$$(basename $$f)"; \
+			if [ ! -f "$$d" ] || [ "$$f" -nt "$$d" ]; then \
+				cp "$$f" "$$d"; \
+				echo "  copied $$(basename $$f)"; \
+				n=$$((n + 1)); \
+			fi; \
+		done; \
+		if [ "$$n" -eq 0 ]; then echo "  datasets already current"; fi; \
+		printf '{"PluginSettings":{"Plugins":{"%s":{"cyberdatasetsdir":"%s"}}}}' \
+			"$(PLUGIN_ID)" "$(CYBER_DATA_PATH)" > docker/mattermost/data/.cyberdata-patch.json; \
+		$(DOCKER_COMPOSE) exec -T mattermost mmctl --local config patch \
+			/mattermost/data/.cyberdata-patch.json > /dev/null; \
+		rm -f docker/mattermost/data/.cyberdata-patch.json; \
+		echo "CyberDatasetsDir = $(CYBER_DATA_PATH), $$(ls $(CYBER_DATA_HOST)/*.tsv.gz 2>/dev/null | wc -l | tr -d ' ') dropped-in datasets, $$(ls $(CYBER_DATA_HOST)/*.mmdb 2>/dev/null | wc -l | tr -d ' ') vendor databases"; \
+	fi
+
+## Deploys the plugin to Docker and drops in every built map area and cyber dataset
+## Configures an @fusion agent in the Docker server's Agents plugin: an OpenAI service with
+## the key in OPENAI_API_KEY and an agent on AGENT_MODEL (gpt-5.5 by default) with structured
+## output on, so the Tactical Fusion MCP tools can be tried from a channel. It also turns on
+## channel mention tool calling and the Mattermost MCP server over HTTP, and sets every
+## Tactical Fusion tool to auto run everywhere. Skipped when the key is not set or the Agents
+## plugin is not running; saves only what changed.
+##
+## Configures the @fusion AI agent in the Docker server
+.PHONY: docker-agent
+docker-agent: docker-check
+	@$(GO) run ./build/devagent
+
 .PHONY: deploy
-deploy: docker-deploy docker-packages
+deploy: docker-deploy docker-packages docker-cyberdata docker-agent
 
 ## Build and deploy to a Mattermost server running at MM_LOCAL_SITEURL
 ## (default http://localhost:8065) via the bundled pluginctl tool. Unlike

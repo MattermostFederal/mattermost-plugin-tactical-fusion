@@ -8,6 +8,7 @@ import type {Camera} from '../decorators/location/map/camera';
 import type {MapFocus} from '../decorators/location/map/focus';
 import {focusOn} from '../decorators/location/map/focus';
 import LocationMap, {INLINE_MAP_HEIGHT, MAP_HEIGHT} from '../decorators/location/map/LocationMap';
+import {ellipseOutline} from '../decorators/location/map/maplibre';
 import {useNearViewport} from '../decorators/location/map/near_viewport';
 import type {MapEllipse} from '../decorators/location/map/overlay';
 import type {MapShape} from '../decorators/location/map/paint';
@@ -204,15 +205,35 @@ function shapeFor(event: CotEvent | undefined): MapShape | undefined {
     };
 }
 
-function outlinesFor(drawn: readonly CotEvent[]): MapShape[] {
-    return drawn.map((event) => shapeFor(event)).filter((shape) => shape !== undefined);
+function ellipseShapeFor(event: CotEvent): MapShape | undefined {
+    const ellipse = ellipseFor(event);
+    if (ellipse === undefined) {
+        return undefined;
+    }
+
+    const ring = ellipseOutline(Number(event.lat), Number(event.lon), ellipse.major, ellipse.minor, ellipse.angle);
+    if (ring === null) {
+        return undefined;
+    }
+
+    return {
+        rings: [ring],
+        closed: true,
+        ...(ellipse.color === undefined ? {} : {color: ellipse.color}),
+    };
+}
+
+function outlinesFor(drawn: readonly CotEvent[], only?: CotEvent): MapShape[] {
+    return drawn.
+        map((event) => shapeFor(event) ?? (event === only ? undefined : ellipseShapeFor(event))).
+        filter((shape) => shape !== undefined);
 }
 
 /** @internal exported for tests */
 export function _outlinesForTesting( // eslint-disable-line no-underscore-dangle, @typescript-eslint/naming-convention
-    drawn: readonly CotEvent[],
+    drawn: readonly CotEvent[], only?: CotEvent,
 ): MapShape[] {
-    return outlinesFor(drawn);
+    return outlinesFor(drawn, only);
 }
 
 /** @internal exported for tests */
@@ -283,7 +304,7 @@ export const CotMapCanvas: React.FC<{
     // event's accuracy ring and its Open larger link on a map the other two
     // are missing from, and say nothing about the two.
     const only = events.length === 1 && drawn.length === 1 ? drawn[0] : undefined;
-    const outlines = outlinesFor(drawn);
+    const outlines = outlinesFor(drawn, only);
 
     return (
         <LocationMap

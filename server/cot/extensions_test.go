@@ -789,7 +789,7 @@ func TestAnUnreadableAttachmentListIsNotCounted(t *testing.T) {
 	}
 }
 
-// An unlabelled -71 is the derived-claim failure in reverse: the reader
+// An unlabeled -71 is the derived-claim failure in reverse: the reader
 // supplies the unit instead of the plugin.
 func TestARadioSignalCarriesItsUnit(t *testing.T) {
 	props := detailProps(t, `<_radio rssi="-71" gps="3"/>`)

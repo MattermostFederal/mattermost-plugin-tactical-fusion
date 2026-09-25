@@ -11,6 +11,7 @@ import (
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/avreport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/cyber"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/frequency"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
@@ -36,7 +37,7 @@ type exampleSet struct {
 	rows      []exampleRow
 }
 
-var exampleSetOrder = []string{dtg.Type, location.Type, airport.Type, avreport.Type, frequency.Type}
+var exampleSetOrder = []string{dtg.Type, location.Type, airport.Type, avreport.Type, frequency.Type, cyber.Type}
 
 var exampleSets = map[string]exampleSet{
 	dtg.Type: {
@@ -102,6 +103,20 @@ var exampleSets = map[string]exampleSet{
 			{label: "UHF guard", text: "FREQ:243.0", note: "the military emergency frequency"},
 		},
 	},
+
+	cyber.Type: {
+		decorator: cyber.Type,
+		name:      "Cyber context",
+		rows: []exampleRow{
+			{label: "Vulnerability", text: "CVE-2025-55182", note: "React2Shell, critical and known exploited; recognized by shape, so it links with no dataset installed"},
+			{label: "Weakness", text: "CWE-79", note: "only identifiers the built-in catalog holds"},
+			{label: "Technique", text: "T1059.001", note: "a sub-technique, which carries its parent and its tactics"},
+			{label: "Tactic", text: "TA0002"},
+			{label: "IP address", text: "8.8.8.8", note: "Google's public resolver: its network and place, and the public DNS resolver list naming it"},
+			{label: "Attack address", text: "141.98.9.137", note: "named by CISA advisory AA23-325A as LockBit 3.0's remote address for Citrix Bleed; hosting addresses change hands"},
+			{label: "File hash", text: "01ce9cfebb29596d0ab7c99e8dbadf1a8409750b183e6bf73e0de021b365be13", note: "a BlackSuit (Royal) ransomware sample, a SHA-256 named by CISA advisory AA23-061A"},
+		},
+	},
 }
 
 const examplesHeader = "What you type, and what gets stored. Click any link to open it in the sidebar.\n\n"
@@ -144,11 +159,11 @@ func (p *Plugin) examplesResponse(args *model.CommandArgs) *model.CommandRespons
 // size gate above can measure them alongside the decorator sets.
 func (p *Plugin) formatExampleMessages() []string {
 	messages := append(append(p.cotExampleMessages(), p.geoJSONExampleMessages()...), p.tfrExampleMessages()...)
-	return append(messages, p.noteExampleMessages()...)
+	return append(append(messages, p.noteExampleMessages()...), mcpExampleMessage())
 }
 
 func (p *Plugin) postExamples(args *model.CommandArgs, messages []string) *model.CommandResponse {
-	failed, total := 0, len(messages)+p.cotExampleCount()+p.geoJSONExampleCount()+p.tfrExampleCount()+len(noteExamples)
+	failed, total := 0, len(messages)+p.cotExampleCount()+p.geoJSONExampleCount()+p.tfrExampleCount()+len(noteExamples)+mcpExampleCount
 
 	for _, message := range messages {
 		if _, appErr := p.API.CreatePost(examplePost(args, message)); appErr != nil {
@@ -162,6 +177,7 @@ func (p *Plugin) postExamples(args *model.CommandArgs, messages []string) *model
 	failed += p.postGeoJSONExamples(args)
 	failed += p.postTFRExample(args)
 	failed += p.postNoteExamples(args)
+	failed += p.postMCPExample(args)
 
 	if failed == total {
 		return ephemeralResponse(errcode.WithCode(errcode.CommandExamplesPostFailed,
@@ -214,7 +230,7 @@ func exampleSetLines(tagger *decorators.Tagger, ref time.Time, set exampleSet) [
 	for _, live := range set.live {
 		rows = append(rows, exampleRow{
 			label: live.label,
-			text:  dtg.FormatZulu(ref.Add(live.offset)),
+			text:  exampleLiveText(ref, live),
 			note:  live.note,
 		})
 	}
@@ -239,6 +255,10 @@ func exampleSetLines(tagger *decorators.Tagger, ref time.Time, set exampleSet) [
 	}
 
 	return lines
+}
+
+func exampleLiveText(ref time.Time, live exampleLiveRow) string {
+	return dtg.FormatZulu(ref.Add(live.offset))
 }
 
 func inlineCode(text string) string {

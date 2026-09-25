@@ -130,15 +130,26 @@ test('a block with no outline draws none', () => {
     expect(outlines([ev('friend'), ev('hostile')])).toHaveLength(0);
 });
 
-// An ellipse is drawn around the map's primary position, which in a block is the
-// first event's, so one belonging to a later event would land on the wrong
-// marker. Outlines carry absolute vertices and do not have that problem.
-test('an ellipse in a block is left undrawn rather than drawn in the wrong place', () => {
-    const ellipse = {
-        ...ev('unknown'),
-        uid: 'RING-1',
+function ringed(uid: string, lat: string, lon: string): CotEvent {
+    return {
+        ...ev('unknown', lat, lon),
+        uid,
         geometry: {kind: 'ellipse', majorMeters: 400, minorMeters: 250, angleDegrees: 30, note: ''},
     } as unknown as CotEvent;
+}
 
-    expect(outlines([ev('friend'), ellipse])).toHaveLength(0);
+test('an ellipse in a block is drawn around its own event, not the first marker', () => {
+    const shapes = outlines([ev('friend'), ringed('RING-1', '35.0000', '-118.0000')]);
+
+    expect(shapes).toHaveLength(1);
+    expect(shapes[0].closed).toBe(true);
+    const lats = shapes[0].rings[0].map((point) => point.lat);
+    expect(Math.min(...lats)).toBeGreaterThan(34.99);
+    expect(Math.max(...lats)).toBeLessThan(35.01);
+});
+
+test('the lone event keeps its ellipse on the map rather than as a second outline', () => {
+    const lone = ringed('RING-1', '35.0000', '-118.0000');
+
+    expect(outlines([lone], lone)).toHaveLength(0);
 });

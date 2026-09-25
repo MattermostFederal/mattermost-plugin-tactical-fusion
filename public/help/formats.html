@@ -21,6 +21,7 @@
             <a href="dtg.html">Date-Time Groups</a>
             <a href="location.html">Coordinates</a>
             <a href="airfields.html">Airfields</a>
+            <a href="cyber.html">Cyber Context</a>
             <a href="cot.html">Cursor on Target</a>
             <a href="geojson.html">GeoJSON</a>
             <a href="reports.html">Aviation Reports</a>
@@ -81,6 +82,11 @@
                     <td><code class="copyable">ICAO:PHNL</code></td>
                 </tr>
                 <tr>
+                    <td><a href="cyber.html">Cyber Context</a></td>
+                    <td>CVE, CWE and ATT&amp;CK identifiers, IP addresses and file hashes</td>
+                    <td><code class="copyable">CVE-2025-55182</code></td>
+                </tr>
+                <tr>
                     <td><a href="cot.html">Cursor on Target</a></td>
                     <td>Whole events, rendered as a card rather than a link</td>
                     <td><code>&lt;event uid="..." type="a-f-G-U-C" ...&gt;</code></td>
@@ -129,6 +135,9 @@
             <code>DEPLOC:</code> and <code>ARRLOC:</code> for airfields, and
             <code>IATA:</code> for their three letter codes. The label is
             <strong>matched and then dropped</strong>, so the link text is the token alone.
+            The <a href="cyber.html#cyber-kept">hash labels</a> <code>md5:</code>,
+            <code>sha1:</code> and <code>sha256:</code> are the exception: they are matched and
+            then left in the message, because they say which algorithm the author meant.
         </p>
 
         <div class="alert alert-warning">
@@ -174,6 +183,9 @@
             <li>Angle autolinks, such as <code>&lt;https://example.com&gt;</code></li>
             <li>Inline HTML tags</li>
             <li>Bare URLs beginning <code>scheme://</code> or <code>www.</code></li>
+            <li>Mentions, channel links and hashtags: <code>@name</code>, <code>~channel</code>
+                and <code>#tag</code>. Mattermost autolinks each of these, exactly as it does a
+                bare URL, so rewriting inside one destroys the reader's link</li>
             <li>USMTF messages: a run of lines such as <code>TSKCNTRY/US//</code>,
                 <code>/0101 /SAMPLE01 /091300Z</code> and <code>7CONTROL</code>, when one of
                 them ends in <code>//</code></li>

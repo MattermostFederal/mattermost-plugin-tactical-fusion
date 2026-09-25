@@ -79,6 +79,19 @@ const cotExampleRich = `<event version="2.0" uid="ANDROID-88" type="a-f-G-U-C" h
     </shape>
     <remarks>suspected hostile area, fourteen point outline</remarks>
   </detail>
+</event>
+<event version="2.0" uid="ROUTE-2B1" type="b-m-r" how="h-e"
+       time="2026-08-09T16:30:14Z" start="2026-08-09T16:30:14Z" stale="2026-08-09T17:30:14Z">
+  <point lat="21.318700" lon="-157.922500" hae="12.0" ce="9999999.0" le="9999999.0"/>
+  <detail>
+    <contact callsign="ROUTE BLUE"/>
+    <color argb="-16711936"/>
+    <link point="21.318700,-157.922500"/>
+    <link point="21.325900,-157.929800"/>
+    <link point="21.330400,-157.939100"/>
+    <link point="21.334100,-157.943600"/>
+    <remarks>ingress route from ALPHA to the objective, four waypoints</remarks>
+  </detail>
 </event>`
 
 const cotExampleAttachment = `<?xml version="1.0" encoding="UTF-8"?>
@@ -110,10 +123,11 @@ var cotExampleOrder = []cotExample{
 		source: cotExampleTarget,
 	},
 	{
-		lead: "Three events in one message, carrying most of what a `<detail>` block can " +
+		lead: "Five events in one message, carrying most of what a `<detail>` block can " +
 			"say: team and role, device and battery, position quality, track and " +
-			"attitude, a sensor, a stated display color, and an event that names its " +
-			"parent. The card lists them and the map draws all three:",
+			"attitude, a sensor, a stated display color, an event that names its " +
+			"parent, and two drawn shapes, a red suspected area and a green ingress " +
+			"route. The card lists them and the map draws all five:",
 		source: cotExampleRich,
 	},
 	{

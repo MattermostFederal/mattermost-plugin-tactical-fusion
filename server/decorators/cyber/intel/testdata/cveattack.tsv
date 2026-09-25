@@ -1,0 +1,4 @@
+#tactical-fusion-cyber/1	cveattack	2026-09-01T00:00:00Z	golden
+CVE-2021-44228	[{"id":"T1059.001","types":["exploitation technique"]}]
+CVE-2022-41082	[{"id":"T1059.001","types":["exploitation technique","primary impact"]}]
+T1059.001	[{"id":"CVE-2022-41082","types":["exploitation technique","primary impact"]},{"id":"CVE-2021-44228","types":["exploitation technique"]}]

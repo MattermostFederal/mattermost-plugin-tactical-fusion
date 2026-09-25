@@ -21,6 +21,7 @@
             <a href="dtg.html">Date-Time Groups</a>
             <a href="location.html">Coordinates</a>
             <a href="airfields.html">Airfields</a>
+            <a href="cyber.html">Cyber Context</a>
             <a href="cot.html">Cursor on Target</a>
             <a href="geojson.html">GeoJSON</a>
             <a href="reports.html">Aviation Reports</a>
@@ -49,7 +50,7 @@
         <p class="tagline">Enriches conversations with mission-relevant context, in place, as people write.</p>
 
         <p>
-            Today the plugin recognizes seven kinds of thing. Five of them become
+            Today the plugin recognizes eight kinds of thing. Six of them become
             <strong>links</strong> in the message you wrote. Write a date-time group and it
             becomes a link that opens a panel showing that instant in every timezone you
             care about, with a countdown to it. Write a coordinate in any of the recognized
@@ -60,7 +61,10 @@
             <a href="reports.html">METAR, TAF or NOTAM</a> on one line and it becomes a link
             that decodes every group into plain language. Write a
             <a href="frequencies.html">frequency behind <code>FREQ:</code></a> and it becomes
-            a link naming its band and any known allocation.
+            a link naming its band and any known allocation. Write a
+            <a href="cyber.html#cyber-kinds">security indicator</a>, such as a CVE identifier,
+            an ATT&amp;CK technique, an IP address or a file hash, and it becomes a link
+            carrying what the datasets on this server say about it.
         </p>
 
         <p>
@@ -81,10 +85,6 @@
             too, since no link can hold it.
         </p>
 
-        <p>
-            IP intelligence and CVEs are described in the plugin's roadmap but are
-            <strong>not implemented</strong>.
-        </p>
 
         <h2>What a decorator does</h2>
 
@@ -181,6 +181,10 @@ DZ is [2120N15757W](/plugins/com.mattermost.plugin-tactical-fusion/decorate/loca
                 <h3>Airfields</h3>
                 <p>ICAO codes behind a field label, the embedded database behind them, and why a bare code is never linked.</p>
             </a>
+            <a href="cyber.html" class="nav-card">
+                <h3>Cyber Context</h3>
+                <p>CVE, CWE and ATT&amp;CK identifiers, IP addresses and file hashes, the datasets behind them, and why nothing is ever fetched from the internet.</p>
+            </a>
             <a href="cot.html" class="nav-card">
                 <h3>Cursor on Target</h3>
                 <p>The schema this build reads, every element and attribute, what it refuses, and worked examples of each kind of event.</p>
@@ -211,7 +215,7 @@ DZ is [2120N15757W](/plugins/com.mattermost.plugin-tactical-fusion/decorate/loca
             </a>
             <a href="admin.html" class="nav-card">
                 <h3>Admin Settings</h3>
-                <p>The thirty-four switches in the System Console, in eight sections, what each governs, and what turning one off does and does not do. Two of them, UTM and unlabeled GeoJSON, ship off.</p>
+                <p>The forty switches in the System Console, in nine sections, what each governs, and what turning one off does and does not do. Two of them, UTM and unlabeled GeoJSON, ship off.</p>
             </a>
             <a href="commands.html" class="nav-card">
                 <h3>Slash Commands</h3>

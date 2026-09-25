@@ -11,6 +11,7 @@ import (
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/avreport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/cyber"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/frequency"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
@@ -27,6 +28,8 @@ type Plugin struct {
 	packageLock  sync.Mutex
 	packageCache *packageCache
 	warned       map[string]bool
+
+	cyber cyberDatasets
 
 	mcpServerLock sync.RWMutex
 	mcpServer     *pluginmcp.Server
@@ -149,6 +152,26 @@ func (p *Plugin) avreportSurfaceEnabled(source avreport.Source) bool {
 	return p.avreportCardEnabled()
 }
 
+// cyberFormats reports which indicator grammars the admin has left on.
+//
+// Every kind is ANDed with its parent in Go, the way the sections above are,
+// because a manifest section groups without gating. Read fresh for every
+// message, so a change takes effect without a restart.
+func (p *Plugin) cyberFormats() cyber.Formats {
+	config := p.getConfiguration()
+	if !config.EnableCyber {
+		return cyber.Formats{}
+	}
+
+	return cyber.Formats{
+		CVE:    config.EnableCyberCVE,
+		CWE:    config.EnableCyberCWE,
+		Attack: config.EnableCyberAttack,
+		IP:     config.EnableCyberIP,
+		Hash:   config.EnableCyberHash,
+	}
+}
+
 // locationMaps reports which surfaces the admin has left drawing a map.
 //
 // Two parents rather than one, because a map only ever appears behind a
@@ -223,6 +246,7 @@ func (p *Plugin) OnActivate() error {
 		&avreport.Decorator{Enabled: p.avreportFormats},
 		&frequency.Decorator{Enabled: p.frequencyFormats},
 		&note.Decorator{},
+		&cyber.Decorator{Enabled: p.cyberFormats, Intel: p.cyberIntel},
 	)
 	// Expected to stay uncovered: Register only rejects a duplicate or empty
 	// type, and there is one decorator here with a constant one. It is what
@@ -246,6 +270,7 @@ func (p *Plugin) OnActivate() error {
 			"failed to initialize the MCP server"))
 	}
 	p.registerMCPServerBestEffort()
+	p.warmCyberDatasets()
 
 	return nil
 }

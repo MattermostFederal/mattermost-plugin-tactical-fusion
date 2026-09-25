@@ -125,6 +125,16 @@ func TestProtectedSpansAreNeverRewritten(t *testing.T) {
 
 		// The interior of a CRLF fence is still protected.
 		{"inside a crlf fence", "```\r\nAAA\r\n```\r\n"},
+
+		// Mattermost autolinks these three the way it autolinks a bare URL, so
+		// a link written inside one destroys it.
+		{"mention", "ask @AAA about it"},
+		{"mention at the start", "@AAA is on it"},
+		{"channel link", "posted in ~AAA today"},
+		{"channel link at the start", "~AAA has it"},
+		{"hashtag", "filed under #AAA today"},
+		{"hashtag at the start", "#AAA is the tag"},
+		{"mention carrying dots and hyphens", "ask @ops.lead-AAA now"},
 	}
 
 	for _, tc := range cases {
@@ -208,6 +218,55 @@ func TestTokensOutsideProtectedSpansAreDecorated(t *testing.T) {
 			"one protected, one not",
 			"`AAA` and AAA",
 			"`AAA` and [AAA](" + testPrefix + "/tok?v=AAA)",
+		},
+		{
+			"after an at sign bound to a word",
+			"mail ops@AAA today",
+			"mail ops@[AAA](" + testPrefix + "/tok?v=AAA) today",
+		},
+		{
+			// Strikethrough is two tildes, and the second is a word-adjacent
+			// tilde rather than the start of a channel link.
+			"inside strikethrough",
+			"~~AAA~~",
+			"~~[AAA](" + testPrefix + "/tok?v=AAA)~~",
+		},
+		{
+			// A heading's second "#" is preceded by a "#", so the hashtag
+			// expression does not start there, and a heading is not a hashtag.
+			"in a heading",
+			"## AAA",
+			"## [AAA](" + testPrefix + "/tok?v=AAA)",
+		},
+		{
+			"alongside a mention",
+			"@bob please check AAA",
+			"@bob please check [AAA](" + testPrefix + "/tok?v=AAA)",
+		},
+		{
+			"token immediately before a mention",
+			"AAA,@bob",
+			"[AAA](" + testPrefix + "/tok?v=AAA),@bob",
+		},
+		{
+			"a second hashtag joined to the first",
+			"#recon.#AAA",
+			"#recon.#AAA",
+		},
+		{
+			"a hashtag outside the ASCII alphabet",
+			"#\u00dcbung-AAA",
+			"#\u00dcbung-AAA",
+		},
+		{
+			"inside an email address",
+			"bounce from ops.AAA@lists.example.mil",
+			"bounce from ops.AAA@lists.example.mil",
+		},
+		{
+			"an email address whose host carries the token",
+			"mail root@AAA.example.mil",
+			"mail root@AAA.example.mil",
 		},
 	}
 

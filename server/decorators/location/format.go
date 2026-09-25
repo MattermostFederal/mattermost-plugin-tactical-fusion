@@ -392,7 +392,7 @@ func (l Location) MGRSText() string {
 
 	digits := gridDigitsFor(l.resolutionMeters())
 
-	// A UTM token is already on the grid, so this is a relabelling rather than
+	// A UTM token is already on the grid, so this is a relabeling rather than
 	// a conversion.
 	if l.Format == FormatUTM {
 		p, ok := gridPoint(l.Grid)

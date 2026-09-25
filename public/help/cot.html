@@ -21,6 +21,7 @@
             <a href="dtg.html">Date-Time Groups</a>
             <a href="location.html">Coordinates</a>
             <a href="airfields.html">Airfields</a>
+            <a href="cyber.html">Cyber Context</a>
             <a href="cot.html" class="active">Cursor on Target</a>
             <a href="geojson.html">GeoJSON</a>
             <a href="reports.html">Aviation Reports</a>
@@ -986,10 +987,11 @@
 
         <p>
             This is the second event <a href="commands.html#examples"><code>examples</code></a> posts,
-            and it is deliberately dense: four events in one message carrying team and role, device
+            and it is deliberately dense: five events in one message carrying team and role, device
             and battery, position quality, track and attitude, a sensor, a stated display color, an
-            event that names its parent, and a drawn area. The card lists them all and the map draws
-            them together.
+            event that names its parent, and two drawn shapes: a red suspected area, closed, and a
+            green ingress route, open, whose waypoints are <code>link</code> elements carrying a
+            <code>point</code>. The card lists them all and the map draws them together.
         </p>
 
         <p>
@@ -1060,6 +1062,19 @@
       &lt;/polyline&gt;
     &lt;/shape&gt;
     &lt;remarks&gt;suspected hostile area, fourteen point outline&lt;/remarks&gt;
+  &lt;/detail&gt;
+&lt;/event&gt;
+&lt;event version="2.0" uid="ROUTE-2B1" type="b-m-r" how="h-e"
+       time="2026-08-09T16:30:14Z" start="2026-08-09T16:30:14Z" stale="2026-08-09T17:30:14Z"&gt;
+  &lt;point lat="21.318700" lon="-157.922500" hae="12.0" ce="9999999.0" le="9999999.0"/&gt;
+  &lt;detail&gt;
+    &lt;contact callsign="ROUTE BLUE"/&gt;
+    &lt;color argb="-16711936"/&gt;
+    &lt;link point="21.318700,-157.922500"/&gt;
+    &lt;link point="21.325900,-157.929800"/&gt;
+    &lt;link point="21.330400,-157.939100"/&gt;
+    &lt;link point="21.334100,-157.943600"/&gt;
+    &lt;remarks&gt;ingress route from ALPHA to the objective, four waypoints&lt;/remarks&gt;
   &lt;/detail&gt;
 &lt;/event&gt;</code></pre>
 

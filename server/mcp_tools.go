@@ -22,7 +22,7 @@ type DecorateTextArgs struct {
 }
 
 type LinkTokenArgs struct {
-	Type          string `json:"type" jsonschema:"the decorator type that reads the token: dtg, location, airport, avreport, frequency or note (a note's token is markdown)"`
+	Type          string `json:"type" jsonschema:"the decorator type that reads the token: dtg, location, airport, avreport, frequency, cyber (a CVE, CWE, MITRE ATT&CK id, IP address or file hash) or note (a note's token is markdown)"`
 	Token         string `json:"token" jsonschema:"the value alone with no field label: PHIK rather than ICAO:PHIK"`
 	Label         string `json:"label,omitempty" jsonschema:"link text; empty means the token as written"`
 	ReferenceTime int64  `json:"reference_time,omitempty" jsonschema:"Unix milliseconds supplying the month and year for a short date-time group; zero means now"`
@@ -41,7 +41,7 @@ type LookupAirfieldArgs struct {
 func (p *Plugin) registerMCPTools(server *pluginmcp.Server) {
 	pluginmcp.AddTool(server, &mcp.Tool{
 		Name:        "decorate_text",
-		Description: "Rewrite recognized coordinates, date-time groups, airfield codes, one-line aviation reports and radio frequencies in a message as Tactical Fusion links. Returns the message unchanged when it carries no recognized token.",
+		Description: "Rewrite recognized coordinates, date-time groups, airfield codes, one-line aviation reports, radio frequencies and security indicators (CVE, CWE and MITRE ATT&CK ids, IP addresses and file hashes) in a message as Tactical Fusion links. Returns the message unchanged when it carries no recognized token.",
 	}, guardTool(p, "decorate_text", p.decorateTextTool))
 
 	pluginmcp.AddTool(server, &mcp.Tool{
@@ -86,13 +86,23 @@ func (p *Plugin) registerMCPTools(server *pluginmcp.Server) {
 
 	pluginmcp.AddTool(server, &mcp.Tool{
 		Name:        "create_cot",
-		Description: "Build a Cursor on Target event for a callsign at a latitude and longitude, from an exact CoT type or from an affiliation (friend, hostile, neutral, unknown) and a dimension (ground, air, sea). Returns the XML, a message that renders as a Tactical Fusion card when posted on its own, and the event read back in words.",
+		Description: "Build one message of up to 32 Cursor on Target events. Each is a point for a callsign, typed exactly or from an affiliation (friend, hostile, neutral, unknown) and a dimension (ground, air, sea), or a drawn shape: a circle of a radius in meters around a position, a line, or a polygon, each in an optional #rrggbb color. Returns the XML, a message that renders as a Tactical Fusion card with a map when posted on its own, and the events read back in words.",
 	}, guardTool(p, "create_cot", p.createCotTool))
 
 	pluginmcp.AddTool(server, &mcp.Tool{
 		Name:        "create_geojson",
 		Description: "Build a GeoJSON document from named points, lines and polygons given as latitude and longitude, with optional colors and properties. Returns the document, a message that renders as a Tactical Fusion card with a map when posted on its own, and a summary with measured lengths and areas.",
 	}, guardTool(p, "create_geojson", p.createGeoJSONTool))
+
+	pluginmcp.AddTool(server, &mcp.Tool{
+		Name: "lookup_cyber_indicator",
+		Description: "Look up to 25 security indicators at once (CVE, CWE and MITRE ATT&CK ids, IP addresses, and MD5, SHA-1 or SHA-256 file hashes) in the datasets installed on this server. " +
+			"For a CVE: its CVSS score, severity and vector, whether it is in the CISA known exploited vulnerabilities list, its exploit prediction score, and the affected products and references. " +
+			"For a CWE or ATT&CK id: its name and description, related entries, mitigations, detection, observed CVEs and procedure examples. " +
+			"For an address or a hash: the network and place, and every threat report a CISA advisory makes about it, and context such as a Tor exit or a cloud provider range. " +
+			"Any watchlist verdict the operators recorded is included. Nothing is fetched from the internet. Long lists are cut to 10 items with their full count; each result's link opens the rest. " +
+			"datasets_missing names the datasets that are not installed: an answer without one says nothing about what that dataset would have held.",
+	}, guardTool(p, "lookup_cyber_indicator", p.lookupCyberIndicatorTool))
 }
 
 func (p *Plugin) decorateTextTool(_ context.Context, _ *mcp.CallToolRequest, in DecorateTextArgs) (*mcp.CallToolResult, bridgeclient.DecorateResponse, error) {

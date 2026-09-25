@@ -13,6 +13,7 @@ import (
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/avreport"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/airport"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/cyber"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/frequency"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/location"
@@ -222,6 +223,8 @@ func (p *Plugin) formatEnabled(typ string, params url.Values, ref time.Time) boo
 		return p.frequencyFormats().Frequency
 	case avreport.Type:
 		return avreport.KindEnabled(p.avreportFormats(), avreport.KindOf(params.Get(avreport.ParamValue), ref))
+	case cyber.Type:
+		return cyberKindEnabled(p.cyberFormats(), params)
 	}
 
 	return true
@@ -242,6 +245,8 @@ func parsesWithEveryFormat(typ, token string, ref time.Time) bool {
 		unrestricted = &frequency.Decorator{}
 	case note.Type:
 		unrestricted = &note.Decorator{}
+	case cyber.Type:
+		unrestricted = &cyber.Decorator{}
 	default:
 		return false
 	}
@@ -259,6 +264,7 @@ func (p *Plugin) bridgeInfo() bridgeclient.InfoResponse {
 		avreport.Type:  config.EnableAvReport,
 		frequency.Type: config.EnableFrequency,
 		note.Type:      true,
+		cyber.Type:     config.EnableCyber,
 	}
 
 	info := bridgeclient.InfoResponse{
@@ -303,4 +309,19 @@ func writeBridgeRefusal(w http.ResponseWriter, refusal bridgeRefusal) {
 		Code:    refusal.code,
 		Reason:  refusal.reason,
 	})
+}
+
+// cyberKindEnabled reads the kind out of the link's own parameters, because a
+// cyber link names which grammar recognized it and the switches are per kind.
+func cyberKindEnabled(formats cyber.Formats, params url.Values) bool {
+	kind := cyber.Kind(params.Get(cyber.ParamKind))
+	if !kind.Known() {
+		return false
+	}
+
+	enabled := (&cyber.Decorator{Enabled: func() cyber.Formats { return formats }})
+
+	_, ok := enabled.Parse(params.Get(cyber.ParamValue), time.Now())
+
+	return ok
 }

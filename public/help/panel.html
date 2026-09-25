@@ -21,6 +21,7 @@
             <a href="dtg.html">Date-Time Groups</a>
             <a href="location.html">Coordinates</a>
             <a href="airfields.html">Airfields</a>
+            <a href="cyber.html">Cyber Context</a>
             <a href="cot.html">Cursor on Target</a>
             <a href="geojson.html">GeoJSON</a>
             <a href="reports.html">Aviation Reports</a>
@@ -54,6 +55,7 @@
                 panel <em>shows</em>, see <a href="dtg.html#dtg-panel">Date-Time Groups</a>,
                 <a href="location.html#location-panel">Coordinates</a>,
                 <a href="airfields.html#airfield-panel">Airfields</a>,
+                <a href="cyber.html#cyber-panel">Cyber Context</a>,
                 <a href="cot.html#cot-panel">Cursor on Target</a>,
                 <a href="geojson.html#geojson-panel">GeoJSON</a>,
                 <a href="reports.html#reports-panel">Aviation Reports</a>,
@@ -86,6 +88,21 @@
             what a glance is asking; the readings are one click away.
         </p>
 
+        <p>
+            Point at a <a href="cyber.html#cyber-kinds">security indicator</a> and a short card
+            <strong>names what it is</strong>. A vulnerability's card opens with the same badges
+            the sidebar does, its score colored by severity and <strong>Known exploited</strong>
+            when the known-exploited list holds it, then its publication date and weaknesses, its
+            description, how it is reached (network or local, whether it needs privileges or a
+            user), and its exploit prediction score, KEV due date, known ransomware use and how
+            many affected products and references the sidebar holds. A weakness shows its
+            abstraction, status, first sentence, what it affects and how many mitigations and
+            observed examples the sidebar holds; a technique or tactic its place in ATT&amp;CK,
+            its tactics, platforms and counts, and a badge when MITRE has retired it; an address
+            its network, scope and place; a digest its algorithm. A watchlist verdict or a threat
+            report shows as a badge on any of them.
+        </p>
+
         <h2 id="panel">Clicking a link</h2>
 
         <p>
@@ -113,6 +130,10 @@
                 <tr>
                     <td><a href="airfields.html#airfield-panel">Airfields</a></td>
                     <td>The code, the place, the type, the elevation and the IATA code, with the position handed to the coordinate panel.</td>
+                </tr>
+                <tr>
+                    <td><a href="cyber.html#cyber-panel">Cyber Context</a></td>
+                    <td>The readings for that kind of indicator, any watchlist verdict, and links to the related weaknesses and techniques.</td>
                 </tr>
                 <tr>
                     <td><a href="cot.html#cot-panel">Cursor on Target</a></td>
@@ -164,6 +185,11 @@
             coordinate you clicked, so a session that expired while you were reading
             costs you a sign-in rather than the link. The map page behind
             <em>Open larger</em> works the same way.
+        </p>
+
+        <p>
+            A page is the same for everybody, so it carries nothing that depends on who opened
+            it.
         </p>
 
         <div class="alert alert-warning">

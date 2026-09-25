@@ -6,9 +6,10 @@ Mattermost Tactical Fusion enriches conversations with mission-relevant context:
 geospatial data, CoT, time zones, IP intelligence, CVEs, and other operational
 information. The server is Go, the webapp TypeScript/React.
 
-Shipped today: the decorator framework and five decorators, DTG, Location,
-Airfields, Aviation reports and Frequencies, plus the bundled offline map, the
-Cursor on Target renderer and the GeoJSON renderer. The rest is not implemented.
+Shipped today: the decorator framework and six decorators, DTG, Location,
+Airfields, Aviation reports, Frequencies and Cyber context, plus the bundled
+offline map, the Cursor on Target renderer and the GeoJSON renderer. The rest is
+not implemented.
 
 A decorator finds a token in a posted message, rewrites it in
 `MessageWillBePosted` into a markdown link whose query string carries the
@@ -31,7 +32,7 @@ right-hand sidebar, and a standalone server-rendered page.
 | `api.go` | Authenticated JSON API: `/preferences`, `/convert`, `/features`, `/airport`, `/avreport`, `/decorate`, `/link` |
 | `mapairport.go` | `/map?airport=<ident>`: the airfield map page, rendered through the overlay shell |
 | `bridge.go` | The plugin bridge: `/bridge/v1/{decorate,link,info}` for other plugins, and the `decorate`/`link` operations `/api/v1` shares |
-| `mcp.go`, `mcp_tools.go`, `mcp_decode_tools.go`, `mcp_create_tools.go` | The Agents MCP server: the `/mcp` endpoint, its lifecycle, the link and lookup tools, the tools that decode reports, CoT, GeoJSON, frequencies and date-time groups, and the two that build CoT and GeoJSON |
+| `mcp.go`, `mcp_tools.go`, `mcp_decode_tools.go`, `mcp_create_tools.go`, `mcp_cyber_tool.go` | The Agents MCP server: the `/mcp` endpoint, its lifecycle, the link and lookup tools, the tools that decode reports, CoT, GeoJSON, frequencies and date-time groups, the two that build CoT and GeoJSON, and the batch cyber indicator lookup |
 | `preferences.go`, `preferences_cache.go` | Per-reader KV store and its cluster-aware cache |
 | `command*.go` | The `/tactical-fusion` slash command and its example builders |
 | `errcode/` | The `TF-NNNN` catalog |
@@ -43,6 +44,8 @@ right-hand sidebar, and a standalone server-rendered page.
 | `decorators/note/` | Notes: a link whose `v` is markdown, built by `/tactical-fusion note` or the bridge and never matched in message text; the page shows the source |
 | `avreport/` | Aviation reports: the METAR, TAF and NOTAM decoders, the decorator, the table, the page, the props; `data/` holds the contraction and Q-code tables |
 | `cot/` | Cursor on Target: the bounded XML parse, the type tables, the post props |
+| `decorators/cyber/` | Security indicators: the five grammars, the embedded ATT&CK and CWE catalogs, the enrichment renderer; `intel/` reads the datasets on disk and unpacks a `.tsv.gz` beside itself |
+| `cyberdata.go` | Cyber dataset discovery, the reopen-on-change cache, the `TF-210NN` codes |
 | `geojson/` | GeoJSON: the bounded JSON walk, the parts/rings shape, the post props |
 
 ### `webapp/`
@@ -51,7 +54,7 @@ right-hand sidebar, and a standalone server-rendered page.
 |---|---|
 | `src/index.tsx` | `initialize()`, registration, the disposer list run by `uninitialize()` |
 | `src/decorators/` | Framework: registry, click handler, styles, selection store, theme, `Tooltip` |
-| `src/decorators/{dtg,location,airport,frequency,note}/` | Panels, hovers, and per-decorator clients; `frequency/bands.ts` is the band table the Go side is held to; `note/NoteMarkdown.tsx` renders through Mattermost's `window.PostUtils` and falls back to the source |
+| `src/decorators/{dtg,location,airport,frequency,note,cyber}/` | Panels, hovers, and per-decorator clients; `frequency/bands.ts` is the band table the Go side is held to; `note/NoteMarkdown.tsx` renders through Mattermost's `window.PostUtils` and falls back to the source |
 | `src/cot/` | The Cursor on Target post body, its card and its map |
 | `src/geojson/` | The GeoJSON post body, its card, its map, its panel and its reader |
 | `src/avreport/` | The aviation report reader, client, card, post body, panel, hover and map; `src/decorators/avreport/` is the link's decorator entry |
@@ -66,6 +69,7 @@ right-hand sidebar, and a standalone server-rendered page.
 - `plugin.json` generates `server/manifest.go` and `webapp/src/manifest.ts` at build time (both gitignored).
 - `build/mapdata/` (stdlib-only, `make map-data`) generates the country polygons; `build/maptiles/` (containerised, `make map-tiles`) generates the PMTiles basemap and glyph ranges. Both outputs are committed.
 - `build/airportdata/` (stdlib-only, `make airport-data`) filters the upstream airfield CSV. Not in the test path.
+- `build/devagent/` (stdlib-only, `make docker-agent`) configures the Docker stack's Agents plugin through its own API: the OpenAI service, the settings, and the `@fusion` agent. Idempotent; development only.
 - `bridgeclient/` is the importable Go client other plugins call the bridge through. It is a published package, so its exported symbols carry doc comments for pkg.go.dev; that is the only code here that does.
 - `public/help/` is the built-in documentation, served by Mattermost with no route in the server code.
 - `docker-compose.dev.yml` and `docker/` back `make deploy`.
@@ -226,6 +230,20 @@ floor (`safePostRunes`), and `examples` measures every message against the same
 floor before it writes any of them, refusing the whole run rather than posting
 some of it.
 
+**A cyber indicator is decorated from the build and enriched from the install.**
+`Parse` reads only the embedded ATT&CK and CWE catalogs and `net/netip`, never a
+dataset file, so the same message decorates the same way on every node and every
+day. Enrichment is read at render, the way `Decorator.Maps` is. A CVE is
+recognized by shape rather than by lookup, because identifiers are issued daily
+and a lookup would make decoration depend on which node answered. Nothing on the
+post path opens a file.
+
+**A missing dataset and a missing row say different things.** "Not in the
+vulnerability dataset generated X" and "no vulnerability dataset is installed"
+are opposite answers to a responder, and collapsing them would report that
+something is not being exploited on the strength of an absent file. The status
+sentences are built once in `format.go` so no surface can restate one.
+
 **Every user-facing failure and every `p.API.Log*` call carries a `TF-NNNN`.**
 Adding one is four edits that go together: the constant, the `AllCodes` entry,
 the call site, and a row in `public/help/error-codes.html`.
@@ -252,6 +270,12 @@ side moves alone. Change both halves together.
 | The ident and IATA shapes, and the airfield map kind | `TestWebappAirportIdentShapeMatches`, `TestWebappAirportMapKindMatches` |
 | The 30 minute cache TTL | `TestWebappCacheLifetimeMatches` |
 | The `data-maps` attribute and its tokens | `TestWebappMapSurfaceAttributeMatches` |
+| The cyber wire shapes: names, types and order | `TestWebappCyber*ShapeMatches` |
+| The cyber decorator type | `TestWebappCyberTypeMatches` |
+| The cyber kind vocabulary and its order | `TestWebappCyberKindsMatch` |
+| Each cyber kind's canonical shape expression | `TestWebappCyberShapeExpressionsMatch` |
+| Which reference URLs become links: `isWebURL` and `isWebLink` | `detail_test.go` and `cyber.spec.ts` hold the same table |
+| The `cvedetail.tsv`, `cwedetail.tsv`, `attackdetail.tsv`, `advisory.tsv`, `netlists.tsv`, `hashlists.tsv`, `capec.tsv` and `cveattack.tsv` row shapes, between `build/cyberdata` and `intel` | The same-named files in `intel/testdata/`, which the generator must reproduce and the reader must parse |
 | The seam zoom: `seamZoom` and `SEAM_ZOOM` in `map/span.ts` | `TestSeamZoomMatchesTheWebapp`, `TestDetailPackagesStartAtTheSeam` |
 | The detail layer set: `DETAIL_SOURCE_LAYERS` in `map/maplibre.ts` | `TestArchiveCarriesEveryLayerTheStyleDraws`, and `style.spec.ts` holds the built style to the same list |
 | The package name grammar: `packageNamePattern` and `PACKAGE_NAME` | `TestWebappPackageNameGrammarMatches` |
@@ -325,7 +349,7 @@ The token grammar itself is Go-only, so the two sides cannot drift on it.
   slow enough to need that should get `testing.Short()` rather than a bigger
   timeout. The sweeps run in full under `make test`, which is what CI gates on.
 - Local stack: `make docker-setup` (Mattermost plus PostgreSQL on `:8065`,
-  `admin`/`password`), `make deploy` to install into it, `make deploy-local` for
+  `admin`/`password`), `make deploy` to install into it (it also configures an `@fusion` Agents bot on `gpt-5.5` with structured output, channel mention tool calling and the Mattermost MCP server over HTTP on, and every Tactical Fusion tool on auto run everywhere, when `OPENAI_API_KEY` is set; `make docker-agent` alone reruns that), `make deploy-local` for
   your own server, `make docker-logs`/`docker-reset`/`docker-stop`/`docker-down`,
   and `make nuke` to tear everything down.
 
@@ -344,6 +368,18 @@ Releases are automated with **release-please** driven by
   release-please owns them through its Release PR.
 - A release ships when the maintainer merges the open "chore(main): release
   X.Y.Z" PR.
+- `make release` refreshes the cyber data before it builds: `cyber-refresh`
+  fetches every source and rebuilds the embedded catalogs and `assets/cyber` in
+  the working tree, so the shipped data is newer than the tagged commit's, and
+  `cyber-release-package` packs the full `cve` and `cvedetail` datasets
+  and DB-IP City Lite into `build/cyberdata/release`, which the workflow
+  attaches to the release. `CYBER_REFRESH=0` releases the committed data.
+- A release publishes two bundles. The standard one must stay under Mattermost's
+  default 100 MiB upload limit (`FileSettings.MaxFileSize`, which gates plugin
+  upload), and `bundle-size-check` fails `make dist` and `make release` when it
+  does not. `release-full-bundle` builds `<id>-<version>-full.tar.gz`: the same
+  bundle with the full `cve`/`cvedetail` in place of the KEV slices and DB-IP
+  City Lite added, deliberately over the limit, for air-gapped installs.
 
 ## CI and security
 

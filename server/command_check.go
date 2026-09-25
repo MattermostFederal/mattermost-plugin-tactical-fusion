@@ -78,8 +78,23 @@ func whyNothingMatched() string {
 		"`11N 385000 3769000` does not: that northing is 34 north, which is band S.\n" +
 		"- **A grid square that does not exist.** Only eight of the twenty-four 100 km letters are " +
 		"legal in any given zone.\n" +
-		"- **A format that is switched off**, or one this version does not recognize yet, such as " +
-		"GARS, GEOREF and Plus Codes.\n\n" +
+		"- **A format that is switched off**, or one this version does not recognize yet.\n\n" +
+		"The most common reasons an indicator is left alone:\n" +
+		"- **An identifier nothing in the build names.** `T1059.001` and `CWE-79` are linked; " +
+		"`T9999` and `CWE-99999` are not, because the ATT&CK and CWE catalogs ship inside the " +
+		"plugin and an identifier they do not hold would be a link to nothing. A CVE is the " +
+		"exception and is recognized by shape, because identifiers are issued daily.\n" +
+		"- **An address that is not one.** `1.2.3.4.5`, `01.2.3.4` and `1.2.3.4/24` are left " +
+		"alone: the first two are not addresses and the third is a range, which a link over " +
+		"half of would misrepresent. A port is kept: `203.0.113.7:443` links the address and " +
+		"leaves `:443` in the message.\n" +
+		"- **Loopback and unspecified addresses.** `127.0.0.1`, `::1`, `0.0.0.0` and `::` are " +
+		"left alone, because nothing can be said about them.\n" +
+		"- **A hexadecimal run that is not 32, 40 or 64 digits.** Those three are MD5, SHA-1 " +
+		"and SHA-256; anything else is left alone. A label has to agree with the length, so " +
+		"`md5:` in front of 64 digits is declined rather than mislabeled.\n" +
+		"- **Inside a mention, a channel link or a hashtag.** Mattermost turns those into links " +
+		"of its own, so they are never rewritten.\n\n" +
 		"See the [documentation](" + docsPath() + ") for every recognized format and the full declined list."
 }
 

@@ -21,6 +21,7 @@
             <a href="dtg.html">Date-Time Groups</a>
             <a href="location.html">Coordinates</a>
             <a href="airfields.html">Airfields</a>
+            <a href="cyber.html">Cyber Context</a>
             <a href="cot.html">Cursor on Target</a>
             <a href="geojson.html">GeoJSON</a>
             <a href="reports.html">Aviation Reports</a>
@@ -46,7 +47,7 @@
         </div>
 
         <h1>Admin Settings</h1>
-        <p class="tagline">System Console, Plugins, Tactical Fusion. Eight sections and thirty-four switches. Thirty-two are on by default; <code>EnableLocationUTM</code> and <code>EnableGeoJSONUnlabeled</code> are the two that are not.</p>
+        <p class="tagline">System Console, Plugins, Tactical Fusion. Nine sections and forty switches. Thirty-eight are on by default; <code>EnableLocationUTM</code> and <code>EnableGeoJSONUnlabeled</code> are the two that are not.</p>
 
         <h2>How the date-time group switches relate</h2>
 
@@ -1311,6 +1312,213 @@
             turn the same thing off under another name. Nothing here fetches, and there is no
             dataset behind it: the band and the allocation are derived from the token in the
             reader's browser.
+        </p>
+
+        <h2 id="cyber">Cyber context</h2>
+
+        <p>
+            Six switches and one directory. <a href="#enable-cyber"><code>EnableCyber</code></a> is
+            the parent, and the five kind switches under it only apply while it is on. Everything
+            these settings enrich is read from files on this server and never from the internet, so
+            an air-gapped install behaves exactly as a connected one does. The whole decorator is
+            described on the <a href="cyber.html">Cyber Context</a> page.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Setting</th><th>Governs</th><th>Default</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><a href="#enable-cyber"><code>EnableCyber</code></a></td><td>Indicator decoration as a whole</td><td>On</td></tr>
+                <tr><td><a href="#enable-cyber-cve"><code>EnableCyberCVE</code></a></td><td><code>CVE-2021-44228</code></td><td>On</td></tr>
+                <tr><td><a href="#enable-cyber-cwe"><code>EnableCyberCWE</code></a></td><td><code>CWE-79</code></td><td>On</td></tr>
+                <tr><td><a href="#enable-cyber-attack"><code>EnableCyberAttack</code></a></td><td><code>T1059.001</code> and <code>TA0002</code></td><td>On</td></tr>
+                <tr><td><a href="#enable-cyber-ip"><code>EnableCyberIP</code></a></td><td><code>203.0.113.7</code></td><td>On</td></tr>
+                <tr><td><a href="#enable-cyber-hash"><code>EnableCyberHash</code></a></td><td>MD5, SHA-1 and SHA-256 digests</td><td>On</td></tr>
+                <tr><td><a href="#cyber-datasets-dir"><code>CyberDatasetsDir</code></a></td><td>Where the enrichment datasets are read from</td><td>Empty</td></tr>
+                <tr><td><a href="#cyber-datasets-loaded"><code>CyberDatasetsLoaded</code></a></td><td>What is loaded, with record counts</td><td>Not a stored value</td></tr>
+            </tbody>
+        </table>
+
+        <h3 id="enable-cyber" data-setting="EnableCyber">Decorate security indicators <code>EnableCyber</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>No indicator of any kind is decorated, whatever the five switches below are set to. Links already written keep working.</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Recognizes the indicators below and rewrites each one as a link that opens a Cyber
+            context panel. This is the parent of the five switches under it: turning it off stops
+            all of them, whatever they are set to. Turning it off stops new messages being
+            decorated; links already written keep working. Enrichment is read from datasets on this
+            server and never from the internet, so an air-gapped install behaves exactly as a
+            connected one does.
+        </p>
+
+        <h3 id="enable-cyber-cve" data-setting="EnableCyberCVE">Decorate CVE identifiers <code>EnableCyberCVE</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>A vulnerability identifier is left as plain text. The other four kinds are unaffected.</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-cyber"><code>EnableCyber</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Recognizes a vulnerability identifier such as <code>CVE-2021-44228</code>, in any case,
+            and shows what the installed vulnerability, exploit prediction and known-exploited
+            datasets say about it. Recognized by shape rather than by lookup, because identifiers
+            are issued daily and no list of them ships in the plugin, so one the datasets do not
+            hold still links and its page says so.
+        </p>
+
+        <h3 id="enable-cyber-cwe" data-setting="EnableCyberCWE">Decorate CWE identifiers <code>EnableCyberCWE</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>A weakness identifier is left as plain text. The other four kinds are unaffected.</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-cyber"><code>EnableCyber</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Recognizes a weakness identifier such as <code>CWE-79</code>, in any case, and shows
+            its name, its place in the hierarchy and a summary. Only identifiers the catalog built
+            into this plugin holds are recognized, so a number that names no weakness is left as
+            written.
+        </p>
+
+        <h3 id="enable-cyber-attack" data-setting="EnableCyberAttack">Decorate MITRE ATT&amp;CK identifiers <code>EnableCyberAttack</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>A technique, sub-technique or tactic identifier is left as plain text. The other four kinds are unaffected.</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-cyber"><code>EnableCyber</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Recognizes a technique, sub-technique or tactic identifier such as <code>T1059</code>,
+            <code>T1059.001</code> or <code>TA0002</code>, and shows its name, its tactics and its
+            place in the hierarchy. Only identifiers the catalog built into this plugin holds are
+            recognized, so an identifier that names nothing is left as written. Written in upper
+            case only.
+        </p>
+
+        <h3 id="enable-cyber-ip" data-setting="EnableCyberIP">Decorate IP addresses <code>EnableCyberIP</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>An address is left as plain text. The other four kinds are unaffected.</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-cyber"><code>EnableCyber</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Recognizes an IPv4 or IPv6 address and shows its scope, and the network and location
+            the installed datasets give for it. A port written after the address is left in the
+            message. Loopback, unspecified and malformed addresses are left as written. A four-part
+            version number is indistinguishable from an address, so one written in a message is
+            recognized as an address; turn this off where that matters more than the enrichment
+            does.
+        </p>
+
+        <h3 id="enable-cyber-hash" data-setting="EnableCyberHash">Decorate file hashes <code>EnableCyberHash</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Boolean</td></tr>
+                <tr><td>Default</td><td>On</td></tr>
+                <tr><td>Effect when off</td><td>A digest is left as plain text. The other four kinds are unaffected.</td></tr>
+                <tr><td>Requires</td><td><a href="#enable-cyber"><code>EnableCyber</code></a></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Recognizes a 32, 40 or 64 digit hexadecimal run as an MD5, SHA-1 or SHA-256 hash, and
+            shows which it is together with any watchlist entry for it. A hash written behind an
+            <code>md5</code>, <code>sha1</code> or <code>sha256</code> label is recognized and the
+            label is left in the message. A 40 digit hash is also the shape of a Git object
+            identifier, which the panel says rather than guessing between them.
+        </p>
+
+        <h3 id="cyber-datasets-dir" data-setting="CyberDatasetsDir">Cyber dataset directory <code>CyberDatasetsDir</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>Text</td></tr>
+                <tr><td>Default</td><td>Empty</td></tr>
+                <tr><td>Example</td><td><code>/opt/mattermost/tactical-fusion/cyber</code></td></tr>
+                <tr><td>Effect when empty</td><td>Only the datasets the plugin ships are read. Indicators still decorate; the panel says which datasets are not installed.</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            A directory on this server holding the datasets the enrichment reads:
+            <code>cve.tsv</code>, <code>cvedetail.tsv</code>, <code>cwedetail.tsv</code>,
+            <code>attackdetail.tsv</code>, <code>advisory.tsv</code>, <code>netlists.tsv</code>, <code>hashlists.tsv</code>, <code>capec.tsv</code>, <code>cveattack.tsv</code>, <code>epss.tsv</code>, <code>kev.tsv</code>, <code>ip.tsv</code> and <code>watchlist.tsv</code>, plus any vendor
+            <code>.mmdb</code> database. Drop a
+            file in and it is read within a few seconds without restarting anything; a file here
+            replaces a bundled one of the same name. Leave this empty to use only the datasets the
+            plugin ships.
+        </p>
+
+        <p>
+            A dataset may be dropped in gzipped, as <code>cve.tsv.gz</code>, which is how the
+            release publishes them. The plugin unpacks it beside itself into <code>cve.tsv</code>,
+            so the directory must be writable by the Mattermost server; on read-only media, unpack
+            it yourself with <code>gunzip -k</code>. See
+            <a href="cyber.html#cyber-datasets">where the data comes from</a>.
+        </p>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">In a cluster every node must see this directory.</p>
+            <p>
+                Each node answers from the files it can read, so a dataset present on one node
+                alone enriches for some readers and not others. See
+                <a href="troubleshooting.html#cyber-not-installed">Troubleshooting</a> for what
+                that looks like from a reader's side.
+            </p>
+        </div>
+
+
+        <h3 id="cyber-datasets-loaded" data-setting="CyberDatasetsLoaded">Loaded datasets <code>CyberDatasetsLoaded</code></h3>
+
+        <table class="field-table">
+            <tbody>
+                <tr><td>Type</td><td>A report, not a stored value</td></tr>
+                <tr><td>Default</td><td>Whatever this node has loaded</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            Shows what this node has read from the bundle and from the
+            <a href="#cyber-datasets-dir">dataset directory</a>: each dataset's file, whether it
+            came with the plugin or from the directory, how many records it holds, its size,
+            and the date its stamp says it was generated. Below that come each vendor
+            <code>.mmdb</code> database with its type and build date, the datasets that are
+            not installed, any bundled file a file in the directory replaces, and every file
+            that was skipped, with the reason and its error code.
+        </p>
+
+        <p>
+            Datasets are searched on disk rather than loaded, so a record count means reading
+            the file once. That happens the first time the list is opened after a dataset
+            changes, and can take a moment on the full vulnerability set; after that the count
+            is kept until the file changes. In a cluster the list is the node that answered,
+            which is how to find a node missing a file the others have.
         </p>
 
         <h2>Reader settings are not admin settings</h2>

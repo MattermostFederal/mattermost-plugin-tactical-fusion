@@ -20,6 +20,7 @@
 //	18000-18999   server/packages.go            detail map packages
 //	19000-19999   server/bridge.go              the plugin bridge
 //	20000-20999   server/mcp.go                 the Agents MCP server
+//	21000-21999   server/cyberdata.go           cyber datasets on disk
 //
 // Within a range codes are allocated in source order the first time a file is
 // instrumented; a site added later takes the next free number in its range, so
@@ -211,6 +212,11 @@ const (
 
 	APIAvReportInvalid = 13011
 
+	// APICyberInvalid is returned when the cyber endpoint is given a kind and
+	// value that do not reproduce each other. An indicator no dataset holds is
+	// not this: that answers 200 saying so, exactly as the page does.
+	APICyberInvalid = 13012
+
 	// server/preferences.go (14000-14999)
 
 	// PreferencesZoneNameTooLong rejects a row label longer than the cap.
@@ -329,6 +335,11 @@ const (
 
 	NotePageInvalid = 17006
 
+	// CyberPageInvalid is returned by the cyber page for a link whose kind and
+	// value do not reproduce each other. An indicator no dataset describes
+	// renders at 200 with a note instead.
+	CyberPageInvalid = 17007
+
 	// server/packages.go (18000-18999)
 
 	// PackagesNoBundlePath reports that the plugin cannot locate its own
@@ -395,6 +406,46 @@ const (
 	MCPDateTimeInvalid      = 20013
 	MCPCreateCotInvalid     = 20014
 	MCPCreateGeoJSONInvalid = 20015
+
+	MCPCyberInvalid = 20016
+
+	// server/cyberdata.go (21000-21999)
+
+	// CyberDataNoBundlePath reports that the plugin cannot locate its own
+	// bundle, so the datasets shipped inside it are not read. Datasets in the
+	// configured directory are unaffected.
+	CyberDataNoBundlePath = 21000
+
+	// CyberDataUnreadable reports a dataset file that could not be opened or
+	// whose rows are not the shape this build reads. The file is skipped and
+	// every other dataset still answers.
+	CyberDataUnreadable = 21001
+
+	// CyberDataSchemaMismatch reports a dataset carrying no stamp, or one
+	// built for a different reader. Distinct from unreadable, because the
+	// remedy is a newer dataset rather than a repaired file.
+	CyberDataSchemaMismatch = 21002
+
+	// CyberDataBadName reports a file in the dataset directory whose name is
+	// not one this build reads.
+	CyberDataBadName = 21003
+
+	// CyberDataMMDBUnreadable reports a vendor database that could not be
+	// opened, or whose declared type this build does not read.
+	CyberDataMMDBUnreadable = 21004
+
+	// CyberDataLookupFailed reports a dataset that opened and then could not
+	// be read at the moment a reader asked it something. It is deliberately
+	// not the sentence for a row that is absent: reporting a read failure as
+	// "not listed" would tell a responder that an indicator is not being
+	// exploited on the strength of a broken file.
+	CyberDataLookupFailed = 21005
+
+	// CyberDataUnpackFailed reports a gzipped dataset that could not be
+	// unpacked beside itself: a truncated or corrupt archive, one larger than
+	// this build accepts, or a directory the server cannot write to. The
+	// uncompressed file already there, if any, is left as it was.
+	CyberDataUnpackFailed = 21006
 )
 
 // AllCodes lists every code declared above. TestAllCodesComplete enforces that
@@ -452,6 +503,7 @@ var AllCodes = []int{
 	APIAirportInvalid,
 	APIAirportParamsConflict,
 	APIAvReportInvalid,
+	APICyberInvalid,
 
 	PreferencesZoneNameTooLong,
 	PreferencesZoneNameControlCharacters,
@@ -485,6 +537,7 @@ var AllCodes = []int{
 	AvReportPageInvalid,
 	FrequencyPageInvalid,
 	NotePageInvalid,
+	CyberPageInvalid,
 
 	PackagesNoBundlePath,
 	PackagesBadName,
@@ -522,4 +575,13 @@ var AllCodes = []int{
 	MCPDateTimeInvalid,
 	MCPCreateCotInvalid,
 	MCPCreateGeoJSONInvalid,
+	MCPCyberInvalid,
+
+	CyberDataNoBundlePath,
+	CyberDataUnreadable,
+	CyberDataSchemaMismatch,
+	CyberDataBadName,
+	CyberDataMMDBUnreadable,
+	CyberDataLookupFailed,
+	CyberDataUnpackFailed,
 }

@@ -1,0 +1,366 @@
+package main
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"reflect"
+	"regexp"
+	"slices"
+	"strconv"
+	"strings"
+	"testing"
+
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/cyber"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/cyber/intel"
+)
+
+func cyberWebappSource(t *testing.T, name string) string {
+	t.Helper()
+
+	path := filepath.Join("..", "webapp", "src", "decorators", "cyber", name)
+	source, err := os.ReadFile(path) // #nosec G304 -- fixed, repo-relative source path
+	if err != nil {
+		t.Fatalf("reading %s: %v", path, err)
+	}
+
+	return string(source)
+}
+
+func cyberWebappInterface(t *testing.T, name string) string {
+	t.Helper()
+
+	source := cyberWebappSource(t, "types.ts")
+
+	found := regexp.MustCompile(`(?s)export interface ` + name + ` \{(.*?)\n\}`).FindStringSubmatch(source)
+	if found == nil {
+		t.Fatalf("webapp/src/decorators/cyber/types.ts declares no interface %s; "+
+			"point this test at the new name rather than deleting it", name)
+	}
+
+	return found[1]
+}
+
+var cyberFieldRe = regexp.MustCompile(`(?m)^\s+(\w+)\??:\s*([\w\[\]]+);`)
+
+type webappField struct {
+	name string
+	kind string
+}
+
+func cyberWebappFields(t *testing.T, name string) []webappField {
+	t.Helper()
+
+	var fields []webappField
+	for _, match := range cyberFieldRe.FindAllStringSubmatch(cyberWebappInterface(t, name), -1) {
+		fields = append(fields, webappField{name: match[1], kind: match[2]})
+	}
+	if len(fields) == 0 {
+		t.Fatalf("%s declares no fields", name)
+	}
+
+	return fields
+}
+
+func goWireFields(t *testing.T, value any) []webappField {
+	t.Helper()
+
+	typ := reflect.TypeOf(value)
+
+	var fields []webappField
+	for field := range typ.Fields() {
+		tag := field.Tag.Get("json")
+		if tag == "" || tag == "-" {
+			t.Fatalf("%s.%s carries no json tag", typ.Name(), field.Name)
+		}
+		fields = append(fields, webappField{
+			name: strings.Split(tag, ",")[0],
+			kind: wireKind(field.Type),
+		})
+	}
+
+	return fields
+}
+
+func wireKind(typ reflect.Type) string {
+	switch typ.Kind() {
+	case reflect.String:
+		return "string"
+	case reflect.Bool:
+		return "boolean"
+	case reflect.Int, reflect.Int64:
+		return "number"
+	case reflect.Slice:
+		return wireKind(typ.Elem()) + "[]"
+	case reflect.Struct:
+		return typ.Name()
+	}
+
+	return typ.Kind().String()
+}
+
+func requireSameShape(t *testing.T, what string, goFields []webappField, webapp []webappField) {
+	t.Helper()
+
+	if len(goFields) != len(webapp) {
+		t.Fatalf("%s: Go carries %d fields and the webapp %d\nGo:     %+v\nwebapp: %+v",
+			what, len(goFields), len(webapp), goFields, webapp)
+	}
+
+	for i := range goFields {
+		name := webapp[i].name
+		if name != goFields[i].name {
+			t.Errorf("%s field %d: Go calls it %q and the webapp %q", what, i, goFields[i].name, name)
+		}
+
+		want := goFields[i].kind
+		if wantStruct, ok := cyberStructNames[want]; ok {
+			want = wantStruct
+		}
+		if webapp[i].kind != want {
+			t.Errorf("%s field %q: Go is %q and the webapp %q", what, goFields[i].name, want, webapp[i].kind)
+		}
+	}
+}
+
+var cyberStructNames = map[string]string{
+	"cyberRow[]":            "CyberRow[]",
+	"cyberLink[]":           "CyberLink[]",
+	"cyberWatchEntry[]":     "CyberWatchEntry[]",
+	"cyberDataset[]":        "CyberDataset[]",
+	"cyberReference[]":      "CyberReference[]",
+	"cyberVectorMetric[]":   "CyberVectorMetric[]",
+	"cyberSection[]":        "CyberSection[]",
+	"cyberItem[]":           "CyberItem[]",
+	"cyberCredit[]":         "CyberCredit[]",
+	"cyberGlance":           "CyberGlance",
+	"cyberReport[]":         "CyberThreatReport[]",
+	"cyberCompiled[]":       "CyberCompiled[]",
+	"cyberDirectory[]":      "CyberDirectory[]",
+	"cyberDatasetFile[]":    "CyberDatasetFile[]",
+	"cyberDatabaseFile[]":   "CyberDatabaseFile[]",
+	"cyberMissingDataset[]": "CyberMissingDataset[]",
+	"cyberSkippedFile[]":    "CyberSkippedFile[]",
+}
+
+func TestWebappCyberResponseShapeMatches(t *testing.T) {
+	requireSameShape(t, "CyberResponse",
+		goWireFields(t, cyberResponse{}), cyberWebappFields(t, "CyberResponse"))
+}
+
+func TestWebappCyberRowShapeMatches(t *testing.T) {
+	requireSameShape(t, "CyberRow", goWireFields(t, cyberRow{}), cyberWebappFields(t, "CyberRow"))
+}
+
+func TestWebappCyberReferenceShapeMatches(t *testing.T) {
+	requireSameShape(t, "CyberReference",
+		goWireFields(t, cyberReference{}), cyberWebappFields(t, "CyberReference"))
+}
+
+func TestWebappCyberVectorMetricShapeMatches(t *testing.T) {
+	requireSameShape(t, "CyberVectorMetric",
+		goWireFields(t, cyberVectorMetric{}), cyberWebappFields(t, "CyberVectorMetric"))
+}
+
+func TestWebappCyberSectionShapeMatches(t *testing.T) {
+	requireSameShape(t, "CyberSection", goWireFields(t, cyberSection{}), cyberWebappFields(t, "CyberSection"))
+}
+
+func TestWebappCyberItemShapeMatches(t *testing.T) {
+	requireSameShape(t, "CyberItem", goWireFields(t, cyberItem{}), cyberWebappFields(t, "CyberItem"))
+}
+
+func TestWebappCyberCreditShapeMatches(t *testing.T) {
+	requireSameShape(t, "CyberCredit", goWireFields(t, cyberCredit{}), cyberWebappFields(t, "CyberCredit"))
+}
+
+func TestWebappCyberGlanceShapeMatches(t *testing.T) {
+	requireSameShape(t, "CyberGlance", goWireFields(t, cyberGlance{}), cyberWebappFields(t, "CyberGlance"))
+}
+
+func TestWebappCyberThreatReportShapeMatches(t *testing.T) {
+	requireSameShape(t, "CyberThreatReport", goWireFields(t, cyberReport{}), cyberWebappFields(t, "CyberThreatReport"))
+}
+
+func TestWebappCyberCompiledShapeMatches(t *testing.T) {
+	requireSameShape(t, "CyberCompiled", goWireFields(t, cyberCompiled{}), cyberWebappFields(t, "CyberCompiled"))
+}
+
+func TestWebappCyberDatasetsShapesMatch(t *testing.T) {
+	for _, shape := range []struct {
+		name  string
+		value any
+	}{
+		{"CyberDatasetsResponse", cyberDatasetsResponse{}},
+		{"CyberDirectory", cyberDirectory{}},
+		{"CyberDatasetFile", cyberDatasetFile{}},
+		{"CyberDatabaseFile", cyberDatabaseFile{}},
+		{"CyberMissingDataset", cyberMissingDataset{}},
+		{"CyberSkippedFile", cyberSkippedFile{}},
+	} {
+		requireSameShape(t, shape.name, goWireFields(t, shape.value), cyberWebappFields(t, shape.name))
+	}
+}
+
+func TestWebappCyberLinkShapeMatches(t *testing.T) {
+	requireSameShape(t, "CyberLink", goWireFields(t, cyberLink{}), cyberWebappFields(t, "CyberLink"))
+}
+
+func TestWebappCyberWatchEntryShapeMatches(t *testing.T) {
+	requireSameShape(t, "CyberWatchEntry",
+		goWireFields(t, cyberWatchEntry{}), cyberWebappFields(t, "CyberWatchEntry"))
+}
+
+func TestWebappCyberDatasetShapeMatches(t *testing.T) {
+	requireSameShape(t, "CyberDataset",
+		goWireFields(t, cyberDataset{}), cyberWebappFields(t, "CyberDataset"))
+}
+
+func TestWebappCyberTypeMatches(t *testing.T) {
+	want := fmt.Sprintf("type: '%s',", cyber.Type)
+	if source := cyberWebappSource(t, "index.ts"); !strings.Contains(source, want) {
+		t.Fatalf("webapp/src/decorators/cyber/index.ts does not declare %q", want)
+	}
+}
+
+func webappConstList(t *testing.T, source, name string) []string {
+	t.Helper()
+
+	found := regexp.MustCompile(`export const ` + name + ` = \[(.*?)\] as const;`).FindStringSubmatch(source)
+	if found == nil {
+		t.Fatalf("cyber.ts declares no %s list", name)
+	}
+
+	var list []string
+	for entry := range strings.SplitSeq(found[1], ",") {
+		entry = strings.TrimSpace(strings.Trim(strings.TrimSpace(entry), "'"))
+		if entry != "" {
+			list = append(list, entry)
+		}
+	}
+
+	return list
+}
+
+func TestWebappCyberKindsMatch(t *testing.T) {
+	webapp := webappConstList(t, cyberWebappSource(t, "cyber.ts"), "KINDS")
+
+	if len(webapp) != len(cyber.Kinds) {
+		t.Fatalf("Go has %d kinds and the webapp %d: %v", len(cyber.Kinds), len(webapp), webapp)
+	}
+	for i, kind := range cyber.Kinds {
+		if webapp[i] != string(kind) {
+			t.Errorf("kind %d: Go says %q and the webapp %q", i, kind, webapp[i])
+		}
+	}
+}
+
+func TestWebappCyberSeveritiesMatch(t *testing.T) {
+	webapp := webappConstList(t, cyberWebappSource(t, "cyber.ts"), "SEVERITIES")
+
+	if !slices.Equal(webapp, cyber.SeverityLevels) {
+		t.Fatalf("Go has severities %v and the webapp %v", cyber.SeverityLevels, webapp)
+	}
+}
+
+func TestWebappCyberShapeExpressionsMatch(t *testing.T) {
+	source := cyberWebappSource(t, "cyber.ts")
+
+	for _, kind := range cyber.Kinds {
+		pattern := regexp.MustCompile(string(kind) + `: /\^\(\?:(.*)\)\$/,`)
+
+		found := pattern.FindStringSubmatch(source)
+		if found == nil {
+			t.Errorf("cyber.ts declares no shape for %q", kind)
+			continue
+		}
+		if found[1] != cyber.ShapeExpr(kind) {
+			t.Errorf("%s shape: Go has %q and the webapp %q", kind, cyber.ShapeExpr(kind), found[1])
+		}
+	}
+}
+
+func cyberGeneratorSource(t *testing.T) string {
+	t.Helper()
+
+	path := filepath.Join("..", "build", "cyberdata", "main.go")
+	source, err := os.ReadFile(path) // #nosec G304 -- a fixed, repo-relative path
+	if err != nil {
+		t.Fatalf("reading %s: %v", path, err)
+	}
+
+	return string(source)
+}
+
+func cyberReaderSource(t *testing.T, name string) string {
+	t.Helper()
+
+	path := filepath.Join("decorators", "cyber", "intel", name)
+	source, err := os.ReadFile(path) // #nosec G304 -- a fixed, repo-relative path
+	if err != nil {
+		t.Fatalf("reading %s: %v", path, err)
+	}
+
+	return string(source)
+}
+
+func goFuncBody(t *testing.T, source, signature string) string {
+	t.Helper()
+
+	found := regexp.MustCompile(`(?s)\nfunc ` + regexp.QuoteMeta(signature) + ` \{\n(.*?)\n\}\n`).FindStringSubmatch(source)
+	if found == nil {
+		t.Fatalf("no func %s; if it was renamed, point this test at the new name rather than deleting it", signature)
+	}
+
+	return strings.TrimSpace(found[1])
+}
+
+func TestTheCyberGeneratorStampsWhatTheReaderReads(t *testing.T) {
+	generator := cyberGeneratorSource(t)
+
+	prefix := regexp.MustCompile(`schemaPrefix\s+= "([^"]+)"`).FindStringSubmatch(generator)
+	if prefix == nil {
+		t.Fatal("no schemaPrefix in build/cyberdata/main.go; if it was renamed, point this test " +
+			"at the new name rather than deleting it")
+	}
+	if prefix[1] != intel.SchemaPrefix {
+		t.Errorf("the generator stamps %q and the reader requires %q", prefix[1], intel.SchemaPrefix)
+	}
+
+	version := regexp.MustCompile(`schemaVersion\s+= (\d+)`).FindStringSubmatch(generator)
+	if version == nil {
+		t.Fatal("no schemaVersion in build/cyberdata/main.go; if it was renamed, point this test " +
+			"at the new name rather than deleting it")
+	}
+
+	stamped, err := strconv.Atoi(version[1])
+	if err != nil {
+		t.Fatalf("unparsable schemaVersion %q: %v", version[1], err)
+	}
+	if stamped != intel.SchemaVersion {
+		t.Errorf("the generator stamps schema %d and the reader reads %d", stamped, intel.SchemaVersion)
+	}
+}
+
+func TestTheCyberGeneratorKeysAddressesTheWayTheReaderDoes(t *testing.T) {
+	built := goFuncBody(t, cyberGeneratorSource(t), "ipKey(addr netip.Addr) string")
+	read := goFuncBody(t, cyberReaderSource(t, "intel.go"), "IPKey(addr netip.Addr) string")
+
+	if built != read {
+		t.Errorf("the generator keys an address as\n\t%s\nand the reader as\n\t%s",
+			strings.ReplaceAll(built, "\n", "\n\t"), strings.ReplaceAll(read, "\n", "\n\t"))
+	}
+}
+
+func TestTheCyberGeneratorWritesEveryDatasetTheReaderReads(t *testing.T) {
+	generator := cyberGeneratorSource(t)
+
+	for _, name := range intel.Names {
+		if name == intel.NameWatchlist {
+			continue
+		}
+		if !strings.Contains(generator, `"`+name+`"`) {
+			t.Errorf("the reader reads %q and the generator never names it", name)
+		}
+	}
+}

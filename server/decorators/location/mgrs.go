@@ -152,7 +152,7 @@ func squareMeters(digits int) float64 {
 //
 // Everything about a grid token goes through here, and it stays in grid
 // coordinates deliberately. Converting a UTM token to a grid reference, or the
-// other way, is a relabelling of the same easting and northing and involves no
+// other way, is a relabeling of the same easting and northing and involves no
 // geodesy at all; routing it through latitude and longitude instead would
 // project twice and land a meter out. It really did: "33U 291000 5628000" came
 // back as "33U TS 90999 28000", one meter short, because an easting sitting
@@ -309,7 +309,7 @@ func mgrsFor(lat, lon float64, digits int) (Grid, bool) {
 
 // mgrsAt is the grid reference for a position already on the UTM grid.
 //
-// Split out from mgrsFor because a UTM token is already here: relabelling it as
+// Split out from mgrsFor because a UTM token is already here: relabeling it as
 // a grid reference is arithmetic on the easting and northing and must not go
 // back through the projection to get there.
 func mgrsAt(p utmPoint, digits int) (Grid, bool) {

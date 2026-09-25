@@ -21,6 +21,7 @@
             <a href="dtg.html">Date-Time Groups</a>
             <a href="location.html">Coordinates</a>
             <a href="airfields.html">Airfields</a>
+            <a href="cyber.html">Cyber Context</a>
             <a href="cot.html">Cursor on Target</a>
             <a href="geojson.html">GeoJSON</a>
             <a href="reports.html">Aviation Reports</a>
@@ -350,6 +351,11 @@
                     <td><code>APIAvReportInvalid</code> <span class="level">400</span></td>
                     <td><code>That is not an aviation report this plugin issued.</code> The report endpoint was given a <code>v</code> that does not decode as a report, or a <code>t</code> that does not reproduce the report's own day, hour and minute. A link this plugin writes always does both, so the link was edited by hand.</td>
                 </tr>
+                <tr>
+                    <td><code>TF-13012</code></td>
+                    <td><code>APICyberInvalid</code> <span class="level">400</span></td>
+                    <td><code>That is not an indicator this plugin issued.</code> The cyber endpoint was given a kind and value that do not reproduce each other, which means the link was not written by this plugin. An indicator no dataset holds is <em>not</em> this: that answers normally and says so, exactly as the page does.</td>
+                </tr>
             </tbody>
         </table>
 
@@ -540,6 +546,11 @@
                     <td><code>NotePageInvalid</code> <span class="level">400</span></td>
                     <td><code>That is not a note this plugin issued.</code> The note page was given no <code>v</code>, a blank one, or one longer than 1,000 characters. A link this plugin writes always passes, so the link was edited by hand.</td>
                 </tr>
+                <tr>
+                    <td><code>TF-17007</code></td>
+                    <td><code>CyberPageInvalid</code> <span class="level">400</span></td>
+                    <td><code>That is not an indicator this plugin issued.</code> The cyber page was given a kind and value that do not reproduce each other, which means the link was not written by this plugin. An indicator no dataset describes renders the page with a note instead.</td>
+                </tr>
             </tbody>
         </table>
 
@@ -673,9 +684,9 @@
         <p>
             Answers to the <a href="integration.html#mcp">Mattermost Agents plugin</a>
             calling this plugin's tools over MCP at <code>/mcp</code>. The first five are
-            activation, shutdown and routing; the last three are a tool declining what it
-            was asked for, which an agent sees as a failed tool call rather than as an
-            answer.
+            activation, shutdown and routing, and the sixth is a tool that failed inside; the
+            rest are a tool declining what it was asked for, which an agent sees as a failed
+            tool call rather than as an answer.
         </p>
 
         <table>
@@ -726,7 +737,7 @@
                 <tr>
                     <td><code>TF-20008</code></td>
                     <td><code>MCPAirportInvalid</code> <span class="level">Tool error</span></td>
-                    <td><code>That is not an airfield code this plugin issued.</code> The <code>lookup_airfield</code> tool was given a value that is not the shape of an ICAO identifier or an IATA code. A well-shaped code the database does not hold is not this: that answers <code>found: false</code>.</td>
+                    <td><code>That is not an ICAO identifier or IATA code.</code> The <code>lookup_airfield</code> tool was given a value that is not the shape of an ICAO identifier or an IATA code. A well-shaped code the database does not hold is not this: that answers <code>found: false</code>.</td>
                 </tr>
                 <tr>
                     <td><code>TF-20009</code></td>
@@ -756,15 +767,75 @@
                 <tr>
                     <td><code>TF-20014</code></td>
                     <td><code>MCPCreateCotInvalid</code> <span class="level">Tool error</span></td>
-                    <td><code>Could not build that event: ...</code> The <code>create_cot</code> tool was missing a callsign, given a position off the globe, an affiliation or dimension it does not know, a malformed type, a stale time over a week, or remarks over 256 characters. The message ends with which.</td>
+                    <td><code>Could not build that event: ...</code> The <code>create_cot</code> tool was given no events or more than 32, an event missing a callsign or a position, a position off the globe, an affiliation or dimension it does not know, a malformed type or color, remarks over 256 characters, a shape it cannot draw (a circle with no radius, a line of fewer than two positions, a polygon of fewer than three, more than 512 positions in all), or a stale time over a week. The message ends with which event and why.</td>
                 </tr>
                 <tr>
                     <td><code>TF-20015</code></td>
                     <td><code>MCPCreateGeoJSONInvalid</code> <span class="level">Tool error</span></td>
                     <td><code>Could not build that document: ...</code> The <code>create_geojson</code> tool was given no features or too many, a feature with no name, the wrong number of positions for its kind, a position off the globe, or a color that is not <code>#rrggbb</code>. The message ends with which feature and why.</td>
                 </tr>
+                <tr>
+                    <td><code>TF-20016</code></td>
+                    <td><code>MCPCyberInvalid</code> <span class="level">Tool error</span></td>
+                    <td><code>Give between 1 and 25 indicators.</code> The <code>lookup_cyber_indicator</code> tool was given no indicators, or more than 25. An indicator in the list that is not a CVE, CWE, ATT&amp;CK id, IP address or file hash is not this: it is answered as not recognized, and the others in the list are still looked up.</td>
+                </tr>
             </tbody>
         </table>
+
+        <h2 id="cyberdata">Cyber datasets <code>21000</code> to <code>21999</code></h2>
+
+        <p>
+            These are logged rather than shown to a reader, and logged once per file rather
+            than once per lookup. A dataset that is skipped enriches nothing, which in the
+            panel is indistinguishable from an indicator nothing is known about, so the log
+            line is the only thing that will ever explain it. Skipping is per file: every
+            other dataset still answers. See
+            <a href="cyber.html#cyber-datasets">where the data comes from</a>.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Code</th><th>Name and level</th><th>Meaning</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>TF-21000</code></td>
+                    <td><code>CyberDataNoBundlePath</code> <span class="level">log</span></td>
+                    <td>The plugin cannot locate its own bundle, so the datasets shipped inside it are not read. Datasets in <a href="admin.html#cyber-datasets-dir"><code>CyberDatasetsDir</code></a> are unaffected.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-21001</code></td>
+                    <td><code>CyberDataUnreadable</code> <span class="level">log</span></td>
+                    <td>A dataset file could not be opened, or its rows are not the shape this build reads. The file is skipped and every other dataset still answers.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-21002</code></td>
+                    <td><code>CyberDataSchemaMismatch</code> <span class="level">log</span></td>
+                    <td>A dataset carries no schema stamp, or one built for a different reader. Distinct from unreadable, because the remedy is a newer dataset rather than a repaired file. See <a href="troubleshooting.html#cyber-dataset-ignored">the troubleshooting entry</a>.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-21003</code></td>
+                    <td><code>CyberDataBadName</code> <span class="level">log</span></td>
+                    <td>A file in the dataset directory is not named after a dataset this build reads. The names are <code>cve.tsv</code>, <code>cvedetail.tsv</code>, <code>cwedetail.tsv</code>, <code>attackdetail.tsv</code>, <code>advisory.tsv</code>, <code>netlists.tsv</code>, <code>hashlists.tsv</code>, <code>capec.tsv</code>, <code>cveattack.tsv</code>, <code>epss.tsv</code>, <code>kev.tsv</code>, <code>ip.tsv</code> and <code>watchlist.tsv</code>. Rename it, or take it out of the directory.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-21004</code></td>
+                    <td><code>CyberDataMMDBUnreadable</code> <span class="level">log</span></td>
+                    <td>A vendor <code>.mmdb</code> database could not be opened, or its declared type is not one this build reads. The tabular datasets are unaffected.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-21005</code></td>
+                    <td><code>CyberDataLookupFailed</code> <span class="level">panel</span></td>
+                    <td>A dataset opened and then could not be read when somebody looked an indicator up, usually because the file was replaced or removed underneath the server. The panel says the dataset could not be read rather than that the indicator is not listed, because those are opposite answers. Put the file back, or re-copy it, and the next lookup picks it up.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-21006</code></td>
+                    <td><code>CyberDataUnpackFailed</code> <span class="level">log</span></td>
+                    <td>A gzipped dataset such as <code>cve.tsv.gz</code> could not be unpacked beside itself: the archive is truncated or corrupt, it unpacks to more than 2 GiB, or the server cannot write to the directory. Any <code>cve.tsv</code> already there is left as it was. Re-copy the archive, make the directory writable by the Mattermost server, or unpack it yourself with <code>gunzip -k</code> and the plugin reads the result.</td>
+                </tr>
+            </tbody>
+        </table>
+
     </main>
 </div>
 </body>

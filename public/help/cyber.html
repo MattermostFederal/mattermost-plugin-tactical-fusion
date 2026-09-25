@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Context - Tactical Fusion</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="copy.js" defer></script>
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <h2>Tactical Fusion</h2>
+            <span class="version">Plugin Documentation</span>
+        </div>
+        <nav>
+            <span class="nav-section">Documentation</span>
+            <a href="help.html">Overview</a>
+            <span class="nav-section">Decorators</span>
+            <a href="dtg.html">Date-Time Groups</a>
+            <a href="location.html">Coordinates</a>
+            <a href="airfields.html">Airfields</a>
+            <a href="cyber.html" class="active">Cyber Context</a>
+            <a href="cot.html">Cursor on Target</a>
+            <a href="geojson.html">GeoJSON</a>
+            <a href="reports.html">Aviation Reports</a>
+            <a href="frequencies.html">Frequencies</a>
+            <a href="notes.html">Notes</a>
+            <span class="nav-section">Guides</span>
+            <a href="formats.html">Recognized Formats</a>
+            <a href="panel.html">The Sidebar Panel</a>
+            <a href="admin.html">Admin Settings</a>
+            <a href="commands.html">Slash Commands</a>
+            <a href="integration.html">Plugin Integration</a>
+            <span class="nav-section">Reference</span>
+            <a href="troubleshooting.html">Troubleshooting</a>
+            <a href="error-codes.html">Error Codes</a>
+        </nav>
+    </aside>
+
+    <main class="content">
+        <div class="breadcrumb">
+            <a href="help.html">Docs</a>
+            <span class="separator">/</span>
+            Cyber Context
+        </div>
+
+        <h1>Cyber Context</h1>
+        <p class="tagline">Five kinds of security indicator, two catalogs built into the plugin, and datasets an operator syncs in. Nothing is ever fetched from the internet.</p>
+
+        <div class="alert alert-info">
+            <p>
+                Settings: <a href="admin.html#enable-cyber"><code>EnableCyber</code></a> and the
+                five kind switches under it, plus
+                <a href="admin.html#cyber-datasets-dir"><code>CyberDatasetsDir</code></a>. To see
+                what your own server does, run
+                <a href="commands.html#examples"><code>/tactical-fusion examples</code></a>.
+                Every example below is one of that command's own rows.
+            </p>
+        </div>
+
+        <h2 id="cyber-kinds">The five kinds</h2>
+
+        <p>
+            Each kind is recognized in ordinary prose, with no label in front of it, and each has
+            its own switch. What is written stays written: the link's text is your own token, and
+            only the address behind it carries the canonical spelling.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Kind</th><th>Example</th><th>Recognized by</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><a href="#cyber-cve">Vulnerability</a></td>
+                    <td><code class="copyable">CVE-2025-55182</code></td>
+                    <td>Shape, in any case, for a year of 1999 or later</td>
+                </tr>
+                <tr>
+                    <td><a href="#cyber-cwe">Weakness</a></td>
+                    <td><code class="copyable">CWE-79</code></td>
+                    <td>The CWE catalog built into the plugin, in any case</td>
+                </tr>
+                <tr>
+                    <td><a href="#cyber-attack">MITRE ATT&amp;CK</a></td>
+                    <td><code class="copyable">T1059.001</code> and <code class="copyable">TA0002</code></td>
+                    <td>The ATT&amp;CK catalog built into the plugin, upper case only</td>
+                </tr>
+                <tr>
+                    <td><a href="#cyber-ip">IP address</a></td>
+                    <td><code class="copyable">8.8.8.8</code> and <code class="copyable">141.98.9.137</code></td>
+                    <td>A parsed IPv4 or IPv6 address, minus loopback and unspecified</td>
+                </tr>
+                <tr>
+                    <td><a href="#cyber-hash">File hash</a></td>
+                    <td><code class="copyable">01ce9cfebb29596d0ab7c99e8dbadf1a8409750b183e6bf73e0de021b365be13</code></td>
+                    <td>A 32, 40 or 64 digit hexadecimal run</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>
+            Post a sentence with an indicator in it and the indicator becomes a link:
+        </p>
+
+        <pre tabindex="0"><code>Patched CVE-2021-44228 across the fleet, beacon was to 203.0.113.7</code></pre>
+
+        <div class="alert alert-info">
+            <p class="alert-title">The stored text is the token you typed.</p>
+            <p>
+                Writing <code>cve-2021-44228</code> in lower case stores a link reading
+                <code>cve-2021-44228</code>. The canonical spelling,
+                <code>CVE-2021-44228</code>, travels in the address only, so the panel and the
+                page agree about which vulnerability it is while your message still reads the way
+                you wrote it.
+            </p>
+        </div>
+
+        <h2 id="cyber-cve">Vulnerability identifiers</h2>
+
+        <p>Setting: <a href="admin.html#enable-cyber-cve"><code>EnableCyberCVE</code></a></p>
+
+        <p>
+            <code class="copyable">CVE-2021-44228</code> is recognized <strong>by shape rather
+            than by lookup</strong>, in any case, with a four digit year of 1999 or later and four
+            to seven digits after it. Identifiers are issued daily and no list of them ships inside
+            the plugin, so requiring a lookup would mean this week's vulnerability never linking.
+            An identifier the installed datasets do not hold still links, and its panel says so
+            rather than refusing.
+        </p>
+
+        <p>
+            What the panel shows about one comes from the
+            <a href="#cyber-datasets">datasets</a>: a summary and a CVSS score from
+            <code>cve.tsv</code>, a probability of exploitation from <code>epss.tsv</code>, and
+            whether it is in the known-exploited catalog from <code>kev.tsv</code>. Weaknesses the
+            vulnerability record names are offered as <a href="#cyber-cwe">CWE</a> links.
+        </p>
+
+        <p>
+            With <code>cvedetail.tsv</code> installed the panel and the page also show, each in a
+            section that opens on a click and says how many lines it holds: the products and
+            versions the reporting organization lists as affected, the product configurations
+            NVD lists, and the references, each with its tags such as <em>Patch</em>,
+            <em>Exploit</em> or <em>Vendor Advisory</em>. A row names which organization
+            reported each weakness. A reference opens in a new tab, and only a
+            <code>http</code> or <code>https</code> address is ever shown as a link. On an
+            air-gapped network a reference will not load, but it still names the advisory to
+            ask for.
+        </p>
+
+        <h2 id="cyber-cwe">Weakness identifiers</h2>
+
+        <p>Setting: <a href="admin.html#enable-cyber-cwe"><code>EnableCyberCWE</code></a></p>
+
+        <p>
+            <code class="copyable">CWE-79</code> is recognized in any case, and
+            <strong>validated against the CWE catalog built into the plugin</strong>. A number the
+            catalog does not hold is left exactly as written, which is why
+            <code>CWE-99999</code> is plain text. The panel gives the weakness its name, its
+            abstraction level, its status, a summary, and links to the parents above it.
+        </p>
+
+        <h2 id="cyber-attack">MITRE ATT&amp;CK identifiers</h2>
+
+        <p>Setting: <a href="admin.html#enable-cyber-attack"><code>EnableCyberAttack</code></a></p>
+
+        <p>
+            Techniques, sub-techniques and tactics are all read:
+            <code>T1059</code> is a technique, <code class="copyable">T1059.001</code> one of its
+            sub-techniques, and <code class="copyable">TA0002</code> a tactic. The catalog holds
+            the Enterprise and Mobile matrices, so a Mobile technique such as
+            <code class="copyable">T1398</code> is read too. ATT&amp;CK for ICS is not: its ids,
+            <code>T0800</code> and up, read like clock times. Like CWE, these are
+            <strong>validated against the catalog built into the plugin</strong>, so an identifier
+            that names nothing is left as written.
+        </p>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">ATT&amp;CK identifiers are upper case only.</p>
+            <p>
+                Unlike CVE and CWE, which are read in any case, <code>t1059</code> is not an
+                ATT&amp;CK identifier here. A lower-case <code>t</code> followed by four digits is
+                a part number, a ticket and a serial number far more often than it is a technique.
+            </p>
+        </div>
+
+        <p>
+            The panel names the technique, says which kind it is, lists its tactics, links to its
+            parent and its sub-techniques, and gives the reference address at
+            <code>attack.mitre.org</code>. That address is derived from the identifier rather than
+            carried in the catalog, so a link that reaches a reader is never one somebody else
+            chose.
+        </p>
+
+        <h2 id="cyber-ip">IP addresses</h2>
+
+        <p>Setting: <a href="admin.html#enable-cyber-ip"><code>EnableCyberIP</code></a></p>
+
+        <p>
+            An IPv4 or IPv6 address is recognized when it genuinely parses as one. The panel gives
+            its version and its scope, which is the one thing no dataset has to supply: global,
+            private, loopback, link-local, multicast, carrier-grade NAT or documentation.
+            <code class="copyable">203.0.113.7</code> is a documentation address, so no dataset
+            describes it and the panel says which it is.
+        </p>
+
+        <p>
+            Where the <a href="#cyber-datasets">datasets</a> have something to add, the autonomous
+            system and the country come from <code>ip.tsv</code>, which ships in the bundle from
+            IPtoASN (<code>iptoasn.com</code>, public domain), and the region and the city from a vendor <code>.mmdb</code>
+            database an operator dropped in.
+        </p>
+
+        <p>
+            <code class="copyable">141.98.9.137</code> is the example of an address from an
+            incident: CISA's advisory AA23-325A lists it as the remote address LockBit 3.0
+            affiliates used to exploit Citrix Bleed. Its panel lists that under
+            <strong>Threat reports</strong>, linked to the advisory, and its hover says
+            <strong>Reported malicious</strong>. The indicators of the CISA advisories the
+            plugin ships with come in the bundle. Every report names its source.
+        </p>
+
+        <p>
+            Beside the verdicts, the bundle carries <strong>context</strong>: the Tor Project's exit
+            list, and MISP warninglists for cloud provider ranges (Amazon AWS, Microsoft Azure,
+            Google Cloud, Oracle Cloud), CDNs (Cloudflare, Akamai, Fastly), public DNS resolvers,
+            known sinkholes, and research scanners (Censys, Shodan, Shadowserver, Rapid7 and
+            universities). <code class="copyable">8.8.8.8</code> reads as a public DNS resolver. Context
+            is shown under the same <strong>Threat reports</strong> heading, in plain text rather
+            than red, and never makes the hover say <strong>Reported malicious</strong>: a scanner
+            touching your network, or a Tor exit, explains a log line rather than convicting it.
+            Your team's own
+            judgments belong in the <a href="#cyber-datasets">watchlist</a>. Hosting addresses
+            are reassigned, so one named in an old advisory may belong to somebody else today.
+        </p>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">A four-part version number cannot be told apart from an address.</p>
+            <p>
+                <code>1.2.3.4</code> is a valid address and a common version number, and nothing
+                in the text says which was meant. It is read as an address. An install where that
+                matters more than the enrichment does can turn this one kind off and leave the
+                other four on. A version written the way versions usually are,
+                <code>v1.2.3.4</code>, is left alone.
+            </p>
+        </div>
+
+        <h2 id="cyber-hash">File hashes</h2>
+
+        <p>Setting: <a href="admin.html#enable-cyber-hash"><code>EnableCyberHash</code></a></p>
+
+        <p>
+            A run of exactly 32, 40 or 64 hexadecimal digits is read as an MD5, SHA-1 or SHA-256
+            digest. <code class="copyable">44d88612fea8a8f36de82e1278abb02f</code> is the MD5 of
+            the EICAR test file. The panel names the algorithm and the length. A hash is an
+            identity rather than a record, so everything else comes from the
+            <a href="#cyber-datasets">datasets</a>: the threat reports the bundled CISA advisories
+            make about it, context from the MISP warninglists (the hashes of empty files, of the
+            EICAR test file, and others known to cause false positives), and any watchlist entry.
+            <code class="copyable">e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</code>
+            is the SHA-256 of an empty file. A hash no dataset knows proves nothing about the file
+            either way.
+        </p>
+
+        <p>
+            A 40 digit digest is also the shape of a Git object identifier. The panel says so
+            rather than guessing between the two.
+        </p>
+
+        <h2 id="cyber-kept">What stays in your message</h2>
+
+        <p>
+            Several runs sit so close to an indicator that the matcher has to look past them. It
+            matches them and then leaves them in the message, outside the link:
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>You write</th><th>What is linked</th><th>What stays</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code class="copyable">Patched CVE-2021-44228.</code></td><td>The identifier</td><td>A trailing <code>.</code> <code>,</code> <code>;</code> <code>:</code> <code>!</code> or <code>?</code></td></tr>
+                <tr><td><code class="copyable">seen at 203.0.113.7:443 twice</code></td><td>The address</td><td>The port, <code>:443</code></td></tr>
+                <tr><td><code class="copyable">fe80::a%eth0 on the wire</code></td><td>The address</td><td>The zone, <code>%eth0</code></td></tr>
+                <tr><td><code class="copyable">md5:44d88612fea8a8f36de82e1278abb02f</code></td><td>The digest</td><td>The label, <code>md5:</code></td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            The <code>md5:</code>, <code>sha1:</code> and <code>sha256:</code> labels are read with
+            either a colon or an equals sign, and the <strong>label has to agree with the
+            length</strong>. <code>md5:</code> in front of 64 digits is declined outright rather
+            than linked as a SHA-256, because one of the two is wrong and the plugin cannot tell
+            which.
+        </p>
+
+        <h2 id="cyber-declined">Deliberately declined</h2>
+
+        <p>
+            Decoration rewrites the stored message permanently, so anything ambiguous is left
+            alone. None of these become links:
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Example</th><th>Why</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>T9999</code></td><td>Not in the ATT&amp;CK catalog this build carries</td></tr>
+                <tr><td><code>CWE-99999</code></td><td>Not in the CWE catalog this build carries</td></tr>
+                <tr><td><code>CVE-1998-0001</code></td><td>Predates the scheme, which starts at 1999</td></tr>
+                <tr><td><code>1.2.3.4.5</code></td><td>Five parts is not an address</td></tr>
+                <tr><td><code>01.2.3.4</code></td><td>A leading zero, so it does not parse as an address</td></tr>
+                <tr><td><code>999.1.1.1</code></td><td>A part out of range</td></tr>
+                <tr><td><code>v1.2.3.4</code></td><td>A version number, written the way versions are</td></tr>
+                <tr><td><code>1.2.3.4/24</code></td><td>A range. A link over half of one misrepresents it, so the whole thing is declined</td></tr>
+                <tr><td><code>1.2.3.0-1.2.3.255</code></td><td>A range again, for the same reason</td></tr>
+                <tr><td><code>0.0.0.0</code> and <code>::</code></td><td>Unspecified: there is nothing to be said about them</td></tr>
+                <tr><td><code>127.0.0.1</code> and <code>::1</code></td><td>Loopback, for the same reason</td></tr>
+                <tr><td><code>12:30:45</code></td><td>A time of day, not an address</td></tr>
+                <tr><td><code>00:1A:2B:3C:4D:5E</code></td><td>A MAC address, which this plugin does not read</td></tr>
+                <tr><td><code>std::vector</code></td><td>C++ scope resolution, which is not an address either</td></tr>
+                <tr><td><code>deadbeefdeadbeefdeadbeefdeadbeefd</code></td><td>33 digits, so it is none of the three hash lengths</td></tr>
+                <tr><td><code>md5:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</code></td><td>The label says MD5 and the digest is 64 digits long, so the two disagree</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            An indicator inside a <a href="formats.html#protected">protected span</a> is left alone
+            as well: a code span, a fenced block, an existing link, an <code>@mention</code>, a
+            <code>~channel-link</code> or a <code>#hashtag</code>. Mattermost turns each of those
+            into a link of its own, and writing into one would destroy it.
+        </p>
+
+        <h2 id="cyber-panel">What the panel shows</h2>
+
+        <p>
+            Clicking an indicator opens the right-hand sidebar. See
+            <a href="panel.html#panel">the sidebar panel</a> for the shared mechanics.
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>Section</th><th>Shows</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Heading</td><td>The name of the thing, where it has one, over the indicator itself. A vulnerability also carries its score as a badge colored by severity, and a <strong>Known exploited</strong> badge when the known-exploited list holds it.</td></tr>
+                <tr><td>Summary</td><td>The description the catalog or the dataset carries. A long one is cut to six lines, with <strong>Show more</strong> for the rest.</td></tr>
+                <tr><td>Readings</td><td>The rows for that kind: scores and dates for a vulnerability, tactics and platforms for a technique, scope and network for an address, the algorithm for a hash.</td></tr>
+                <tr><td>Vector, decoded</td><td>The CVSS vector spelled out one metric to a line, for version 2.0, 3.x and 4.0 vectors: how the flaw is reached, what it needs, and what it costs. The most dangerous value of each metric, such as a <strong>Network</strong> attack vector or <strong>None</strong> for privileges required, is marked. A metric the vector leaves undefined is not listed.</td></tr>
+                <tr><td>Watchlist</td><td>Any verdict your own watchlist records for this indicator, with its source, note and date.</td></tr>
+                <tr><td>Related</td><td>Links to the weaknesses, parents and sub-techniques around it, each one opening the same panel. A vulnerability in the known-exploited catalog also links the ATT&amp;CK techniques the Center for Threat-Informed Defense maps it to, each marked as the exploitation technique or a primary or secondary impact.</td></tr>
+                <tr><td>Attack patterns</td><td>For a weakness or a technique, the MITRE CAPEC attack patterns that name it, with their typical severity and first sentence, each linking to its page on capec.mitre.org. Read from the bundled <code>capec.tsv</code>.</td></tr>
+                <tr><td>Known exploited vulnerabilities</td><td>For a technique, the CVEs in the known-exploited catalog that are mapped to it, newest first, each opening its own panel. Read from the bundled <code>cveattack.tsv</code>.</td></tr>
+                <tr><td>Threat reports</td><td>For an address or a file hash, every report a bundled CISA advisory makes about it, and any context from the Tor exit list and the MISP warninglists: the source, linked to its page, the threat in red when it is malicious, and the malware and dates. Context is listed in plain text. The hover card says <strong>Reported malicious</strong> and counts the sources.</td></tr>
+                <tr><td>Weakness detail</td><td>For a weakness, the whole description in place of its first sentence, then collapsed sections for its background, consequences, mitigations, detection methods and observed examples, each with its count. An observed CVE opens the same panel. Read from the bundled <code>cwedetail.tsv</code>.</td></tr>
+                <tr><td>ATT&amp;CK detail</td><td>For a technique, the whole description, then collapsed sections for its mitigations, its detection analytics with the log sources each reads, its procedure examples, and its references. Mitigations, groups, software, campaigns and citations link out to their pages. A tactic lists its techniques, each opening the same panel. A technique MITRE has revoked names and links its replacement. Read from the bundled <code>attackdetail.tsv</code>.</td></tr>
+                <tr><td>Affected and references</td><td>Collapsed sections, each with its count: the products and versions as the reporting organization lists them and as NVD configures them, then the references, with vendor advisories and patches first and exploits next. Present only when the vulnerability detail dataset is installed.</td></tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-note">
+            <p class="alert-title">The dataset list is on the standalone page.</p>
+            <p>
+                The page behind an indicator link also lists which datasets are installed and when
+                each was generated, so an empty answer can be told from a missing file. The panel
+                leaves that list out, and ends instead with a <em>Data sources</em> link that opens a
+                table of every file behind that answer and when each was compiled. That is when the
+                file was built, not any date inside it; the embedded ATT&amp;CK and CWE catalogs show
+                when the plugin's copy was generated, and a vendor IP database its own build date.
+            </p>
+        </div>
+
+        <p>
+            An agent in the <strong>Mattermost Agents</strong> plugin can ask the same questions:
+            its <code>lookup_cyber_indicator</code> tool looks up to 25 indicators at once and
+            answers from the same datasets the panel reads, so "is this address malicious?" or
+            "which of these CVEs are known exploited?" gets the answer this page would give. See
+            <a href="integration.html#mcp">From an LLM agent, over MCP</a>.
+        </p>
+
+        <h2 id="cyber-datasets">Where the data comes from</h2>
+
+        <p>
+            Two catalogs are <strong>built into the plugin</strong>: ATT&amp;CK and CWE. They need
+            no configuration, they are the same on every node, and they are what decides whether an
+            identifier of those two kinds is recognized at all.
+        </p>
+
+        <p>
+            Everything else is a file an operator syncs onto the server, into the directory named
+            by <a href="admin.html#cyber-datasets-dir"><code>CyberDatasetsDir</code></a>:
+        </p>
+
+        <table>
+            <thead>
+                <tr><th>File</th><th>Carries</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>cve.tsv</code></td><td>Vulnerability records: summary, dates, CVSS score and vector, and the weaknesses each one names. The bundle carries only the CVEs in KEV, which a full file here replaces</td></tr>
+                <tr><td><code>cvedetail.tsv</code></td><td>Affected products and versions, as the reporting organization lists them and as NVD configures them, the references, and which organization reported each weakness</td></tr>
+                <tr><td><code>cwedetail.tsv</code></td><td>For each weakness: its whole description, background, consequences, mitigations, detection methods and observed CVEs. Ships with the plugin</td></tr>
+                <tr><td><code>attackdetail.tsv</code></td><td>For each ATT&amp;CK technique and tactic: its whole description, the mitigations and detection strategies MITRE maps to it with their analytics and log sources, every procedure example from a group, malware, tool or campaign, and its references. Ships with the plugin</td></tr>
+                <tr><td><code>netlists.tsv</code></td><td>Context for address ranges: Tor exits, cloud providers, CDNs, public DNS resolvers, sinkholes and research scanners, from the Tor Project (CC0) and MISP warninglists (CC0). Ships with the plugin, gzipped</td></tr>
+                <tr><td><code>hashlists.tsv</code></td><td>Context for file hashes: empty files, the EICAR test file and common false positives, from MISP warninglists (CC0). Ships with the plugin</td></tr>
+                <tr><td><code>capec.tsv</code></td><td>MITRE CAPEC attack patterns, found by the CWE and ATT&amp;CK ids each one names. Ships with the plugin</td></tr>
+                <tr><td><code>cveattack.tsv</code></td><td>The Center for Threat-Informed Defense's mappings between known-exploited CVEs and ATT&amp;CK techniques, under the Apache License 2.0. Ships with the plugin</td></tr>
+                <tr><td><code>advisory.tsv</code></td><td>The IP addresses and file hashes named in the CISA advisories the plugin ships with, each linked to its advisory. Ships with the plugin</td></tr>
+                <tr><td><code>epss.tsv</code></td><td>Exploit prediction scores and percentiles from FIRST's Exploit Prediction Scoring System (EPSS). The bundle carries a copy as of its release, gzipped; FIRST rescores daily, so a fresher file here replaces it</td></tr>
+                <tr><td><code>kev.tsv</code></td><td>The known exploited vulnerabilities catalog, with its due dates and required actions</td></tr>
+                <tr><td><code>ip.tsv</code></td><td>Autonomous system, country, region and city per address range. The bundle carries IPtoASN's, gzipped, which a file here replaces</td></tr>
+                <tr><td><code>watchlist.tsv</code></td><td>Your own verdicts, for any indicator of any kind</td></tr>
+                <tr><td>Any <code>.mmdb</code></td><td>A vendor IP database in MaxMind's format, read alongside <code>ip.tsv</code>; the one that gives an address a region and city. None ships with the plugin. DB-IP's free <em>IP to City Lite</em> database works and is licensed CC BY 4.0; MaxMind's GeoLite2 and paid databases work too. When DB-IP or GeoLite2 data answers, the panel, the page and the hover card credit the vendor, as both licenses require, and the panel and page link back to it</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            <code>kev.tsv</code>, <code>cwedetail.tsv</code> and <code>attackdetail.tsv</code> are small
+            enough to ship inside the bundle, and a file of the same name in the configured directory replaces the bundled
+            one. The bundle also carries <code>cve.tsv</code> and <code>cvedetail.tsv</code> cut down
+            to the CVEs in the known exploited catalog, so those have full detail on a fresh install; any other
+            CVE says the bundled set holds only those, and installing the full files replaces the slice. Each is a
+            snapshot, stamped with when it was compiled. Remove one and
+            the panel says that dataset is not installed rather than implying the indicator is
+            not in it. That distinction is deliberate, and it is why each sentence names the
+            dataset it is talking about.
+        </p>
+
+        <div class="alert alert-info">
+            <p class="alert-title">Nothing is ever fetched from the internet.</p>
+            <p>
+                Every answer comes from a file on this server, which is why an air-gapped install
+                behaves exactly as a connected one does. It also means the enrichment is only as
+                current as the last sync, and the panel's Data sources table says when each file was compiled so a
+                reader can judge that for themselves.
+            </p>
+        </div>
+
+        <p>
+            A file dropped into the directory is picked up <strong>within a few seconds</strong>,
+            with no restart and no configuration change. Removing one is noticed the same way, and
+            the panel goes back to saying that dataset is not installed.
+        </p>
+
+        <p>
+            A dataset may also be dropped in <strong>gzipped</strong>, as <code>cve.tsv.gz</code>,
+            which is how the release publishes them: the full vulnerability dataset is 40 MB
+            gzipped and 186 MB unpacked. The plugin unpacks it once into <code>cve.tsv</code> in
+            the same directory and reads that, because it searches a dataset in place and cannot
+            do that inside an archive. It unpacks again only when a different archive replaces
+            the first, and a damaged archive never replaces a good file. The directory must be
+            writable by the Mattermost server for this; on read-only media, run
+            <code>gunzip -k</code> yourself and drop in the result.
+        </p>
+
+        <p>
+            Each release also publishes a <strong>full bundle</strong>,
+            <code>com.mattermost.plugin-tactical-fusion-&lt;version&gt;-full.tar.gz</code>: the same
+            plugin with the full vulnerability datasets and DB-IP's City Lite database already
+            inside, so an air-gapped install needs no dataset directory at all. It is about
+            235 MB, over Mattermost's default 100 MiB upload limit, so raise
+            <strong>Maximum File Size</strong> under <strong>File Storage</strong>
+            (<code>FileSettings.MaxFileSize</code>), and any reverse proxy's request body
+            limit, before uploading it. Each node unpacks the datasets beside themselves on
+            first read, about 750 MB more on disk than the standard bundle.
+        </p>
+
+        <div class="alert alert-warning">
+            <p class="alert-title">A dataset whose schema stamp is absent or wrong is skipped.</p>
+            <p>
+                Every file carries a stamp naming the schema it was built for. One that carries
+                none, or names another, is skipped rather than misread, and the reason is logged
+                once as <a href="error-codes.html#cyberdata"><code>TF-21002</code></a>. Skipping is
+                per file: every other dataset still answers.
+            </p>
+        </div>
+
+        <h2 id="cyber-settings">Settings and troubleshooting</h2>
+
+        <table>
+            <thead>
+                <tr><th>Setting</th><th>Governs</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><a href="admin.html#enable-cyber"><code>EnableCyber</code></a></td><td>The whole decorator. The parent of the five below it.</td></tr>
+                <tr><td><a href="admin.html#enable-cyber-cve"><code>EnableCyberCVE</code></a></td><td><a href="#cyber-cve">Vulnerability identifiers</a></td></tr>
+                <tr><td><a href="admin.html#enable-cyber-cwe"><code>EnableCyberCWE</code></a></td><td><a href="#cyber-cwe">Weakness identifiers</a></td></tr>
+                <tr><td><a href="admin.html#enable-cyber-attack"><code>EnableCyberAttack</code></a></td><td><a href="#cyber-attack">ATT&amp;CK identifiers</a></td></tr>
+                <tr><td><a href="admin.html#enable-cyber-ip"><code>EnableCyberIP</code></a></td><td><a href="#cyber-ip">IP addresses</a></td></tr>
+                <tr><td><a href="admin.html#enable-cyber-hash"><code>EnableCyberHash</code></a></td><td><a href="#cyber-hash">File hashes</a></td></tr>
+                <tr><td><a href="admin.html#cyber-datasets-dir"><code>CyberDatasetsDir</code></a></td><td>Where the <a href="#cyber-datasets">datasets</a> are read from</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            A switch governs new decoration only: a link already written keeps working after its
+            kind is switched off. If an indicator you expected to be linked was not, or the panel
+            says a dataset is not installed, see
+            <a href="troubleshooting.html#cyber-not-linked">Troubleshooting</a>.
+        </p>
+
+    </main>
+</div>
+</body>
+</html>
