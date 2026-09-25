@@ -36,9 +36,9 @@ name.
 
 ## Refreshed at every release
 
-`make release` runs `make cyber-refresh` after its clean-tree check, which fetches
-every source and rebuilds every file here except `advisory.tsv`, the two catalogs
-compiled into the plugin, and the downloadable datasets. `advisory.tsv` ships as
+`make release` runs `make cyber-refresh` after its clean-tree check. It fetches
+every source and rebuilds the two catalogs compiled into the plugin, the
+downloadable datasets, and every file here except `advisory.tsv`, which ships as
 committed: each advisory is a fixed, published document, and `www.cisa.gov`
 answers 403 to the advisory pages from GitHub's runners, so `make
 cyber-advisories` rebuilds it on a workstation whenever `advisories.txt` changes. So a release ships data as current as the

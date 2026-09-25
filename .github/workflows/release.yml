@@ -232,8 +232,8 @@ jobs:
             The bundle carries the MITRE ATT&CK, CWE and CAPEC data, CISA KEV, the NVD records
             of every KEV entry, FIRST's EPSS scores, IPtoASN's address table, the Tor exit list
             and a curated set of MISP warninglists, all rebuilt from their sources for this
-            release, and the indicators of the CISA advisories in `build/cyberdata/advisories.txt`,
-            which are fixed documents built into the repository. The full datasets are attached here instead,
+            release, and `assets/cyber/advisory.tsv`, the indicators of the CISA advisories listed
+            in `build/cyberdata/advisories.txt`, which is built on a workstation and committed. The full datasets are attached here instead,
             with `DATASETS.sha256` over them and `SOURCES.sha256` naming the upstream files
             they were built from:
 
