@@ -147,6 +147,7 @@ jobs:
           EVENT_ACTION: ${{ github.event.action }}
           EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           EVENT_SENDER: ${{ github.event.sender.login }}
+          EVENT_SENDER_ID: ${{ github.event.sender.id }}
           GH_TOKEN: ${{ github.token }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           BUNDLE_DIR: ${{ runner.temp }}/preview-bundle
