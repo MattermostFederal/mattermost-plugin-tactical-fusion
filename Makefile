@@ -136,6 +136,7 @@ release-sign:
 ## Fails when the plugin bundle exceeds the default upload limit
 .PHONY: bundle-size-check
 bundle-size-check:
+	@[ -f dist/$(BUNDLE_NAME) ] || { echo "ERROR: dist/$(BUNDLE_NAME) does not exist; run 'make dist' first."; exit 1; }
 	@size=$$(wc -c < dist/$(BUNDLE_NAME) | tr -d ' '); \
 	if [ "$$size" -gt $(MAX_BUNDLE_BYTES) ]; then \
 		echo "ERROR: dist/$(BUNDLE_NAME) is $$size bytes, over the $(MAX_BUNDLE_BYTES) byte default upload limit."; \
@@ -940,6 +941,7 @@ docker-cyberdata: docker-check
 		echo "No datasets in build/cyberdata/out/. Build them with 'make cyber-data' and 'make cyber-package', and 'make cyber-geo' for DB-IP."; \
 	else \
 		mkdir -p $(CYBER_DATA_HOST); \
+		chmod a+rwx $(CYBER_DATA_HOST); \
 		n=0; \
 		for f in build/cyberdata/out/*.tsv.gz build/cyberdata/out/*.mmdb; do \
 			[ -f "$$f" ] || continue; \
