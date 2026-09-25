@@ -252,7 +252,7 @@ MAX_MAP_PACKAGE_BYTES ?= 536870912
 ## from. latest-cut.sh picks the newest date every extract in the profile shares, because
 ## Geofabrik rolls regions over through the day and build.sh refuses to merge two cuts. The
 ## lock in build/maposm/sources.lock is re-pinned to that cut for the rows in scope; commit it
-## or leave it. The release workflow runs this in its own job; MAP_RELEASE_PROFILE builds a
+## or leave it. The release workflow runs this in its own job once the plugin build succeeds; MAP_RELEASE_PROFILE builds a
 ## smaller set locally, e.g. MAP_RELEASE_PROFILE=taiwan. Each package must fit under
 ## MAX_MAP_PACKAGE_BYTES, the 512 MiB maxUploadBytes in server/packages.go. Needs Docker,
 ## network access and about 50 GB of free disk for the full set.
@@ -1230,7 +1230,10 @@ install-clamav:
 	fi
 	@sudo freshclam || freshclam
 
-## Scan dist/ for viruses using ClamAV (fails if any detected)
+## Scan dist/ for viruses using ClamAV, unpacking each bundle so every file is scanned by
+## name. Fails on any finding build/virus-allowlist.txt does not name, and on any scan error.
+##
+## Scan dist/ for viruses using ClamAV (fails on any finding not allowlisted)
 .PHONY: virus-scan
 virus-scan: install-clamav
 	@if [ ! -d dist ]; then \
@@ -1238,8 +1241,7 @@ virus-scan: install-clamav
 		exit 1; \
 	fi
 	@echo "Scanning release artifacts for viruses..."
-	clamscan --recursive --infected --alert-broken dist/
-	@echo "Virus scan passed."
+	./build/virus-scan.sh dist
 
 # ====================================================================================
 # Help
