@@ -62,10 +62,20 @@ GitHub or AWS, and no way to attack the org's production hostnames.
 - **Server**: stock `mattermost/mattermost-enterprise-edition` plus
   `postgres:14-alpine` with the environment from `docker-compose.dev.yml`, and
   Caddy in front for automatic Let's Encrypt HTTPS. No ALB, no ACM, no license.
+- **Access**: previews are open servers. Anyone with the link creates an
+  account and joins team `test`, which is public. The box is disposable and
+  lives at most seven days, so open sign-up costs nothing worth protecting.
 - **Admin**: username `admin`; the password is unique per preview, derived as
   `HMAC-SHA256(PREVIEW_ADMIN_SECRET, FQDN)` encoded as 24 alphanumeric
-  characters. Maintainers who hold the org secret compute it with
-  `scripts/preview password <fqdn>`. It is never posted, never in the
+  characters. The key is stored twice: as the org secret the workflow uses,
+  and in Secrets Manager in `mfi-preview` as `pr-preview/admin-secret`, which
+  `scripts/preview password <fqdn>` reads so anyone with Identity Center
+  access to the account can derive a password. The instance role has no
+  Secrets Manager permission. The `ready` comment also carries the password
+  encrypted with `age` to the GitHub SSH keys (`github.com/<login>.keys`,
+  ed25519 and RSA) of the person who added the label and the PR author, so
+  neither needs AWS access or a shared secret; users without published keys
+  fall back to the helper. It is never posted, never in the
   Mattermost container's environment, and a captured one opens one preview
   only. Team `test`.
 - **Bundle delivery**: the workflow uploads the bundle to S3 under a random
@@ -405,8 +415,13 @@ and the tag is protected by ruleset.
   not the public IP of a live managed instance. No age test: Route53 records
   carry no timestamp, and a stale record is the takeover window. Summary to
   `$GITHUB_STEP_SUMMARY`.
-- `password <fqdn>`: prints the derived password for maintainers who hold
-  `PREVIEW_ADMIN_SECRET`.
+- `password <fqdn>`: prints the derived password. It uses
+  `PREVIEW_ADMIN_SECRET` from the environment when set (the workflow), and
+  otherwise reads `pr-preview/admin-secret` from Secrets Manager in
+  `mfi-preview`, which needs `secretsmanager:GetSecretValue` on that secret.
+  The `AdministratorAccess` permission set that Identity Center grants on
+  `mfi-preview` includes it; the preview instance role and
+  `GithubActionsPreview` do not.
 - Output hygiene: SSM output is truncated to 4 KB, stripped of control
   characters, and printed inside `::stop-commands::<random>`. Only the exit
   code is trusted. Nothing from the bundle or the instance enters the comment.
@@ -509,9 +524,14 @@ repo filter, assumes `GithubActionsPreview`, runs `scripts/preview reap`.
    installed on pr-preview only) and `mmf-preview-reaper` (Pull requests
    write, Metadata read, installed on every plugin repo). Org variable
    `PREVIEW_CHECKOUT_APP_ID`, org secret `PREVIEW_CHECKOUT_APP_PRIVATE_KEY`.
-6. Org variable `PREVIEW_AWS_ROLE_ARN`; org secret `PREVIEW_ADMIN_SECRET` (32
-   or more random characters). Visibility must include public repos. Steps 5
-   and 6 need an org admin.
+6. Org variable `PREVIEW_AWS_ROLE_ARN`. Generate one `PREVIEW_ADMIN_SECRET`
+   value (32 or more random characters) and store the same value in two
+   places: the org secret `PREVIEW_ADMIN_SECRET`, which the workflow uses to
+   derive passwords, and Secrets Manager in `mfi-preview` as
+   `pr-preview/admin-secret`, which the password helper reads. Rotate both
+   copies together; a preview created before a rotation keeps the password
+   derived from the old value. Visibility of the org secret must include
+   public repos. Steps 5 and 6 need an org admin.
 7. Tag pr-preview `v1`. `v1` is a moving major tag guarded by the ruleset:
    the env contract only gains fields within `v1`; a breaking change means
    `v2` and editing every copied workflow.
@@ -594,3 +614,16 @@ alphanumeric and never transformed before use.
 - Cost is roughly $2.20 per day per t3.large preview with a public IPv4 address, plus the domain registration; the cap, reaper, and budget alarm bound it.
 - Each redeploy waits for `pr.yml`, which runs the full test suite first, so a push takes about 25 minutes to reach the preview. A `workflow_run` trigger would remove the idle runner time if that becomes a problem.
 - A maintainer can label a PR whose page has not refreshed since the fork pushed; the comment shows the deployed SHA so the approval is visible after the fact.
+
+## Verification log
+
+- 2026-09-25: first end-to-end run on PR 61 of `mattermost-plugin-tactical-fusion`.
+  Two fixes came out of it, both published as `v1`: the Mattermost 11.11
+  image ships no `curl` or shell, so the readiness probe is
+  `mmctl system status --local`; and `mmctl plugin list --json` emits
+  `[{active, inactive}]`, so the parser unwraps the array. After the fixes the
+  preview reached `ready` six minutes after the label, served
+  `com.mattermost.plugin-tactical-fusion` over HTTPS with a valid certificate,
+  accepted an `admin` login with the derived password, and was torn down by
+  the label removal and again by the PR close.
+- 2026-09-25: open sign-up and the age-encrypted admin password verified on PR 62, including a redeploy after a push.
