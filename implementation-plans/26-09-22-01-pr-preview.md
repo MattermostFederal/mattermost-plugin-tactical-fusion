@@ -616,3 +616,4 @@ alphanumeric and never transformed before use.
   `com.mattermost.plugin-tactical-fusion` over HTTPS with a valid certificate,
   accepted an `admin` login with the derived password, and was torn down by
   the label removal and again by the PR close.
+- 2026-09-25: open sign-up and the age-encrypted admin password verified on PR 62, including a redeploy after a push.
