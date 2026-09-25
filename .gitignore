@@ -68,6 +68,7 @@ build/maposm/source/
 build/maposm/work/
 build/maposm/cache/
 build/maposm/out/
+build/maposm/release/
 
 # Unpacked on read from the committed assets/cyber/*.tsv.gz
 /assets/cyber/ip.tsv

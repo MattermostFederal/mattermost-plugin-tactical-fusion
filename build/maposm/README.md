@@ -20,9 +20,10 @@ The first fetches the OpenStreetMap extracts and verifies them against
 and tippecanoe, and runs `build.sh` inside it.
 
 Like `make map-tiles`, this is **a prerequisite of nothing**: it is never
-reached by `make test` and never runs in CI. Wiring it into CI would put a
-multi-gigabyte download and hours of tiling in the release path, which is why
-the pilot is committed and the rest are uploaded by hand.
+reached by `make test` or the pull request checks. The release workflow runs it
+in a job of its own, through `make map-release`, and attaches what it builds;
+see [Publishing the release-asset regions](#publishing-the-release-asset-regions).
+The two bundled regions are committed and never rebuilt by a release.
 
 ## This is a sibling of build/maptiles, not an extension of it
 
@@ -498,17 +499,38 @@ discovery and the byte-range reader all working.
 
 ## Publishing the release-asset regions
 
-The archives in `build/maposm/out/` are attached to an existing plugin release
-by hand:
+Every release builds and attaches them. `release.yml` has a `maps` job, beside
+the plugin build and independent of it, that runs:
+
+```
+make map-release
+```
+
+That builds every row carrying the `release` profile, which is every row that is
+not `bundled`, from **one fresh Geofabrik cut**. `latest-cut.sh` resolves each
+extract's `-latest` date and takes the oldest, because Geofabrik rolls regions
+over through the day and `build.sh` refuses to merge extracts cut on different
+days; Geofabrik keeps dated dailies for about 90 days, so every extract still has
+the older cut. Measured on 2026-09-24, Asia was on 260924 while Europe was still
+on 260923, so that day's release builds everything from 260923.
+
+The job re-pins `sources.lock` for the release rows, fails on any package over
+the 512 MiB `maxUploadBytes` in `server/packages.go`, and attaches the archives
+with `PACKAGES.sha256` and `MAP-SOURCES.lock`, the lock it built from. The plugin
+bundle does not wait for it and does not fail with it: the job waits for the
+release to exist, then uploads. `MAP_RELEASE_PROFILE` builds a smaller set
+locally:
+
+```
+make map-release MAP_RELEASE_PROFILE=taiwan
+```
+
+A set built on a workstation can still be attached to an existing release by
+hand, for example to replace one after a release:
 
 ```
 make map-publish TAG=v0.3.0
 ```
-
-That writes `PACKAGES.sha256` beside them and runs `gh release upload`. It is
-manual because the release workflow can neither download 10 GB of extracts nor
-spend the hours of tiling, and `release.yml`'s `files:` list must not be pointed
-at these.
 
 ## Two things you will see on a clean run
 
