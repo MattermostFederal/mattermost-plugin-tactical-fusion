@@ -64,8 +64,11 @@ GitHub or AWS, and no way to attack the org's production hostnames.
   Caddy in front for automatic Let's Encrypt HTTPS. No ALB, no ACM, no license.
 - **Admin**: username `admin`; the password is unique per preview, derived as
   `HMAC-SHA256(PREVIEW_ADMIN_SECRET, FQDN)` encoded as 24 alphanumeric
-  characters. Maintainers who hold the org secret compute it with
-  `scripts/preview password <fqdn>`. It is never posted, never in the
+  characters. The key is stored twice: as the org secret the workflow uses,
+  and in Secrets Manager in `mfi-preview` as `pr-preview/admin-secret`, which
+  `scripts/preview password <fqdn>` reads so anyone with Identity Center
+  access to the account can derive a password. The instance role has no
+  Secrets Manager permission. It is never posted, never in the
   Mattermost container's environment, and a captured one opens one preview
   only. Team `test`.
 - **Bundle delivery**: the workflow uploads the bundle to S3 under a random
@@ -594,3 +597,15 @@ alphanumeric and never transformed before use.
 - Cost is roughly $2.20 per day per t3.large preview with a public IPv4 address, plus the domain registration; the cap, reaper, and budget alarm bound it.
 - Each redeploy waits for `pr.yml`, which runs the full test suite first, so a push takes about 25 minutes to reach the preview. A `workflow_run` trigger would remove the idle runner time if that becomes a problem.
 - A maintainer can label a PR whose page has not refreshed since the fork pushed; the comment shows the deployed SHA so the approval is visible after the fact.
+
+## Verification log
+
+- 2026-09-25: first end-to-end run on PR 61 of `mattermost-plugin-tactical-fusion`.
+  Two fixes came out of it, both published as `v1`: the Mattermost 11.11
+  image ships no `curl` or shell, so the readiness probe is
+  `mmctl system status --local`; and `mmctl plugin list --json` emits
+  `[{active, inactive}]`, so the parser unwraps the array. After the fixes the
+  preview reached `ready` six minutes after the label, served
+  `com.mattermost.plugin-tactical-fusion` over HTTPS with a valid certificate,
+  accepted an `admin` login with the derived password, and was torn down by
+  the label removal and again by the PR close.
