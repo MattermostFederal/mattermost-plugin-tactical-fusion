@@ -4,10 +4,16 @@ set -uo pipefail
 DIST="${1:-dist}"
 ALLOWLIST="build/virus-allowlist.txt"
 
+if [ ! -d "$DIST" ] || [ ! -r "$DIST" ]; then
+    echo "error: $DIST is not a readable directory, so there is nothing to scan" >&2
+    exit 1
+fi
+
 work=$(mktemp -d)
 report=$(mktemp)
 errors=$(mktemp)
-trap 'rm -rf "$work" "$report" "$errors"' EXIT
+listing=$(mktemp)
+trap 'rm -rf "$work" "$report" "$errors" "$listing"' EXIT
 
 for archive in "$DIST"/*.tar.gz; do
     [ -e "$archive" ] || continue
@@ -19,10 +25,14 @@ for archive in "$DIST"/*.tar.gz; do
     fi
 done
 
+if ! find "$DIST" -mindepth 1 -maxdepth 1 ! -name '*.tar.gz' -print0 > "$listing"; then
+    echo "error: $DIST could not be listed, so its files cannot all be scanned" >&2
+    exit 1
+fi
 targets=("$work")
 while IFS= read -r -d '' entry; do
     targets+=("$entry")
-done < <(find "$DIST" -mindepth 1 -maxdepth 1 ! -name '*.tar.gz' -print0)
+done < "$listing"
 
 clamscan --recursive --infected --alert-broken "${targets[@]}" > "$report" 2> "$errors"
 status=$?
