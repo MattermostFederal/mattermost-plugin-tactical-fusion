@@ -499,8 +499,8 @@ discovery and the byte-range reader all working.
 
 ## Publishing the release-asset regions
 
-Every release builds and attaches them. `release.yml` has a `maps` job, beside
-the plugin build and independent of it, that runs:
+Every release builds and attaches them. `release.yml` has a `maps` job that
+starts once the plugin build succeeds and runs:
 
 ```
 make map-release
@@ -516,10 +516,10 @@ on 260923, so that day's release builds everything from 260923.
 
 The job re-pins `sources.lock` for the release rows, fails on any package over
 the 512 MiB `maxUploadBytes` in `server/packages.go`, and attaches the archives
-with `PACKAGES.sha256` and `MAP-SOURCES.lock`, the lock it built from. The plugin
-bundle does not wait for it and does not fail with it: the job waits for the
-release to exist, then uploads. `MAP_RELEASE_PROFILE` builds a smaller set
-locally:
+with `PACKAGES.sha256` and `MAP-SOURCES.lock`, the lock it built from. It runs
+only after the plugin build succeeds, so a release never carries maps without
+the plugin they belong to, and a map failure leaves the plugin release in place.
+`MAP_RELEASE_PROFILE` builds a smaller set locally:
 
 ```
 make map-release MAP_RELEASE_PROFILE=taiwan
