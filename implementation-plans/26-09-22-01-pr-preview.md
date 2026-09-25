@@ -544,8 +544,8 @@ repo filter, assumes `GithubActionsPreview`, runs `scripts/preview reap`.
    `mattermost-plugin-*` with a `restrict_action_events` rule. That rule is
    an allowlist, so it lists every event those repos use (`push`,
    `pull_request`, `pull_request_target`, `schedule`, `workflow_dispatch`,
-   `workflow_call`, `release`, and the rest); an event left out fails every
-   workflow in the targeted repos at startup. A plugin repo outside that name
+   `workflow_call`, `release`, and the rest); omitting an event blocks every
+   run triggered by that event in the targeted repos. A plugin repo outside that name
    pattern needs its own policy before adopting. The repos' action allowlist
    already permits GitHub-owned and verified-creator actions plus
    `opentofu/setup-opentofu`, which covers every action the workflow uses.
