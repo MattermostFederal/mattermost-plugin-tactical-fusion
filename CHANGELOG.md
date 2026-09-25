@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/compare/v0.8.0...v0.8.1) (2026-09-25)
+
+
+### Bug Fixes
+
+* **build:** ship the committed CISA advisory indicators instead of re-fetching them at release ([#57](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/57)) ([015eef4](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/015eef4c9de659a7e1e5c35e8b4e49c1ab168434))
+
 ## [0.8.0](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/compare/v0.7.0...v0.8.0) (2026-09-25)
 
 
