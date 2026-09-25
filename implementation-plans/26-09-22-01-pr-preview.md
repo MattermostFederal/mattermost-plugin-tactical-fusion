@@ -594,3 +594,7 @@ alphanumeric and never transformed before use.
 - Cost is roughly $2.20 per day per t3.large preview with a public IPv4 address, plus the domain registration; the cap, reaper, and budget alarm bound it.
 - Each redeploy waits for `pr.yml`, which runs the full test suite first, so a push takes about 25 minutes to reach the preview. A `workflow_run` trigger would remove the idle runner time if that becomes a problem.
 - A maintainer can label a PR whose page has not refreshed since the fork pushed; the comment shows the deployed SHA so the approval is visible after the fact.
+
+## Verification log
+
+- 2026-09-25: first end-to-end smoke test of the preview label on this PR.
