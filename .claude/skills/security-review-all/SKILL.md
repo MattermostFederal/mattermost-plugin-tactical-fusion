@@ -1,5 +1,5 @@
 ---
-name: security-review
+name: security-review-all
 description: Whole-product offensive security audit of Tactical Fusion. Hunts for exploitable holes across the server, the webapp, the standalone pages, the bridge, the MCP server, the data pipeline and the build, proves each one against the code, and reports them ranked by impact with a fix. Use for periodic audits, before a release, or when asked to find security holes. Read-only.
 user-invocable: true
 ---
@@ -20,9 +20,9 @@ reaches the network or mutates the working tree.
 ## Usage
 
 ```
-/security-review                  # The whole product
-/security-review <path>           # Focus on one file or directory
-/security-review --diff           # Only what changed on this branch since the trunk
+/security-review-all            # The whole product
+/security-review-all <path>           # Focus on one file or directory
+/security-review-all --diff           # Only what changed on this branch since the trunk
 ```
 
 ## Step 1: Map the attack surface
