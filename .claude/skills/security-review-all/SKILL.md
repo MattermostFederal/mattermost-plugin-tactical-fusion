@@ -20,7 +20,7 @@ reaches the network or mutates the working tree.
 ## Usage
 
 ```
-/security-review-all            # The whole product
+/security-review-all                  # The whole product
 /security-review-all <path>           # Focus on one file or directory
 /security-review-all --diff           # Only what changed on this branch since the trunk
 ```
