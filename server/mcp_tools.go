@@ -106,6 +106,11 @@ func (p *Plugin) registerMCPTools(server *pluginmcp.Server) {
 }
 
 func (p *Plugin) decorateTextTool(_ context.Context, _ *mcp.CallToolRequest, in DecorateTextArgs) (*mcp.CallToolResult, bridgeclient.DecorateResponse, error) {
+	if len(in.Message) > maxBridgeBody {
+		return toolRefusal(errcode.MCPDecorateTooLong,
+			"Give a message of at most 64 KiB."), bridgeclient.DecorateResponse{}, nil
+	}
+
 	return nil, p.decorateText(bridgeclient.DecorateRequest{
 		Message:       in.Message,
 		ReferenceTime: in.ReferenceTime,

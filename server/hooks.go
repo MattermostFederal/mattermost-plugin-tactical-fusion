@@ -34,6 +34,8 @@ const (
 	// stops somebody posting; `examples` uses it because it writes several
 	// posts and a partial demonstration is worse than a refusal.
 	safePostRunes = model.PostMessageMaxRunesV1
+
+	maxStorableRunes = model.PostMessageMaxRunesV2
 )
 
 // MessageWillBePosted decorates a message once, as it is created.
@@ -129,7 +131,7 @@ func (p *Plugin) decorateMessage(post *model.Post, ref time.Time) (result *model
 		}
 	}()
 
-	if post.Message == "" {
+	if post.Message == "" || utf8.RuneCountInString(post.Message) > maxStorableRunes {
 		return nil
 	}
 	if p.decorators == nil {

@@ -270,6 +270,11 @@
                     <td><code>There is no map here.</code> The one answer <code>/map?airport=</code> gives for every way it can decline: a value that is not four upper-case letters, and an airfield code this build's database does not hold. One code, as the post address has one, so the address cannot be used to probe the database a code at a time.</td>
                 </tr>
                 <tr>
+                    <td><code>TF-12010</code></td>
+                    <td><code>HTTPPackageNotAuthorized</code> <span class="level">401</span></td>
+                    <td><code>Not authorized.</code> A detail map package was requested without a Mattermost session. Packages are served only to signed-in readers, so which areas an install holds is not visible to anyone who can reach the server. It answers rather than redirecting, because the map fetches tiles in the background and could not follow a sign-in page.</td>
+                </tr>
+                <tr>
                     <td><code>TF-12008</code></td>
                     <td><code>HTTPMapPostUnavailable</code> <span class="level">404</span></td>
                     <td><code>There is no map here.</code> The one answer <code>/map?post=</code> gives for every way it can decline: no such post, a post in a channel you may not read, a post this plugin never rendered, and a post whose card has stood down because it was edited or its attachment is gone. They are deliberately one code, so the address cannot be used to find out which.</td>
@@ -778,6 +783,11 @@
                     <td><code>TF-20016</code></td>
                     <td><code>MCPCyberInvalid</code> <span class="level">Tool error</span></td>
                     <td><code>Give between 1 and 25 indicators.</code> The <code>lookup_cyber_indicator</code> tool was given no indicators, or more than 25. An indicator in the list that is not a CVE, CWE, ATT&amp;CK id, IP address or file hash is not this: it is answered as not recognized, and the others in the list are still looked up.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-20017</code></td>
+                    <td><code>MCPDecorateTooLong</code> <span class="level">Tool error</span></td>
+                    <td><code>Give a message of at most 64 KiB.</code> The <code>decorate_text</code> tool was given a message longer than 64 KiB, the same limit the bridge and the API place on a decorate request. Split the text and decorate each part.</td>
                 </tr>
             </tbody>
         </table>

@@ -182,6 +182,7 @@ func TestPackageRouteAnswersByteRanges(t *testing.T) {
 	p, _ := packagePlugin(t, dir)
 
 	req := httptest.NewRequest(http.MethodGet, "/packages/indopacom-hawaii.pmtiles", nil)
+	req.Header.Set("Mattermost-User-Id", testUserID)
 	req.Header.Set("Range", "bytes=0-126")
 	rec := httptest.NewRecorder()
 	p.ServeHTTP(&plugin.Context{}, rec, req)
@@ -200,22 +201,25 @@ func TestPackageRouteAnswersByteRanges(t *testing.T) {
 	}
 }
 
-// No session, deliberately: MapLibre fetches tiles from a worker, so a route
-// that could redirect to a login would answer a tile request with an HTML page
-// and the reader would see a map that half drew.
-func TestPackageRouteNeedsNoSession(t *testing.T) {
+func TestPackageRouteRefusesARequestWithoutASessionRatherThanRedirecting(t *testing.T) {
 	dir := t.TempDir()
 	writePackage(t, dir, "indopacom-hawaii.pmtiles", realPackage(t))
 
 	p, _ := packagePlugin(t, dir)
 
-	req := httptest.NewRequest(http.MethodGet, "/packages/indopacom-hawaii.pmtiles", nil)
-	rec := httptest.NewRecorder()
-	p.ServeHTTP(&plugin.Context{}, rec, req)
+	for _, path := range []string{"/packages/indopacom-hawaii.pmtiles", "/packages/eucom-baltics.pmtiles"} {
+		t.Run(path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			rec := httptest.NewRecorder()
+			p.ServeHTTP(&plugin.Context{}, rec, req)
 
-	if rec.Code != http.StatusOK {
-		t.Errorf("status = %d, want %d; a tile request cannot follow a redirect to a login",
-			rec.Code, http.StatusOK)
+			if rec.Code != http.StatusUnauthorized {
+				t.Errorf("status = %d, want %d for every name, so a prober learns nothing", rec.Code, http.StatusUnauthorized)
+			}
+			if got := rec.Header().Get("Location"); got != "" {
+				t.Errorf("Location = %q; a tile request cannot follow a redirect to a login", got)
+			}
+		})
 	}
 }
 
@@ -236,6 +240,7 @@ func TestPackageRouteRefusesAnythingElse(t *testing.T) {
 	for _, path := range paths {
 		t.Run(path, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, path, nil)
+			req.Header.Set("Mattermost-User-Id", testUserID)
 			rec := httptest.NewRecorder()
 			p.ServeHTTP(&plugin.Context{}, rec, req)
 
@@ -341,6 +346,7 @@ func packageRequest(t *testing.T, p *Plugin, rangeHeader, ifNoneMatch string) *h
 	t.Helper()
 
 	req := httptest.NewRequest(http.MethodGet, "/packages/indopacom-hawaii.pmtiles", nil)
+	req.Header.Set("Mattermost-User-Id", testUserID)
 	if rangeHeader != "" {
 		req.Header.Set("Range", rangeHeader)
 	}

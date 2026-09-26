@@ -320,6 +320,23 @@ test.describe('the detail tier', () => {
         expect(await loadPackages(['../world', 'INDOPACOM-HAWAII', 'hawaii', ''])).toEqual([]);
     });
 
+    test('sends the session, which the route requires', async () => {
+        let credentials = '';
+        globalThis.fetch = ((_url: string, init: {credentials?: string}) => {
+            credentials = init.credentials ?? '';
+            return Promise.resolve({
+                ok: true,
+                status: 206,
+                headers: {get: () => String(HEADER_BYTES)},
+                arrayBuffer: () => Promise.resolve(realDetailHeader()),
+            });
+        }) as unknown as typeof globalThis.fetch;
+
+        await loadPackages([PILOT]);
+
+        expect(credentials).toBe('same-origin');
+    });
+
     // One bad archive must not take the others off the map: an install with six
     // areas and one half-copied file draws the other five.
     test('a package that does not answer is dropped, not fatal to the set', async () => {

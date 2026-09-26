@@ -162,6 +162,8 @@ const (
 
 	HTTPMapAirportUnavailable = 12009
 
+	HTTPPackageNotAuthorized = 12010
+
 	// server/api.go (13000-13999)
 
 	// APINotAuthorized is returned when a request to the authenticated API
@@ -409,6 +411,8 @@ const (
 
 	MCPCyberInvalid = 20016
 
+	MCPDecorateTooLong = 20017
+
 	// server/cyberdata.go (21000-21999)
 
 	// CyberDataNoBundlePath reports that the plugin cannot locate its own
@@ -490,6 +494,7 @@ var AllCodes = []int{
 	HTTPPackageUnreadable,
 	HTTPMapPostUnavailable,
 	HTTPMapAirportUnavailable,
+	HTTPPackageNotAuthorized,
 
 	APINotAuthorized,
 	APINotFound,
@@ -576,6 +581,7 @@ var AllCodes = []int{
 	MCPCreateCotInvalid,
 	MCPCreateGeoJSONInvalid,
 	MCPCyberInvalid,
+	MCPDecorateTooLong,
 
 	CyberDataNoBundlePath,
 	CyberDataUnreadable,

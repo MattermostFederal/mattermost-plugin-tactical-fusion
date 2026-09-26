@@ -166,6 +166,23 @@ func TestMCPLinkDeclinesWhatTheBridgeDeclines(t *testing.T) {
 	}
 }
 
+func TestMCPDecorateRefusesAMessageOverTheBridgeLimit(t *testing.T) {
+	session := agentsSession(t, mcpPlugin(t))
+
+	atLimit := callMCPTool(t, session, "decorate_text", DecorateTextArgs{Message: strings.Repeat("x", maxBridgeBody)})
+	if atLimit.IsError {
+		t.Fatalf("a message of exactly %d bytes was refused: %s", maxBridgeBody, mcpResultText(atLimit))
+	}
+
+	over := callMCPTool(t, session, "decorate_text", DecorateTextArgs{Message: strings.Repeat("x", maxBridgeBody+1)})
+	if !over.IsError {
+		t.Fatalf("a message of %d bytes was decorated rather than refused", maxBridgeBody+1)
+	}
+	if want := strings.TrimSpace(errcode.WithCode(errcode.MCPDecorateTooLong, "")); !strings.Contains(mcpResultText(over), want) {
+		t.Fatalf("refused with %q, which carries no %d", mcpResultText(over), errcode.MCPDecorateTooLong)
+	}
+}
+
 func TestMCPConvertMatchesTheConversionTheAPIServes(t *testing.T) {
 	session := agentsSession(t, mcpPlugin(t))
 
