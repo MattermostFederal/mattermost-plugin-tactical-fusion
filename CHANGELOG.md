@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.3](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/compare/v0.8.2...v0.8.3) (2026-09-26)
+
+
+### Bug Fixes
+
+* close the findings from the security audit ([#65](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/65)) ([6aab23d](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/6aab23d57a3b69f84a4877eefffcfb3a39763692))
+
 ## [0.8.2](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/compare/v0.8.1...v0.8.2) (2026-09-25)
 
 
