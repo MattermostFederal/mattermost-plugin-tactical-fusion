@@ -59,6 +59,8 @@ const (
 	packageSeparator = ","
 )
 
+var attributeEscaper = strings.NewReplacer(`&`, "&amp;", `'`, "&#39;", `<`, "&lt;", `>`, "&gt;", `"`, "&#34;")
+
 // renderRoot is the whole body of both standalone pages.
 //
 // The page carries no rendered readings of its own. It carries the link's
@@ -88,7 +90,7 @@ func renderRoot(page pageData, mode string, maps Maps, packages []string) string
 	// the sidebar cannot come to disagree about what a token converts to.
 	if conversion, ok := Convert(loc.Format, loc.Canonical(), page.raw); ok {
 		if encoded, err := json.Marshal(conversion); err == nil {
-			attrs += ` data-conversion="` + html.EscapeString(string(encoded)) + `"`
+			attrs += ` data-conversion="` + attributeEscaper.Replace(string(encoded)) + `"`
 		}
 	}
 

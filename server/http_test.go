@@ -428,9 +428,10 @@ func TestAPackageThatVanishedAfterDiscoveryIs404(t *testing.T) {
 		t.Fatalf("cannot remove the archive: %v", err)
 	}
 
+	req := httptest.NewRequest(http.MethodGet, packagesPath+"/indopacom-hawaii"+packageSuffix, nil)
+	req.Header.Set("Mattermost-User-Id", testUserID)
 	rec := httptest.NewRecorder()
-	p.ServeHTTP(&plugin.Context{}, rec,
-		httptest.NewRequest(http.MethodGet, packagesPath+"/indopacom-hawaii"+packageSuffix, nil))
+	p.ServeHTTP(&plugin.Context{}, rec, req)
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", rec.Code)

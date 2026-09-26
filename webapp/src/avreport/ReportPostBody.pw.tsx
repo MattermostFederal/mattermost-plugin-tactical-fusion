@@ -133,7 +133,7 @@ test('a timed row links its instant through the date-time decorator', async ({mo
     );
 
     const link = body.getByRole('link', {name: '23 Sep 2026 23:59Z'});
-    await expect(link).toHaveAttribute('href', new RegExp(`/decorate/dtg\\?${query.replace(/[?]/g, '\\?')}$`));
+    await expect(link).toHaveAttribute('href', new RegExp(`/decorate/dtg\\?${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`));
     await expect(body.getByTestId('avreport-rows')).toContainText('(estimated)');
 });
 

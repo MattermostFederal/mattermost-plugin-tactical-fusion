@@ -1,3 +1,5 @@
+import {asDtgQuery} from '../decorators/dtg';
+
 export const COT_POST_TYPE = 'custom_tf_cot';
 
 export const COT_PROPS_KEY = 'tactical_fusion_cot';
@@ -309,11 +311,11 @@ function readEvent(event: Record<string, unknown>): CotEvent | null {
             how: text(event, 'how'),
             howLabel: text(event, 'how_label'),
             time: text(event, 'time'),
-            timeQuery: text(event, 'time_q'),
+            timeQuery: asDtgQuery(text(event, 'time_q')),
             start: text(event, 'start'),
-            startQuery: text(event, 'start_q'),
+            startQuery: asDtgQuery(text(event, 'start_q')),
             stale: text(event, 'stale'),
-            staleQuery: text(event, 'stale_q'),
+            staleQuery: asDtgQuery(text(event, 'stale_q')),
             staleAt: text(event, 'stale_at'),
             timeAt: text(event, 'time_at'),
             format: text(event, 'format'),

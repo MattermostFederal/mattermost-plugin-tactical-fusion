@@ -68,6 +68,21 @@ test('reads an absent field as empty rather than throwing', () => {
     expect(payload?.events[0].positionNote).toBe('');
 });
 
+test('keeps a date-time query the dtg route would accept', () => {
+    const query = 'a=&dtg=231143ZAUG26&t=1787485380000&z=Z';
+    const event = fromProps(props({}, {time_q: query, start_q: query, stale_q: query}))?.events[0];
+
+    expect([event?.timeQuery, event?.startQuery, event?.staleQuery]).toEqual([query, query, query]);
+});
+
+test('reads a forged date-time query as absent rather than linking it', () => {
+    for (const query of ['x=1', 'dtg=231143ZAUG26&z=Z', 'a=&dtg=231143ZAUG26&t=1787485380000&z=Z&o=0', '../../api/v4/users/me']) {
+        const event = fromProps(props({}, {time_q: query, start_q: query, stale_q: query}))?.events[0];
+
+        expect([event?.timeQuery, event?.startQuery, event?.staleQuery], query).toEqual(['', '', '']);
+    }
+});
+
 test('a position is linkable only when both halves of its identity are present', () => {
     const base = {format: '', value: ''} as CotEvent;
 

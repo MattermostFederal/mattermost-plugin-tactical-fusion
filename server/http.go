@@ -31,20 +31,6 @@ const decoratePath = "/decorate"
 // asking. mappost.go is that gate.
 const mapPath = "/map"
 
-/*
- * packagesPath serves one detail map package's archive.
- *
- * Deliberately OUTSIDE the session gate below, and a sibling of it rather than
- * a route under /decorate. Two reasons, and the second is the operational one.
- *
- * It carries the same posture as the bundle's own public/ directory, which
- * Mattermost serves without a session and which world.pmtiles is fetched from
- * today: a basemap is not reader-specific and there is nothing in one to
- * protect. And MapLibre fetches tiles from a worker through the pmtiles
- * protocol, so a route that could redirect to a login would answer a tile
- * request with an HTML page, which the reader would see as a map that half
- * drew.
- */
 const packagesPath = "/packages"
 
 // ServeHTTP routes GET /decorate/<type> to the matching decorator's page, GET
@@ -85,6 +71,11 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 	}
 
 	if strings.HasPrefix(r.URL.Path, packagesPath+"/") {
+		if sessionUserID(r) == "" {
+			decorators.WriteError(w, http.StatusUnauthorized,
+				errcode.WithCode(errcode.HTTPPackageNotAuthorized, "Not authorized."))
+			return
+		}
 		p.servePackage(w, r)
 		return
 	}

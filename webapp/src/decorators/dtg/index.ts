@@ -153,6 +153,10 @@ export function fromParams(params: URLSearchParams): Dtg | null {
     };
 }
 
+export function asDtgQuery(query: string): string {
+    return query !== '' && fromParams(new URLSearchParams(query)) ? query : '';
+}
+
 const decorator: Decorator<Dtg> = {
     type: 'dtg',
     fromParams,

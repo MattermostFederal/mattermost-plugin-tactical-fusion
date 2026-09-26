@@ -63,6 +63,23 @@ test.describe('fromProps', () => {
         expect(fromProps('text')).toBeNull();
     });
 
+    test('keeps a date-time query the dtg route would accept', () => {
+        const query = 'a=&dtg=231143ZAUG26&t=1787485380000&z=Z';
+        const payload = fromProps(propsFor({...HONOLULU_METAR, issuedQuery: query, rows: [{label: 'Valid', value: '23 Aug', query}]}));
+
+        expect(payload?.issuedQuery).toBe(query);
+        expect(payload?.rows[0].query).toBe(query);
+    });
+
+    test('reads a forged date-time query as absent rather than linking it', () => {
+        for (const query of ['x=1', 'dtg=231143ZAUG26&z=Z', 'a=&dtg=231143ZAUG26&t=1787485380000&z=Z&o=0', '../../api/v4/users/me']) {
+            const payload = fromProps(propsFor({...HONOLULU_METAR, issuedQuery: query, rows: [{label: 'Valid', value: '23 Aug', query}]}));
+
+            expect(payload?.issuedQuery, query).toBe('');
+            expect(payload?.rows[0], query).toEqual({label: 'Valid', value: '23 Aug'});
+        }
+    });
+
     test('marks a degraded blob', () => {
         expect(fromProps(propsFor({...HONOLULU_METAR, rowsDropped: true, rows: []}))?.rowsDropped).toBe(true);
     });

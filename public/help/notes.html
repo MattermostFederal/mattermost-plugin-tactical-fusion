@@ -98,9 +98,9 @@
                 <tr><th>Where</th><th>What</th></tr>
             </thead>
             <tbody>
-                <tr><td>Hover</td><td>The rendered markdown, scrolling past a few hundred pixels so a long table stays inside the card.</td></tr>
+                <tr><td>Hover</td><td>The rendered markdown, scrolling past a few hundred pixels so a long table stays inside the card. An image shows as its alt text, so hovering a link never fetches from a host the note's author chose; the sidebar shows images.</td></tr>
                 <tr><td>Sidebar</td><td>The rendered markdown, then <strong>As posted</strong>: the markdown source, with a copy button.</td></tr>
-                <tr><td>Standalone page</td><td>The markdown source, as text. The page is served outside Mattermost, where its markdown renderer is not available, so it shows what the note says rather than a second rendering that could differ.</td></tr>
+                <tr><td>Standalone page</td><td>The markdown source, as text, under a line saying the text was written by whoever made the link and has not been checked: the page carries the server's address, so a note must not read as the server speaking. The page is served outside Mattermost, where its markdown renderer is not available, so it shows what the note says rather than a second rendering that could differ.</td></tr>
             </tbody>
         </table>
 

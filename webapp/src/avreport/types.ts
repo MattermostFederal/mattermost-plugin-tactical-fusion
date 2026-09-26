@@ -1,3 +1,5 @@
+import {asDtgQuery} from '../decorators/dtg';
+
 export const AVREPORT_POST_TYPE = 'custom_tf_avreport';
 
 export const AVREPORT_PROPS_KEY = 'tactical_fusion_avreport';
@@ -126,7 +128,8 @@ function readRow(item: unknown): ReportRow | null {
     if (label === '' || label === null || value === null || query === null) {
         return null;
     }
-    return query === '' ? {label, value} : {label, value, query};
+    const checked = asDtgQuery(query);
+    return checked === '' ? {label, value} : {label, value, query: checked};
 }
 
 function rows(blob: Record<string, unknown>, key: string): ReportRow[] | null {
@@ -231,7 +234,7 @@ export function fromWire(body: unknown): Report | null {
         stationName,
         issued,
         issuedAt,
-        issuedQuery,
+        issuedQuery: asDtgQuery(issuedQuery),
         inferred: flag(blob, 'inferred'),
         summary,
         flags,

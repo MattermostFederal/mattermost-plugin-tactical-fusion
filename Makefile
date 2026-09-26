@@ -332,15 +332,48 @@ map-sources:
 	./build/maptiles/fetch-sources.sh
 
 ## Fetches the upstream security datasets into build/cyberdata/source, which is gitignored,
-## and verifies them against build/cyberdata/sources.lock, then the CISA advisories in
-## build/cyberdata/advisories.txt, which `make cyber-data` needs too. Needs network access;
-## nothing in the build, the tests or the plugin at runtime ever reaches the network.
+## then the CISA advisories in build/cyberdata/advisories.txt, which `make cyber-data` needs
+## too. The GitHub-hosted sources (ATT&CK, the KEV to ATT&CK mappings, MISP warninglists)
+## are fetched at the commits pinned in build/cyberdata/pins.env, and each NVD feed is
+## checked against the sha256 in its .meta. The other feeds publish no digest; they are
+## recorded in source/SOURCES.sha256 and held to row bounds by `make cyber-bounds`. Needs
+## network access; nothing in the build, the tests or the plugin at runtime ever reaches
+## the network.
 ##
 ## Fetches every upstream cyber source, the CISA advisories included
 .PHONY: cyber-sources
 cyber-sources:
 	./build/cyberdata/fetch-sources.sh
 	./build/cyberdata/fetch-advisories.sh
+
+CYBER_PINNED_REPOS := ATTACK_STIX_DATA_COMMIT=mitre-attack/attack-stix-data@master \
+	MAPPINGS_EXPLORER_COMMIT=center-for-threat-informed-defense/mappings-explorer@main \
+	MISP_WARNINGLISTS_COMMIT=MISP/misp-warninglists@main
+
+## Prints each commit pinned in build/cyberdata/pins.env beside its upstream branch head,
+## so a maintainer can bump a pin deliberately by editing that file.
+##
+## Compares the pinned cyber source commits with their upstream heads
+.PHONY: cyber-pins
+cyber-pins:
+	@for entry in $(CYBER_PINNED_REPOS); do \
+		name="$${entry%%=*}"; spec="$${entry#*=}"; repo="$${spec%@*}"; branch="$${spec#*@}"; \
+		pinned="$$(sed -n "s/^$$name=//p" build/cyberdata/pins.env)"; \
+		head="$$(git ls-remote "https://github.com/$$repo.git" "refs/heads/$$branch" | cut -f1)"; \
+		if [ -z "$$head" ]; then echo "error: could not read the head of $$repo $$branch" >&2; exit 1; fi; \
+		if [ "$$pinned" = "$$head" ]; then state=current; else state="behind $$branch $$head"; fi; \
+		echo "$$name $$pinned $$state"; \
+	done
+
+## Fails when a regenerated cyber dataset is below its row floor or shrank more than its
+## bound against the committed copy (git HEAD), so a truncated or poisoned download of a
+## live feed fails the release rather than shipping. CYBER_ALLOW_SHRINK=1 keeps the floors
+## and waives the shrink bound, for an upstream confirmed to have shrunk.
+##
+## Checks the regenerated cyber datasets against their row bounds
+.PHONY: cyber-bounds
+cyber-bounds:
+	./build/cyberdata/check-bounds.sh
 
 ## Rebuilds the cyber datasets from the sources above: the two embedded catalogs and the
 ## bundled KEV, CWE detail, ATT&CK detail, CAPEC, CVE to ATT&CK and KEV-only CVE files into the tree, and the large ones into build/cyberdata/out for release
@@ -404,7 +437,8 @@ cyber-package:
 ## Fetches every cyber source afresh and rebuilds all of the data from it: the ATT&CK and
 ## CWE catalogs compiled into the plugin and every file bundled under assets/cyber, in the
 ## working tree, and the downloadable datasets into build/cyberdata/out. SOURCES.sha256 in
-## out records the digest of each source this run read. `make release` runs it after
+## out records the digest of each source this run read, and `cyber-bounds` fails the run
+## on a dataset out of bounds before anything is packaged. `make release` runs it after
 ## release-check, so a release ships current data and its tests run against that data;
 ## set CYBER_REFRESH=0 to release the committed data instead. The one exception is
 ## advisory.tsv: each CISA advisory is a fixed, published document, and www.cisa.gov
@@ -416,7 +450,7 @@ cyber-package:
 cyber-refresh:
 	@mkdir -p build/cyberdata/out
 	rm -f build/cyberdata/out/SOURCES.sha256
-	SOURCES_LOCK="$(CURDIR)/build/cyberdata/out/SOURCES.sha256" ./build/cyberdata/fetch-sources.sh
+	SOURCES_MANIFEST="$(CURDIR)/build/cyberdata/out/SOURCES.sha256" ./build/cyberdata/fetch-sources.sh
 	./build/cyberdata/fetch-geo.sh
 	$(GO) run ./build/cyberdata -only attack,cwe,attackdetail,cwedetail,capec,cveattack,epss
 	$(GO) run ./build/cyberdata -only kev -label "CISA KEV catalog $$(sed -n 's/.*"catalogVersion": *"\([^"]*\)".*/\1/p' build/cyberdata/source/known_exploited_vulnerabilities.json | head -1)"
@@ -430,6 +464,7 @@ cyber-refresh:
 	$(GO) run ./build/cyberdata -only hashlists \
 		-label "MISP warninglists $$(cut -c1-12 build/cyberdata/source/misp-warninglists/COMMIT), fetched $$(date -u +%Y-%m-%d)"
 	gzip -9 -n -c build/cyberdata/out/netlists.tsv > assets/cyber/netlists.tsv.gz
+	./build/cyberdata/check-bounds.sh
 
 CYBER_RELEASE_DATASETS := cve cvedetail
 CYBER_RELEASE_DIR := build/cyberdata/release

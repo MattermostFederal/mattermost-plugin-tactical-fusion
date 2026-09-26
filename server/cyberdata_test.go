@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -127,6 +128,15 @@ func TestEachUnusableFileReportsItsOwnCode(t *testing.T) {
 				_ = os.WriteFile(filepath.Join(dir, "GeoLite2-ASN"+intel.MMDBSuffix), []byte("nope"), 0o600)
 			},
 			code: errcode.CyberDataMMDBUnreadable,
+		},
+		"a watchlist larger than this build loads": {
+			write: func(dir string) {
+				path := filepath.Join(dir, intel.NameWatchlist+intel.Suffix)
+				stamp := fmt.Sprintf("%s%d\t%s\t2026-09-01T00:00:00Z\ttest\n", intel.SchemaPrefix, intel.SchemaVersion, intel.NameWatchlist)
+				_ = os.WriteFile(path, []byte(stamp), 0o600)
+				_ = os.Truncate(path, intel.MaxWatchlistBytes+int64(len(stamp))+2)
+			},
+			code: errcode.CyberDataWatchlistTooLarge,
 		},
 		"an archive that will not unpack": {
 			write: func(dir string) {
@@ -311,4 +321,165 @@ func TestAForgetReleasesTheRefreshGuard(t *testing.T) {
 	if p.cyber.refreshing {
 		t.Fatal("a forget left the refresh guard set, so no later change could ever reopen the datasets")
 	}
+}
+
+const log4shellKEVRow = "CVE-2021-44228\t2021-12-10\t2021-12-24\tKnown\tApache Log4j2\tApply updates."
+
+func waitFor(t *testing.T, what string, done func() bool) {
+	t.Helper()
+
+	deadline := time.Now().Add(5 * time.Second)
+	for !done() {
+		if time.Now().After(deadline) {
+			t.Fatal(what)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func reopenedCyberSet(t *testing.T, retireAfter time.Duration) (*Plugin, *intel.Set) {
+	t.Helper()
+
+	dir := t.TempDir()
+	writeKEV(t, dir, log4shellKEVRow)
+	p := withDatasetDir(t, dir)
+	p.cyber.retireAfter = retireAfter
+
+	old := p.cyberIntel()
+	if _, err := old.KEV("CVE-2021-44228"); err != nil {
+		t.Fatalf("the first set did not answer: %v", err)
+	}
+
+	p.reloadCyberDatasets()
+	waitFor(t, "the reload never replaced the set", func() bool { return p.cyberIntel() != old })
+
+	return p, old
+}
+
+func TestAReplacedSetIsClosedOnceItsGraceHasPassed(t *testing.T) {
+	p, old := reopenedCyberSet(t, 10*time.Millisecond)
+
+	waitFor(t, "the replaced set was never closed, so its handles leak until a finalizer runs", func() bool {
+		_, err := old.KEV("CVE-2021-44228")
+		return errors.Is(err, intel.ErrRetired)
+	})
+
+	if _, err := p.cyberIntel().KEV("CVE-2021-44228"); err != nil {
+		t.Fatalf("closing the replaced set disturbed the current one: %v", err)
+	}
+}
+
+func TestAReplacedSetKeepsAnsweringAReaderThatAlreadyHoldsIt(t *testing.T) {
+	_, old := reopenedCyberSet(t, time.Hour)
+
+	if _, err := old.KEV("CVE-2021-44228"); err != nil {
+		t.Fatalf("a reader holding the replaced set lost it inside the grace: %v", err)
+	}
+}
+
+func TestAForgottenSetIsClosedOnceItsGraceHasPassed(t *testing.T) {
+	dir := t.TempDir()
+	writeKEV(t, dir, log4shellKEVRow)
+	p := withDatasetDir(t, dir)
+	p.cyber.retireAfter = 10 * time.Millisecond
+
+	old := p.cyberIntel()
+	p.forgetCyberDatasets()
+
+	waitFor(t, "a forgotten set was never closed", func() bool {
+		_, err := old.KEV("CVE-2021-44228")
+		return errors.Is(err, intel.ErrRetired)
+	})
+}
+
+func TestTheFirstOpenDoesNotHoldTheLockAndItsWaitersGetItsSet(t *testing.T) {
+	dir := t.TempDir()
+	writeKEV(t, dir, log4shellKEVRow)
+	p := withDatasetDir(t, dir)
+
+	opening := make(chan struct{})
+	p.cyber.lock.Lock()
+	p.cyber.opening = opening
+	p.cyber.lock.Unlock()
+
+	dirs := p.cyberDirs()
+	got := make(chan *intel.Set, 1)
+	go func() { got <- p.cyberIntelFor(dirs) }()
+
+	select {
+	case <-got:
+		t.Fatal("a caller did not wait for the open already underway")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	if !p.cyber.lock.TryLock() {
+		t.Fatal("the lock was held while the first open was underway")
+	}
+	p.cyber.opening = nil
+	p.cyber.lock.Unlock()
+	close(opening)
+
+	select {
+	case set := <-got:
+		if !set.Has(intel.NameKEV) {
+			t.Fatal("the waiter came back with no datasets")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the waiter never woke once the open finished")
+	}
+}
+
+func TestConcurrentFirstCallersShareOneOpen(t *testing.T) {
+	dir := t.TempDir()
+	writeKEV(t, dir, log4shellKEVRow)
+	p := withDatasetDir(t, dir)
+
+	dirs := p.cyberDirs()
+	const callers = 16
+	sets := make(chan *intel.Set, callers)
+	for range callers {
+		go func() { sets <- p.cyberIntelFor(dirs) }()
+	}
+
+	first := <-sets
+	for range callers - 1 {
+		if set := <-sets; set != first {
+			t.Fatal("concurrent first callers each opened their own set")
+		}
+	}
+}
+
+func TestAFirstOpenThatAForgetOvertookIsNotInstalledAndIsRetired(t *testing.T) {
+	dir := t.TempDir()
+	writeKEV(t, dir, log4shellKEVRow)
+	p := withDatasetDir(t, dir)
+	p.cyber.retireAfter = 10 * time.Millisecond
+
+	opening := make(chan struct{})
+	p.cyber.lock.Lock()
+	p.cyber.opening = opening
+	generation := p.cyber.generation
+	p.cyber.lock.Unlock()
+
+	p.forgetCyberDatasets()
+
+	set := p.openFirstCyberSet(p.cyberDirs(), opening, generation)
+
+	p.cyber.lock.Lock()
+	installed, stillOpening := p.cyber.set, p.cyber.opening
+	p.cyber.lock.Unlock()
+	if installed != nil {
+		t.Fatal("a first open started before a forget was installed after it")
+	}
+	if stillOpening != nil {
+		t.Fatal("the first open left its marker behind, so every later caller would wait forever")
+	}
+
+	if _, err := set.KEV("CVE-2021-44228"); err != nil && !errors.Is(err, intel.ErrRetired) {
+		t.Fatalf("the caller that opened it could not read it: %v", err)
+	}
+	waitFor(t, "a first open nobody installed was never closed", func() bool {
+		_, err := set.KEV("CVE-2021-44228")
+		return errors.Is(err, intel.ErrRetired)
+	})
 }

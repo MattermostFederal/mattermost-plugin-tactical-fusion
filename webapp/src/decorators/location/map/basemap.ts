@@ -142,7 +142,7 @@ interface Probe {
  * actually differs between archives is the URL, the zoom rule, and whether a
  * transient failure is worth saying anything about.
  */
-function createProbe(url: () => string, zooms: ZoomRule, onTransient?: (url: string) => void): Probe {
+function createProbe(url: () => string, zooms: ZoomRule, credentials: RequestCredentials, onTransient?: (url: string) => void): Probe {
     let cached: Archive | null = null;
     let inFlight: Promise<Archive | null> | null = null;
     let failed = false;
@@ -159,7 +159,7 @@ function createProbe(url: () => string, zooms: ZoomRule, onTransient?: (url: str
         }
 
         const target = url();
-        const attempt = probeArchive(target, zooms).then((result) => {
+        const attempt = probeArchive(target, zooms, credentials).then((result) => {
             if (result.archive) {
                 cached = result.archive;
             } else if (result.definitive) {
@@ -195,7 +195,7 @@ function createProbe(url: () => string, zooms: ZoomRule, onTransient?: (url: str
     };
 }
 
-const globalProbe = createProbe(basemapUrl, globalZooms);
+const globalProbe = createProbe(basemapUrl, globalZooms, 'omit');
 
 /** One probe per package, kept for the life of the tab as the global one is. */
 const packageProbes = new Map<string, Probe>();
@@ -203,7 +203,7 @@ const packageProbes = new Map<string, Probe>();
 function packageProbe(name: string): Probe {
     let probe = packageProbes.get(name);
     if (!probe) {
-        probe = createProbe(() => packageUrl(name), detailZooms, (target) => {
+        probe = createProbe(() => packageUrl(name), detailZooms, 'same-origin', (target) => {
             // eslint-disable-next-line no-console
             console.warn('[tactical-fusion] detail package unreachable, retrying on the next map', target);
         });
@@ -274,15 +274,13 @@ function settled(archive: Archive | null): Attempt {
     return {archive, definitive: true};
 }
 
-async function probeArchive(url: string, zooms: ZoomRule): Promise<Attempt> {
+async function probeArchive(url: string, zooms: ZoomRule, credentials: RequestCredentials): Promise<Attempt> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
     try {
         const response = await fetch(url, {
-
-            // A static asset needs no session, and sending one is not free.
-            credentials: 'omit',
+            credentials,
             signal: controller.signal,
             headers: {Range: `bytes=0-${HEADER_BYTES - 1}`},
         });

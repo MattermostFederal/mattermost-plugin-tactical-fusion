@@ -11,6 +11,23 @@ mkdir -p "$DEST"
 rm -f "$DEST"/*.part
 
 sha() { shasum -a 256 "$1" 2>/dev/null | cut -d' ' -f1 || sha256sum "$1" | cut -d' ' -f1; }
+md5_of() { md5sum "$1" 2>/dev/null | cut -d' ' -f1 || md5 -q "$1"; }
+
+verify_published_md5() {
+    local out="$1" url="$2" want got
+    want=$(curl -fsSL --retry 3 "${url}.md5" | awk 'NR == 1 { print tolower($1) }')
+    if ! echo "$want" | grep -Eq '^[0-9a-f]{32}$'; then
+        echo "error: Geofabrik published no md5 for ${url##*/}" >&2
+        return 1
+    fi
+    got=$(md5_of "$out")
+    if [ "$got" != "$want" ]; then
+        echo "error: ${url##*/} does not match the md5 Geofabrik publishes beside it" >&2
+        echo "  expected $want" >&2
+        echo "  got      $got" >&2
+        return 1
+    fi
+}
 
 all_extracts=$(grep -v '^#' "$REGIONS" |
     awk 'NF { n = split($3, a, ","); for (i = 1; i <= n; i++) print a[i] }' |
@@ -65,15 +82,22 @@ if [ "${UPDATE_LOCK:-}" = "1" ] || [ ! -f "$LOCK" ]; then
             file=$(basename "$dated")
         fi
         out="$DEST/$file"
+        fresh=0
 
         if [ ! -f "$out" ]; then
             echo "fetching ${file}"
             curl -fsSL --retry 3 -o "${out}.part" "$dated"
             mv "${out}.part" "$out"
+            fresh=1
         fi
 
         head -c 16 "$out" | grep -qa OSMHeader || {
             echo "error: ${file} is not a PBF; a proxy or portal may have answered" >&2
+            exit 1
+        }
+
+        verify_published_md5 "$out" "$dated" || {
+            [ "$fresh" = 1 ] && rm -f "$out"
             exit 1
         }
 

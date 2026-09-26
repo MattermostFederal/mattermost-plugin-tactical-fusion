@@ -29,6 +29,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_ACTION: ${{ github.event.action }}
+          EVENT_LABEL: ${{ github.event.label.name }}
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           echo "have_bundle=false" >> "$GITHUB_OUTPUT"
@@ -41,6 +44,11 @@ jobs:
           head_repo="$(jq -r '.head.repo.full_name // ""' <<<"$pr")"
           { [ "$state" = "open" ] && [ "$labeled" = "true" ]; } || fail "preview not requested"
           [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || fail "unexpected head sha"
+          [ "$sha" = "$EVENT_HEAD_SHA" ] || fail "the pull request head moved after this event"
+          if [ "$head_repo" != "$GH_REPO" ]; then
+            { [ "$EVENT_ACTION" = "labeled" ] && [ "$EVENT_LABEL" = "preview" ]; } \
+              || fail "a fork deploys only when the preview label is applied; remove and re-apply it to deploy ${sha:0:12}"
+          fi
 
           deadline=$((SECONDS + 1800))
           run_id=""
@@ -76,6 +84,10 @@ jobs:
           listing="$(timeout 60 tar -tzvf "$intake/bundle.tar.gz" | head -c 1048576)"
           if printf '%s\n' "$listing" | awk '{print substr($1,1,1)}' | grep -qv '^[-d]$'; then
             fail "bundle contains members that are not regular files or directories"
+          fi
+          timeout 60 tar -tzf "$intake/bundle.tar.gz" > "$intake/members" || fail "bundle members could not be listed"
+          if grep -qE '(^/|(^|/)\.\.(/|$))' "$intake/members"; then
+            fail "bundle contains an absolute path or a parent directory reference"
           fi
           topdir="$(printf '%s\n' "$listing" | awk '{print $NF}' | cut -d/ -f1 | sort -u)"
           [ "$(wc -l <<<"$topdir")" -eq 1 ] || fail "bundle must have exactly one top-level directory"

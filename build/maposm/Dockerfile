@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21-jdk-noble
+FROM eclipse-temurin:21-jdk-noble@sha256:d0aa6704a67ac080591815bb7734dbe56171dd7a8e9b767e9989b95dd37b3085
 
 ARG TIPPECANOE_VERSION=2.78.0
 ARG PLANETILER_OMT_VERSION=v3.16

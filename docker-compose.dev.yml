@@ -22,7 +22,7 @@ services:
     image: mattermost/mattermost-enterprise-edition:${MATTERMOST_IMAGE_TAG:-latest}
     restart: unless-stopped
     ports:
-      - "${MM_PORT:-8065}:8065"
+      - "127.0.0.1:${MM_PORT:-8065}:8065"
     volumes:
       - ./docker/mattermost/config:/mattermost/config:rw
       - ./docker/mattermost/data:/mattermost/data:rw

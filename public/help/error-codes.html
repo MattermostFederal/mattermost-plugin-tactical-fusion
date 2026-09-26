@@ -270,6 +270,11 @@
                     <td><code>There is no map here.</code> The one answer <code>/map?airport=</code> gives for every way it can decline: a value that is not four upper-case letters, and an airfield code this build's database does not hold. One code, as the post address has one, so the address cannot be used to probe the database a code at a time.</td>
                 </tr>
                 <tr>
+                    <td><code>TF-12010</code></td>
+                    <td><code>HTTPPackageNotAuthorized</code> <span class="level">401</span></td>
+                    <td><code>Not authorized.</code> A detail map package was requested without a Mattermost session. Packages are served only to signed-in readers, so which areas an install holds is not visible to anyone who can reach the server. It answers rather than redirecting, because the map fetches tiles in the background and could not follow a sign-in page.</td>
+                </tr>
+                <tr>
                     <td><code>TF-12008</code></td>
                     <td><code>HTTPMapPostUnavailable</code> <span class="level">404</span></td>
                     <td><code>There is no map here.</code> The one answer <code>/map?post=</code> gives for every way it can decline: no such post, a post in a channel you may not read, a post this plugin never rendered, and a post whose card has stood down because it was edited or its attachment is gone. They are deliberately one code, so the address cannot be used to find out which.</td>
@@ -500,6 +505,16 @@
                     <td><code>TF-16011</code></td>
                     <td><code>CommandPostNotPermitted</code></td>
                     <td><code>You cannot post in this channel, so this command cannot post for you.</code> <a href="commands.html#examples"><code>examples</code></a> and <a href="commands.html#note"><code>note</code></a> post as you, so each first checks that you may post in the channel. A read-only or moderated channel is the usual cause. Nothing was posted.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-16012</code></td>
+                    <td><code>CommandExamplesCoolingDown</code></td>
+                    <td><code>The examples were posted less than a minute ago. Try again in a minute.</code> <code>examples</code> posts about twenty messages, so each user may run it once a minute, across every node in the cluster. Nothing was posted.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-16013</code></td>
+                    <td><code>CommandExamplesCooldownUnavailable</code> <span class="level">Warn</span></td>
+                    <td>Logged when the plugin key-value store could not record an <code>examples</code> run. The examples are posted anyway, without the once a minute limit, because a storage fault must not take the command away.</td>
                 </tr>
             </tbody>
         </table>
@@ -779,6 +794,11 @@
                     <td><code>MCPCyberInvalid</code> <span class="level">Tool error</span></td>
                     <td><code>Give between 1 and 25 indicators.</code> The <code>lookup_cyber_indicator</code> tool was given no indicators, or more than 25. An indicator in the list that is not a CVE, CWE, ATT&amp;CK id, IP address or file hash is not this: it is answered as not recognized, and the others in the list are still looked up.</td>
                 </tr>
+                <tr>
+                    <td><code>TF-20017</code></td>
+                    <td><code>MCPDecorateTooLong</code> <span class="level">Tool error</span></td>
+                    <td><code>Give a message of at most 64 KiB.</code> The <code>decorate_text</code> tool was given a message longer than 64 KiB, the same limit the bridge and the API place on a decorate request. Split the text and decorate each part.</td>
+                </tr>
             </tbody>
         </table>
 
@@ -832,6 +852,11 @@
                     <td><code>TF-21006</code></td>
                     <td><code>CyberDataUnpackFailed</code> <span class="level">log</span></td>
                     <td>A gzipped dataset such as <code>cve.tsv.gz</code> could not be unpacked beside itself: the archive is truncated or corrupt, it unpacks to more than 2 GiB, or the server cannot write to the directory. Any <code>cve.tsv</code> already there is left as it was. Re-copy the archive, make the directory writable by the Mattermost server, or unpack it yourself with <code>gunzip -k</code> and the plugin reads the result.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-21007</code></td>
+                    <td><code>CyberDataWatchlistTooLarge</code> <span class="level">log</span></td>
+                    <td>A <code>watchlist.tsv</code> is larger than 64 MiB. The watchlist is held in memory, unlike the other datasets, so a file over that size is skipped rather than loaded and no watchlist verdicts are shown. Trim the watchlist to the indicators you are tracking now.</td>
                 </tr>
             </tbody>
         </table>

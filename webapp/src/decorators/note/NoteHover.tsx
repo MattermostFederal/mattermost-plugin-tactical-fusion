@@ -18,7 +18,10 @@ const NoteHover: React.FC<{payload: NotePayload}> = ({payload}) => (
         style={styles.body}
         data-testid='note-hover'
     >
-        <NoteMarkdown markdown={payload.markdown}/>
+        <NoteMarkdown
+            markdown={payload.markdown}
+            images={false}
+        />
     </div>
 );
 

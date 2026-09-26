@@ -82,8 +82,14 @@ The short list of things that break something real if you get them wrong.
 **Decoration rewrites the stored message.** It is permanent, it lands in
 exports, and it survives uninstall. Nothing on that path may ever stop somebody
 from posting: a panic is recovered, an over-long result is skipped, and the
-recover logs through an API handle captured before the deferred call. There is
-no `MessageWillBeUpdated` hook and a test asserts it stays absent.
+recover logs through an API handle captured before the deferred call.
+
+**An edit keeps its text and loses nothing the plugin wrote.**
+`MessageWillBeUpdated` never rewrites or re-decorates the message. It puts back
+the old post's plugin-owned type and every `tactical_fusion*` props key, because
+core keeps `Post.Type` on a `PATCH`, replaces the props, and sets `edit_at` only
+when the message changes: without it a props-only edit forges a card that every
+`edit_at` check reads as genuine. Tests assert both halves.
 
 **`findProtectedRanges` is the entire safety story.** Anything it fails to
 recognize is a corruption bug. Widen it only with a regression test per
@@ -120,9 +126,11 @@ why decorators stay registered with everything off. Maps are the deliberate
 exception and the `Formats` doc comment names it.
 
 **`Page.Capability` decides the whole CSP.** `PageStatic` is what a page should
-want; `PageMapping` gives back `script-src 'self'`, `worker-src`, `img-src data:`
-and `connect-src 'self'` and makes escaping the only defense on a route that
-echoes author text. `ScriptSrc` must be relative.
+want; `PageMapping` gives back a per-response `'nonce-...' 'strict-dynamic'`
+script source for the bundle, `worker-src`, `img-src data:` and `connect-src
+'self'`. Never `script-src 'self'`: it would let any same-origin URL that
+answers with script, including another plugin's, run on a route that echoes
+author text. `ScriptSrc` must be relative.
 
 **A map that cannot become ready must say so.** MapLibre tiles in a worker, so a
 worker that never arrives leaves `load` unfired and raises no error: the note sat

@@ -582,7 +582,7 @@ func TestUTMSwitchedOffStillRendersTheUTMRow(t *testing.T) {
 // Answering "" here rather than gating in the hook is what keeps the stamp from
 // being written at all, and the stamp is the expensive half: Elasticsearch and
 // OpenSearch index a custom_* post and then never match it, and Post.Type
-// survives every edit once set, with no MessageWillBeUpdated hook to clear one.
+// survives every edit once set, and the update hook keeps it rather than clearing it.
 func TestPostTypeIsEmptyWhenTheInlineMapIsOff(t *testing.T) {
 	for _, tc := range []struct {
 		name string

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -64,6 +63,8 @@ type fakeAPI struct {
 	kvGetErr    *model.AppError
 	kvSetErr    *model.AppError
 	kvDeleteErr *model.AppError
+
+	kvSetOptions *model.PluginKVSetOptions
 
 	// published records every cluster event, so a test can prove that saving
 	// tells the other nodes to drop their copy.
@@ -334,6 +335,19 @@ func (a *fakeAPI) KVSet(key string, value []byte) *model.AppError {
 	}
 	a.kv[key] = value
 	return nil
+}
+
+func (a *fakeAPI) KVSetWithOptions(key string, value []byte, options model.PluginKVSetOptions) (bool, *model.AppError) {
+	if a.kvSetOptions != nil {
+		*a.kvSetOptions = options
+	}
+	if a.kvSetErr != nil {
+		return false, a.kvSetErr
+	}
+	if _, exists := a.kv[key]; exists && options.Atomic && options.OldValue == nil {
+		return false, nil
+	}
+	return true, a.KVSet(key, value)
 }
 
 func (a *fakeAPI) KVDelete(key string) *model.AppError {
@@ -845,15 +859,6 @@ func TestDecoratePostRecoversFromPanic(t *testing.T) {
 	}
 }
 
-// Edits are passed through verbatim. This asserts the decision structurally, so
-// re-adding the hook cannot happen by accident: doing so would reintroduce the
-// unwrap-and-re-decorate problem the design deliberately removed.
-func TestPluginHasNoMessageWillBeUpdatedHook(t *testing.T) {
-	if _, exists := reflect.TypeFor[*Plugin]().MethodByName("MessageWillBeUpdated"); exists {
-		t.Fatal("Plugin implements MessageWillBeUpdated; edits must be stored verbatim, see the plan's revision 2c")
-	}
-}
-
 // withFormats returns a plugin configured with exactly these switches, so a
 // test controls every one of them including the parent.
 func withFormats(t *testing.T, config configuration) *Plugin {
@@ -1108,8 +1113,8 @@ func TestDecoratePostCarriesTheAuthorsTextOnlyWhenItDiffers(t *testing.T) {
 // The stamp is what costs the post its Elasticsearch and OpenSearch matches, so
 // skipping it is the substance of the switch rather than a tidy-up: leaving the
 // Type on and merely declining to draw would keep every one of those costs and
-// buy nothing. Post.Type also survives every edit once it is set, and there is
-// deliberately no MessageWillBeUpdated hook to clear one, so this is the only
+// buy nothing. Post.Type also survives every edit once it is set, and
+// MessageWillBeUpdated keeps it rather than clearing it, so this is the only
 // moment the decision can be made.
 func TestDecoratePostDoesNotStampWhenTheInlineMapIsOff(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)

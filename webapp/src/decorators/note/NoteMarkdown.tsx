@@ -15,13 +15,21 @@ const styles: Record<string, React.CSSProperties> = {
     },
 };
 
-function rendered(markdown: string): React.ReactNode | null {
+function withoutImages(html: string): string {
+    const template = document.createElement('template');
+    template.innerHTML = html;
+    template.content.querySelectorAll('img').forEach((img) => img.replaceWith(img.getAttribute('alt') ?? ''));
+    return template.innerHTML;
+}
+
+function rendered(markdown: string, images: boolean): React.ReactNode | null {
     const utils = window.PostUtils;
     if (!utils) {
         return null;
     }
     try {
-        const html = utils.formatText(markdown, {atMentions: false, mentionHighlight: false, markdown: true, proxyImages: hasImageProxy()});
+        const formatted = utils.formatText(markdown, {atMentions: false, mentionHighlight: false, markdown: true, proxyImages: hasImageProxy()});
+        const html = images ? formatted : withoutImages(formatted);
         const node = utils.messageHtmlToComponent(html, RENDER_OPTIONS);
         return node === undefined || node === null || node === '' ? null : node;
     } catch {
@@ -36,8 +44,8 @@ const Source: React.FC<{markdown: string}> = ({markdown}) => (
     >{markdown}</pre>
 );
 
-const NoteMarkdown: React.FC<{markdown: string}> = ({markdown}) => {
-    const node = rendered(markdown);
+const NoteMarkdown: React.FC<{markdown: string; images?: boolean}> = ({markdown, images = true}) => {
+    const node = rendered(markdown, images);
 
     if (node === null) {
         return <Source markdown={markdown}/>;

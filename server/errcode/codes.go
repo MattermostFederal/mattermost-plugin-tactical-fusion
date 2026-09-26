@@ -162,6 +162,8 @@ const (
 
 	HTTPMapAirportUnavailable = 12009
 
+	HTTPPackageNotAuthorized = 12010
+
 	// server/api.go (13000-13999)
 
 	// APINotAuthorized is returned when a request to the authenticated API
@@ -310,6 +312,10 @@ const (
 
 	CommandPostNotPermitted = 16011
 
+	CommandExamplesCoolingDown = 16012
+
+	CommandExamplesCooldownUnavailable = 16013
+
 	// server/decorators/ (17000-17999)
 
 	// DTGPageParamsInvalid is returned by the date-time group page for a link
@@ -409,6 +415,8 @@ const (
 
 	MCPCyberInvalid = 20016
 
+	MCPDecorateTooLong = 20017
+
 	// server/cyberdata.go (21000-21999)
 
 	// CyberDataNoBundlePath reports that the plugin cannot locate its own
@@ -446,6 +454,8 @@ const (
 	// this build accepts, or a directory the server cannot write to. The
 	// uncompressed file already there, if any, is left as it was.
 	CyberDataUnpackFailed = 21006
+
+	CyberDataWatchlistTooLarge = 21007
 )
 
 // AllCodes lists every code declared above. TestAllCodesComplete enforces that
@@ -490,6 +500,7 @@ var AllCodes = []int{
 	HTTPPackageUnreadable,
 	HTTPMapPostUnavailable,
 	HTTPMapAirportUnavailable,
+	HTTPPackageNotAuthorized,
 
 	APINotAuthorized,
 	APINotFound,
@@ -529,6 +540,8 @@ var AllCodes = []int{
 	CommandNoteTooLong,
 	CommandNotePostFailed,
 	CommandPostNotPermitted,
+	CommandExamplesCoolingDown,
+	CommandExamplesCooldownUnavailable,
 
 	DTGPageParamsInvalid,
 	LocationPageParamsInvalid,
@@ -576,6 +589,7 @@ var AllCodes = []int{
 	MCPCreateCotInvalid,
 	MCPCreateGeoJSONInvalid,
 	MCPCyberInvalid,
+	MCPDecorateTooLong,
 
 	CyberDataNoBundlePath,
 	CyberDataUnreadable,
@@ -584,4 +598,5 @@ var AllCodes = []int{
 	CyberDataMMDBUnreadable,
 	CyberDataLookupFailed,
 	CyberDataUnpackFailed,
+	CyberDataWatchlistTooLarge,
 }

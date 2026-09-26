@@ -1,8 +1,14 @@
 package intel
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 )
+
+const MaxWatchlistBytes = 64 << 20
+
+var ErrWatchlistTooLarge = errors.New("cyber: the watchlist is larger than this build loads")
 
 type WatchEntry struct {
 	Value   string
@@ -28,6 +34,10 @@ func KnownVerdict(verdict string) bool {
 }
 
 func loadWatchlist(d *Dataset) error {
+	if body := d.file.size - d.file.bodyStart; body > MaxWatchlistBytes {
+		return fmt.Errorf("%w: %d bytes, the limit is %d", ErrWatchlistTooLarge, body, MaxWatchlistBytes)
+	}
+
 	entries := map[string][]WatchEntry{}
 
 	at := d.file.bodyStart

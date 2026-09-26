@@ -1,6 +1,7 @@
 package decorators
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
@@ -55,6 +56,8 @@ type Page struct {
 	// Capability is how much of default-src 'none' this page gives back. The
 	// zero value gives back nothing. See CLAUDE.md, "The page content policy".
 	Capability PageCapability
+
+	nonce string
 }
 
 type PageCapability int
@@ -79,8 +82,8 @@ func (p Page) styleCSS() string {
 
 func (p Page) scriptPolicy() string {
 	sources := ""
-	if p.Capability == PageMapping {
-		sources = " 'self'"
+	if p.scriptSrc() != "" && p.nonce != "" {
+		sources = " 'nonce-" + p.nonce + "' 'strict-dynamic'"
 	}
 
 	js := p.scriptJS()
@@ -139,7 +142,7 @@ func (p Page) scriptTag() string {
 	out := ""
 
 	if src := p.scriptSrc(); src != "" {
-		out += `<script src="` + html.EscapeString(src) + `" defer></script>`
+		out += `<script src="` + html.EscapeString(src) + `" nonce="` + p.nonce + `" defer></script>`
 	}
 
 	if js := p.scriptJS(); js != "" {
@@ -254,6 +257,9 @@ footer { margin-top: 32px; color: var(--muted); font-size: 12px; }
 // framework-wide default of "public" would be wrong the moment a decorator
 // carries anything that is not.
 func WritePage(w http.ResponseWriter, p Page) {
+	if p.scriptSrc() != "" {
+		p.nonce = rand.Text()
+	}
 	setPageHeaders(w, p)
 	writePageBody(w, p)
 }

@@ -565,6 +565,15 @@ func overlapsAny(r byteRange, ranges []byteRange) bool {
 	return slices.ContainsFunc(ranges, r.overlaps)
 }
 
+func firstEndingAfter(start int, disjoint []byteRange) int {
+	return sort.Search(len(disjoint), func(i int) bool { return disjoint[i].end > start })
+}
+
+func overlapsDisjoint(r byteRange, disjoint []byteRange) bool {
+	i := firstEndingAfter(r.start, disjoint)
+	return i < len(disjoint) && disjoint[i].overlaps(r)
+}
+
 // findCandidates runs every registered pattern and keeps the matches that are
 // outside protected ranges, whose boundaries their pattern accepts, and that
 // their decorator accepts.
@@ -583,7 +592,7 @@ func (t *Tagger) findCandidates(message string, ref time.Time, protected []byteR
 			}
 			for _, loc := range p.Regexp.FindAllStringSubmatchIndex(message, -1) {
 				match := byteRange{loc[0], loc[1]}
-				if overlapsAny(match, protected) {
+				if overlapsDisjoint(match, protected) {
 					continue
 				}
 
@@ -702,25 +711,30 @@ func resolveOverlaps(candidates []candidate) []candidate {
 	var accepted []candidate
 	var claimed []byteRange
 	for _, c := range candidates {
-		if overlapsAny(c.replace, claimed) {
+		i := firstEndingAfter(c.replace.start, claimed)
+		if i < len(claimed) && claimed[i].overlaps(c.replace) {
 			continue
 		}
 		accepted = append(accepted, c)
-		claimed = append(claimed, c.replace)
+		claimed = slices.Insert(claimed, i, c.replace)
 	}
 
 	return accepted
 }
 
-// applyReplacements rewrites right to left so earlier indices stay valid.
 func (t *Tagger) applyReplacements(message string, accepted []candidate) string {
-	sort.Slice(accepted, func(i, j int) bool { return accepted[i].replace.start > accepted[j].replace.start })
+	sort.Slice(accepted, func(i, j int) bool { return accepted[i].replace.start < accepted[j].replace.start })
 
-	result := message
+	var result strings.Builder
+	result.Grow(len(message))
+	written := 0
 	for _, c := range accepted {
-		result = result[:c.replace.start] + t.LinkFor(c.typ, c.label, c.params) + result[c.replace.end:]
+		result.WriteString(message[written:c.replace.start])
+		result.WriteString(t.LinkFor(c.typ, c.label, c.params))
+		written = c.replace.end
 	}
-	return result
+	result.WriteString(message[written:])
+	return result.String()
 }
 
 func (t *Tagger) LinkFor(typ, label string, params url.Values) string {
