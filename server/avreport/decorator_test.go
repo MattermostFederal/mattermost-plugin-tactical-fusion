@@ -251,14 +251,14 @@ func TestRenderPageShowsTheDecodeAndEscapes(t *testing.T) {
 		t.Errorf("policy = %q, want script-src 'none'", got)
 	}
 
-	hostile := "METAR KJFK 221651Z 28012KT 10SM FEW250 24/12 A3012 <script>alert(1)</script>"
+	hostile := "METAR KJFK 221651Z 28012KT 10SM FEW250 24/12 A3012 <SCRIPT>ALERT(1)</SCRIPT>"
 	hostileParams, ok := (&Decorator{}).Parse(hostile, ref)
 	if !ok {
 		t.Fatal("the hostile report was refused, so escaping was not exercised")
 	}
 	rec = httptest.NewRecorder()
 	(&Decorator{}).RenderPage(rec, hostileParams)
-	if strings.Contains(rec.Body.String(), "<script>") {
+	if strings.Contains(rec.Body.String(), "<SCRIPT>") {
 		t.Error("author text reached the page as markup")
 	}
 }

@@ -240,6 +240,7 @@
                 <tr><td><code>the METAR is late</code></td><td>The keyword alone is a word. A station and a time group have to follow it.</td></tr>
                 <tr><td><code>wx:METAR PHNL ...</code></td><td>A colon touching the keyword fails the <a href="formats.html#boundaries">clean-edge rule</a>. Put a space after the label.</td></tr>
                 <tr><td>A METAR inside a fenced or inline code span</td><td>Code is <a href="formats.html#protected">never rewritten</a>. Label the fence <code>metar</code> to get a card.</td></tr>
+                <tr><td>A report followed by your own words, such as <code>please divert</code> or an <code>@mention</code></td><td>Lower case, or markdown such as <code>@</code>, <code>*</code> or <code>[</code> in a report posted on its own, means the message is more than the report. Your words are left as you wrote them rather than folded into the table. Fence the report to get a card.</td></tr>
                 <tr><td>A three-line TAF in the middle of a longer message</td><td>Neither linked nor rendered; see <a href="#reports-card">above</a>.</td></tr>
                 <tr><td>A report over 2,048 characters or 64 lines</td><td>Longer than any report a station issues, so refused rather than read.</td></tr>
                 <tr><td>SNOWTAM, PIREP, SIGMET, AIRMET</td><td>Not read by this build. A group the vocabulary lacks inside a report that is read is kept verbatim under <em>Not decoded</em>, never guessed at.</td></tr>

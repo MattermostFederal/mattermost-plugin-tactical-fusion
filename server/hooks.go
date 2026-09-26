@@ -92,7 +92,7 @@ func isPluginPostType(postType string) bool {
 }
 
 func isPluginPropsKey(key string) bool {
-	return key == decorators.PostPropsKey || strings.HasPrefix(key, decorators.PostPropsKey+"_")
+	return strings.HasPrefix(key, decorators.PostPropsKey)
 }
 
 // referenceTime is what an undated short-form token is resolved against.

@@ -348,16 +348,32 @@ func findProtectedRanges(message string) []byteRange {
 	return mergeRanges(ranges)
 }
 
-// blockRanges finds fenced and indented code blocks.
-//
-// Scanned line by line because RE2 cannot express "a closing fence matching the
-// opener", and because an unterminated fence has to run to the end of the
-// message. Mattermost renders text after an unclosed ``` as code, so we must
-// treat it as code too.
+var (
+	containerPrefixRe = regexp.MustCompile(`^(?:[ \t]{0,3}(?:>[ \t]?|(?:[-+*]|\d{1,9}[.)])(?:[ \t]|$)))+`)
+	quoteMarkerRe     = regexp.MustCompile(`^[ \t]{0,3}>[ \t]?`)
+	listPrefixRe      = regexp.MustCompile(`^(?:[ \t]{0,3}(?:[-+*]|\d{1,9}[.)])(?:[ \t]|$))+`)
+)
+
+type fence struct {
+	start      int
+	marker     byte
+	width      int
+	quoteDepth int
+	itemIndent int
+	opaque     bool
+}
+
+type fenceLine int
+
+const (
+	fenceContinues fenceLine = iota
+	fenceCloses
+	fenceContainerEnds
+)
+
 func blockRanges(message string) []byteRange {
 	var ranges []byteRange
-
-	fenceStart, fenceChar, fenceWidth := -1, byte(0), 0
+	var open *fence
 
 	for offset := 0; offset < len(message); {
 		end := strings.IndexByte(message[offset:], '\n')
@@ -370,21 +386,35 @@ func blockRanges(message string) []byteRange {
 		trimmed := strings.TrimLeft(line, " ")
 		indent := len(line) - len(trimmed)
 
-		switch {
-		case fenceStart >= 0:
-			if indent <= 3 && closesFence(trimmed, fenceChar, fenceWidth) {
-				ranges = append(ranges, byteRange{fenceStart, lineEnd})
-				fenceStart, fenceChar, fenceWidth = -1, 0, 0
+		prefix := containerPrefixRe.FindString(line)
+		content := line[len(prefix):]
+		contentTrimmed := strings.TrimLeft(content, " ")
+		contentIndent := len(content) - len(contentTrimmed)
+
+		if open != nil {
+			switch open.read(line) {
+			case fenceCloses:
+				ranges = append(ranges, byteRange{open.start, lineEnd})
+				open = nil
+			case fenceContainerEnds:
+				ranges = append(ranges, byteRange{open.start, offset - 1})
+				open = nil
+				continue
 			}
+		} else {
+			switch {
+			case indent <= 3 && opensFence(trimmed) != nil:
+				open = opensFence(trimmed)
+				open.start = offset
 
-		case indent <= 3 && fenceWidthOf(trimmed, '`') >= 3:
-			fenceStart, fenceChar, fenceWidth = offset, '`', fenceWidthOf(trimmed, '`')
+			case prefix != "" && contentIndent <= 3 && opensFence(contentTrimmed) != nil:
+				open = opensFence(contentTrimmed)
+				open.start = offset
+				open.quoteDepth, open.itemIndent, open.opaque = containerOf(line)
 
-		case indent <= 3 && fenceWidthOf(trimmed, '~') >= 3:
-			fenceStart, fenceChar, fenceWidth = offset, '~', fenceWidthOf(trimmed, '~')
-
-		case isIndentedCode(line):
-			ranges = append(ranges, byteRange{offset, lineEnd})
+			case isIndentedCode(line), prefix != "" && isIndentedCode(content):
+				ranges = append(ranges, byteRange{offset, lineEnd})
+			}
 		}
 
 		if end < 0 {
@@ -393,12 +423,61 @@ func blockRanges(message string) []byteRange {
 		offset = lineEnd + 1
 	}
 
-	// An opener with no closer protects the rest of the message.
-	if fenceStart >= 0 {
-		ranges = append(ranges, byteRange{fenceStart, len(message)})
+	if open != nil {
+		ranges = append(ranges, byteRange{open.start, len(message)})
 	}
 
 	return ranges
+}
+
+func opensFence(trimmed string) *fence {
+	for _, marker := range []byte{'`', '~'} {
+		if width := fenceWidthOf(trimmed, marker); width >= 3 {
+			return &fence{marker: marker, width: width}
+		}
+	}
+	return nil
+}
+
+func containerOf(line string) (quoteDepth, itemIndent int, opaque bool) {
+	rest := line
+	for marker := quoteMarkerRe.FindString(rest); marker != ""; marker = quoteMarkerRe.FindString(rest) {
+		quoteDepth++
+		rest = rest[len(marker):]
+	}
+	list := listPrefixRe.FindString(rest)
+	return quoteDepth, len(list), containerPrefixRe.FindString(rest[len(list):]) != ""
+}
+
+func (f *fence) read(line string) fenceLine {
+	if f.opaque {
+		return fenceContinues
+	}
+
+	rest := line
+	for range f.quoteDepth {
+		marker := quoteMarkerRe.FindString(rest)
+		if marker == "" {
+			return fenceContainerEnds
+		}
+		rest = rest[len(marker):]
+	}
+
+	if f.itemIndent > 0 {
+		if strings.TrimSpace(rest) == "" {
+			return fenceContinues
+		}
+		if len(rest)-len(strings.TrimLeft(rest, " ")) < f.itemIndent {
+			return fenceContainerEnds
+		}
+		rest = rest[f.itemIndent:]
+	}
+
+	trimmed := strings.TrimLeft(rest, " ")
+	if len(rest)-len(trimmed) <= 3 && closesFence(trimmed, f.marker, f.width) {
+		return fenceCloses
+	}
+	return fenceContinues
 }
 
 var usmtfLineRe = regexp.MustCompile(`^(?:/|[0-9]*[A-Z][A-Z0-9]*(?:/|$))`)
@@ -574,14 +653,6 @@ func overlapsDisjoint(r byteRange, disjoint []byteRange) bool {
 	return i < len(disjoint) && disjoint[i].overlaps(r)
 }
 
-// findCandidates runs every registered pattern and keeps the matches that are
-// outside protected ranges, whose boundaries their pattern accepts, and that
-// their decorator accepts.
-//
-// A match rejected by Boundary or by Parse does not claim its range, so a
-// shorter valid match at the same span can still win. Note that the regexp scan
-// has already moved past a rejected match, so the *same* pattern will not find a
-// shorter one inside it; a different pattern still can.
 func (t *Tagger) findCandidates(message string, ref time.Time, protected []byteRange) []candidate {
 	var candidates []candidate
 
@@ -596,14 +667,12 @@ func (t *Tagger) findCandidates(message string, ref time.Time, protected []byteR
 					continue
 				}
 
-				// Before Parse: this is cheaper, and a match with the wrong
-				// characters around it is not a token at all.
 				if !p.boundaryOK(message, match) {
 					continue
 				}
 
 				replace, ok := p.replaceRange(loc, match)
-				if !ok {
+				if !ok || followsImageOrEscapeMarker(message, replace.start) {
 					continue
 				}
 
@@ -628,6 +697,10 @@ func (t *Tagger) findCandidates(message string, ref time.Time, protected []byteR
 	}
 
 	return candidates
+}
+
+func followsImageOrEscapeMarker(message string, at int) bool {
+	return at > 0 && (message[at-1] == '!' || message[at-1] == '\\')
 }
 
 // boundaryOK asks the pattern whether the runes flanking a match are acceptable.

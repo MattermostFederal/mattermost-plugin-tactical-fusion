@@ -205,12 +205,18 @@ stamped post loses its search matches and its embeds forever, with no way for
 the author to undo it, and ordinary JSON is pasted into chat constantly. Two tests assert the ambiguous spellings are ignored, so widening
 this has to change a test rather than slip through.
 
-**The strip clears every stamped props key on every post, not just the one
-matching the post's type.** The commit copies existing props forward, so a
-forged sibling blob would otherwise reach stored props permanently.
-`custom_tf_location` is deliberately outside the table; `custom_tf_airfields`,
-which the route stamp writes from decoration, is inside it because `/map?post=`
-finds a blob through the same table.
+**The strip clears every `custom_tf_` type and every `tactical_fusion*` props
+key on every post**, the same prefixes the edit path restores. The commit copies
+existing props forward, so a forged sibling blob would otherwise reach stored
+props permanently, and a table of today's types would let a post forged now for
+a type a later release adds render as genuine once it ships. Decoration writes
+`custom_tf_location` and `custom_tf_airfields` back after the strip.
+`stampedTypes` is only how `/map?post=` finds a blob.
+
+**A bare report is only the report.** A report posted without a fence is read
+only when the text carries no lower case, and, over several lines, no markdown
+metacharacter; otherwise the author's own words would be folded into a "Not
+decoded" cell or a card forever. A fence is the author saying what it holds.
 
 **`/bridge/v1` is gated only on `Mattermost-Plugin-ID`, so it may never answer
 with per-user or per-channel data.** A plugin request carries no reader. Every
@@ -376,6 +382,15 @@ Releases are automated with **release-please** driven by
   release-please owns them through its Release PR.
 - A release ships when the maintainer merges the open "chore(main): release
   X.Y.Z" PR.
+- Only `release.yml`'s `publish` job holds the signing key. It runs in the
+  `release` environment and runs no repository code; the build job, which runs
+  the whole toolchain, never sees the key. Keep `PLUGIN_SIGNING_KEY` and its
+  passphrase as secrets of that environment, never of the repository or the
+  organization, where any branch's workflow could read them. A release refuses
+  a tag whose commit is not on `main`.
+- Every tool the release runs is pinned: `GRYPE_VERSION`, `cyclonedx-npm` as an
+  exact dev dependency, and the CodeQL bundle by `CODEQL_SHA256_linux64` and
+  `CODEQL_SHA256_osx64`. Bump a pin deliberately, never to `latest`.
 - `make release` refreshes the cyber data before it builds: `cyber-refresh`
   fetches every source and rebuilds the embedded catalogs and `assets/cyber` in
   the working tree, so the shipped data is newer than the tagged commit's, except
