@@ -1093,13 +1093,15 @@ install-sbom-tools:
 	@echo "Installing SBOM generation tools..."
 	$(GO) install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.12.0
 
+GRYPE_VERSION ?= v0.119.0
+
 ## Install Grype vulnerability scanner
 .PHONY: install-grype
 install-grype:
 	@if [ ! -x "$(GOBIN)/grype" ]; then \
 		echo "Installing Grype via go install (cross-platform, no anchore install.sh)..."; \
 		mkdir -p $(GOBIN); \
-		GOBIN=$(GOBIN) $(GO) install github.com/anchore/grype/cmd/grype@latest; \
+		GOBIN=$(GOBIN) $(GO) install github.com/anchore/grype/cmd/grype@$(GRYPE_VERSION); \
 	else \
 		echo "Grype already installed"; \
 	fi
@@ -1115,8 +1117,8 @@ ifneq ($(HAS_SERVER),)
 endif
 ifneq ($(HAS_WEBAPP),)
 	@echo "Generating Node.js SBOM..."
-	cd webapp && npx @cyclonedx/cyclonedx-npm --ignore-npm-errors --output-file ../dist/sbom/webapp-sbom.json
-	cd webapp && npx @cyclonedx/cyclonedx-npm --ignore-npm-errors --omit dev --output-file ../dist/sbom/webapp-runtime-sbom.json
+	cd webapp && npx --no -- cyclonedx-npm --ignore-npm-errors --output-file ../dist/sbom/webapp-sbom.json
+	cd webapp && npx --no -- cyclonedx-npm --ignore-npm-errors --omit dev --output-file ../dist/sbom/webapp-runtime-sbom.json
 endif
 	@echo "SBOMs generated in dist/sbom/"
 	@ls -la dist/sbom/
@@ -1162,6 +1164,8 @@ sbom-audit: sbom sbom-scan license-check
 # ====================================================================================
 
 CODEQL_VERSION ?= 2.20.1
+CODEQL_SHA256_linux64 ?= 790f5c109f15d26cf67d266591868e21fd6357211bbdbc4601921291a490b164
+CODEQL_SHA256_osx64 ?= d97cf7ae727338dd9f09068386c612f386ebb8bf63327c300b7e370a269c88c9
 CODEQL_DIR := $(PWD)/build/codeql
 CODEQL := $(CODEQL_DIR)/codeql/codeql
 CODEQL_DB_DIR := $(PWD)/build/codeql-db
@@ -1177,7 +1181,18 @@ install-codeql:
 		else \
 			CODEQL_PLATFORM="linux64"; \
 		fi; \
-		curl -sSL "https://github.com/github/codeql-action/releases/download/codeql-bundle-v$(CODEQL_VERSION)/codeql-bundle-$$CODEQL_PLATFORM.tar.gz" | tar -xz -C $(CODEQL_DIR); \
+		case "$$CODEQL_PLATFORM" in \
+			linux64) CODEQL_SHA256="$(CODEQL_SHA256_linux64)" ;; \
+			osx64) CODEQL_SHA256="$(CODEQL_SHA256_osx64)" ;; \
+		esac; \
+		CODEQL_ARCHIVE="$(CODEQL_DIR)/codeql-bundle-$$CODEQL_PLATFORM.tar.gz"; \
+		curl -sSfL -o "$$CODEQL_ARCHIVE" "https://github.com/github/codeql-action/releases/download/codeql-bundle-v$(CODEQL_VERSION)/codeql-bundle-$$CODEQL_PLATFORM.tar.gz" || exit 1; \
+		if [ "$$(shasum -a 256 "$$CODEQL_ARCHIVE" | cut -d' ' -f1)" != "$$CODEQL_SHA256" ]; then \
+			echo "ERROR: codeql-bundle-$$CODEQL_PLATFORM.tar.gz does not match CODEQL_SHA256_$$CODEQL_PLATFORM."; \
+			rm -f "$$CODEQL_ARCHIVE"; \
+			exit 1; \
+		fi; \
+		tar -xzf "$$CODEQL_ARCHIVE" -C $(CODEQL_DIR) && rm -f "$$CODEQL_ARCHIVE" || exit 1; \
 		echo "CodeQL CLI installed"; \
 	else \
 		echo "CodeQL CLI already installed"; \

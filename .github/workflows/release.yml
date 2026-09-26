@@ -7,9 +7,11 @@
 #   -> release-checksum
 #
 # The published tarball ships with SBOMs (sbom/) and CodeQL SARIF
-# (security/) embedded, plus a sha256 sidecar and — when a signing key
-# is configured — a detached GPG signature. Same `make release` a
-# developer runs locally, so nothing about the release is CI-only.
+# (security/) embedded, plus a sha256 sidecar and, when a signing key
+# is configured, a detached GPG signature. The build job runs the same
+# `make release` a developer runs locally, without the key. The publish
+# job signs, checksums and publishes in the `release` environment, runs
+# no code from the repository, and is the only job that sees the key.
 #
 # To ship manually instead of via release-please:
 #   1. Bump plugin.json version + add a CHANGELOG.md entry (commit them)
@@ -41,16 +43,20 @@ on:
         required: false
 
 permissions:
-  contents: write        # create the release + upload assets
-  security-events: write # upload SARIF to code scanning
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest-4-cores
+    permissions:
+      contents: read
+      security-events: write
+    outputs:
+      plugin_name: ${{ steps.plugin_info.outputs.plugin_name }}
+      plugin_version: ${{ steps.plugin_info.outputs.plugin_version }}
+      bundle_name: ${{ steps.plugin_info.outputs.bundle_name }}
+      full_bundle_name: ${{ steps.plugin_info.outputs.full_bundle_name }}
     env:
-      # Surfaced so the "Import GPG signing key" step can gate on
-      # presence. Optional — signing is skipped when unset.
-      PLUGIN_SIGNING_KEY_SECRET: ${{ secrets.PLUGIN_SIGNING_KEY }}
       # Effective tag: the workflow_call input when release-please invokes
       # us, else the pushed tag's short name. Used for checkout, release
       # tag_name, notes, and prerelease detection so both paths match.
@@ -76,6 +82,13 @@ jobs:
       - name: Resolve release SHA
         id: relsha
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Refuse a tag that is not on main
+        run: |
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::$RELEASE_TAG points at a commit that is not on main."
+            exit 1
+          fi
 
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -106,18 +119,6 @@ jobs:
           sudo apt-get install -y clamav
           sudo systemctl stop clamav-freshclam 2>/dev/null || true
           sudo freshclam || true
-
-      # Import the GPG key only when the secret is set. The step exports
-      # the resolved key ID as PLUGIN_SIGNING_KEY so `make release-sign`
-      # picks it up; without it, signing is a no-op.
-      - name: Import GPG signing key
-        if: env.PLUGIN_SIGNING_KEY_SECRET != ''
-        env:
-          PLUGIN_SIGNING_KEY: ${{ secrets.PLUGIN_SIGNING_KEY }}
-          PLUGIN_SIGNING_KEY_PASSPHRASE: ${{ secrets.PLUGIN_SIGNING_KEY_PASSPHRASE }}
-        run: |
-          echo "$PLUGIN_SIGNING_KEY" | gpg --batch --import
-          echo "PLUGIN_SIGNING_KEY=$(gpg --list-secret-keys --keyid-format=long | awk -F'/' '/^sec/{print $2; exit}' | awk '{print $1}')" >> "$GITHUB_ENV"
 
       # The whole security-gated pipeline in one target — keeps CI and
       # local `make release` identical.
@@ -163,20 +164,74 @@ jobs:
           ref: refs/tags/${{ env.RELEASE_TAG }}
           sha: ${{ steps.relsha.outputs.sha }}
 
+      - name: Hand the release files to the publish job
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-files
+          path: |
+            plugin.json
+            dist/${{ steps.plugin_info.outputs.bundle_name }}
+            dist/${{ steps.plugin_info.outputs.full_bundle_name }}
+            dist/sbom/server-sbom.json
+            dist/sbom/webapp-sbom.json
+            dist/sbom/licenses.json
+            dist/codeql-go.sarif
+            dist/codeql-js.sarif
+            build/cyberdata/release/*
+          retention-days: 1
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - name: Download the release files
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-files
+
+      - name: Sign and checksum the bundles
+        env:
+          PLUGIN_SIGNING_KEY: ${{ secrets.PLUGIN_SIGNING_KEY }}
+          PLUGIN_SIGNING_KEY_PASSPHRASE: ${{ secrets.PLUGIN_SIGNING_KEY_PASSPHRASE }}
+          BUNDLES: ${{ needs.build.outputs.bundle_name }} ${{ needs.build.outputs.full_bundle_name }}
+        run: |
+          set -euo pipefail
+          key_id=""
+          if [ -n "$PLUGIN_SIGNING_KEY" ]; then
+            GNUPGHOME="$(mktemp -d)"
+            export GNUPGHOME
+            printf '%s\n' "$PLUGIN_SIGNING_KEY" | gpg --batch --import
+            key_id="$(gpg --batch --list-secret-keys --with-colons | awk -F: '/^sec/{print $5; exit}')"
+          fi
+          cd dist
+          for bundle in $BUNDLES; do
+            [ -f "$bundle" ] || continue
+            if [ -n "$key_id" ]; then
+              printf '%s' "$PLUGIN_SIGNING_KEY_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 \
+                -u "$key_id" --personal-digest-preferences SHA256 --detach-sign "$bundle"
+            fi
+            sha256sum "$bundle" > "$bundle.sha256"
+          done
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           # Pin the target tag — on the workflow_call path github.ref is main,
           # so the action's default (github.ref) would target the wrong ref.
           tag_name: ${{ env.RELEASE_TAG }}
-          name: ${{ steps.plugin_info.outputs.plugin_name }} v${{ steps.plugin_info.outputs.plugin_version }}
+          name: ${{ needs.build.outputs.plugin_name }} v${{ needs.build.outputs.plugin_version }}
           files: |
-            dist/${{ steps.plugin_info.outputs.bundle_name }}
-            dist/${{ steps.plugin_info.outputs.bundle_name }}.sha256
-            dist/${{ steps.plugin_info.outputs.bundle_name }}.sig
-            dist/${{ steps.plugin_info.outputs.full_bundle_name }}
-            dist/${{ steps.plugin_info.outputs.full_bundle_name }}.sha256
-            dist/${{ steps.plugin_info.outputs.full_bundle_name }}.sig
+            dist/${{ needs.build.outputs.bundle_name }}
+            dist/${{ needs.build.outputs.bundle_name }}.sha256
+            dist/${{ needs.build.outputs.bundle_name }}.sig
+            dist/${{ needs.build.outputs.full_bundle_name }}
+            dist/${{ needs.build.outputs.full_bundle_name }}.sha256
+            dist/${{ needs.build.outputs.full_bundle_name }}.sig
             dist/sbom/server-sbom.json
             dist/sbom/webapp-sbom.json
             dist/sbom/licenses.json
@@ -188,29 +243,29 @@ jobs:
           draft: false
           prerelease: ${{ contains(env.RELEASE_TAG, '-rc') || contains(env.RELEASE_TAG, '-beta') || contains(env.RELEASE_TAG, '-alpha') }}
           body: |
-            ## ${{ steps.plugin_info.outputs.plugin_name }} ${{ env.RELEASE_TAG }}
+            ## ${{ needs.build.outputs.plugin_name }} ${{ env.RELEASE_TAG }}
 
             See [`CHANGELOG.md`](${{ github.server_url }}/${{ github.repository }}/blob/${{ env.RELEASE_TAG }}/CHANGELOG.md) for curated release notes.
 
             ### Install
 
-            1. Download `${{ steps.plugin_info.outputs.bundle_name }}` from the assets below.
+            1. Download `${{ needs.build.outputs.bundle_name }}` from the assets below.
             2. (Optional) Verify the checksum:
                ```bash
-               sha256sum -c ${{ steps.plugin_info.outputs.bundle_name }}.sha256
+               sha256sum -c ${{ needs.build.outputs.bundle_name }}.sha256
                ```
             3. (Optional) Verify the GPG signature, if a `.sig` is attached:
                ```bash
-               gpg --verify ${{ steps.plugin_info.outputs.bundle_name }}.sig ${{ steps.plugin_info.outputs.bundle_name }}
+               gpg --verify ${{ needs.build.outputs.bundle_name }}.sig ${{ needs.build.outputs.bundle_name }}
                ```
             4. Upload via **System Console → Plugin Management → Choose File → Enable**.
 
             ### Two bundles
 
-            - `${{ steps.plugin_info.outputs.bundle_name }}` is the one to install. It stays under
+            - `${{ needs.build.outputs.bundle_name }}` is the one to install. It stays under
               Mattermost's default 100 MiB upload limit, and carries every cyber dataset except the
               full NVD vulnerability records and DB-IP's city database, which are attached below.
-            - `${{ steps.plugin_info.outputs.full_bundle_name }}` is the same plugin with those
+            - `${{ needs.build.outputs.full_bundle_name }}` is the same plugin with those
               attached datasets already inside, for air-gapped installs that would rather raise
               the upload limit once than copy files. It is about 235 MB, so raise
               **File Storage → Maximum File Size** (`FileSettings.MaxFileSize`), and any reverse
@@ -252,8 +307,10 @@ jobs:
             ### Auto-generated changelog
 
   maps:
-    needs: build
+    needs: publish
     runs-on: ubuntu-latest-4-cores
+    permissions:
+      contents: write
     timeout-minutes: 300
     env:
       RELEASE_TAG: ${{ inputs.tag || github.ref_name }}

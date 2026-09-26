@@ -382,6 +382,15 @@ Releases are automated with **release-please** driven by
   release-please owns them through its Release PR.
 - A release ships when the maintainer merges the open "chore(main): release
   X.Y.Z" PR.
+- Only `release.yml`'s `publish` job holds the signing key. It runs in the
+  `release` environment and runs no repository code; the build job, which runs
+  the whole toolchain, never sees the key. Keep `PLUGIN_SIGNING_KEY` and its
+  passphrase as secrets of that environment, never of the repository or the
+  organization, where any branch's workflow could read them. A release refuses
+  a tag whose commit is not on `main`.
+- Every tool the release runs is pinned: `GRYPE_VERSION`, `cyclonedx-npm` as an
+  exact dev dependency, and the CodeQL bundle by `CODEQL_SHA256_linux64` and
+  `CODEQL_SHA256_osx64`. Bump a pin deliberately, never to `latest`.
 - `make release` refreshes the cyber data before it builds: `cyber-refresh`
   fetches every source and rebuilds the embedded catalogs and `assets/cyber` in
   the working tree, so the shipped data is newer than the tagged commit's, except
