@@ -1424,3 +1424,45 @@ func TestAnExpandedMessageIsNotExpandedAgain(t *testing.T) {
 		t.Errorf("the stored table was rewritten again:\n%s", again.Message)
 	}
 }
+
+func TestAForgedPluginTypeFromAnyReleaseIsStripped(t *testing.T) {
+	for _, postType := range []string{decorators.PostTypePrefix + "tf_later", location.PostType} {
+		p := newTestPlugin(t, "https://example.com", true)
+
+		post := &model.Post{Message: "nothing to see", UserId: testUserID, Type: postType}
+		post.AddProp(decorators.PostPropsKey, map[string]any{"version": 1, "r": "FORGED"})
+		post.AddProp(decorators.PostPropsKey+"_later", map[string]any{"version": 1})
+		post.AddProp("another_integration", "kept")
+
+		updated := p.decoratePost(post, hookRef)
+		if updated == nil {
+			t.Fatalf("%s: the forged post was left in place", postType)
+		}
+		if updated.Type != "" {
+			t.Errorf("%s: Type = %q, want it stripped", postType, updated.Type)
+		}
+		for key := range updated.GetProps() {
+			if isPluginPropsKey(key) {
+				t.Errorf("%s: the forged %s blob survived", postType, key)
+			}
+		}
+		if updated.GetProp("another_integration") != "kept" {
+			t.Errorf("%s: another integration's props were removed", postType)
+		}
+	}
+}
+
+func TestAForgedLocationStampIsReplacedByTheServer(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	post := &model.Post{Message: "34.0561N,118.2500W", UserId: testUserID, Type: location.PostType}
+	post.AddProp(decorators.PostPropsKey, map[string]any{"version": 1, "r": "FORGED"})
+
+	updated := p.decoratePost(post, hookRef)
+	if updated == nil || updated.Type != location.PostType {
+		t.Fatalf("the coordinate was not stamped by the server: %+v", updated)
+	}
+	if props := standaloneProps(t, updated); props["r"] == "FORGED" {
+		t.Error("the forged original text survived the stamp")
+	}
+}

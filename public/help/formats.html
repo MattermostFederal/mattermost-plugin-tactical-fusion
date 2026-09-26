@@ -175,8 +175,11 @@
         <p>The protected constructs are:</p>
 
         <ul>
-            <li>Fenced code blocks, including unterminated ones and <code>~~~</code> fences</li>
-            <li>Indented code blocks</li>
+            <li>Fenced code blocks, including unterminated ones and <code>~~~</code> fences,
+                and those inside a quote or a list item</li>
+            <li>Indented code blocks, including those inside a quote or a list item</li>
+            <li>A token written straight after <code>!</code> or <code>\</code>, where a link
+                would become an image or an escaped bracket</li>
             <li>Inline code of any backtick width</li>
             <li>Links, images, and reference definitions</li>
             <li>Any bracketed span</li>

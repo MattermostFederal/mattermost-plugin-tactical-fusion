@@ -918,3 +918,50 @@ func TestAOneLineNotamThatIsNotARestrictionStaysALinkedTable(t *testing.T) {
 		t.Fatalf("an ordinary one-line NOTAM is not the table: %+v", updated)
 	}
 }
+
+func TestProseAfterABareReportIsNotSwallowed(t *testing.T) {
+	prose := "@alice please divert *now*, hold at [plan](http://p.example) ~ops-team"
+
+	for name, message := range map[string]string{
+		"on the next line":      reportMETAR + "\n" + prose,
+		"after a blank line":    reportTAF + "\n\n" + prose,
+		"in plain words":        reportTAF + "\nplease divert now",
+		"markdown in capitals":  reportTAF + "\nSEE [PLAN](HTTP://P.EXAMPLE)",
+		"on the same line":      reportMETAR + " please divert now",
+		"after a notam heading": reportFAANotam + "\n\n" + prose,
+	} {
+		for _, shape := range []struct {
+			name      string
+			configure func(*configuration)
+		}{
+			{"table on", func(c *configuration) {}},
+			{"table off", tableOff},
+		} {
+			p := newTestPlugin(t, "https://example.com", true)
+			withConfiguration(p, shape.configure)
+
+			updated := p.decoratePost(&model.Post{Message: message, UserId: testUserID}, hookRef)
+			if updated == nil {
+				continue
+			}
+			if updated.Type != "" {
+				t.Errorf("%s, %s: the post was stamped %q", name, shape.name, updated.Type)
+			}
+			if strings.Contains(updated.Message, "| Not decoded |") || strings.Contains(updated.Message, "| Details |") {
+				t.Errorf("%s, %s: the prose was folded into a table:\n%s", name, shape.name, updated.Message)
+			}
+			if strings.Contains(message, prose) && !strings.Contains(updated.Message, prose) {
+				t.Errorf("%s, %s: the prose was rewritten:\n%s", name, shape.name, updated.Message)
+			}
+		}
+	}
+}
+
+func TestABareReportInCapitalsIsStillRead(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	updated := p.decoratePost(&model.Post{Message: reportTAF, UserId: testUserID}, hookRef)
+	if updated == nil || !strings.Contains(updated.Message, "| Details |") {
+		t.Fatalf("a bare report lost its table: %+v", updated)
+	}
+}

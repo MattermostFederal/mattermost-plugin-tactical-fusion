@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
@@ -154,6 +155,10 @@ func decodeAny(text string, ref time.Time) (Report, bool) {
 func carriesASecondReport(text string) bool {
 	lines := strings.Split(text, "\n")
 	return slices.ContainsFunc(lines[1:], LooksLikeHeader)
+}
+
+func LooksLikeReportText(text string) bool {
+	return !strings.ContainsFunc(text, unicode.IsLower)
 }
 
 func LooksLikeHeader(line string) bool {

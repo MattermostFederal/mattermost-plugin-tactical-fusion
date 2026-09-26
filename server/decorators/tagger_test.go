@@ -533,3 +533,48 @@ func TestEmptyMessageIsUntouched(t *testing.T) {
 		t.Fatalf("Decorate(\"\") = %q, want empty", got)
 	}
 }
+
+func TestCodeInsideAQuoteOrAListItemIsNeverRewritten(t *testing.T) {
+	tagger := taggerWith(t, testPrefix, newFixture("tok", `\bAAA\b`))
+
+	for name, input := range map[string]string{
+		"tilde fence in a quote":             "> ~~~\n> AAA\n> ~~~",
+		"backtick fence in a quote":          "> ```\n> AAA\n> ```",
+		"longer closing run in a quote":      "> ```\n> AAA\n> ````\n",
+		"unclosed fence in a quote":          "> ```\n> AAA\n\nafter AAA",
+		"nested quote":                       "> > ~~~\n> > AAA\n> > ~~~",
+		"tilde fence in a list item":         "- ~~~\n  AAA\n  ~~~",
+		"backtick fence in a list item":      "- ```\n  AAA\n  ````\n",
+		"fence in an ordered list item":      "1. ~~~\n   AAA\n   ~~~",
+		"indented code in a quote":           ">     AAA",
+		"indented code in a list item":       "-     AAA",
+		"quoted fence not closed by a plain": "> ```\n> AAA\n```\nAAA",
+	} {
+		if got := tagger.Decorate(input, testRef); got != input {
+			t.Errorf("%s: code was rewritten:\n%s", name, got)
+		}
+	}
+}
+
+func TestProseInsideAQuoteOrAListItemIsStillDecorated(t *testing.T) {
+	tagger := taggerWith(t, testPrefix, newFixture("tok", `\bAAA\b`))
+
+	for _, input := range []string{"> AAA", "- AAA", "1. AAA", ">    AAA", "> ~~~\n> x\n> ~~~\n> AAA"} {
+		if got := tagger.Decorate(input, testRef); !strings.Contains(got, "[AAA]("+testPrefix) {
+			t.Errorf("%q was not decorated: %q", input, got)
+		}
+	}
+}
+
+func TestATokenAfterABangOrABackslashIsLeftAlone(t *testing.T) {
+	tagger := taggerWith(t, testPrefix, newFixture("tok", `AAA`))
+
+	for _, input := range []string{"!AAA", "alert!AAA now", `\AAA`, `x \AAA y`} {
+		if got := tagger.Decorate(input, testRef); got != input {
+			t.Errorf("%q became %q", input, got)
+		}
+	}
+	if got := tagger.Decorate("AAA!", testRef); !strings.HasPrefix(got, "[AAA](") {
+		t.Errorf("a token ending a sentence lost its link: %q", got)
+	}
+}

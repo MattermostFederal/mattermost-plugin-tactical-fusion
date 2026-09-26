@@ -15,12 +15,6 @@ import (
 
 const stampPropsBudgetRunes = model.PostPropsMaxUserRunes
 
-// stampedTypes is every post type this plugin stamps from a recognized source.
-//
-// custom_tf_location is deliberately absent. stampStandalonePost writes that
-// one from decoration rather than from recognition, and sweeping it in here
-// would change forged-type handling on a shipped path that nothing has asked to
-// change.
 var stampedTypes = []struct{ postType, propsKey string }{
 	{cot.PostType, cot.PropsKey},
 	{geojson.PostType, geojson.PropsKey},
@@ -28,19 +22,6 @@ var stampedTypes = []struct{ postType, propsKey string }{
 	{avreport.PostType, avreport.PropsKey},
 }
 
-// stripStampedTypes removes a type and props this hook did not write.
-//
-// Post.IsValid accepts any custom_ type from an ordinary client, so anyone who
-// can post can otherwise hand a reader a card whose fields and whose own source
-// pane were both authored to agree with each other. Strip it and let
-// recognition decide again from the message. Never refuse the post.
-//
-// EVERY key in the table goes, on every post, not just the one belonging to a
-// matching type. cotProps copies the post's existing props forward, so an
-// author posting one format's props key with a real event in the other format
-// would otherwise have that forged blob carried into stored props permanently,
-// counted against the rune budget and readable by everyone who can read the
-// post.
 func stripStampedTypes(post *model.Post) *model.Post {
 	var stripped *model.Post
 
@@ -51,12 +32,12 @@ func stripStampedTypes(post *model.Post) *model.Post {
 		return stripped
 	}
 
-	for _, stamped := range stampedTypes {
-		if post.Type == stamped.postType {
-			clone().Type = ""
-		}
-		if _, carried := post.GetProps()[stamped.propsKey]; carried {
-			clone().DelProp(stamped.propsKey)
+	if isPluginPostType(post.Type) {
+		clone().Type = ""
+	}
+	for key := range post.GetProps() {
+		if isPluginPropsKey(key) {
+			clone().DelProp(key)
 		}
 	}
 

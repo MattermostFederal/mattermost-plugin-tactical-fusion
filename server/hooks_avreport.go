@@ -112,6 +112,8 @@ func avreportRefusalMessage(code int) string {
 	return "The aviation report you just posted carries too much detail to render, so it was left as ordinary text."
 }
 
+const markdownMarkers = "@#*_[]<>\\~`|"
+
 func (p *Plugin) avreportSource(post *model.Post) (avreport.Source, bool) {
 	if block, ok := decorators.SoleFencedBlock(post.Message); ok && avreportInfoString(block.Info) {
 		return avreport.Source{
@@ -129,7 +131,7 @@ func (p *Plugin) avreportSource(post *model.Post) (avreport.Source, bool) {
 	if decorators.HasCodeSpan(post.Message) {
 		return avreport.Source{}, false
 	}
-	if !avreport.LooksLikeHeader(strings.SplitN(text, "\n", 2)[0]) {
+	if !avreport.LooksLikeHeader(strings.SplitN(text, "\n", 2)[0]) || !avreport.LooksLikeReportText(text) || strings.ContainsAny(text, markdownMarkers) {
 		return avreport.Source{}, false
 	}
 
@@ -141,7 +143,7 @@ func singleLineRestriction(post *model.Post, ref time.Time, cardEnabled bool) (a
 	if !cardEnabled || text == "" || strings.ContainsAny(text, "\r\n") || decorators.HasCodeSpan(post.Message) {
 		return avreport.Source{}, false
 	}
-	if !avreport.LooksLikeHeader(text) {
+	if !avreport.LooksLikeHeader(text) || !avreport.LooksLikeReportText(text) {
 		return avreport.Source{}, false
 	}
 	report, err := avreport.Decode(text, ref)

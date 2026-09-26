@@ -96,7 +96,7 @@ func lineStartOK(before, after rune) bool {
 }
 
 func (d *Decorator) Parse(value string, ref time.Time) (url.Values, bool) {
-	if strings.ContainsAny(value, "\r\n") {
+	if strings.ContainsAny(value, "\r\n") || !LooksLikeReportText(value) {
 		return nil, false
 	}
 
