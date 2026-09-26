@@ -362,3 +362,13 @@ func mustValues(t *testing.T, query string) url.Values {
 
 	return values
 }
+
+func TestTheAttributeEscaperMatchesHTMLEscapeString(t *testing.T) {
+	for _, input := range []string{
+		``, `plain`, `{"a":"b"}`, `<script>alert('x')</script>`, `&amp;&#34;`, `"'<>&`, "tab\tand\nnewline", `café ☃`,
+	} {
+		if got, want := attributeEscaper.Replace(input), html.EscapeString(input); got != want {
+			t.Errorf("attributeEscaper(%q) = %q, html.EscapeString = %q", input, got, want)
+		}
+	}
+}

@@ -357,7 +357,7 @@ func siteURLPath(config *model.Config) string {
 	// 404, permanently, in stored post text that fixing SiteURL cannot repair.
 	cleaned := path.Clean(parsed.EscapedPath())
 	if cleaned == "/" || cleaned == "." || !strings.HasPrefix(cleaned, "/") ||
-		strings.HasPrefix(cleaned, "//") {
+		strings.HasPrefix(cleaned, "//") || strings.HasPrefix(cleaned, `/\`) {
 		return ""
 	}
 

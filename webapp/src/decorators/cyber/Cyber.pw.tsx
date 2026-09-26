@@ -308,7 +308,7 @@ test.describe('the readings', () => {
         );
 
         const link = panel.getByRole('link', {name: '2021-12-10 10:15 UTC'});
-        await expect(link).toHaveAttribute('href', new RegExp(`/decorate/dtg\\?${PUBLISHED_QUERY.replace(/[?]/g, '\\?')}$`));
+        await expect(link).toHaveAttribute('href', new RegExp(`/decorate/dtg\\?${PUBLISHED_QUERY.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`));
         await expect(panel.getByRole('cell', {name: '10.0 Critical'}).getByRole('link')).toHaveCount(0);
     });
 });
