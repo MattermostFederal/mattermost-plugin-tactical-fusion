@@ -49,7 +49,7 @@ func (p *Plugin) MessageWillBeUpdated(_ *plugin.Context, newPost, oldPost *model
 
 func keepPluginOwnedFields(newPost, oldPost *model.Post) *model.Post {
 	if newPost == nil || oldPost == nil {
-		return nil
+		return newPost
 	}
 
 	var kept *model.Post
@@ -81,6 +81,9 @@ func keepPluginOwnedFields(newPost, oldPost *model.Post) *model.Post {
 		}
 	}
 
+	if kept == nil {
+		return newPost
+	}
 	return kept
 }
 

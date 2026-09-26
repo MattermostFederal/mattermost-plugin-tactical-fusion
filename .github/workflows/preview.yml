@@ -85,7 +85,8 @@ jobs:
           if printf '%s\n' "$listing" | awk '{print substr($1,1,1)}' | grep -qv '^[-d]$'; then
             fail "bundle contains members that are not regular files or directories"
           fi
-          if printf '%s\n' "$listing" | awk '{print $NF}' | grep -qE '(^/|(^|/)\.\.(/|$))'; then
+          timeout 60 tar -tzf "$intake/bundle.tar.gz" > "$intake/members" || fail "bundle members could not be listed"
+          if grep -qE '(^/|(^|/)\.\.(/|$))' "$intake/members"; then
             fail "bundle contains an absolute path or a parent directory reference"
           fi
           topdir="$(printf '%s\n' "$listing" | awk '{print $NF}' | cut -d/ -f1 | sort -u)"

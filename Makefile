@@ -360,6 +360,7 @@ cyber-pins:
 		name="$${entry%%=*}"; spec="$${entry#*=}"; repo="$${spec%@*}"; branch="$${spec#*@}"; \
 		pinned="$$(sed -n "s/^$$name=//p" build/cyberdata/pins.env)"; \
 		head="$$(git ls-remote "https://github.com/$$repo.git" "refs/heads/$$branch" | cut -f1)"; \
+		if [ -z "$$head" ]; then echo "error: could not read the head of $$repo $$branch" >&2; exit 1; fi; \
 		if [ "$$pinned" = "$$head" ]; then state=current; else state="behind $$branch $$head"; fi; \
 		echo "$$name $$pinned $$state"; \
 	done

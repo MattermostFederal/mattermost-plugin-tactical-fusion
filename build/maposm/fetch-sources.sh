@@ -82,11 +82,13 @@ if [ "${UPDATE_LOCK:-}" = "1" ] || [ ! -f "$LOCK" ]; then
             file=$(basename "$dated")
         fi
         out="$DEST/$file"
+        fresh=0
 
         if [ ! -f "$out" ]; then
             echo "fetching ${file}"
             curl -fsSL --retry 3 -o "${out}.part" "$dated"
             mv "${out}.part" "$out"
+            fresh=1
         fi
 
         head -c 16 "$out" | grep -qa OSMHeader || {
@@ -94,7 +96,10 @@ if [ "${UPDATE_LOCK:-}" = "1" ] || [ ! -f "$LOCK" ]; then
             exit 1
         }
 
-        verify_published_md5 "$out" "$dated" || { rm -f "$out"; exit 1; }
+        verify_published_md5 "$out" "$dated" || {
+            [ "$fresh" = 1 ] && rm -f "$out"
+            exit 1
+        }
 
         stamp=$(curl -fsSLI "$dated" | awk 'tolower($1) == "last-modified:" {$1=""; print}' | tr -d '\r' | sed 's/^ *//')
         echo "$(sha "$out")  ${file}  ${stamp}" >> "$rows"

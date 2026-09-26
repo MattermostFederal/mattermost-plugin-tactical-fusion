@@ -46,8 +46,8 @@ func TestMessageWillBeUpdatedLeavesAnEditThatTouchesNoPluginFieldAlone(t *testin
 	newPost.Message = "after"
 	newPost.AddProp("disable_group_highlight", true)
 
-	if got, _ := p.MessageWillBeUpdated(nil, newPost, oldPost); got != nil {
-		t.Fatalf("an edit that kept every plugin field was rewritten: %+v", got)
+	if got, _ := p.MessageWillBeUpdated(nil, newPost, oldPost); got != newPost {
+		t.Fatalf("an edit that kept every plugin field was not passed through as it arrived: %+v", got)
 	}
 }
 
@@ -141,7 +141,38 @@ func TestAnEditLeavesAnotherPluginsTypeAlone(t *testing.T) {
 	newPost := oldPost.Clone()
 	newPost.Type = "custom_other_v2"
 
-	if got, _ := p.MessageWillBeUpdated(nil, newPost, oldPost); got != nil {
-		t.Fatalf("another plugin's type change was rewritten: %+v", got)
+	if got, _ := p.MessageWillBeUpdated(nil, newPost, oldPost); got != newPost {
+		t.Fatalf("another plugin's type change was not passed through as it arrived: %+v", got)
+	}
+}
+
+func TestMessageWillBeUpdatedNeverRejectsAnEdit(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	stamped := &model.Post{Message: "event", Type: cot.PostType}
+	stamped.AddProp(cot.PropsKey, map[string]any{"version": float64(1)})
+	forged := stamped.Clone()
+	forged.AddProp(cot.PropsKey, map[string]any{"version": float64(2)})
+	edited := stamped.Clone()
+	edited.Message = "edited"
+	plain := &model.Post{Message: "plain"}
+	plainEdited := plain.Clone()
+	plainEdited.Message = "plain, edited"
+
+	for name, pair := range map[string][2]*model.Post{
+		"a plain text edit":         {plainEdited, plain},
+		"a stamped post's text":     {edited, stamped},
+		"a forged props-only edit":  {forged, stamped},
+		"an edit that changes none": {stamped.Clone(), stamped},
+	} {
+		t.Run(name, func(t *testing.T) {
+			got, reason := p.MessageWillBeUpdated(nil, pair[0], pair[1])
+			if got == nil || reason != "" {
+				t.Fatalf("the edit was rejected: post %v, reason %q", got, reason)
+			}
+			if got.Message != pair[0].Message {
+				t.Fatalf("the message became %q, want %q", got.Message, pair[0].Message)
+			}
+		})
 	}
 }

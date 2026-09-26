@@ -23,14 +23,22 @@ read_plain() {
     esac
 }
 
+count_rows() {
+    awk -v p="$1" '!/^#/ && (p == "" || index($0, p)) { n++ } END { print n + 0 }'
+}
+
 rows_of() {
     local path="$1" pattern="${2:-}"
-    read_plain "${path}" < "${tree}/${path}" | grep -v '^#' | grep -c -- "${pattern}" || true
+    read_plain "${path}" < "${tree}/${path}" | count_rows "${pattern}"
 }
 
 committed_rows_of() {
     local path="$1" pattern="${2:-}"
-    git -C "${tree}" show "${baseline}:${path}" 2>/dev/null | read_plain "${path}" | grep -v '^#' | grep -c -- "${pattern}" || true
+    git -C "${tree}" rev-parse --verify --quiet "${baseline}^{commit}" > /dev/null || return 1
+    if ! git -C "${tree}" cat-file -e "${baseline}:${path}" 2>/dev/null; then
+        return 0
+    fi
+    git -C "${tree}" show "${baseline}:${path}" | read_plain "${path}" | count_rows "${pattern}"
 }
 
 check() {
@@ -41,21 +49,27 @@ check() {
         fail "${label}: ${path} was not generated"
         return
     fi
-    now="$(rows_of "${path}" "${pattern}")"
-    was="$(committed_rows_of "${path}" "${pattern}")"
+    if ! now="$(rows_of "${path}" "${pattern}")"; then
+        fail "${label}: ${path} could not be read"
+        return
+    fi
+    if ! was="$(committed_rows_of "${path}" "${pattern}")"; then
+        fail "${label}: ${path} could not be read at ${baseline}"
+        return
+    fi
 
     if [ "${now}" -lt "${floor}" ]; then
         fail "${label}: ${now} rows, below the floor of ${floor}; the download was truncated or is not what it should be"
         return
     fi
-    if [ "${was}" -gt 0 ] && [ "${allow_shrink}" != "1" ]; then
+    if [ -n "${was}" ] && [ "${was}" -gt 0 ] && [ "${allow_shrink}" != "1" ]; then
         least=$((was * (100 - max_shrink_pct) / 100))
         if [ "${now}" -lt "${least}" ]; then
             fail "${label}: ${now} rows against ${was} at ${baseline}, a shrink of more than ${max_shrink_pct}%; set CYBER_ALLOW_SHRINK=1 once the upstream is confirmed"
             return
         fi
     fi
-    echo "${label}: ${now} rows (${was:-0} at ${baseline})"
+    echo "${label}: ${now} rows (${was:-none} at ${baseline})"
 }
 
 check "ATT&CK catalog" server/decorators/cyber/data/attack.tsv 500 5
@@ -73,9 +87,12 @@ check "Tor exits" assets/cyber/netlists.tsv.gz 500 50 '"source":"Tor Project"'
 check "MISP network warninglists" assets/cyber/netlists.tsv.gz 50000 5 '"source":"MISP warninglist"'
 check "MISP hash warninglists" assets/cyber/hashlists.tsv 50 5
 
-cve_full="$(grep -vc '^#' "${out}/cve.tsv" 2>/dev/null || true)"
-if [ "${cve_full:-0}" -lt 300000 ]; then
-    fail "full CVE dataset: ${cve_full:-0} rows in ${out}/cve.tsv, below the floor of 300000"
+if [ ! -f "${out}/cve.tsv" ]; then
+    fail "full CVE dataset: ${out}/cve.tsv is missing"
+elif ! cve_full="$(count_rows "" < "${out}/cve.tsv")"; then
+    fail "full CVE dataset: ${out}/cve.tsv could not be read"
+elif [ "${cve_full}" -lt 300000 ]; then
+    fail "full CVE dataset: ${cve_full} rows in ${out}/cve.tsv, below the floor of 300000"
 else
     echo "full CVE dataset: ${cve_full} rows"
 fi

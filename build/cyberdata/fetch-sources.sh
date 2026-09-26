@@ -44,28 +44,31 @@ sha256_of() {
 }
 
 fetch_nvd_year() {
-    local year="$1" attempt meta want got
+    local year="$1" attempt meta want="" got=""
     local base="https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-${year}"
     local target="${source_dir}/nvd/nvdcve-2.0-${year}.json"
 
     for attempt in $(seq 1 "${nvd_attempts}"); do
         echo "fetching nvd/${year} (attempt ${attempt})"
-        meta="$(curl --fail --location --silent --show-error "${base}.meta" | tr -d '\r')"
+        meta="$(curl --fail --location --silent --show-error "${base}.meta" | tr -d '\r')" || meta=""
         want="$(printf '%s\n' "${meta}" | sed -n 's/^sha256://p' | tr 'A-F' 'a-f')"
         if ! [[ "${want}" =~ ^[0-9a-f]{64}$ ]]; then
-            echo "error: nvd/${year}.meta carries no sha256" >&2
-            exit 1
+            echo "nvd/${year}.meta could not be read or carries no sha256"
+            continue
         fi
-        curl --fail --location --silent --show-error "${base}.json.gz" | gunzip > "${target}"
+        if ! curl --fail --location --silent --show-error "${base}.json.gz" | gunzip > "${target}"; then
+            echo "nvd/${year} could not be downloaded"
+            continue
+        fi
         got="$(sha256_of "${target}")"
         if [ "${got}" = "${want}" ]; then
             return 0
         fi
         echo "nvd/${year} does not match its .meta (NVD may have republished mid-fetch)"
     done
-    echo "error: nvd/${year} never matched the sha256 in its .meta" >&2
-    echo "  expected ${want}" >&2
-    echo "  got      ${got}" >&2
+    echo "error: nvd/${year} never matched a sha256 read from its .meta in ${nvd_attempts} attempts" >&2
+    echo "  expected ${want:-no sha256}" >&2
+    echo "  got      ${got:-no download}" >&2
     exit 1
 }
 
