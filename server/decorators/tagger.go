@@ -348,14 +348,28 @@ func findProtectedRanges(message string) []byteRange {
 	return mergeRanges(ranges)
 }
 
-var containerPrefixRe = regexp.MustCompile(`^(?:[ \t]{0,3}(?:>[ \t]?|(?:[-+*]|\d{1,9}[.)])(?:[ \t]|$)))+`)
+var (
+	containerPrefixRe = regexp.MustCompile(`^(?:[ \t]{0,3}(?:>[ \t]?|(?:[-+*]|\d{1,9}[.)])(?:[ \t]|$)))+`)
+	quoteMarkerRe     = regexp.MustCompile(`^[ \t]{0,3}>[ \t]?`)
+	listPrefixRe      = regexp.MustCompile(`^(?:[ \t]{0,3}(?:[-+*]|\d{1,9}[.)])(?:[ \t]|$))+`)
+)
 
 type fence struct {
-	start  int
-	marker byte
-	width  int
-	quoted bool
+	start      int
+	marker     byte
+	width      int
+	quoteDepth int
+	itemIndent int
+	opaque     bool
 }
+
+type fenceLine int
+
+const (
+	fenceContinues fenceLine = iota
+	fenceCloses
+	fenceContainerEnds
+)
 
 func blockRanges(message string) []byteRange {
 	var ranges []byteRange
@@ -373,28 +387,34 @@ func blockRanges(message string) []byteRange {
 		indent := len(line) - len(trimmed)
 
 		prefix := containerPrefixRe.FindString(line)
-		quoted := strings.Contains(prefix, ">")
 		content := line[len(prefix):]
 		contentTrimmed := strings.TrimLeft(content, " ")
 		contentIndent := len(content) - len(contentTrimmed)
 
-		switch {
-		case open != nil:
-			if open.closedBy(trimmed, indent, contentTrimmed, contentIndent, quoted) {
+		if open != nil {
+			switch open.read(line) {
+			case fenceCloses:
 				ranges = append(ranges, byteRange{open.start, lineEnd})
 				open = nil
+			case fenceContainerEnds:
+				ranges = append(ranges, byteRange{open.start, offset - 1})
+				open = nil
+				continue
 			}
+		} else {
+			switch {
+			case indent <= 3 && opensFence(trimmed) != nil:
+				open = opensFence(trimmed)
+				open.start = offset
 
-		case indent <= 3 && opensFence(trimmed) != nil:
-			open = opensFence(trimmed)
-			open.start = offset
+			case prefix != "" && contentIndent <= 3 && opensFence(contentTrimmed) != nil:
+				open = opensFence(contentTrimmed)
+				open.start = offset
+				open.quoteDepth, open.itemIndent, open.opaque = containerOf(line)
 
-		case prefix != "" && contentIndent <= 3 && opensFence(contentTrimmed) != nil:
-			open = opensFence(contentTrimmed)
-			open.start, open.quoted = offset, quoted
-
-		case isIndentedCode(line), prefix != "" && isIndentedCode(content):
-			ranges = append(ranges, byteRange{offset, lineEnd})
+			case isIndentedCode(line), prefix != "" && isIndentedCode(content):
+				ranges = append(ranges, byteRange{offset, lineEnd})
+			}
 		}
 
 		if end < 0 {
@@ -419,11 +439,45 @@ func opensFence(trimmed string) *fence {
 	return nil
 }
 
-func (f *fence) closedBy(trimmed string, indent int, contentTrimmed string, contentIndent int, quoted bool) bool {
-	if f.quoted {
-		return quoted && contentIndent <= 3 && closesFence(contentTrimmed, f.marker, f.width)
+func containerOf(line string) (quoteDepth, itemIndent int, opaque bool) {
+	rest := line
+	for marker := quoteMarkerRe.FindString(rest); marker != ""; marker = quoteMarkerRe.FindString(rest) {
+		quoteDepth++
+		rest = rest[len(marker):]
 	}
-	return indent <= 3 && closesFence(trimmed, f.marker, f.width)
+	list := listPrefixRe.FindString(rest)
+	return quoteDepth, len(list), containerPrefixRe.FindString(rest[len(list):]) != ""
+}
+
+func (f *fence) read(line string) fenceLine {
+	if f.opaque {
+		return fenceContinues
+	}
+
+	rest := line
+	for range f.quoteDepth {
+		marker := quoteMarkerRe.FindString(rest)
+		if marker == "" {
+			return fenceContainerEnds
+		}
+		rest = rest[len(marker):]
+	}
+
+	if f.itemIndent > 0 {
+		if strings.TrimSpace(rest) == "" {
+			return fenceContinues
+		}
+		if len(rest)-len(strings.TrimLeft(rest, " ")) < f.itemIndent {
+			return fenceContainerEnds
+		}
+		rest = rest[f.itemIndent:]
+	}
+
+	trimmed := strings.TrimLeft(rest, " ")
+	if len(rest)-len(trimmed) <= 3 && closesFence(trimmed, f.marker, f.width) {
+		return fenceCloses
+	}
+	return fenceContinues
 }
 
 var usmtfLineRe = regexp.MustCompile(`^(?:/|[0-9]*[A-Z][A-Z0-9]*(?:/|$))`)

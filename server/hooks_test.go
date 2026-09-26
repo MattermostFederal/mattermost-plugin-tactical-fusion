@@ -1432,6 +1432,7 @@ func TestAForgedPluginTypeFromAnyReleaseIsStripped(t *testing.T) {
 		post := &model.Post{Message: "nothing to see", UserId: testUserID, Type: postType}
 		post.AddProp(decorators.PostPropsKey, map[string]any{"version": 1, "r": "FORGED"})
 		post.AddProp(decorators.PostPropsKey+"_later", map[string]any{"version": 1})
+		post.AddProp(decorators.PostPropsKey+"Later", map[string]any{"version": 1})
 		post.AddProp("another_integration", "kept")
 
 		updated := p.decoratePost(post, hookRef)
@@ -1442,7 +1443,7 @@ func TestAForgedPluginTypeFromAnyReleaseIsStripped(t *testing.T) {
 			t.Errorf("%s: Type = %q, want it stripped", postType, updated.Type)
 		}
 		for key := range updated.GetProps() {
-			if isPluginPropsKey(key) {
+			if strings.HasPrefix(key, decorators.PostPropsKey) {
 				t.Errorf("%s: the forged %s blob survived", postType, key)
 			}
 		}

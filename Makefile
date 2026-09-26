@@ -1094,14 +1094,16 @@ install-sbom-tools:
 	$(GO) install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.12.0
 
 GRYPE_VERSION ?= v0.119.0
+GRYPE_DIR := $(GOBIN)/grype-$(GRYPE_VERSION)
+GRYPE := $(GRYPE_DIR)/grype
 
 ## Install Grype vulnerability scanner
 .PHONY: install-grype
 install-grype:
-	@if [ ! -x "$(GOBIN)/grype" ]; then \
-		echo "Installing Grype via go install (cross-platform, no anchore install.sh)..."; \
-		mkdir -p $(GOBIN); \
-		GOBIN=$(GOBIN) $(GO) install github.com/anchore/grype/cmd/grype@$(GRYPE_VERSION); \
+	@if [ ! -x "$(GRYPE)" ]; then \
+		echo "Installing Grype $(GRYPE_VERSION) via go install (cross-platform, no anchore install.sh)..."; \
+		mkdir -p $(GRYPE_DIR); \
+		GOBIN=$(GRYPE_DIR) $(GO) install github.com/anchore/grype/cmd/grype@$(GRYPE_VERSION); \
 	else \
 		echo "Grype already installed"; \
 	fi
@@ -1148,11 +1150,11 @@ sbom-scan: install-grype
 	fi
 ifneq ($(HAS_SERVER),)
 	@echo "Scanning Go dependencies for vulnerabilities..."
-	$(GOBIN)/grype sbom:dist/sbom/server-sbom.json --output table --fail-on high
+	$(GRYPE) sbom:dist/sbom/server-sbom.json --output table --fail-on high
 endif
 ifneq ($(HAS_WEBAPP),)
 	@echo "Scanning Node.js dependencies for vulnerabilities..."
-	$(GOBIN)/grype sbom:dist/sbom/webapp-sbom.json --output table --fail-on high
+	$(GRYPE) sbom:dist/sbom/webapp-sbom.json --output table --fail-on high
 endif
 
 ## Generate SBOMs, scan for vulnerabilities, and enforce the license policy
@@ -1166,7 +1168,7 @@ sbom-audit: sbom sbom-scan license-check
 CODEQL_VERSION ?= 2.20.1
 CODEQL_SHA256_linux64 ?= 790f5c109f15d26cf67d266591868e21fd6357211bbdbc4601921291a490b164
 CODEQL_SHA256_osx64 ?= d97cf7ae727338dd9f09068386c612f386ebb8bf63327c300b7e370a269c88c9
-CODEQL_DIR := $(PWD)/build/codeql
+CODEQL_DIR := $(PWD)/build/codeql/$(CODEQL_VERSION)-$(CODEQL_SHA256_linux64)-$(CODEQL_SHA256_osx64)
 CODEQL := $(CODEQL_DIR)/codeql/codeql
 CODEQL_DB_DIR := $(PWD)/build/codeql-db
 

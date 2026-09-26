@@ -541,7 +541,12 @@ func TestCodeInsideAQuoteOrAListItemIsNeverRewritten(t *testing.T) {
 		"tilde fence in a quote":             "> ~~~\n> AAA\n> ~~~",
 		"backtick fence in a quote":          "> ```\n> AAA\n> ```",
 		"longer closing run in a quote":      "> ```\n> AAA\n> ````\n",
-		"unclosed fence in a quote":          "> ```\n> AAA\n\nafter AAA",
+		"unclosed fence in a quote":          "> ```\n> AAA",
+		"deeper quote's fence in a quote":    "> ```\n> AAA\n> > ```\n> > AAA",
+		"root fence after a list item fence": "- ```\n  AAA\n```\nAAA",
+		"blank line in a list item fence":    "- ```\n  AAA\n\n  AAA\n  ```",
+		"list inside a quote":                "> - ~~~\n>   AAA\n>   ~~~",
+		"quote inside a list item":           "- > ~~~\n  > AAA\n  > ~~~",
 		"nested quote":                       "> > ~~~\n> > AAA\n> > ~~~",
 		"tilde fence in a list item":         "- ~~~\n  AAA\n  ~~~",
 		"backtick fence in a list item":      "- ```\n  AAA\n  ````\n",
@@ -559,7 +564,13 @@ func TestCodeInsideAQuoteOrAListItemIsNeverRewritten(t *testing.T) {
 func TestProseInsideAQuoteOrAListItemIsStillDecorated(t *testing.T) {
 	tagger := taggerWith(t, testPrefix, newFixture("tok", `\bAAA\b`))
 
-	for _, input := range []string{"> AAA", "- AAA", "1. AAA", ">    AAA", "> ~~~\n> x\n> ~~~\n> AAA"} {
+	for _, input := range []string{
+		"> AAA", "- AAA", "1. AAA", ">    AAA",
+		"> ~~~\n> x\n> ~~~\n> AAA",
+		"> ```\n> x\n\nafter AAA",
+		"- ~~~\n  x\n  ~~~\nafter AAA",
+		"- ~~~\n  x\nafter AAA",
+	} {
 		if got := tagger.Decorate(input, testRef); !strings.Contains(got, "[AAA]("+testPrefix) {
 			t.Errorf("%q was not decorated: %q", input, got)
 		}
