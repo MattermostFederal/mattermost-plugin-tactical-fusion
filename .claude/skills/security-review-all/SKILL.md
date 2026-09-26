@@ -54,9 +54,10 @@ agents, one per lens, each told the surface table above, told to cite
 `file:line`, and told to return candidates with an attack path rather than
 general advice. With a path argument, keep only the lenses that touch it.
 
-1. **Authorization and identity.** Every `/api/v1` route checks the session
-   user. `/bridge/v1` never returns per-user or per-channel data. `/mcp` reads a
-   reader only through `pluginmcp.GetUserID`, never `X-Mattermost-UserID`. Can a
+1. **Authorization and identity.** Verify that every `/api/v1` route checks the
+   session user, that `/bridge/v1` never returns per-user or per-channel data,
+   and that `/mcp` reads a reader only through `pluginmcp.GetUserID`, never
+   `X-Mattermost-UserID`. Can a
    user read another user's preferences, a post in a channel they cannot see
    (`/map?post=`), or a file they have no access to through a stamper or the
    attachment ownership check? Confused deputy through the bridge or MCP.
@@ -101,8 +102,8 @@ general advice. With a path argument, keep only the lenses that touch it.
     anything the virus allowlist or `.grype.yaml` suppresses without a real
     reason.
 
-Also check error paths: every failure carries a `TF-NNNN`, but does any leak a
-path, a stack, a token or another user's data?
+Also check error paths: does every failure carry a `TF-NNNN`, and does any leak
+a path, a stack, a token or another user's data?
 
 ## Step 3: Prove it
 
@@ -114,8 +115,8 @@ A finding without proof is a guess. For each candidate:
   another plugin, admin, filesystem access). Admin-only and filesystem-only
   issues are real but rank lower.
 - Where it is cheap and safe, write a failing test in the scratchpad or run the
-  relevant existing test with a crafted input (`go test ./server/... -run`)
-  to confirm. Never leave the working tree changed.
+  existing test that exercises the vulnerable path with a crafted input
+  (`go test ./server/... -run 'TestName'`) to confirm. Never leave the working tree changed.
 - Mark each finding CONFIRMED (proven or traced end to end) or PLAUSIBLE
   (traced, but depends on something you could not verify).
 
