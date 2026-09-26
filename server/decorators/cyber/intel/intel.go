@@ -9,6 +9,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -73,6 +74,7 @@ const (
 	ErrorName
 	ErrorMMDB
 	ErrorUnpack
+	ErrorTooLarge
 )
 
 type FileError struct {
@@ -85,7 +87,10 @@ func (e *FileError) Error() string { return e.Path + ": " + e.Err.Error() }
 
 func (e *FileError) Unwrap() error { return e.Err }
 
-var ErrNoDataset = errors.New("cyber: no such dataset is installed")
+var (
+	ErrNoDataset = errors.New("cyber: no such dataset is installed")
+	ErrRetired   = errors.New("cyber: the datasets were replaced and closed")
+)
 
 type Set struct {
 	dirs       []string
@@ -94,6 +99,19 @@ type Set struct {
 	candidates map[string]fingerprint
 	replaced   []string
 	problems   []*FileError
+
+	guard  sync.RWMutex
+	closed bool
+}
+
+func (s *Set) reading(read func() error) error {
+	s.guard.RLock()
+	defer s.guard.RUnlock()
+
+	if s.closed {
+		return ErrRetired
+	}
+	return read()
 }
 
 type fingerprint struct {
@@ -187,8 +205,11 @@ func Open(dirs []string) (*Set, []*FileError) {
 			dataset, err := openDataset(paths[i])
 			if err != nil {
 				class := ErrorUnreadable
-				if errors.Is(err, ErrSchema) {
+				switch {
+				case errors.Is(err, ErrSchema):
 					class = ErrorSchema
+				case errors.Is(err, ErrWatchlistTooLarge):
+					class = ErrorTooLarge
 				}
 				problems = append(problems, &FileError{Path: paths[i], Class: class, Err: err})
 				continue
@@ -232,6 +253,15 @@ func (s *Set) Close() {
 	if s == nil {
 		return
 	}
+
+	s.guard.Lock()
+	defer s.guard.Unlock()
+
+	if s.closed {
+		return
+	}
+	s.closed = true
+
 	for _, dataset := range s.datasets {
 		dataset.close()
 	}
@@ -336,7 +366,13 @@ func (s *Set) lookup(name, key string) ([]string, error) {
 		return nil, ErrNoDataset
 	}
 
-	return dataset.file.Lookup(key)
+	var row []string
+	err := s.reading(func() error {
+		var err error
+		row, err = dataset.file.Lookup(key)
+		return err
+	})
+	return row, err
 }
 
 func (s *Set) CVE(id string) (CVERecord, error) {
@@ -400,15 +436,11 @@ func (s *Set) IP(addr netip.Addr) (IPRecord, error) {
 		return record, ErrNoDataset
 	}
 
-	for _, reader := range s.mmdbs {
-		before := record.fields()
-		reader.enrich(addr, &record)
-		if record.fields() != before {
-			record.Sources = appendOnce(record.Sources, filepath.Base(reader.path))
-			if reader.attribution != nil && !slices.Contains(record.Attributions, *reader.attribution) {
-				record.Attributions = append(record.Attributions, *reader.attribution)
-			}
-		}
+	if err := s.reading(func() error {
+		s.enrichFromDatabases(addr, &record)
+		return nil
+	}); err != nil {
+		return record, err
 	}
 
 	err := s.fillFromRanges(addr, &record)
@@ -419,6 +451,19 @@ func (s *Set) IP(addr netip.Addr) (IPRecord, error) {
 	return record, err
 }
 
+func (s *Set) enrichFromDatabases(addr netip.Addr, record *IPRecord) {
+	for _, reader := range s.mmdbs {
+		before := record.fields()
+		reader.enrich(addr, record)
+		if record.fields() != before {
+			record.Sources = appendOnce(record.Sources, filepath.Base(reader.path))
+			if reader.attribution != nil && !slices.Contains(record.Attributions, *reader.attribution) {
+				record.Attributions = append(record.Attributions, *reader.attribution)
+			}
+		}
+	}
+}
+
 func (s *Set) fillFromRanges(addr netip.Addr, record *IPRecord) error {
 	dataset, ok := s.datasets[NameIP]
 	if !ok {
@@ -426,7 +471,7 @@ func (s *Set) fillFromRanges(addr netip.Addr, record *IPRecord) error {
 	}
 
 	key := IPKey(addr)
-	row, err := dataset.file.LookupRange(key)
+	row, err := s.lookupRange(dataset, key)
 	switch {
 	case err != nil:
 		return err
@@ -442,6 +487,16 @@ func (s *Set) fillFromRanges(addr netip.Addr, record *IPRecord) error {
 	record.Sources = appendOnce(record.Sources, NameIP)
 
 	return nil
+}
+
+func (s *Set) lookupRange(dataset *Dataset, key string) ([]string, error) {
+	var row []string
+	err := s.reading(func() error {
+		var err error
+		row, err = dataset.file.LookupRange(key)
+		return err
+	})
+	return row, err
 }
 
 func fill(into *string, value string) {

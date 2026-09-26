@@ -8,9 +8,15 @@ import (
 	"strings"
 )
 
-const blockBytes = 4096
+const (
+	blockBytes   = 4096
+	maxLineBytes = 8 << 20
+)
 
-var ErrNotFound = errors.New("cyber: no row for that key")
+var (
+	ErrNotFound    = errors.New("cyber: no row for that key")
+	ErrLineTooLong = fmt.Errorf("cyber: a row is longer than %d bytes", maxLineBytes)
+)
 
 type readerAt interface {
 	ReadAt(p []byte, off int64) (int, error)
@@ -37,8 +43,12 @@ func (f *sortedFile) firstLineStartAtOrAfter(pos int64) (int64, error) {
 	}
 
 	at := pos - 1
+	limit := at + maxLineBytes
 	buf := make([]byte, blockBytes)
 	for at < f.size {
+		if at > limit {
+			return 0, ErrLineTooLong
+		}
 		n, err := f.readAt(buf, at)
 		if err != nil {
 			return 0, err
@@ -61,7 +71,11 @@ func (f *sortedFile) previousLineStart(start int64) (int64, error) {
 	}
 
 	end := start - 1
+	limit := end - maxLineBytes
 	for end > f.bodyStart {
+		if end < limit {
+			return 0, ErrLineTooLong
+		}
 		from := max(end-blockBytes, f.bodyStart)
 
 		buf := make([]byte, end-from)
@@ -95,8 +109,14 @@ func (f *sortedFile) readLine(start int64) (string, int64, error) {
 			break
 		}
 		if index := bytes.IndexByte(buf[:n], '\n'); index >= 0 {
+			if len(line)+index > maxLineBytes {
+				return "", 0, ErrLineTooLong
+			}
 			line = append(line, buf[:index]...)
 			return string(line), at + int64(index) + 1, nil
+		}
+		if len(line)+n > maxLineBytes {
+			return "", 0, ErrLineTooLong
 		}
 		line = append(line, buf[:n]...)
 		at += int64(n)

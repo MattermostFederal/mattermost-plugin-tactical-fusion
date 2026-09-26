@@ -18,7 +18,7 @@ import type {
 
 import {pluginBaseUrl} from '../../plugin_url';
 import {CACHE_TTL_MS} from '../../preferences/store';
-import {fromParams as dtgFromParams} from '../dtg';
+import {asDtgQuery} from '../dtg';
 
 export const KINDS = ['cve', 'cwe', 'attack', 'ip', 'hash'] as const;
 
@@ -96,10 +96,6 @@ function asArray(wire: Record<string, unknown>, field: string): unknown[] {
         throw new Error(`The server did not return ${field}.`);
     }
     return value;
-}
-
-function asDtgQuery(query: string): string {
-    return query !== '' && dtgFromParams(new URLSearchParams(query)) ? query : '';
 }
 
 function asRows(value: unknown[]): CyberRow[] {

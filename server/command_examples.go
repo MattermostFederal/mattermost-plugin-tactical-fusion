@@ -162,7 +162,32 @@ func (p *Plugin) formatExampleMessages() []string {
 	return append(append(messages, p.noteExampleMessages()...), mcpExampleMessage())
 }
 
+const examplesCooldownSeconds = 60
+
+func examplesCooldownKey(userID string) string {
+	return "examples_cooldown_" + userID
+}
+
+func (p *Plugin) claimExamplesRun(userID string) bool {
+	claimed, appErr := p.API.KVSetWithOptions(examplesCooldownKey(userID), []byte{1}, model.PluginKVSetOptions{
+		Atomic:          true,
+		OldValue:        nil,
+		ExpireInSeconds: examplesCooldownSeconds,
+	})
+	if appErr != nil {
+		p.API.LogWarn("tactical-fusion: could not record an examples run; posting without the cooldown",
+			"error_code", errcode.CommandExamplesCooldownUnavailable, "error", appErr.Error())
+		return true
+	}
+	return claimed
+}
+
 func (p *Plugin) postExamples(args *model.CommandArgs, messages []string) *model.CommandResponse {
+	if !p.claimExamplesRun(args.UserId) {
+		return ephemeralResponse(errcode.WithCode(errcode.CommandExamplesCoolingDown,
+			"The examples were posted less than a minute ago. Try again in a minute."))
+	}
+
 	failed, total := 0, len(messages)+p.cotExampleCount()+p.geoJSONExampleCount()+p.tfrExampleCount()+len(noteExamples)+mcpExampleCount
 
 	for _, message := range messages {

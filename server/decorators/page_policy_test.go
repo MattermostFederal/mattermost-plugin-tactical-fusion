@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -156,8 +157,8 @@ func TestPageCapabilityDecidesTheWholePolicy(t *testing.T) {
 		},
 		{
 			name: "mapping",
-			page: decorators.Page{Capability: decorators.PageMapping},
-			want: "default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; " +
+			page: decorators.Page{ScriptSrc: "./page.js", Capability: decorators.PageMapping},
+			want: "default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-N' 'strict-dynamic'; " +
 				"worker-src 'self'; img-src data:; connect-src 'self'; " +
 				"base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
 		},
@@ -168,29 +169,71 @@ func TestPageCapabilityDecidesTheWholePolicy(t *testing.T) {
 			rec := httptest.NewRecorder()
 			decorators.WritePage(rec, c.page)
 
-			if got := rec.Header().Get("Content-Security-Policy"); got != c.want {
+			if got := withoutNonce(rec.Header().Get("Content-Security-Policy")); got != c.want {
 				t.Errorf("policy =\n  %s\nwant\n  %s", got, c.want)
 			}
 		})
 	}
 }
 
-// A mapping page that also carries an inline script keeps the digest beside
-// 'self'. The two say different things: 'self' is permission to load MapLibre
-// out of the bundle, the digest still names the only inline program that may
-// run, and an escaping mistake has to survive the second one.
+var nonceSource = regexp.MustCompile(`'nonce-[A-Za-z0-9+/=]+'`)
+
+func withoutNonce(policy string) string {
+	return nonceSource.ReplaceAllString(policy, "'nonce-N'")
+}
+
 func TestMappingPageStillPinsItsInlineScript(t *testing.T) {
 	rec := httptest.NewRecorder()
 	decorators.WritePage(rec, decorators.Page{
 		ScriptJS:   "console.log(1);",
+		ScriptSrc:  "./page.js",
 		Capability: decorators.PageMapping,
 	})
 
 	sum := sha256.Sum256([]byte("console.log(1);"))
-	want := "script-src 'self' 'sha256-" + base64.StdEncoding.EncodeToString(sum[:]) + "'"
+	want := "script-src 'nonce-N' 'strict-dynamic' 'sha256-" + base64.StdEncoding.EncodeToString(sum[:]) + "'"
 
-	if got := rec.Header().Get("Content-Security-Policy"); !strings.Contains(got, want) {
+	if got := withoutNonce(rec.Header().Get("Content-Security-Policy")); !strings.Contains(got, want) {
 		t.Errorf("policy = %q, want it to contain %q", got, want)
+	}
+}
+
+var scriptNonce = regexp.MustCompile(`<script src="[^"]*" nonce="([^"]+)"`)
+
+func TestTheBundleCarriesTheNonceItsPolicyNames(t *testing.T) {
+	page := decorators.Page{ScriptSrc: "./page.js", Capability: decorators.PageMapping}
+
+	seen := map[string]bool{}
+	for range 3 {
+		rec := httptest.NewRecorder()
+		decorators.WritePage(rec, page)
+
+		tag := scriptNonce.FindStringSubmatch(rec.Body.String())
+		if tag == nil {
+			t.Fatalf("the bundle's script tag carries no nonce:\n%s", rec.Body.String())
+		}
+		if len(tag[1]) < 22 {
+			t.Fatalf("nonce %q is too short to be unguessable", tag[1])
+		}
+		if policy := rec.Header().Get("Content-Security-Policy"); !strings.Contains(policy, "'nonce-"+tag[1]+"'") {
+			t.Fatalf("policy %q does not name the tag's nonce %q", policy, tag[1])
+		}
+		if seen[tag[1]] {
+			t.Fatalf("nonce %q was served twice", tag[1])
+		}
+		seen[tag[1]] = true
+	}
+}
+
+func TestAMappingPageNeverTrustsTheWholeOrigin(t *testing.T) {
+	rec := httptest.NewRecorder()
+	decorators.WritePage(rec, decorators.Page{ScriptSrc: "./page.js", Capability: decorators.PageMapping})
+
+	policy := rec.Header().Get("Content-Security-Policy")
+	for _, directive := range strings.Split(policy, ";") {
+		if strings.HasPrefix(strings.TrimSpace(directive), "script-src") && strings.Contains(directive, "'self'") {
+			t.Fatalf("script-src trusts every script on the origin: %q", directive)
+		}
 	}
 }
 

@@ -12,7 +12,10 @@ import (
 
 var bundledCyberDir = filepath.Join("assets", "cyber")
 
-const cyberCacheTTL = 5 * time.Second
+const (
+	cyberCacheTTL    = 5 * time.Second
+	cyberRetireGrace = 2 * time.Minute
+)
 
 type cyberDatasets struct {
 	lock sync.Mutex
@@ -21,6 +24,9 @@ type cyberDatasets struct {
 	checked    time.Time
 	generation int
 	refreshing bool
+	opening    chan struct{}
+
+	retireAfter time.Duration
 }
 
 func (p *Plugin) cyberIntel() *intel.Set {
@@ -28,30 +34,77 @@ func (p *Plugin) cyberIntel() *intel.Set {
 }
 
 func (p *Plugin) cyberIntelFor(dirs []string) *intel.Set {
-	p.cyber.lock.Lock()
-	defer p.cyber.lock.Unlock()
+	for {
+		p.cyber.lock.Lock()
 
-	if p.cyber.set != nil && time.Since(p.cyber.checked) < cyberCacheTTL {
-		return p.cyber.set
-	}
-
-	if p.cyber.set != nil && !p.cyber.set.Changed(dirs) {
-		p.cyber.checked = time.Now()
-		return p.cyber.set
-	}
-
-	if p.cyber.set != nil {
-		if !p.cyber.refreshing {
-			p.cyber.refreshing = true
-			go p.refreshCyberDatasets(dirs, p.cyber.generation)
+		if set := p.cyber.set; set != nil {
+			p.serveCachedCyberSetLocked(dirs)
+			p.cyber.lock.Unlock()
+			return set
 		}
-		return p.cyber.set
+
+		if opening := p.cyber.opening; opening != nil {
+			p.cyber.lock.Unlock()
+			<-opening
+			continue
+		}
+
+		opening := make(chan struct{})
+		p.cyber.opening = opening
+		generation := p.cyber.generation
+		p.cyber.lock.Unlock()
+
+		return p.openFirstCyberSet(dirs, opening, generation)
+	}
+}
+
+func (p *Plugin) serveCachedCyberSetLocked(dirs []string) {
+	if time.Since(p.cyber.checked) < cyberCacheTTL {
+		return
 	}
 
-	p.cyber.set = p.openCyberDatasets(dirs)
-	p.cyber.checked = time.Now()
+	if !p.cyber.set.Changed(dirs) {
+		p.cyber.checked = time.Now()
+		return
+	}
 
-	return p.cyber.set
+	if !p.cyber.refreshing {
+		p.cyber.refreshing = true
+		go p.refreshCyberDatasets(dirs, p.cyber.generation)
+	}
+}
+
+func (p *Plugin) openFirstCyberSet(dirs []string, opening chan struct{}, generation int) *intel.Set {
+	var set *intel.Set
+
+	defer func() {
+		p.cyber.lock.Lock()
+		p.cyber.opening = nil
+		if set != nil {
+			if p.cyber.generation == generation {
+				p.cyber.set = set
+				p.cyber.checked = time.Now()
+			} else {
+				p.retireCyberSetLocked(set)
+			}
+		}
+		p.cyber.lock.Unlock()
+		close(opening)
+	}()
+
+	set = p.openCyberDatasets(dirs)
+	return set
+}
+
+func (p *Plugin) retireCyberSetLocked(set *intel.Set) {
+	if set == nil {
+		return
+	}
+	grace := p.cyber.retireAfter
+	if grace == 0 {
+		grace = cyberRetireGrace
+	}
+	time.AfterFunc(grace, set.Close)
 }
 
 func (p *Plugin) openCyberDatasets(dirs []string) *intel.Set {
@@ -74,6 +127,7 @@ func (p *Plugin) refreshCyberDatasets(dirs []string, generation int) {
 		return
 	}
 	p.cyber.refreshing = false
+	p.retireCyberSetLocked(p.cyber.set)
 	p.cyber.set = set
 	p.cyber.checked = time.Now()
 }
@@ -110,6 +164,8 @@ func cyberProblemCode(problem *intel.FileError) int {
 		return errcode.CyberDataMMDBUnreadable
 	case intel.ErrorUnpack:
 		return errcode.CyberDataUnpackFailed
+	case intel.ErrorTooLarge:
+		return errcode.CyberDataWatchlistTooLarge
 	}
 
 	return errcode.CyberDataUnreadable
@@ -125,6 +181,8 @@ func cyberProblemMessage(problem *intel.FileError) string {
 		return "a vendor IP database could not be read and was skipped"
 	case intel.ErrorUnpack:
 		return "a gzipped cyber dataset could not be unpacked beside itself"
+	case intel.ErrorTooLarge:
+		return "the cyber watchlist is larger than this build loads and was skipped"
 	}
 
 	return "a cyber dataset could not be read and was skipped"
@@ -160,6 +218,7 @@ func (p *Plugin) forgetCyberDatasets() {
 	p.cyber.lock.Lock()
 	defer p.cyber.lock.Unlock()
 
+	p.retireCyberSetLocked(p.cyber.set)
 	p.cyber.set = nil
 	p.cyber.checked = time.Time{}
 	p.cyber.generation++

@@ -617,9 +617,6 @@ func settleBelow(t *testing.T, target int) bool {
 	}
 }
 
-// A stale set is dropped rather than closed, because Close munmaps the vendor
-// databases and a request already reading through one would not survive it.
-// Dropping is only correct if the runtime then releases the handles.
 func TestADroppedSetReleasesItsHandles(t *testing.T) {
 	if runtime.GOOS != "linux" {
 		t.Skip("the descriptor count is read from /proc")

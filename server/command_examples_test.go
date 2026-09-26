@@ -1,6 +1,7 @@
 package main
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
 )
 
 func examplesResponse(t *testing.T, p *Plugin) *model.CommandResponse {
@@ -280,5 +282,59 @@ func TestExamplesReportWhenAPostIsRefused(t *testing.T) {
 	}
 	if !strings.Contains(response.Text, "TF-16006") {
 		t.Errorf("the report carries no code: %s", response.Text)
+	}
+}
+
+func TestExamplesRunOncePerCooldownPerUser(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	api := p.API.(*fakeAPI)
+
+	runExamplePosts(t, p)
+	firstRun := len(api.created)
+	if firstRun == 0 {
+		t.Fatal("the first run posted nothing")
+	}
+
+	response := examplesResponse(t, p)
+	if len(api.created) != firstRun {
+		t.Fatalf("a second run inside the cooldown posted %d more messages", len(api.created)-firstRun)
+	}
+	if !strings.Contains(response.Text, "TF-16012") {
+		t.Fatalf("the refusal carries no code: %q", response.Text)
+	}
+
+	if _, appErr := p.ExecuteCommand(&plugin.Context{}, &model.CommandArgs{
+		Command: "/tactical-fusion examples", UserId: "user2", ChannelId: "channel1",
+	}); appErr != nil {
+		t.Fatalf("ExecuteCommand: %v", appErr)
+	}
+	if len(api.created) == firstRun {
+		t.Fatal("another user was held to the first user's cooldown")
+	}
+}
+
+func TestExamplesClaimIsAnExpiringSetIfAbsent(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	api := p.API.(*fakeAPI)
+
+	var options model.PluginKVSetOptions
+	api.kvSetOptions = &options
+	runExamplePosts(t, p)
+
+	if !options.Atomic || options.OldValue != nil || options.ExpireInSeconds != examplesCooldownSeconds {
+		t.Fatalf("the claim is not an expiring set-if-absent: %+v", options)
+	}
+}
+
+func TestExamplesStillPostWhenTheCooldownCannotBeRecorded(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	api := p.API.(*fakeAPI)
+	api.kvSetErr = model.NewAppError("KVSetWithOptions", "boom", nil, "", 500)
+
+	if messages := runExamplePosts(t, p); len(messages) == 0 {
+		t.Fatal("a storage fault took the examples away")
+	}
+	if !slices.Contains(api.warnCodes, errcode.CommandExamplesCooldownUnavailable) {
+		t.Fatalf("no %d warning was logged: %v", errcode.CommandExamplesCooldownUnavailable, api.warnCodes)
 	}
 }

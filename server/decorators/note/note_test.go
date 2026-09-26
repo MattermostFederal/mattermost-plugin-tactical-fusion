@@ -77,3 +77,15 @@ func TestThePageRefusesALinkWithNoNote(t *testing.T) {
 		t.Errorf("status %d, body:\n%s", rec.Code, rec.Body.String())
 	}
 }
+
+func TestThePageSaysTheLinkAuthorWroteTheNoteBeforeShowingIt(t *testing.T) {
+	rec := httptest.NewRecorder()
+	(&Decorator{}).RenderPage(rec, url.Values{ParamValue: {"Your session expired. Call 555-0100."}})
+
+	body := rec.Body.String()
+	banner := strings.Index(body, provenance)
+	source := strings.Index(body, "Your session expired")
+	if banner < 0 || source < 0 || banner > source {
+		t.Errorf("the provenance line must precede the note, body:\n%s", body)
+	}
+}

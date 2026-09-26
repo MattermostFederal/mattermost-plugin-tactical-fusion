@@ -189,7 +189,7 @@ func TestBothPagesNameTheBundleRelativeToTheirOwnRoute(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		if !strings.Contains(c.body, `<script src="`+c.want+`" defer>`) {
+		if !strings.Contains(c.body, `<script src="`+c.want+`" nonce="`) {
 			t.Errorf("%s does not load %s", c.name, c.want)
 		}
 	}
@@ -207,7 +207,7 @@ func TestBothPagesNameTheBundleRelativeToTheirOwnRoute(t *testing.T) {
 // the security posture of a public route that echoes author text, and the only
 // way a future widening stays a decision is if it shows up here as a diff.
 func TestMapPagesCarryExactlyTheMappingPolicy(t *testing.T) {
-	const want = "default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; " +
+	const want = "default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-N' 'strict-dynamic'; " +
 		"worker-src 'self'; img-src data:; connect-src 'self'; " +
 		"base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 
@@ -221,7 +221,7 @@ func TestMapPagesCarryExactlyTheMappingPolicy(t *testing.T) {
 	}
 
 	for name, got := range pages {
-		if got != want {
+		if got := regexp.MustCompile(`'nonce-[A-Za-z0-9]+'`).ReplaceAllString(got, "'nonce-N'"); got != want {
 			t.Errorf("%s serves\n  %s\nwant\n  %s", name, got, want)
 		}
 

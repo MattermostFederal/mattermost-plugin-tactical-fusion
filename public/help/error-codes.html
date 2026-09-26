@@ -506,6 +506,16 @@
                     <td><code>CommandPostNotPermitted</code></td>
                     <td><code>You cannot post in this channel, so this command cannot post for you.</code> <a href="commands.html#examples"><code>examples</code></a> and <a href="commands.html#note"><code>note</code></a> post as you, so each first checks that you may post in the channel. A read-only or moderated channel is the usual cause. Nothing was posted.</td>
                 </tr>
+                <tr>
+                    <td><code>TF-16012</code></td>
+                    <td><code>CommandExamplesCoolingDown</code></td>
+                    <td><code>The examples were posted less than a minute ago. Try again in a minute.</code> <code>examples</code> posts about twenty messages, so each user may run it once a minute, across every node in the cluster. Nothing was posted.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-16013</code></td>
+                    <td><code>CommandExamplesCooldownUnavailable</code> <span class="level">Warn</span></td>
+                    <td>Logged when the plugin key-value store could not record an <code>examples</code> run. The examples are posted anyway, without the once a minute limit, because a storage fault must not take the command away.</td>
+                </tr>
             </tbody>
         </table>
 
@@ -842,6 +852,11 @@
                     <td><code>TF-21006</code></td>
                     <td><code>CyberDataUnpackFailed</code> <span class="level">log</span></td>
                     <td>A gzipped dataset such as <code>cve.tsv.gz</code> could not be unpacked beside itself: the archive is truncated or corrupt, it unpacks to more than 2 GiB, or the server cannot write to the directory. Any <code>cve.tsv</code> already there is left as it was. Re-copy the archive, make the directory writable by the Mattermost server, or unpack it yourself with <code>gunzip -k</code> and the plugin reads the result.</td>
+                </tr>
+                <tr>
+                    <td><code>TF-21007</code></td>
+                    <td><code>CyberDataWatchlistTooLarge</code> <span class="level">log</span></td>
+                    <td>A <code>watchlist.tsv</code> is larger than 64 MiB. The watchlist is held in memory, unlike the other datasets, so a file over that size is skipped rather than loaded and no watchlist verdicts are shown. Trim the watchlist to the indicators you are tracking now.</td>
                 </tr>
             </tbody>
         </table>

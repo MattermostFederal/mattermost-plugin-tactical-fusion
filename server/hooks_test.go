@@ -64,6 +64,8 @@ type fakeAPI struct {
 	kvSetErr    *model.AppError
 	kvDeleteErr *model.AppError
 
+	kvSetOptions *model.PluginKVSetOptions
+
 	// published records every cluster event, so a test can prove that saving
 	// tells the other nodes to drop their copy.
 	published []model.PluginClusterEvent
@@ -333,6 +335,19 @@ func (a *fakeAPI) KVSet(key string, value []byte) *model.AppError {
 	}
 	a.kv[key] = value
 	return nil
+}
+
+func (a *fakeAPI) KVSetWithOptions(key string, value []byte, options model.PluginKVSetOptions) (bool, *model.AppError) {
+	if a.kvSetOptions != nil {
+		*a.kvSetOptions = options
+	}
+	if a.kvSetErr != nil {
+		return false, a.kvSetErr
+	}
+	if _, exists := a.kv[key]; exists && options.Atomic && options.OldValue == nil {
+		return false, nil
+	}
+	return true, a.KVSet(key, value)
 }
 
 func (a *fakeAPI) KVDelete(key string) *model.AppError {

@@ -94,7 +94,12 @@ func (s *Set) Inventory() Inventory {
 		if !ok {
 			continue
 		}
-		records, err := dataset.Records()
+		var records int
+		err := s.reading(func() error {
+			var countErr error
+			records, countErr = dataset.Records()
+			return countErr
+		})
 		inv.Datasets = append(inv.Datasets, DatasetEntry{
 			Name:      dataset.Name,
 			Path:      dataset.Path,

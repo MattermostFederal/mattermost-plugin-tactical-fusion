@@ -48,6 +48,55 @@ test('proxies images exactly when the server has an image proxy', async ({mount,
     await expect(direct.getByTestId('note-markdown')).toHaveText('proxyImages=false');
 });
 
+const imageHtml = '<p>before <img src="https://images.example.test/pixel.png" alt="pixel"> after</p>';
+
+test('the hover card renders no image and keeps its alt text', async ({mount, page}) => {
+    const fetched: string[] = [];
+    page.on('request', (request) => {
+        if (request.url().includes('images.example.test')) {
+            fetched.push(request.url());
+        }
+    });
+    await page.evaluate((html) => {
+        window.PostUtils = {
+            formatText: () => html,
+            messageHtmlToComponent: (rendered: string) => `component:${rendered}`,
+        };
+    }, imageHtml);
+
+    const hover = await mount(<NoteHover payload={{markdown: '![pixel](https://images.example.test/pixel.png)'}}/>);
+
+    await expect(hover.getByTestId('note-markdown')).toHaveText('component:<p>before pixel after</p>');
+    expect(fetched).toEqual([]);
+});
+
+test('the hover card drops every image the renderer wrote, reference style included', async ({mount, page}) => {
+    await page.evaluate(() => {
+        window.PostUtils = {
+            formatText: () => '<p><img src="https://a.example.test/1.png" alt="one"><a href="https://b.example.test"><img src="https://b.example.test/2.png"></a></p>',
+            messageHtmlToComponent: (rendered: string) => rendered,
+        };
+    });
+
+    const hover = await mount(<NoteHover payload={{markdown: '![one][1]\n[![](https://b.example.test/2.png)](https://b.example.test)\n\n[1]: https://a.example.test/1.png'}}/>);
+
+    await expect(hover.getByTestId('note-markdown')).not.toContainText('<img');
+    await expect(hover.getByTestId('note-markdown')).toContainText('one');
+});
+
+test('the panel keeps the images the renderer wrote', async ({mount, page}) => {
+    await page.evaluate((html) => {
+        window.PostUtils = {
+            formatText: () => html,
+            messageHtmlToComponent: (rendered: string) => `component:${rendered}`,
+        };
+    }, imageHtml);
+
+    const panel = await mount(<NotePanel payload={{markdown: '![pixel](https://images.example.test/pixel.png)'}}/>);
+
+    await expect(panel.getByTestId('note-markdown')).toHaveText(`component:${imageHtml}`);
+});
+
 test('shows the source when the renderer returns nothing', async ({mount, page}) => {
     await page.evaluate(() => {
         window.PostUtils = {

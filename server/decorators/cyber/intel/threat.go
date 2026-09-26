@@ -57,7 +57,7 @@ func (s *Set) reportsField(name, key string) (string, error) {
 		return "", ErrNoDataset
 	}
 	rangeKey := IPKey(addr)
-	row, err := dataset.file.LookupRange(rangeKey)
+	row, err := s.lookupRange(dataset, rangeKey)
 	switch {
 	case err != nil:
 		return "", err

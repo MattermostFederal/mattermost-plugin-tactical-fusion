@@ -126,9 +126,11 @@ why decorators stay registered with everything off. Maps are the deliberate
 exception and the `Formats` doc comment names it.
 
 **`Page.Capability` decides the whole CSP.** `PageStatic` is what a page should
-want; `PageMapping` gives back `script-src 'self'`, `worker-src`, `img-src data:`
-and `connect-src 'self'` and makes escaping the only defense on a route that
-echoes author text. `ScriptSrc` must be relative.
+want; `PageMapping` gives back a per-response `'nonce-...' 'strict-dynamic'`
+script source for the bundle, `worker-src`, `img-src data:` and `connect-src
+'self'`. Never `script-src 'self'`: it would let any same-origin URL that
+answers with script, including another plugin's, run on a route that echoes
+author text. `ScriptSrc` must be relative.
 
 **A map that cannot become ready must say so.** MapLibre tiles in a worker, so a
 worker that never arrives leaves `load` unfired and raises no error: the note sat
