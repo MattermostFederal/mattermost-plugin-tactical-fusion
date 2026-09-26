@@ -9,12 +9,27 @@ pipeline needs the network. The plugin never does.
 
 ## Running it
 
-The full set, from pinned upstream sources:
+The full set:
 
 ```
 make cyber-sources
 make cyber-data
 ```
+
+What is pinned and what is not:
+
+- ATT&CK, the KEV to ATT&CK mappings and the MISP warninglists are fetched at
+  the commits in `pins.env`. `make cyber-pins` shows each pin beside its
+  upstream head; bump one by editing that file.
+- Each NVD feed is checked against the sha256 its `.meta` publishes.
+- KEV, EPSS, CWE, CAPEC, iptoasn, the Tor exit list and DB-IP are live and
+  publish no digest. `make cyber-bounds`, the last step of `make cyber-refresh`,
+  fails when a regenerated dataset falls below its row floor or shrinks past its
+  bound against the committed copy, so a truncated or poisoned download fails
+  the release instead of shipping. `CYBER_ALLOW_SHRINK=1` waives the shrink
+  bound, never the floors, for an upstream confirmed to have shrunk.
+- `source/SOURCES.sha256` records the digest of every file a fetch read, and a
+  release attaches it.
 
 A small current example, the CVEs NVD published in the last seven days:
 
@@ -282,8 +297,8 @@ NVD API, published 2026-09-16T19:24:16Z to 2026-09-23T19:24:16Z, 3065 CVEs
 
 ### The window cannot be pinned
 
-The full build verifies its sources against `sources.lock`. A window ending now
-is different on every run, so it has nothing to pin to. The script checks what
+The full build pins what it can and bounds the rest. A window ending now is
+different on every run, so it has nothing to pin to. The script checks what
 it can instead:
 
 - The window's end is fixed before the first request, so a CVE published while

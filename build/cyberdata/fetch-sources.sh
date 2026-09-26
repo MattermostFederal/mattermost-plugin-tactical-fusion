@@ -4,9 +4,26 @@ set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source_dir="${here}/source"
-lock="${SOURCES_LOCK:-${here}/sources.lock}"
+pins="${here}/pins.env"
+manifest="${SOURCES_MANIFEST:-${source_dir}/SOURCES.sha256}"
+nvd_attempts=3
+
+pinned() {
+    local name="$1" value
+    value="$(sed -n "s/^${name}=//p" "${pins}" | tail -1)"
+    if ! [[ "${value}" =~ ^[0-9a-f]{40}$ ]]; then
+        echo "error: ${name} in ${pins} is not a full 40 character commit SHA: '${value}'" >&2
+        exit 1
+    fi
+    printf '%s' "${value}"
+}
+
+attack_commit="$(pinned ATTACK_STIX_DATA_COMMIT)"
+mappings_commit="$(pinned MAPPINGS_EXPLORER_COMMIT)"
+misp_commit="$(pinned MISP_WARNINGLISTS_COMMIT)"
 
 mkdir -p "${source_dir}" "${source_dir}/nvd"
+cp "${pins}" "${source_dir}/PINS"
 
 fetch() {
     local url="$1" target="$2"
@@ -22,11 +39,39 @@ fetch_gz() {
     curl --fail --location --silent --show-error "${url}" | gunzip > "${source_dir}/${target}"
 }
 
-fetch "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json" \
-    "enterprise-attack.json"
+sha256_of() {
+    shasum -a 256 "$1" | cut -d' ' -f1
+}
 
-fetch "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/mobile-attack/mobile-attack.json" \
-    "mobile-attack.json"
+fetch_nvd_year() {
+    local year="$1" attempt meta want got
+    local base="https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-${year}"
+    local target="${source_dir}/nvd/nvdcve-2.0-${year}.json"
+
+    for attempt in $(seq 1 "${nvd_attempts}"); do
+        echo "fetching nvd/${year} (attempt ${attempt})"
+        meta="$(curl --fail --location --silent --show-error "${base}.meta" | tr -d '\r')"
+        want="$(printf '%s\n' "${meta}" | sed -n 's/^sha256://p' | tr 'A-F' 'a-f')"
+        if ! [[ "${want}" =~ ^[0-9a-f]{64}$ ]]; then
+            echo "error: nvd/${year}.meta carries no sha256" >&2
+            exit 1
+        fi
+        curl --fail --location --silent --show-error "${base}.json.gz" | gunzip > "${target}"
+        got="$(sha256_of "${target}")"
+        if [ "${got}" = "${want}" ]; then
+            return 0
+        fi
+        echo "nvd/${year} does not match its .meta (NVD may have republished mid-fetch)"
+    done
+    echo "error: nvd/${year} never matched the sha256 in its .meta" >&2
+    echo "  expected ${want}" >&2
+    echo "  got      ${got}" >&2
+    exit 1
+}
+
+attack_base="https://raw.githubusercontent.com/mitre-attack/attack-stix-data/${attack_commit}"
+fetch "${attack_base}/enterprise-attack/enterprise-attack.json" "enterprise-attack.json"
+fetch "${attack_base}/mobile-attack/mobile-attack.json" "mobile-attack.json"
 
 echo "fetching cwe-1000.csv"
 curl --fail --location --silent --show-error --output "${source_dir}/cwe-1000.csv.zip" \
@@ -38,7 +83,6 @@ curl --fail --location --silent --show-error --output "${source_dir}/capec-1000.
     "https://capec.mitre.org/data/csv/1000.csv.zip"
 unzip -p "${source_dir}/capec-1000.csv.zip" > "${source_dir}/capec-1000.csv"
 
-mappings_commit="e51d7f595db675df064ffc2b5c35c88f98eb3688"
 mappings_path="mappings/kev/attack-16.1/kev-07.28.2025"
 for domain in enterprise mobile; do
     fetch "https://raw.githubusercontent.com/center-for-threat-informed-defense/mappings-explorer/${mappings_commit}/${mappings_path}/${domain}/kev-07.28.2025_attack-16.1-${domain}.json" \
@@ -48,11 +92,9 @@ done
 fetch "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json" \
     "known_exploited_vulnerabilities.json"
 
+rm -f "${source_dir}"/nvd/nvdcve-2.0-*.json
 for year in $(seq 2002 "$(date -u +%Y)"); do
-    echo "fetching nvd/${year}"
-    curl --fail --location --silent --show-error \
-        "https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-${year}.json.gz" \
-        | gunzip > "${source_dir}/nvd/nvdcve-2.0-${year}.json"
+    fetch_nvd_year "${year}"
 done
 
 fetch_gz "https://epss.empiricalsecurity.com/epss_scores-current.csv.gz" \
@@ -62,12 +104,6 @@ fetch_gz "https://iptoasn.com/data/ip2asn-combined.tsv.gz" "ip2asn-combined.tsv"
 
 fetch "https://check.torproject.org/torbulkexitlist" "tor-exits.txt"
 
-misp_repo="https://github.com/MISP/misp-warninglists"
-misp_commit="$(git ls-remote "${misp_repo}.git" refs/heads/main | cut -f1)"
-if [ -z "${misp_commit}" ]; then
-    echo "error: could not resolve the MISP warninglists main branch" >&2
-    exit 1
-fi
 misp_dir="${source_dir}/misp-warninglists"
 misp_tree="$(mktemp -d)"
 trap 'rm -rf "${misp_tree}"' EXIT
@@ -86,16 +122,11 @@ while read -r list; do
 done < "${here}/warninglists.txt"
 printf '%s\n' "${misp_commit}" > "${misp_dir}/COMMIT"
 
-if [ -f "${lock}" ]; then
-    echo "verifying against ${lock}"
-    (cd "${source_dir}" && shasum -a 256 -c "${lock}")
-else
-    echo "no ${lock} yet; writing one from what was just fetched"
-    (cd "${source_dir}" && shasum -a 256 \
-        enterprise-attack.json mobile-attack.json cwe-1000.csv capec-1000.csv \
-        kev-attack-enterprise.json kev-attack-mobile.json known_exploited_vulnerabilities.json \
-        epss_scores-current.csv ip2asn-combined.tsv tor-exits.txt \
-        misp-warninglists/COMMIT misp-warninglists/*.json > "${lock}")
-fi
+mkdir -p "$(dirname "${manifest}")"
+(cd "${source_dir}" && shasum -a 256 \
+    PINS enterprise-attack.json mobile-attack.json cwe-1000.csv.zip capec-1000.csv.zip \
+    kev-attack-enterprise.json kev-attack-mobile.json known_exploited_vulnerabilities.json \
+    nvd/nvdcve-2.0-*.json epss_scores-current.csv ip2asn-combined.tsv tor-exits.txt \
+    misp-warninglists/COMMIT misp-warninglists/*.json) > "${manifest}"
 
-echo "sources are in ${source_dir}"
+echo "sources are in ${source_dir}; their digests are in ${manifest}"
