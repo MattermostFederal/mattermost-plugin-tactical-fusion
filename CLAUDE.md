@@ -82,8 +82,14 @@ The short list of things that break something real if you get them wrong.
 **Decoration rewrites the stored message.** It is permanent, it lands in
 exports, and it survives uninstall. Nothing on that path may ever stop somebody
 from posting: a panic is recovered, an over-long result is skipped, and the
-recover logs through an API handle captured before the deferred call. There is
-no `MessageWillBeUpdated` hook and a test asserts it stays absent.
+recover logs through an API handle captured before the deferred call.
+
+**An edit keeps its text and loses nothing the plugin wrote.**
+`MessageWillBeUpdated` never rewrites or re-decorates the message. It puts back
+the old post's plugin-owned type and every `tactical_fusion*` props key, because
+core keeps `Post.Type` on a `PATCH`, replaces the props, and sets `edit_at` only
+when the message changes: without it a props-only edit forges a card that every
+`edit_at` check reads as genuine. Tests assert both halves.
 
 **`findProtectedRanges` is the entire safety story.** Anything it fails to
 recognize is a corruption bug. Widen it only with a regression test per

@@ -3,6 +3,7 @@ package main
 import (
 	"net/url"
 	"path"
+	"reflect"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -38,13 +39,57 @@ const (
 	maxStorableRunes = model.PostMessageMaxRunesV2
 )
 
-// MessageWillBePosted decorates a message once, as it is created.
-//
-// There is deliberately no MessageWillBeUpdated. Edits are stored verbatim, so
-// the plugin never transforms text a user has deliberately authored. Editing a
-// decorator link is the supported way to change or remove it.
 func (p *Plugin) MessageWillBePosted(_ *plugin.Context, post *model.Post) (*model.Post, string) {
 	return p.decoratePost(post, referenceTime(post)), ""
+}
+
+func (p *Plugin) MessageWillBeUpdated(_ *plugin.Context, newPost, oldPost *model.Post) (*model.Post, string) {
+	return keepPluginOwnedFields(newPost, oldPost), ""
+}
+
+func keepPluginOwnedFields(newPost, oldPost *model.Post) *model.Post {
+	if newPost == nil || oldPost == nil {
+		return nil
+	}
+
+	var kept *model.Post
+	clone := func() *model.Post {
+		if kept == nil {
+			kept = newPost.Clone()
+		}
+		return kept
+	}
+
+	if newPost.Type != oldPost.Type && (isPluginPostType(newPost.Type) || isPluginPostType(oldPost.Type)) {
+		clone().Type = oldPost.Type
+	}
+
+	oldProps, newProps := oldPost.GetProps(), newPost.GetProps()
+	for _, props := range []model.StringInterface{oldProps, newProps} {
+		for key := range props {
+			if !isPluginPropsKey(key) {
+				continue
+			}
+			oldValue, wasSet := oldProps[key]
+			newValue, isSet := newProps[key]
+			switch {
+			case !wasSet && isSet:
+				clone().DelProp(key)
+			case wasSet && (!isSet || !reflect.DeepEqual(oldValue, newValue)):
+				clone().AddProp(key, oldValue)
+			}
+		}
+	}
+
+	return kept
+}
+
+func isPluginPostType(postType string) bool {
+	return strings.HasPrefix(postType, decorators.PostTypePrefix+"tf_")
+}
+
+func isPluginPropsKey(key string) bool {
+	return key == decorators.PostPropsKey || strings.HasPrefix(key, decorators.PostPropsKey+"_")
 }
 
 // referenceTime is what an undated short-form token is resolved against.
