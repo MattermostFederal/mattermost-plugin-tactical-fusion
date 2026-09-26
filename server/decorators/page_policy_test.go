@@ -230,7 +230,7 @@ func TestAMappingPageNeverTrustsTheWholeOrigin(t *testing.T) {
 	decorators.WritePage(rec, decorators.Page{ScriptSrc: "./page.js", Capability: decorators.PageMapping})
 
 	policy := rec.Header().Get("Content-Security-Policy")
-	for _, directive := range strings.Split(policy, ";") {
+	for directive := range strings.SplitSeq(policy, ";") {
 		if strings.HasPrefix(strings.TrimSpace(directive), "script-src") && strings.Contains(directive, "'self'") {
 			t.Fatalf("script-src trusts every script on the origin: %q", directive)
 		}

@@ -221,7 +221,7 @@ func TestMapPagesCarryExactlyTheMappingPolicy(t *testing.T) {
 	}
 
 	for name, got := range pages {
-		if got := regexp.MustCompile(`'nonce-[A-Za-z0-9]+'`).ReplaceAllString(got, "'nonce-N'"); got != want {
+		if normalized := regexp.MustCompile(`'nonce-[A-Za-z0-9]+'`).ReplaceAllString(got, "'nonce-N'"); normalized != want {
 			t.Errorf("%s serves\n  %s\nwant\n  %s", name, got, want)
 		}
 
