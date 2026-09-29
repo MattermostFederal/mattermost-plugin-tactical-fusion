@@ -24,7 +24,7 @@ any server with the plugin installed, and in this repository at
 
 | | |
 |---|---|
-| Tactical Fusion | installed and enabled on the same server, any version serving `/bridge/v1` |
+| Tactical Fusion | installed and enabled on the same server, any version serving `/bridge/v1`. `Airport` needs a version later than 0.8.2, the last one without the `/airport` route |
 | Mattermost | 11.8 or later (Tactical Fusion's own minimum); `PluginHTTP` itself is 5.18+ |
 | Go | this module's `go` directive (currently 1.26.7); the package imports only the standard library |
 
@@ -167,6 +167,12 @@ ident the database does not hold is **not an error**: `err` is nil and `Found`
 is `false`. An ident that is not four letters, such as a three-letter IATA
 code, returns an `*Error` with status 400 and code 19009, which matches no
 sentinel.
+
+Tactical Fusion 0.8.2 and earlier serve `/bridge/v1` without this route. They
+answer `Airport` with an `*Error` of status 404 and code 19001, which matches no
+sentinel, while `Decorate`, `Link` and `Info` keep working. Treat that as "no
+lookup available" and carry on without the position. `Info().PluginVersion`
+tells you the installed version if you would rather check first.
 
 The lookup does not depend on the administrator's airfield switches. Those
 govern what is linked, and `Airport` links nothing.
