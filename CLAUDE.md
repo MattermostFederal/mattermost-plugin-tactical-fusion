@@ -31,7 +31,7 @@ right-hand sidebar, and a standalone server-rendered page.
 | `http.go` | `ServeHTTP`: `/decorate/<type>`, `/map`, `/api/v1/*`, and the session gate |
 | `api.go` | Authenticated JSON API: `/preferences`, `/convert`, `/features`, `/airport`, `/avreport`, `/decorate`, `/link` |
 | `mapairport.go` | `/map?airport=<ident>`: the airfield map page, rendered through the overlay shell |
-| `bridge.go` | The plugin bridge: `/bridge/v1/{decorate,link,info}` for other plugins, and the `decorate`/`link` operations `/api/v1` shares |
+| `bridge.go` | The plugin bridge: `/bridge/v1/{decorate,link,info,airport}` for other plugins, and the `decorate`/`link` operations `/api/v1` shares |
 | `mcp.go`, `mcp_tools.go`, `mcp_decode_tools.go`, `mcp_create_tools.go`, `mcp_cyber_tool.go` | The Agents MCP server: the `/mcp` endpoint, its lifecycle, the link and lookup tools, the tools that decode reports, CoT, GeoJSON, frequencies and date-time groups, the two that build CoT and GeoJSON, and the batch cyber indicator lookup |
 | `preferences.go`, `preferences_cache.go` | Per-reader KV store and its cluster-aware cache |
 | `command*.go` | The `/tactical-fusion` slash command and its example builders |
@@ -68,7 +68,7 @@ right-hand sidebar, and a standalone server-rendered page.
 
 - `plugin.json` generates `server/manifest.go` and `webapp/src/manifest.ts` at build time (both gitignored).
 - `build/mapdata/` (stdlib-only, `make map-data`) generates the country polygons; `build/maptiles/` (containerised, `make map-tiles`) generates the PMTiles basemap and glyph ranges. Both outputs are committed.
-- `build/airportdata/` (stdlib-only, `make airport-data`) filters the upstream airfield CSV. Not in the test path.
+- `build/airportdata/` (stdlib-only, `make airport-data`) filters the upstream airfield CSV and merges `supplement/airports.csv`, the committed airfields that are not upstream (today ten fictional `(DEMO-DATA)` fields). Not in the test path.
 - `build/devagent/` (stdlib-only, `make docker-agent`) configures the Docker stack's Agents plugin through its own API: the OpenAI service, the settings, and the `@fusion` agent. Idempotent; development only.
 - `bridgeclient/` is the importable Go client other plugins call the bridge through. It is a published package, so its exported symbols carry doc comments for pkg.go.dev; that is the only code here that does.
 - `public/help/` is the built-in documentation, served by Mattermost with no route in the server code.

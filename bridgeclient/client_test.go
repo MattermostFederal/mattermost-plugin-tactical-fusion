@@ -113,6 +113,93 @@ func TestInfoIsAGetWithNoBody(t *testing.T) {
 	}
 }
 
+func TestAirportIsAGetCarryingTheIdentInTheQuery(t *testing.T) {
+	var gotMethod, gotPath, gotIdent string
+	var gotBody []byte
+	client := bridgeclient.NewClient(handlerAPI{func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath, gotIdent = r.Method, r.URL.Path, r.URL.Query().Get("ident")
+		gotBody, _ = io.ReadAll(r.Body)
+		replyJSON(w, http.StatusOK, bridgeclient.AirportResponse{
+			Found: true, Ident: "PHIK", Name: "Hickam Air Force Base", Lat: 21.3353, Lon: -157.9483,
+		})
+	}})
+
+	field, err := client.Airport(context.Background(), "phik")
+	if err != nil {
+		t.Fatalf("Airport returned %v", err)
+	}
+
+	if gotMethod != http.MethodGet || len(gotBody) != 0 {
+		t.Errorf("sent %s with a %d byte body, want GET with none", gotMethod, len(gotBody))
+	}
+	if want := "/" + bridgeclient.PluginID + "/bridge/v1/airport"; gotPath != want {
+		t.Errorf("path = %s, want %s", gotPath, want)
+	}
+	if gotIdent != "phik" {
+		t.Errorf("ident = %q, want it as the caller wrote it", gotIdent)
+	}
+	if field != (bridgeclient.AirportResponse{Found: true, Ident: "PHIK", Name: "Hickam Air Force Base", Lat: 21.3353, Lon: -157.9483}) {
+		t.Errorf("airport = %+v", field)
+	}
+}
+
+func TestAirportEscapesWhatTheCallerWrote(t *testing.T) {
+	var gotIdent, gotOther string
+	client := bridgeclient.NewClient(handlerAPI{func(w http.ResponseWriter, r *http.Request) {
+		gotIdent, gotOther = r.URL.Query().Get("ident"), r.URL.Query().Get("other")
+		replyJSON(w, http.StatusOK, bridgeclient.AirportResponse{})
+	}})
+
+	if _, err := client.Airport(context.Background(), "PH K&other=1#x"); err != nil {
+		t.Fatalf("Airport returned %v", err)
+	}
+	if gotIdent != "PH K&other=1#x" || gotOther != "" {
+		t.Errorf("ident = %q, other = %q", gotIdent, gotOther)
+	}
+}
+
+func TestAnAirportTheDatabaseDoesNotHoldIsNotAnError(t *testing.T) {
+	client := bridgeclient.NewClient(handlerAPI{func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"found":false,"ident":"QQQQ","name":"","lat":0,"lon":0}`))
+	}})
+
+	field, err := client.Airport(context.Background(), "QQQQ")
+	if err != nil {
+		t.Fatalf("Airport returned %v", err)
+	}
+	if field != (bridgeclient.AirportResponse{Ident: "QQQQ"}) {
+		t.Errorf("airport = %+v", field)
+	}
+}
+
+func TestAMalformedAirportIdentIsAnErrorCarryingItsCode(t *testing.T) {
+	client := bridgeclient.NewClient(handlerAPI{func(w http.ResponseWriter, _ *http.Request) {
+		replyJSON(w, http.StatusBadRequest, bridgeclient.ErrorResponse{
+			Message: "An airfield ident is four letters. (TF-19009)", Code: 19009,
+		})
+	}})
+
+	_, err := client.Airport(context.Background(), "PHI")
+
+	var bridgeErr *bridgeclient.Error
+	if !errors.As(err, &bridgeErr) {
+		t.Fatalf("error = %#v, want an *Error", err)
+	}
+	if bridgeErr.StatusCode != http.StatusBadRequest || bridgeErr.Code != 19009 || bridgeErr.Reason != "" {
+		t.Errorf("error = %+v", bridgeErr)
+	}
+	if errors.Is(err, bridgeclient.ErrPluginNotActive) || errors.Is(err, bridgeclient.ErrNotRecognized) {
+		t.Errorf("error = %v matches a sentinel it should not", err)
+	}
+}
+
+func TestAirportWithNoResponseMeansThePluginIsNotActive(t *testing.T) {
+	_, err := bridgeclient.NewClient(silentAPI{}).Airport(context.Background(), "PHIK")
+	if !errors.Is(err, bridgeclient.ErrPluginNotActive) {
+		t.Fatalf("error = %v, want ErrPluginNotActive", err)
+	}
+}
+
 func TestNoResponseMeansThePluginIsNotActive(t *testing.T) {
 	_, err := bridgeclient.NewClient(silentAPI{}).Link(context.Background(), bridgeclient.LinkRequest{})
 	if !errors.Is(err, bridgeclient.ErrPluginNotActive) {

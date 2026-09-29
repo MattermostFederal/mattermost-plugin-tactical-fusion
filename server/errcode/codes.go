@@ -395,6 +395,7 @@ const (
 	BridgeTokenNotRecognized = 19006
 	BridgeFormatDisabled     = 19007
 	BridgePanic              = 19008
+	BridgeAirportInvalid     = 19009
 
 	MCPInitFailed           = 20000
 	MCPManifestIncomplete   = 20001
@@ -571,6 +572,7 @@ var AllCodes = []int{
 	BridgeTokenNotRecognized,
 	BridgeFormatDisabled,
 	BridgePanic,
+	BridgeAirportInvalid,
 
 	MCPInitFailed,
 	MCPManifestIncomplete,

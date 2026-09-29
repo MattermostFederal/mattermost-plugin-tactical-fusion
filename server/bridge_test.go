@@ -94,7 +94,7 @@ func withConfiguration(p *Plugin, change func(*configuration)) {
 func TestBridgeRefusesARequestNotFromAPlugin(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 
-	for _, path := range []string{bridgeDecoratePath, bridgeLinkPath, bridgeInfoPath, bridgePath + "/nope"} {
+	for _, path := range []string{bridgeDecoratePath, bridgeLinkPath, bridgeInfoPath, bridgeAirportPath + "?ident=PHIK", bridgePath + "/nope"} {
 		t.Run(path, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, path, strings.NewReader("{}"))
 			req.Header.Set("Mattermost-User-Id", "reader")
@@ -126,6 +126,7 @@ func TestBridgeOperationsRefuseTheWrongMethod(t *testing.T) {
 		{http.MethodGet, bridgeDecoratePath},
 		{http.MethodGet, bridgeLinkPath},
 		{http.MethodPost, bridgeInfoPath},
+		{http.MethodPost, bridgeAirportPath + "?ident=PHIK"},
 		{http.MethodPut, decoratePathAPI},
 	}
 	for _, c := range cases {
@@ -168,6 +169,154 @@ func TestBridgeIsNotReadyWithoutARegistry(t *testing.T) {
 		t.Fatalf("status = %d, want 503", rec.Code)
 	}
 	assertCode(t, rec.Body.String(), errcode.BridgeNotReady)
+}
+
+func bridgeAirportCall(p *Plugin, query string) *httptest.ResponseRecorder {
+	return bridgeCall(p, http.MethodGet, bridgeAirportPath+query, callerPluginID, "")
+}
+
+func TestBridgeAirportAnswersWithTheNameAndPosition(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	rec := bridgeAirportCall(p, "?ident=PHIK")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (%s)", rec.Code, rec.Body.String())
+	}
+	if got := rec.Header().Get("Cache-Control"); got != "no-store" {
+		t.Errorf("Cache-Control = %q, want no-store", got)
+	}
+
+	want := bridgeclient.AirportResponse{Found: true, Ident: "PHIK", Name: "Hickam Air Force Base", Lat: 21.3353, Lon: -157.9483}
+	if got := decodeBridge[bridgeclient.AirportResponse](t, rec); got != want {
+		t.Fatalf("airport = %+v, want %+v", got, want)
+	}
+}
+
+func TestBridgeAirportReadsLowerCaseAndSurroundingSpace(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	want := decodeBridge[bridgeclient.AirportResponse](t, bridgeAirportCall(p, "?ident=PHIK"))
+	for _, query := range []string{"?ident=phik", "?ident=Phik", "?ident=%20phik%09"} {
+		t.Run(query, func(t *testing.T) {
+			rec := bridgeAirportCall(p, query)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, want 200 (%s)", rec.Code, rec.Body.String())
+			}
+			if got := decodeBridge[bridgeclient.AirportResponse](t, rec); got != want || !got.Found {
+				t.Fatalf("airport = %+v, want %+v", got, want)
+			}
+		})
+	}
+}
+
+func TestBridgeAirportSaysWhenTheDatabaseDoesNotHoldTheIdent(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	for _, query := range []string{"?ident=QQQQ", "?ident=qqqq", "?ident=ZZZZ"} {
+		t.Run(query, func(t *testing.T) {
+			rec := bridgeAirportCall(p, query)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, want 200 (%s)", rec.Code, rec.Body.String())
+			}
+
+			want := bridgeclient.AirportResponse{Ident: strings.ToUpper(strings.TrimPrefix(query, "?ident="))}
+			if got := decodeBridge[bridgeclient.AirportResponse](t, rec); got != want {
+				t.Fatalf("airport = %+v, want %+v", got, want)
+			}
+		})
+	}
+}
+
+func TestBridgeAirportAlwaysCarriesItsFiveFields(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	for _, query := range []string{"?ident=PHIK", "?ident=QQQQ"} {
+		t.Run(query, func(t *testing.T) {
+			fields := decodeBridge[map[string]any](t, bridgeAirportCall(p, query))
+			for _, name := range []string{"found", "ident", "name", "lat", "lon"} {
+				if _, ok := fields[name]; !ok {
+					t.Errorf("the answer has no %q: %v", name, fields)
+				}
+			}
+		})
+	}
+}
+
+func TestBridgeAirportRefusesAnIdentThatIsNotFourLetters(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	for _, query := range []string{"", "?ident=", "?ident=PHI", "?ident=PHIKK", "?ident=PH1K", "?ident=PH%20K", "?v=PHIK", "?ident=HNL"} {
+		t.Run(query, func(t *testing.T) {
+			rec := bridgeAirportCall(p, query)
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want 400 (%s)", rec.Code, rec.Body.String())
+			}
+
+			body := decodeBridge[bridgeclient.ErrorResponse](t, rec)
+			if body.Code != errcode.BridgeAirportInvalid || body.Reason != "" {
+				t.Fatalf("refused with code %d reason %q, want %d and no reason", body.Code, body.Reason, errcode.BridgeAirportInvalid)
+			}
+			assertCode(t, body.Message, errcode.BridgeAirportInvalid)
+		})
+	}
+}
+
+func TestBridgeAirportAnswersWithTheAirfieldSwitchesOff(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	want := decodeBridge[bridgeclient.AirportResponse](t, bridgeAirportCall(p, "?ident=PHIK"))
+
+	withConfiguration(p, func(c *configuration) {
+		c.EnableAirport = false
+		c.EnableAirportIATA = false
+	})
+
+	if got := decodeBridge[bridgeclient.AirportResponse](t, bridgeAirportCall(p, "?ident=PHIK")); got != want || !got.Found {
+		t.Fatalf("airport = %+v with the switches off, want %+v", got, want)
+	}
+}
+
+func TestBridgeAirportAnswersTheSameForEveryCaller(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	want := bridgeAirportCall(p, "?ident=PHIK").Body.String()
+
+	req := httptest.NewRequest(http.MethodGet, bridgeAirportPath+"?ident=PHIK", http.NoBody)
+	req.Header.Set("Mattermost-Plugin-ID", "com.example.other")
+	req.Header.Set("Mattermost-User-Id", "reader")
+	rec := httptest.NewRecorder()
+	p.ServeHTTP(&plugin.Context{}, rec, req)
+
+	if rec.Body.String() != want {
+		t.Fatalf("answered %s to another caller, want %s", rec.Body.String(), want)
+	}
+}
+
+func TestBridgeAirportIsNotReadyWithoutARegistry(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+	p.decorators = nil
+
+	rec := bridgeAirportCall(p, "?ident=PHIK")
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503", rec.Code)
+	}
+	assertCode(t, rec.Body.String(), errcode.BridgeNotReady)
+}
+
+func TestBridgeAirportAgreesWithTheSessionRoute(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	for _, ident := range []string{"PHIK", "PNTF", "QQQQ"} {
+		t.Run(ident, func(t *testing.T) {
+			fromPlugin := decodeBridge[bridgeclient.AirportResponse](t, bridgeAirportCall(p, "?ident="+ident))
+			fromSession := decodeBridge[airportResponse](t, call(p, http.MethodGet, airportPath+"?v="+ident, "reader", ""))
+
+			if fromPlugin.Found != fromSession.Found || fromPlugin.Ident != fromSession.Ident {
+				t.Fatalf("the bridge answered %+v and the session route %+v", fromPlugin, fromSession)
+			}
+			if fromSession.Found && fromPlugin.Name != fromSession.Airport.Name {
+				t.Fatalf("the bridge names it %q and the session route %q", fromPlugin.Name, fromSession.Airport.Name)
+			}
+		})
+	}
 }
 
 func TestBridgeRecoversAPanicAndLogsItsCode(t *testing.T) {
@@ -557,6 +706,16 @@ func TestTheGoClientRoundTripsThroughTheBridge(t *testing.T) {
 	info, err := client.Info(ctx)
 	if err != nil || info.APIVersion != bridgeclient.APIVersion {
 		t.Fatalf("Info = %+v, %v", info, err)
+	}
+
+	field, err := client.Airport(ctx, "phik")
+	if err != nil || field != bridgeAirport("PHIK") || !field.Found {
+		t.Fatalf("Airport = %+v, %v", field, err)
+	}
+
+	var refused *bridgeclient.Error
+	if _, err = client.Airport(ctx, "PHI"); !errors.As(err, &refused) || refused.Code != errcode.BridgeAirportInvalid {
+		t.Fatalf("malformed ident error = %v, want TF-%d", err, errcode.BridgeAirportInvalid)
 	}
 
 	_, err = client.Link(ctx, bridgeclient.LinkRequest{Type: bridgeclient.TypeAirport, Token: "ZZZZ"})

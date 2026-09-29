@@ -17,6 +17,7 @@ import (
 const (
 	defaultSourceDir = "build/airportdata/source"
 	destinationDir   = "server/decorators/airport/data"
+	supplementSource = "build/airportdata/supplement/airports.csv"
 
 	airportsSource     = "airports.csv"
 	runwaysSource      = "runways.csv"
@@ -80,6 +81,7 @@ type table struct {
 
 type counts struct {
 	airfields, military, runways, frequencies         int
+	supplemented                                      int
 	surfacesNormalized, surfacesKept, surfacesDropped int
 	descriptionsDropped, frequenciesDropped           int
 	runwaysDropped                                    int
@@ -100,7 +102,7 @@ func main() {
 func run(sourceDir string) error {
 	var c counts
 
-	airfields, kept, err := filterAirfields(sourceDir+"/"+airportsSource, &c)
+	airfields, kept, err := filterAirfields(sourceDir+"/"+airportsSource, supplementSource, &c)
 	if err != nil {
 		return err
 	}
@@ -125,6 +127,7 @@ func run(sourceDir string) error {
 
 	fmt.Printf("wrote %d airfields (%d with a military designator), %d runways and %d frequencies to %s\n",
 		c.airfields, c.military, c.runways, c.frequencies, destinationDir)
+	fmt.Printf("supplement: %d airfields from %s\n", c.supplemented, supplementSource)
 	fmt.Printf("surfaces: %d normalized, %d kept as written, %d dropped\n",
 		c.surfacesNormalized, c.surfacesKept, c.surfacesDropped)
 	fmt.Printf("dropped: %d runways, %d frequencies, %d frequency descriptions\n",
@@ -132,14 +135,20 @@ func run(sourceDir string) error {
 	return nil
 }
 
-func filterAirfields(source string, c *counts) (table, map[string]bool, error) {
-	out := table{columns: []string{
-		"ident", "type", "name", "municipality",
-		"iso_country", "iso_region", "iata_code", "elevation_ft",
-		"lat", "lon", "military",
-	}}
-	kept := map[string]bool{}
-	iata := map[string]string{}
+var airfieldColumns = []string{
+	"ident", "type", "name", "municipality",
+	"iso_country", "iso_region", "iata_code", "elevation_ft",
+	"lat", "lon", "military",
+}
+
+type airfieldSet struct {
+	rows []record
+	kept map[string]bool
+	iata map[string]string
+}
+
+func filterAirfields(source, supplement string, c *counts) (table, map[string]bool, error) {
+	set := airfieldSet{kept: map[string]bool{}, iata: map[string]string{}}
 
 	err := readRows(source, []string{"ident", "latitude_deg", "longitude_deg"}, func(row map[string]string) error {
 		ident := row["ident"]
@@ -149,53 +158,99 @@ func filterAirfields(source string, c *counts) (table, map[string]bool, error) {
 		if _, why := reserved[ident]; why {
 			return nil
 		}
-		if kept[ident] {
+		if set.kept[ident] {
 			return fmt.Errorf("duplicate ident %q", ident)
 		}
-		kept[ident] = true
-
-		lat, err := axis(row["latitude_deg"], 90)
-		if err != nil {
-			return fmt.Errorf("%s: %w", ident, err)
-		}
-		lon, err := axis(row["longitude_deg"], 180)
-		if err != nil {
-			return fmt.Errorf("%s: %w", ident, err)
-		}
-		if lat == "0.0000" && lon == "0.0000" {
-			return fmt.Errorf("%s: coordinates are the null pair", ident)
-		}
-
-		code := row["iata_code"]
-		if code != "" {
-			if !iataShape.MatchString(code) {
-				return fmt.Errorf("%s: IATA code %q is not three upper-case letters", ident, code)
-			}
-			if other, dup := iata[code]; dup {
-				return fmt.Errorf("IATA code %q names both %s and %s", code, other, ident)
-			}
-			iata[code] = ident
-		}
-
-		designator := militaryDesignator(row["name"])
-		if designator != "" {
-			c.military++
-		}
-
-		out.rows = append(out.rows, record{
-			ident, row["type"], row["name"], row["municipality"],
-			row["iso_country"], row["iso_region"], code, elevation(row["elevation_ft"]),
-			lat, lon, designator,
-		})
-		return nil
+		return set.add(row, row["latitude_deg"], row["longitude_deg"], c)
 	})
 	if err != nil {
 		return table{}, nil, err
 	}
 
-	sort.Slice(out.rows, func(i, j int) bool { return out.rows[i][0] < out.rows[j][0] })
-	c.airfields = len(out.rows)
-	return out, kept, nil
+	if err := mergeSupplement(supplement, &set, c); err != nil {
+		return table{}, nil, err
+	}
+
+	sort.Slice(set.rows, func(i, j int) bool { return set.rows[i][0] < set.rows[j][0] })
+	c.airfields = len(set.rows)
+	return table{columns: airfieldColumns, rows: set.rows}, set.kept, nil
+}
+
+func mergeSupplement(source string, set *airfieldSet, c *counts) error {
+	upstream := make(map[string]bool, len(set.kept))
+	for ident := range set.kept {
+		upstream[ident] = true
+	}
+
+	return readRows(source, airfieldColumns, func(row map[string]string) error {
+		ident := row["ident"]
+		if !identShape.MatchString(ident) {
+			return fmt.Errorf("%s: supplement ident %q is not four upper-case letters", source, ident)
+		}
+		if why, isReserved := reserved[ident]; isReserved {
+			return fmt.Errorf("%s: supplement ident %q is reserved: %s", source, ident, why)
+		}
+		if upstream[ident] {
+			return fmt.Errorf("%s: supplement ident %q collides with an upstream airfield", source, ident)
+		}
+		if set.kept[ident] {
+			return fmt.Errorf("%s: duplicate supplement ident %q", source, ident)
+		}
+		for _, name := range airfieldColumns {
+			if !validText(row[name]) {
+				return fmt.Errorf("%s: %s: the %s field carries a character the whitelist refuses", source, ident, name)
+			}
+		}
+		if derived := militaryDesignator(row["name"]); row["military"] != derived {
+			return fmt.Errorf("%s: %s: military is %q, the name yields %q", source, ident, row["military"], derived)
+		}
+
+		if err := set.add(row, row["lat"], row["lon"], c); err != nil {
+			return fmt.Errorf("%s: %w", source, err)
+		}
+		c.supplemented++
+		return nil
+	})
+}
+
+func (set *airfieldSet) add(row map[string]string, rawLat, rawLon string, c *counts) error {
+	ident := row["ident"]
+	set.kept[ident] = true
+
+	lat, err := axis(rawLat, 90)
+	if err != nil {
+		return fmt.Errorf("%s: %w", ident, err)
+	}
+	lon, err := axis(rawLon, 180)
+	if err != nil {
+		return fmt.Errorf("%s: %w", ident, err)
+	}
+	if lat == "0.0000" && lon == "0.0000" {
+		return fmt.Errorf("%s: coordinates are the null pair", ident)
+	}
+
+	code := row["iata_code"]
+	if code != "" {
+		if !iataShape.MatchString(code) {
+			return fmt.Errorf("%s: IATA code %q is not three upper-case letters", ident, code)
+		}
+		if other, dup := set.iata[code]; dup {
+			return fmt.Errorf("IATA code %q names both %s and %s", code, other, ident)
+		}
+		set.iata[code] = ident
+	}
+
+	designator := militaryDesignator(row["name"])
+	if designator != "" {
+		c.military++
+	}
+
+	set.rows = append(set.rows, record{
+		ident, row["type"], row["name"], row["municipality"],
+		row["iso_country"], row["iso_region"], code, elevation(row["elevation_ft"]),
+		lat, lon, designator,
+	})
+	return nil
 }
 
 func filterRunways(source string, kept map[string]bool, c *counts) (table, error) {
