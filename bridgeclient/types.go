@@ -140,6 +140,28 @@ type InfoResponse struct {
 	EnabledTypes []string `json:"enabled_types"`
 }
 
+// AirportResponse is one airfield's name and position.
+type AirportResponse struct {
+	// Found reports whether the plugin's database holds the ident. When it is
+	// false, Name is empty and Lat and Lon are zero and mean nothing.
+	Found bool `json:"found"`
+
+	// Ident is the four-letter ICAO ident that was looked up, in upper case.
+	Ident string `json:"ident"`
+
+	// Name is the airfield's name. A name ending in "(DEMO-DATA)" is a
+	// fictional airfield that belongs to a demonstration scenario.
+	Name string `json:"name"`
+
+	// Lat is the latitude in decimal degrees, north positive, to four decimal
+	// places.
+	Lat float64 `json:"lat"`
+
+	// Lon is the longitude in decimal degrees, east positive, to four decimal
+	// places.
+	Lon float64 `json:"lon"`
+}
+
 // ErrorResponse is the body of every non-2xx bridge response.
 type ErrorResponse struct {
 	// Message is human readable and ends with a "(TF-NNNNN)" code.

@@ -8,8 +8,10 @@ first.
 ## Provenance
 
 All three come from [OurAirports](https://ourairports.com/data/), whose data is
-public domain. They were retrieved on 2026-09-22 from the raw files the
-project publishes on GitHub (`davidmegginson/ourairports-data`, branch `main`).
+public domain, except the ten demo airfields in `airports.csv`, which are
+described under [The supplement](#the-supplement). The upstream files were retrieved on 2026-09-22 from the raw files the
+project publishes on GitHub (`davidmegginson/ourairports-data`, branch `main`,
+commit `3b27dacfa7700507e03401f2df024a1b1670d312`).
 
 | Upstream file | Size | Rows | SHA-256 |
 |---|---|---|---|
@@ -45,7 +47,7 @@ The transform, for `airports.csv`:
 
 - keep rows whose `ident` matches `^[A-Z]{4}$`, which is 19,281 of 86,112 and is
   exactly the set the grammar can name;
-- drop the reserved ident `ZZZZ`, leaving **19,280**. See below;
+- drop the reserved ident `ZZZZ`, leaving 19,280. See below;
 - keep `type`, `name`, `municipality`, `iso_country`, `iso_region`,
   `iata_code` and `elevation_ft`; round `latitude_deg` and `longitude_deg` to
   four decimals as `lat` and `lon`; round `elevation_ft` to a whole number,
@@ -54,6 +56,7 @@ The transform, for `airports.csv`:
 - refuse a duplicate ident, an IATA code that is not three upper-case letters,
   an IATA code carried by two rows, a coordinate pair of exact zeroes, an axis
   outside its range, a non-finite number, and any field carrying a line break;
+- merge the ten rows of [the supplement](#the-supplement), for **19,290**;
 - sort by ident, so a regeneration produces a reviewable diff.
 
 For `runways.csv`, keep rows whose `airport_ident` is in the kept set (18,255
@@ -84,10 +87,55 @@ Army Airfield, Army Air Field, Joint Base, Air Station,
 AFB, AB, NAS, MCAS, AAF, AFS, ANGB, RAF, RAAF, RNZAF, CFB, NAF, MCAF
 ```
 
-601 of 19,280 names carry one. It is rendered as the designator itself
-("Military (Air Force Base)"), never as a bare claim about who operates the
-field: the designator is the name's own text, and the name is all the data
-says.
+603 of 19,290 names carry one, two of them in the supplement. It is rendered
+as the designator itself ("Military (Air Force Base)"), never as a bare claim
+about who operates the field: the designator is the name's own text, and the
+name is all the data says.
+
+## The supplement
+
+`build/airportdata/supplement/airports.csv` is committed, and holds airfields
+that are not in OurAirports. The generator merges it after the upstream filter,
+so a regeneration keeps them.
+
+Today it holds ten **fictional** airfields, written for the Iron Fortress
+demonstration scenario the Mattermost Ops Center plugin ships. They are not
+OurAirports rows and describe no real place: the names, idents and
+municipalities are invented, and each position and elevation sits at or beside
+a real field in the same area so the demo draws a plausible map. Every name
+ends in `(DEMO-DATA)` so no surface can show one as a real airfield. The values
+were copied from the `(DEMO-DATA)` rows of that plugin's
+`assets/airport-codes.csv`, with the coordinates rounded to four decimals. They
+were authored for the scenario rather than taken from a third party, so no
+notice has to travel with them.
+
+| Ident | Name |
+|---|---|
+| `PCMN` | Camp Meridian C2 Node (DEMO-DATA) |
+| `PFRC` | Fort Resolute Air Operations Complex (DEMO-DATA) |
+| `PGPC` | Granite Point Mobility Operations Complex (DEMO-DATA) |
+| `PNTF` | North Torr Field (DEMO-DATA) |
+| `PORF` | Outer Reef Field (DEMO-DATA) |
+| `PTWF` | Tradewind Field (DEMO-DATA) |
+| `RCRB` | Cobalt Reach Air Base (DEMO-DATA) |
+| `RSPS` | Sable Point Air Station (DEMO-DATA) |
+| `RVGF` | Verdant Gate Field (DEMO-DATA) |
+| `RWBF` | West Bay Field (DEMO-DATA) |
+
+The file uses the columns of the generated `airports.csv`. A supplement row
+gets every check an upstream row gets, and the generator also refuses:
+
+- an ident that is not four upper-case letters or is reserved, where an
+  upstream row of that kind is only skipped;
+- an ident an upstream row already carries. A real airfield wins by stopping
+  the build, never by silently replacing or being replaced;
+- an ident the supplement carries twice;
+- a field that fails the text whitelist;
+- a `military` value that is not the designator the name yields.
+
+None of the ten has an IATA code, a runway or a frequency, and none is an
+ordinary English word. `TestTheDemoAirfieldsResolve` in the package above holds
+the ten to the embedded file.
 
 ## Runway surfaces
 

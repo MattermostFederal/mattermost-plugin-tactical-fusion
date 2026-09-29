@@ -58,7 +58,7 @@ func (p *Plugin) OnActivate() error {
 }
 ```
 
-## The three calls
+## The four calls
 
 ### `Link`: one link for a token you already know
 
@@ -136,6 +136,40 @@ info, err := p.tacticalFusion.Info(ctx)
 // info.Types         ["dtg" "location" "airport" "avreport" "frequency" "note"]
 // info.EnabledTypes  the types an administrator has left on
 ```
+
+### `Airport`: an airfield's name and position
+
+Use it when your plugin needs an airfield's position as numbers, to compute
+with rather than to show: the nearest weather station, a distance, a bounding
+box. It builds no link; use `Link` with `TypeAirport` for that.
+
+```go
+field, err := p.tacticalFusion.Airport(ctx, "PHIK")
+```
+
+```go
+field.Found // true
+field.Ident // "PHIK"
+field.Name  // "Hickam Air Force Base"
+field.Lat   // 21.3353
+field.Lon   // -157.9483
+```
+
+| Response field | Meaning |
+|---|---|
+| `Found` | Whether the plugin's database holds the ident. When it is `false`, `Name` is empty and `Lat` and `Lon` are zero and mean nothing |
+| `Ident` | The ident that was looked up, in upper case |
+| `Name` | The airfield's name. A name ending in `(DEMO-DATA)` is a fictional airfield that belongs to a demonstration scenario |
+| `Lat`, `Lon` | Decimal degrees, north and east positive, to four decimal places |
+
+The ident is four letters in either case; surrounding whitespace is trimmed. An
+ident the database does not hold is **not an error**: `err` is nil and `Found`
+is `false`. An ident that is not four letters, such as a three-letter IATA
+code, returns an `*Error` with status 400 and code 19009, which matches no
+sentinel.
+
+The lookup does not depend on the administrator's airfield switches. Those
+govern what is linked, and `Airport` links nothing.
 
 ## Errors
 
@@ -244,7 +278,7 @@ decorated, err := p.tacticalFusion.Decorate(ctx, bridgeclient.DecorateRequest{
 
 - **Admin switches apply.** A format an administrator turned off is not linked
   for you either. `Link` says so with `ErrDisabled`; `Decorate` leaves the token
-  as text.
+  as text. `Airport` writes no link, so it answers whatever the switches say.
 - **URLs are root-relative** and carry the server's subpath, if it has one. They
   follow whichever hostname the reader uses, so do not prefix a host.
 - **Posting the result is safe.** Tactical Fusion's own message hook leaves
@@ -265,6 +299,6 @@ change would be a new path served alongside this one.
 
 ## Without Go
 
-The client is a thin wrapper over three JSON endpoints. Any plugin can call them
+The client is a thin wrapper over four JSON endpoints. Any plugin can call them
 through `PluginHTTP` directly; the request and response shapes are on the
 **Plugin Integration** help page under "Calling the bridge over HTTP".

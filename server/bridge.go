@@ -26,6 +26,7 @@ const (
 	bridgeDecoratePath = bridgePath + "/decorate"
 	bridgeLinkPath     = bridgePath + "/link"
 	bridgeInfoPath     = bridgePath + "/info"
+	bridgeAirportPath  = bridgePath + "/airport"
 
 	decoratePathAPI = apiPath + "/decorate"
 	linkPathAPI     = apiPath + "/link"
@@ -33,6 +34,8 @@ const (
 	maxBridgeBody = 64 * 1024
 
 	dtgOffsetParam = "o"
+
+	bridgeAirportIdentParam = "ident"
 )
 
 type bridgeRefusal struct {
@@ -50,6 +53,7 @@ var (
 	refusedLabel         = bridgeRefusal{http.StatusBadRequest, errcode.BridgeInvalidBody, "", "A label may not contain a line break."}
 	refusedNotReady      = bridgeRefusal{http.StatusServiceUnavailable, errcode.BridgeNotReady, "", "Not ready."}
 	refusedPanic         = bridgeRefusal{http.StatusInternalServerError, errcode.BridgePanic, "", "Internal error."}
+	refusedAirportIdent  = bridgeRefusal{http.StatusBadRequest, errcode.BridgeAirportInvalid, "", "An airfield ident is four letters."}
 
 	refusedUnknownType = bridgeRefusal{
 		http.StatusUnprocessableEntity, errcode.BridgeUnknownType,
@@ -82,6 +86,8 @@ func (p *Plugin) serveBridge(w http.ResponseWriter, r *http.Request) {
 		p.serveBridgeOperation(w, r, p.serveLink)
 	case bridgeInfoPath:
 		p.serveBridgeOperation(w, r, p.serveBridgeInfo)
+	case bridgeAirportPath:
+		p.serveBridgeOperation(w, r, serveBridgeAirport)
 	default:
 		writeBridgeRefusal(w, refusedNotFound)
 	}
@@ -151,6 +157,36 @@ func (p *Plugin) serveBridgeInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeAPIJSON(w, http.StatusOK, p.bridgeInfo())
+}
+
+func serveBridgeAirport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeBridgeRefusal(w, refusedMethod)
+		return
+	}
+
+	ident := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get(bridgeAirportIdentParam)))
+	if !airport.MatchesIdentShape(ident) {
+		writeBridgeRefusal(w, refusedAirportIdent)
+		return
+	}
+
+	writeAPIJSON(w, http.StatusOK, bridgeAirport(ident))
+}
+
+func bridgeAirport(ident string) bridgeclient.AirportResponse {
+	field, found := airport.Lookup(ident)
+	if !found {
+		return bridgeclient.AirportResponse{Ident: ident}
+	}
+
+	return bridgeclient.AirportResponse{
+		Found: true,
+		Ident: field.Ident,
+		Name:  field.Name,
+		Lat:   field.Lat,
+		Lon:   field.Lon,
+	}
 }
 
 func (p *Plugin) decorateText(req bridgeclient.DecorateRequest) bridgeclient.DecorateResponse {

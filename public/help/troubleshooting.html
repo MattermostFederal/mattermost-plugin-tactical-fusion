@@ -1327,7 +1327,12 @@
                 <tr>
                     <td><code>Not found.</code> or <code>Method not allowed.</code></td>
                     <td><a href="error-codes.html#bridge"><code>TF-19001</code></a>, <a href="error-codes.html#bridge"><code>TF-19002</code></a></td>
-                    <td>The other plugin called an operation that does not exist, or with the wrong method: <code>decorate</code> and <code>link</code> take POST, <code>info</code> takes GET.</td>
+                    <td>The other plugin called an operation that does not exist, or with the wrong method: <code>decorate</code> and <code>link</code> take POST, <code>info</code> and <code>airport</code> take GET.</td>
+                </tr>
+                <tr>
+                    <td><code>An airfield ident is four letters.</code></td>
+                    <td><a href="error-codes.html#bridge"><code>TF-19009</code></a></td>
+                    <td>The other plugin looked up an airfield with something that is not a four letter ICAO ident, such as a three letter IATA code. A fault in that plugin.</td>
                 </tr>
                 <tr>
                     <td><code>Internal error.</code></td>

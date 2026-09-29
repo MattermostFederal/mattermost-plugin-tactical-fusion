@@ -35,6 +35,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 )
 
 // PluginAPI is the part of plugin.API this package uses. A plugin's p.API
@@ -125,6 +126,18 @@ func (c *Client) Link(ctx context.Context, req LinkRequest) (LinkResponse, error
 func (c *Client) Info(ctx context.Context) (InfoResponse, error) {
 	var resp InfoResponse
 	err := c.do(ctx, http.MethodGet, "/info", nil, &resp)
+	return resp, err
+}
+
+// Airport looks up one airfield by its four-letter ICAO ident, in either case.
+// An ident the plugin's database does not hold is not an error: the response
+// has Found false. An ident that is not four letters returns an *Error.
+//
+// The lookup does not depend on the administrator's airfield switches, which
+// govern linking only.
+func (c *Client) Airport(ctx context.Context, ident string) (AirportResponse, error) {
+	var resp AirportResponse
+	err := c.do(ctx, http.MethodGet, "/airport?ident="+url.QueryEscape(ident), nil, &resp)
 	return resp, err
 }
 

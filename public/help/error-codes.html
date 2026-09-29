@@ -691,6 +691,11 @@
                     <td><code>BridgePanic</code> <span class="level">500</span> <span class="level">Error</span></td>
                     <td><code>Internal error.</code> A bridge request panicked and was recovered. Logged with the same code, the path and the calling plugin's id. This is a bug worth reporting with the text that caused it.</td>
                 </tr>
+                <tr>
+                    <td><code>TF-19009</code></td>
+                    <td><code>BridgeAirportInvalid</code> <span class="level">400</span></td>
+                    <td><code>An airfield ident is four letters.</code> The <code>ident</code> of an <a href="integration.html#airport">airfield lookup</a> is missing, or is not four letters once upper-cased and trimmed: a three letter IATA code, a code carrying a digit, or one still carrying its field label. A four letter ident the database does not hold is not this; it answers 200 with <code>found</code> false.</td>
+                </tr>
             </tbody>
         </table>
 

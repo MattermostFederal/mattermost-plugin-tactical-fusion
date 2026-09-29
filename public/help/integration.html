@@ -113,6 +113,13 @@
             </tbody>
         </table>
 
+        <p>
+            The server bridge answers one lookup besides:
+            <a href="#airport"><code>airport</code></a> gives a plugin's server an airfield's
+            name and position as numbers. An agent has the <code>lookup_airfield</code>
+            <a href="#mcp">tool</a> for the same question.
+        </p>
+
         <div class="alert alert-info">
             <p class="alert-title">Always have a plain-text fallback.</p>
             <p>
@@ -235,6 +242,47 @@
             </p>
         </div>
 
+        <h2 id="airport">airport: a name and a position</h2>
+
+        <p>
+            Looks up one airfield by its four letter ICAO ident and answers with its name and
+            its position as numbers, for a plugin that needs to compute with them, such as
+            finding the nearest weather station. It is served to a plugin's server only. It
+            builds no link; use <a href="#link">link</a> with the <code>airport</code> type for
+            that.
+        </p>
+
+        <table class="field-table">
+            <thead>
+                <tr><th>Request</th><th>Required</th><th>Meaning</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>ident</code></td><td>Yes</td><td>A query parameter: four letters, in either case. Surrounding whitespace is trimmed</td></tr>
+            </tbody>
+        </table>
+
+        <table class="field-table">
+            <thead>
+                <tr><th>Response</th><th>Meaning</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>found</code></td><td>Whether the database holds the ident. When it is <code>false</code> the name is empty, and <code>lat</code> and <code>lon</code> are zero and mean nothing</td></tr>
+                <tr><td><code>ident</code></td><td>The ident that was looked up, in upper case</td></tr>
+                <tr><td><code>name</code></td><td>The airfield's name. A name ending in <code>(DEMO-DATA)</code> is <a href="airfields.html#airfield-data">a fictional airfield</a></td></tr>
+                <tr><td><code>lat</code></td><td>Latitude in decimal degrees, north positive, to four decimal places</td></tr>
+                <tr><td><code>lon</code></td><td>Longitude in decimal degrees, east positive, to four decimal places</td></tr>
+            </tbody>
+        </table>
+
+        <p>
+            An ident the database does not hold is an answer, not an error: 200 with
+            <code>found</code> false. An ident that is not four letters is refused with 400 and
+            <code>TF-19009</code>. The lookup does not consult the
+            <a href="admin.html#enable-airport">airfield switches</a>: they govern what is
+            linked, and this links nothing, exactly as a link already written keeps opening
+            after its format is switched off. The answer is the same for every caller.
+        </p>
+
         <h2 id="tokens">Tokens each type reads</h2>
 
         <table>
@@ -323,6 +371,15 @@ return &amp;model.CommandResponse{
     Text:         report,
 }, nil</code></pre>
 
+        <h3 id="server-airport">An airfield's position</h3>
+
+        <pre tabindex="0"><code>field, err := p.tacticalFusion.Airport(ctx, "PHIK")
+if err != nil || !field.Found {
+    return noPosition
+}
+
+station := p.nearestStation(field.Lat, field.Lon)</code></pre>
+
         <h3 id="server-errors">Handling a decline</h3>
 
         <pre tabindex="0"><code>link, err := p.tacticalFusion.Link(ctx, request)
@@ -391,6 +448,12 @@ default:
                     <td>None</td>
                     <td>200 with <code>plugin_version</code>, <code>api_version</code>, <code>types</code> and <code>enabled_types</code></td>
                 </tr>
+                <tr>
+                    <td><code>GET</code></td>
+                    <td><code>/com.mattermost.plugin-tactical-fusion/bridge/v1/airport?ident=PHIK</code></td>
+                    <td>None</td>
+                    <td>200 with <a href="#airport">an airfield</a>, found or not, or an error</td>
+                </tr>
             </tbody>
         </table>
 
@@ -415,6 +478,29 @@ Cache-Control: no-store
 Content-Type: application/json
 
 {"message":"The token's format is switched off by an administrator. (TF-19007)","code":19007,"reason":"disabled"}</code></pre>
+
+        <pre tabindex="0"><code>request, _ := http.NewRequest(http.MethodGet,
+    "/com.mattermost.plugin-tactical-fusion/bridge/v1/airport?ident=PHIK", http.NoBody)
+
+response := p.API.PluginHTTP(request)</code></pre>
+
+        <pre tabindex="0"><code>HTTP/1.1 200 OK
+Content-Type: application/json
+Cache-Control: no-store
+
+{"found":true,"ident":"PHIK","name":"Hickam Air Force Base","lat":21.3353,"lon":-157.9483}</code></pre>
+
+        <pre tabindex="0"><code>HTTP/1.1 200 OK
+Content-Type: application/json
+Cache-Control: no-store
+
+{"found":false,"ident":"QQQQ","name":"","lat":0,"lon":0}</code></pre>
+
+        <pre tabindex="0"><code>HTTP/1.1 400 Bad Request
+Content-Type: application/json
+Cache-Control: no-store
+
+{"message":"An airfield ident is four letters. (TF-19009)","code":19009}</code></pre>
 
         <p>
             Unknown request fields are ignored, and bodies over 64 KB are refused. A response
@@ -698,7 +784,8 @@ declare global {
                 <strong>Admin switches apply.</strong> A format an administrator turned off in the
                 <a href="admin.html">admin settings</a> is not linked for another plugin either.
                 <code>link</code> declines with reason <code>disabled</code>; <code>decorate</code>
-                leaves the token as text. UTM ships off.
+                leaves the token as text. UTM ships off. <code>airport</code> writes no link,
+                so it answers whatever the switches say.
             </li>
             <li>
                 <strong>Embed the markdown as markdown.</strong> Do not HTML-escape it or wrap it
@@ -737,7 +824,7 @@ declare global {
         <p>
             Every refusal is JSON with <code>message</code>, which ends in its code,
             <code>code</code> and, for a declined link, <code>reason</code>. The codes are
-            <code>TF-19000</code> to <code>TF-19008</code>, each explained under
+            <code>TF-19000</code> to <code>TF-19009</code>, each explained under
             <a href="error-codes.html#bridge">Plugin bridge</a> on the Error Codes page.
         </p>
 
@@ -746,7 +833,7 @@ declare global {
                 <tr><th>Status</th><th>Reason</th><th>Means</th></tr>
             </thead>
             <tbody>
-                <tr><td>400</td><td></td><td>The body is not JSON, is over 64 KB, or the label has a line break</td></tr>
+                <tr><td>400</td><td></td><td>The body is not JSON, is over 64 KB, or the label has a line break (<code>TF-19003</code>); or an airfield ident is not four letters (<code>TF-19009</code>)</td></tr>
                 <tr><td>401</td><td></td><td>The request did not come from a plugin (bridge) or has no session (web app)</td></tr>
                 <tr><td>404</td><td></td><td>No such operation</td></tr>
                 <tr><td>405</td><td></td><td>Wrong method</td></tr>
