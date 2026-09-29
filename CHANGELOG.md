@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.9.0](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/compare/v0.8.2...v0.9.0) (2026-09-29)
+
+
+### Features
+
+* **bridge:** add airfield lookup route and ten demo airfields ([#72](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/72)) ([f69822f](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/f69822f8e866a13c0964624e91c2ce3732a05ac4))
+
+
+### Bug Fixes
+
+* close the findings from the security audit ([#65](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/65)) ([6aab23d](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/6aab23d57a3b69f84a4877eefffcfb3a39763692))
+* stop decoration corrupting messages and guard the release signing key ([#68](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/68)) ([77b1d87](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/77b1d871c42bf1d1bfb8bbba292931bc54af702a))
+
 ## [0.8.2](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/compare/v0.8.1...v0.8.2) (2026-09-25)
 
 
