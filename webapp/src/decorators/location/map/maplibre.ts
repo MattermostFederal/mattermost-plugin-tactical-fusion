@@ -970,18 +970,8 @@ function detailLayers(colors: MapColors, name: string): StyleSpecification['laye
     ] as StyleSpecification['layers'];
 }
 
-/**
- * The credit the detail tier may not be drawn without.
- *
- * OpenStreetMap is ODbL and the OpenMapTiles schema is CC-BY, so unlike Natural
- * Earth, whose credit this plugin deliberately dropped, both of these are
- * license conditions. Written once here and read by both the style's own
- * `attribution` field and the line the component renders, so the two cannot
- * disagree about what was credited.
- */
 export const OSM_CREDIT: ReadonlyArray<{label: string; href: string}> = [
-    {label: '© OpenMapTiles', href: 'https://openmaptiles.org/'},
-    {label: '© OpenStreetMap contributors', href: 'https://www.openstreetmap.org/copyright'},
+    {label: 'AMPLIFI fictional demo artwork · Not for navigation', href: ''},
 ];
 
 export function emptyCollection(): FeatureCollection {

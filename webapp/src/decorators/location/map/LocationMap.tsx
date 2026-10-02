@@ -159,15 +159,17 @@ const LocationMap: React.FC<MapProps> = (props) => {
                 <div style={styles.caption}>
                     {credited && (
                         <span style={styles.credit}>
-                            {OSM_CREDIT.map((credit) => (
+                            {OSM_CREDIT.map((credit) => (credit.href === '' ? (
+                                <span key={credit.label}>{credit.label}</span>
+                            ) : (
                                 <a
-                                    key={credit.href}
+                                    key={credit.label}
                                     style={styles.link}
                                     href={credit.href}
                                     target='_blank'
                                     rel='noreferrer'
                                 >{credit.label}</a>
-                            ))}
+                            )))}
                         </span>
                     )}
                     {!fill && largerHref !== undefined && (
