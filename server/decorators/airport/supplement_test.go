@@ -117,7 +117,7 @@ func TestADemoAirfieldCarriesNoRunwaysFrequenciesOrIATACode(t *testing.T) {
 	}
 }
 
-const handoffToleranceMeters = 100
+const handoffToleranceMeters = 50
 
 type handoffPosition struct{ lat, lon float64 }
 
@@ -145,6 +145,28 @@ func metersApart(aLat, aLon, bLat, bLon float64) float64 {
 
 	x := dLon * math.Cos(meanLat)
 	return math.Hypot(dLat, x) * earthRadiusMeters
+}
+
+func TestMetersApartMeasuresInMeters(t *testing.T) {
+	const oneDegreeOfLatitude = 111195.0
+
+	for _, c := range []struct {
+		name                   string
+		aLat, aLon, bLat, bLon float64
+		want                   float64
+	}{
+		{"a point is no distance from itself", 19.2820, 166.6360, 19.2820, 166.6360, 0},
+		{"one degree of latitude", 0, 0, 1, 0, oneDegreeOfLatitude},
+		{"one degree of longitude at the equator", 0, 0, 0, 1, oneDegreeOfLatitude},
+		{"one degree of longitude at sixty north is half the equator's", 60, 0, 60, 1, oneDegreeOfLatitude / 2},
+		{"Lonewatch to the real Wake Island Airfield", 19.2820, 166.6360, 19.2824, 166.6366, 77.1},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			if got := metersApart(c.aLat, c.aLon, c.bLat, c.bLon); math.Abs(got-c.want) > 1 {
+				t.Errorf("metersApart = %.1f m, want %.1f m", got, c.want)
+			}
+		})
+	}
 }
 
 func TestEveryDemoAirfieldSitsWhereTheV3HandoffPutsIt(t *testing.T) {
