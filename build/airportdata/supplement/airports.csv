@@ -2,9 +2,10 @@ ident,type,name,municipality,iso_country,iso_region,iata_code,elevation_ft,lat,l
 PCMN,medium_airport,Camp Meridian C2 Node (DEMO-DATA),Camp Meridian,US,US-HI,,13,21.3206,-157.9242,
 PFRC,medium_airport,Fort Resolute Air Operations Complex (DEMO-DATA),Fort Resolute,GU,GU-U-A,,627,13.5840,144.9300,
 PGPC,medium_airport,Granite Point Mobility Operations Complex (DEMO-DATA),Granite Point,US,US-HI,,13,21.3353,-157.9483,
+PLWF,medium_airport,Lonewatch Field (DEMO-DATA),Lonewatch,UM,UM-79,,14,19.2820,166.6360,
 PNTF,medium_airport,North Torr Field (DEMO-DATA),North Torr,GU,GU-U-A,,627,13.5840,144.9300,
 PORF,medium_airport,Outer Reef Field (DEMO-DATA),Outer Reef,PW,PW-004,,176,7.3673,134.5442,
-PTWF,medium_airport,Tradewind Field (DEMO-DATA),Tradewind,US,US-HI,,13,21.3353,-157.9483,
+PTWF,medium_airport,Tradewind Field (DEMO-DATA),Tradewind,US,US-HI,,13,21.3187,-157.9224,
 RCRB,large_airport,Cobalt Reach Air Base (DEMO-DATA),Cobalt Reach,JP,JP-13,,463,35.7485,139.3480,Air Base
 RSPS,medium_airport,Sable Point Air Station (DEMO-DATA),Sable Point,JP,JP-14,,205,35.4546,139.4500,Air Station
 RVGF,medium_airport,Verdant Gate Field (DEMO-DATA),Verdant Gate,PH,PH-PAM,,484,15.1860,120.5600,

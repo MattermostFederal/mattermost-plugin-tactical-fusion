@@ -8,7 +8,7 @@ first.
 ## Provenance
 
 All three come from [OurAirports](https://ourairports.com/data/), whose data is
-public domain, except the ten demo airfields in `airports.csv`, which are
+public domain, except the eleven demo airfields in `airports.csv`, which are
 described under [The supplement](#the-supplement). The upstream files were retrieved on 2026-09-22 from the raw files the
 project publishes on GitHub (`davidmegginson/ourairports-data`, branch `main`,
 commit `3b27dacfa7700507e03401f2df024a1b1670d312`).
@@ -56,7 +56,7 @@ The transform, for `airports.csv`:
 - refuse a duplicate ident, an IATA code that is not three upper-case letters,
   an IATA code carried by two rows, a coordinate pair of exact zeroes, an axis
   outside its range, a non-finite number, and any field carrying a line break;
-- merge the ten rows of [the supplement](#the-supplement), for **19,290**;
+- merge the eleven rows of [the supplement](#the-supplement), for **19,291**;
 - sort by ident, so a regeneration produces a reviewable diff.
 
 For `runways.csv`, keep rows whose `airport_ident` is in the kept set (18,255
@@ -87,7 +87,7 @@ Army Airfield, Army Air Field, Joint Base, Air Station,
 AFB, AB, NAS, MCAS, AAF, AFS, ANGB, RAF, RAAF, RNZAF, CFB, NAF, MCAF
 ```
 
-603 of 19,290 names carry one, two of them in the supplement. It is rendered
+603 of 19,291 names carry one, two of them in the supplement. It is rendered
 as the designator itself ("Military (Air Force Base)"), never as a bare claim
 about who operates the field: the designator is the name's own text, and the
 name is all the data says.
@@ -98,7 +98,7 @@ name is all the data says.
 that are not in OurAirports. The generator merges it after the upstream filter,
 so a regeneration keeps them.
 
-Today it holds ten **fictional** airfields, written for the Iron Fortress
+Today it holds eleven **fictional** airfields, written for the Iron Fortress
 demonstration scenario the Mattermost Ops Center plugin ships. They are not
 OurAirports rows and describe no real place: the names, idents and
 municipalities are invented, and each position and elevation sits at or beside
@@ -114,6 +114,7 @@ notice has to travel with them.
 | `PCMN` | Camp Meridian C2 Node (DEMO-DATA) |
 | `PFRC` | Fort Resolute Air Operations Complex (DEMO-DATA) |
 | `PGPC` | Granite Point Mobility Operations Complex (DEMO-DATA) |
+| `PLWF` | Lonewatch Field (DEMO-DATA) |
 | `PNTF` | North Torr Field (DEMO-DATA) |
 | `PORF` | Outer Reef Field (DEMO-DATA) |
 | `PTWF` | Tradewind Field (DEMO-DATA) |
@@ -133,9 +134,9 @@ gets every check an upstream row gets, and the generator also refuses:
 - a field that fails the text whitelist;
 - a `military` value that is not the designator the name yields.
 
-None of the ten has an IATA code, a runway or a frequency, and none is an
+None of the eleven has an IATA code, a runway or a frequency, and none is an
 ordinary English word. `TestTheDemoAirfieldsResolve` in the package above holds
-the ten to the embedded file.
+the eleven to the embedded file.
 
 ## Runway surfaces
 

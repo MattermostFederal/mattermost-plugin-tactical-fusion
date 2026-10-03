@@ -2,6 +2,7 @@ package airport
 
 import (
 	"encoding/csv"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -33,8 +34,8 @@ func supplementRows(t *testing.T) [][]string {
 
 func TestTheDemoAirfieldsResolve(t *testing.T) {
 	rows := supplementRows(t)
-	if len(rows) != 10 {
-		t.Fatalf("the supplement holds %d airfields, want the ten demo airfields", len(rows))
+	if len(rows) != 11 {
+		t.Fatalf("the supplement holds %d airfields, want the eleven demo airfields", len(rows))
 	}
 
 	decorator := &Decorator{}
@@ -113,5 +114,109 @@ func TestADemoAirfieldCarriesNoRunwaysFrequenciesOrIATACode(t *testing.T) {
 		if _, ok := MapBlob(row[0]); !ok {
 			t.Errorf("%s has no map blob", row[0])
 		}
+	}
+}
+
+const handoffToleranceMeters = 50
+
+type handoffPosition struct{ lat, lon float64 }
+
+var scenarioFrameHandoffPositions = map[string]handoffPosition{
+	"PCMN": {21.3206, -157.9242},
+	"PFRC": {13.5840, 144.9300},
+	"PGPC": {21.3353, -157.9483},
+	"PLWF": {19.2820, 166.6360},
+	"PNTF": {13.584, 144.929998},
+	"PORF": {7.3673, 134.5443},
+	"PTWF": {21.3187, -157.9224},
+	"RCRB": {35.7485, 139.3480},
+	"RSPS": {35.4546, 139.4500},
+	"RVGF": {15.1859, 120.5603},
+	"RWBF": {26.351667, 127.769444},
+}
+
+func metersApart(aLat, aLon, bLat, bLon float64) float64 {
+	const earthRadiusMeters = 6371008.8
+
+	rad := math.Pi / 180
+	dLat := (bLat - aLat) * rad
+	dLon := (bLon - aLon) * rad
+	meanLat := (aLat + bLat) / 2 * rad
+
+	x := dLon * math.Cos(meanLat)
+	return math.Hypot(dLat, x) * earthRadiusMeters
+}
+
+func TestMetersApartMeasuresInMeters(t *testing.T) {
+	const oneDegreeOfLatitude = 111195.0
+
+	for _, c := range []struct {
+		name                   string
+		aLat, aLon, bLat, bLon float64
+		want                   float64
+	}{
+		{"a point is no distance from itself", 19.2820, 166.6360, 19.2820, 166.6360, 0},
+		{"one degree of latitude", 0, 0, 1, 0, oneDegreeOfLatitude},
+		{"one degree of longitude at the equator", 0, 0, 0, 1, oneDegreeOfLatitude},
+		{"one degree of longitude at sixty north is half the equator's", 60, 0, 60, 1, oneDegreeOfLatitude / 2},
+		{"Lonewatch to the real Wake Island Airfield", 19.2820, 166.6360, 19.2824, 166.6366, 77.1},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			if got := metersApart(c.aLat, c.aLon, c.bLat, c.bLon); math.Abs(got-c.want) > 1 {
+				t.Errorf("metersApart = %.1f m, want %.1f m", got, c.want)
+			}
+		})
+	}
+}
+
+func TestEveryDemoAirfieldSitsWhereTheV3HandoffPutsIt(t *testing.T) {
+	for _, row := range supplementRows(t) {
+		ident := row[0]
+
+		want, ok := scenarioFrameHandoffPositions[ident]
+		if !ok {
+			t.Errorf("%s is in the supplement and the v3 handoff states no position for it", ident)
+			continue
+		}
+
+		a, ok := Lookup(ident)
+		if !ok {
+			t.Errorf("%s is in the supplement and not in the embedded data", ident)
+			continue
+		}
+
+		if off := metersApart(a.Lat, a.Lon, want.lat, want.lon); off > handoffToleranceMeters {
+			t.Errorf("%s is embedded at %.4f,%.4f and the v3 handoff puts it at %.4f,%.4f, %.0f m away",
+				ident, a.Lat, a.Lon, want.lat, want.lon, off)
+		}
+	}
+}
+
+func TestEveryPositionTheHandoffStatesIsInTheSupplement(t *testing.T) {
+	supplemented := map[string]bool{}
+	for _, row := range supplementRows(t) {
+		supplemented[row[0]] = true
+	}
+
+	for ident := range scenarioFrameHandoffPositions {
+		if !supplemented[ident] {
+			t.Errorf("the v3 handoff states a position for %s, which is not in the supplement", ident)
+		}
+	}
+}
+
+func TestTradewindIsNotGranitePoint(t *testing.T) {
+	tradewind, ok := Lookup("PTWF")
+	if !ok {
+		t.Fatal("PTWF is not in the embedded data")
+	}
+	granite, ok := Lookup("PGPC")
+	if !ok {
+		t.Fatal("PGPC is not in the embedded data")
+	}
+
+	if tradewind.Lat == granite.Lat && tradewind.Lon == granite.Lon {
+		t.Errorf("PTWF and PGPC share the position %.4f,%.4f, which is the copy-paste slip "+
+			"the v3 handoff corrects", tradewind.Lat, tradewind.Lon)
 	}
 }

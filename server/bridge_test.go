@@ -304,7 +304,7 @@ func TestBridgeAirportIsNotReadyWithoutARegistry(t *testing.T) {
 func TestBridgeAirportAgreesWithTheSessionRoute(t *testing.T) {
 	p := newTestPlugin(t, "https://example.com", true)
 
-	for _, ident := range []string{"PHIK", "PNTF", "QQQQ"} {
+	for _, ident := range []string{"PHIK", "PNTF", "PLWF", "QQQQ"} {
 		t.Run(ident, func(t *testing.T) {
 			fromPlugin := decodeBridge[bridgeclient.AirportResponse](t, bridgeAirportCall(p, "?ident="+ident))
 			fromSession := decodeBridge[airportResponse](t, call(p, http.MethodGet, airportPath+"?v="+ident, "reader", ""))
