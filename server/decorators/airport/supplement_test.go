@@ -33,8 +33,8 @@ func supplementRows(t *testing.T) [][]string {
 
 func TestTheDemoAirfieldsResolve(t *testing.T) {
 	rows := supplementRows(t)
-	if len(rows) != 10 {
-		t.Fatalf("the supplement holds %d airfields, want the ten demo airfields", len(rows))
+	if len(rows) != 11 {
+		t.Fatalf("the supplement holds %d airfields, want the eleven demo airfields", len(rows))
 	}
 
 	decorator := &Decorator{}

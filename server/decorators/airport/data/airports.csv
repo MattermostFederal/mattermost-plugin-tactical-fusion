@@ -10283,6 +10283,7 @@ PKWA,medium_airport,Bucholz Army Air Field,Kwajalein,MH,MH-KWA,KWA,9,8.7201,167.
 PLCH,large_airport,Cassidy International Airport,Kiritimati,KI,KI-L,CXI,5,1.9863,-157.3500,
 PLFA,small_airport,Tabuaeran Island Airport,Tabuaeran Island,KI,KI-L,TNV,,3.8994,-159.3890,
 PLPA,small_airport,Palmyra (Cooper) Airport,Palmyra Island Atoll,UM,UM-95,,5,5.8887,-162.0779,
+PLWF,medium_airport,Lonewatch Field (DEMO-DATA),Lonewatch,UM,UM-79,,14,19.2820,166.6360,
 PLWN,small_airport,Washington Island Airstrip,Teraina,KI,KI-L,TNQ,30,4.6984,-160.3944,
 PMDY,medium_airport,Henderson Field,Sand Island,UM,UM-71,MDY,13,28.2017,-177.3810,
 PNTF,medium_airport,North Torr Field (DEMO-DATA),North Torr,GU,GU-U-A,,627,13.5840,144.9300,
@@ -10293,7 +10294,7 @@ PTKK,large_airport,Chuuk International Airport,Weno Island,FM,FM-TRK,TKK,11,7.46
 PTPN,medium_airport,Pohnpei International Airport,Pohnpei Island,FM,FM-PNI,PNI,10,6.9851,158.2099,
 PTRO,large_airport,Roman Tmetuchl International Airport,Babelthuap Island,PW,PW-004,ROR,176,7.3670,134.5441,
 PTSA,large_airport,Kosrae International Airport,Okat,FM,FM-KSA,KSA,11,5.3570,162.9580,
-PTWF,medium_airport,Tradewind Field (DEMO-DATA),Tradewind,US,US-HI,,13,21.3353,-157.9483,
+PTWF,medium_airport,Tradewind Field (DEMO-DATA),Tradewind,US,US-HI,,13,21.3187,-157.9224,
 PTYA,large_airport,Yap International Airport,Yap Island,FM,FM-YAP,YAP,91,9.4989,138.0830,
 PWAK,medium_airport,Wake Island Airfield,Wake Island,UM,UM-79,AWK,14,19.2824,166.6366,
 RCAY,medium_airport,Gangshan Air Force Base,Kaohsiung (Gangshan),TW,TW-KHH,,34,22.7825,120.2630,Air Force Base
