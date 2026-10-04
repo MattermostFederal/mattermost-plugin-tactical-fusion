@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.1](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/compare/v0.9.0...v0.9.1) (2026-10-04)
+
+
+### Bug Fixes
+
+* **airport:** add PLWF demo airfield and correct PTWF's coordinate ([#74](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/74)) ([f233473](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/f233473168ef21b74b43a7bbb49255132ce6b081))
+* **deps:** bump brace-expansion and http-cache-semantics past high advisories ([#76](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/76)) ([53b7c6a](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/53b7c6a4c2d46b407c25637a1926591273008b02))
+
 ## [0.9.0](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/compare/v0.8.2...v0.9.0) (2026-09-29)
 
 
