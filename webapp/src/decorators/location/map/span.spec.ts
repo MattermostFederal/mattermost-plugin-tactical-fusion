@@ -3,7 +3,7 @@ import {expect, test} from '@playwright/test';
 import {MARKER_SIZE} from './maplibre';
 import {
     DATA_MAX_ZOOM, MAX_PADDING_SHARE, MAX_ZOOM, MERCATOR_LIMIT, TARGET_SPAN_METERS, cellBounds, fitPadding,
-    isRenderable, zoomForSpan,
+    isPlaceableLongitude, isRenderable, unwrapLongitudes, zoomForSpan,
 } from './span';
 
 /*
@@ -220,4 +220,29 @@ test('a squeezed axis keeps the wider edge wider', () => {
 
     // right (52) started wider than left (26) and must still be.
     expect(padding.right).toBeGreaterThan(padding.left);
+});
+
+test('unwrapping takes each step the short way', () => {
+    expect(unwrapLongitudes([179, -179])).toEqual([179, 181]);
+    expect(unwrapLongitudes([-179, 179])).toEqual([-179, -181]);
+    expect(unwrapLongitudes([0, 180])).toEqual([0, 180]);
+    expect(unwrapLongitudes([0, -180])).toEqual([0, -180]);
+    expect(unwrapLongitudes([0, 540])).toEqual([0, 180]);
+    expect(unwrapLongitudes([0, -540])).toEqual([0, -180]);
+    expect(unwrapLongitudes([10, 20, 30])).toEqual([10, 20, 30]);
+});
+
+test('unwrapping a longitude no grammar produces still returns', () => {
+    for (const lon of [1e300, -1e300, 1e17, Infinity, -Infinity, NaN]) {
+        expect(unwrapLongitudes([0, lon])).toHaveLength(2);
+    }
+});
+
+test('a longitude off the globe is not placeable', () => {
+    for (const lon of [180.0001, -181, 1e300, Infinity, NaN]) {
+        expect(isPlaceableLongitude(lon)).toBe(false);
+    }
+    for (const lon of [180, -180, 0]) {
+        expect(isPlaceableLongitude(lon)).toBe(true);
+    }
 });

@@ -12,7 +12,7 @@ import {ellipseOutline} from '../decorators/location/map/maplibre';
 import {useNearViewport} from '../decorators/location/map/near_viewport';
 import type {MapEllipse} from '../decorators/location/map/overlay';
 import type {MapShape} from '../decorators/location/map/paint';
-import {isRenderable} from '../decorators/location/map/span';
+import {isPlaceableLongitude, isRenderable} from '../decorators/location/map/span';
 import {overlayPageHref} from '../decorators/location/map/view';
 import {INLINE_ID, isRowVisible} from '../decorators/location/rows';
 import {withTheme} from '../decorators/theme';
@@ -51,23 +51,8 @@ export function _drawableEventsForTesting( // eslint-disable-line no-underscore-
     return drawableEvents(events);
 }
 
-/**
- * Every event this build can put a marker on.
- *
- * `isLinkable` rather than a finiteness test on the numbers. The server writes
- * `format` and `value` only when it parsed a position it is prepared to stand
- * behind, so that pair IS the question being asked. A finiteness test looks
- * equivalent and is not: an event the server gave no position has `lat` of
- * `''`, `Number('')` is `0`, and `0` is finite, so the test admitted a
- * positionless event and pinned it in the Gulf of Guinea. That is the guessed
- * position LocationMap says it never draws.
- *
- * `isRenderable` on top, because the server accepts any latitude to 90 and Web
- * Mercator stops at about 85.05. An event past that cannot be placed, and the
- * first marker decides where the whole map opens.
- */
 function drawableEvents(events: readonly CotEvent[]): CotEvent[] {
-    return events.filter((event) => isLinkable(event) && isRenderable(Number(event.lat)));
+    return events.filter((event) => isLinkable(event) && isRenderable(Number(event.lat)) && isPlaceableLongitude(Number(event.lon)));
 }
 
 /** Those events as markers, with the color to draw each one in. */

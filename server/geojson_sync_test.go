@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -229,20 +230,30 @@ func collectKeys(value any, into map[string]bool) {
 	}
 }
 
-// TestWebappGeoJSONTruncatesNothing holds the reader to rendering exactly what
-// Go produced.
-//
-// The server refuses every document past its own caps rather than truncating
-// one, so a cap repeated on the webapp side could only disagree with it: a ring
-// cut short there would close onto the wrong vertex and draw a polygon nobody
-// posted. This is why there is no caps sync row.
 func TestWebappGeoJSONTruncatesNothing(t *testing.T) {
 	source := readGeoJSONTypes(t)
 
-	for _, forbidden := range []string{".slice(", ".substring(", "MAX_"} {
+	for _, forbidden := range []string{".slice(", ".substring("} {
 		if strings.Contains(source, forbidden) {
 			t.Errorf("the webapp's geojson/types.ts contains %q; it must render what Go produced "+
 				"rather than re-capping it, because the two sides do not fail alike", forbidden)
+		}
+	}
+}
+
+func TestWebappGeoJSONCapsMatch(t *testing.T) {
+	source := readGeoJSONTypes(t)
+
+	for name, want := range map[string]int{
+		"MAX_FEATURES": geojson.MaxFeatures,
+		"MAX_VERTICES": geojson.MaxVertices,
+	} {
+		m := regexp.MustCompile(`export const ` + name + ` = (\d+);`).FindStringSubmatch(source)
+		if m == nil {
+			t.Fatalf("no `export const %s` in the webapp's geojson/types.ts", name)
+		}
+		if got, err := strconv.Atoi(m[1]); err != nil || got != want {
+			t.Errorf("%s = %s in the webapp, %d in Go", name, m[1], want)
 		}
 	}
 }

@@ -275,6 +275,11 @@
                     <td><code>Not authorized.</code> A detail map package was requested without a Mattermost session. Packages are served only to signed-in readers, so which areas an install holds is not visible to anyone who can reach the server. It answers rather than redirecting, because the map fetches tiles in the background and could not follow a sign-in page.</td>
                 </tr>
                 <tr>
+                    <td><code>TF-12011</code></td>
+                    <td><code>HTTPPanic</code> <span class="level">500</span> <span class="level">Error</span></td>
+                    <td><code>Internal error.</code> A request to one of the plugin's pages or its API panicked and was recovered, so the plugin kept running. Logged with the same code and the path. This is a bug worth reporting with the address that caused it.</td>
+                </tr>
+                <tr>
                     <td><code>TF-12008</code></td>
                     <td><code>HTTPMapPostUnavailable</code> <span class="level">404</span></td>
                     <td><code>There is no map here.</code> The one answer <code>/map?post=</code> gives for every way it can decline: no such post, a post in a channel you may not read, a post this plugin never rendered, and a post whose card has stood down because it was edited or its attachment is gone. They are deliberately one code, so the address cannot be used to find out which.</td>

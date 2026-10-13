@@ -12,7 +12,7 @@ import type {MapMarker} from '../decorators/location/map/overlay';
 import {isMarkerSize} from '../decorators/location/map/overlay';
 import type {MapShape} from '../decorators/location/map/paint';
 import {styleOf} from '../decorators/location/map/paint';
-import {isRenderable} from '../decorators/location/map/span';
+import {isPlaceableLongitude, isRenderable} from '../decorators/location/map/span';
 import {overlayPageHref} from '../decorators/location/map/view';
 import {INLINE_ID, isRowVisible} from '../decorators/location/rows';
 import {useFeatures} from '../features/store';
@@ -75,23 +75,14 @@ function statedStyle(feature: GeoJsonFeature): {
     };
 }
 
-/** A position the map will draw, or null. */
 function usable(position: {lat: string; lon: string}): {lat: number; lon: number} | null {
     const lat = Number(position.lat);
     const lon = Number(position.lon);
 
-    // Number('') is 0, so an empty lexeme would pass a finiteness test and pin
-    // the Gulf of Guinea. The emptiness test is the one that matters.
     if (position.lat === '' || position.lon === '') {
         return null;
     }
-    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-        return null;
-    }
-
-    // The server accepts any latitude to 90 and Web Mercator stops at about
-    // 85.05. A position past that cannot be placed at all.
-    if (!isRenderable(lat)) {
+    if (!isRenderable(lat) || !isPlaceableLongitude(lon)) {
         return null;
     }
 

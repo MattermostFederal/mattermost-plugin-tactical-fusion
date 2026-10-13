@@ -376,11 +376,7 @@ func blockRanges(message string) []byteRange {
 	var open *fence
 
 	for offset := 0; offset < len(message); {
-		end := strings.IndexByte(message[offset:], '\n')
-		lineEnd := len(message)
-		if end >= 0 {
-			lineEnd = offset + end
-		}
+		lineEnd, next, more := nextLine(message, offset)
 		line := message[offset:lineEnd]
 
 		trimmed := strings.TrimLeft(line, " ")
@@ -417,10 +413,10 @@ func blockRanges(message string) []byteRange {
 			}
 		}
 
-		if end < 0 {
+		if !more {
 			break
 		}
-		offset = lineEnd + 1
+		offset = next
 	}
 
 	if open != nil {
@@ -428,6 +424,21 @@ func blockRanges(message string) []byteRange {
 	}
 
 	return ranges
+}
+
+func nextLine(message string, offset int) (lineEnd, next int, more bool) {
+	for i := offset; i < len(message); i++ {
+		switch message[i] {
+		case '\n':
+			return i, i + 1, true
+		case '\r':
+			if i+1 < len(message) && message[i+1] == '\n' {
+				return i + 1, i + 2, true
+			}
+			return i, i + 1, true
+		}
+	}
+	return len(message), len(message), false
 }
 
 func opensFence(trimmed string) *fence {
@@ -496,11 +507,7 @@ func usmtfRanges(message string) []byteRange {
 	}
 
 	for offset := 0; offset < len(message); {
-		end := strings.IndexByte(message[offset:], '\n')
-		lineEnd := len(message)
-		if end >= 0 {
-			lineEnd = offset + end
-		}
+		lineEnd, next, more := nextLine(message, offset)
 		line := strings.TrimRight(message[offset:lineEnd], " \t\r")
 
 		if usmtfLineRe.MatchString(line) {
@@ -513,10 +520,10 @@ func usmtfRanges(message string) []byteRange {
 			closeBlock()
 		}
 
-		if end < 0 {
+		if !more {
 			break
 		}
-		offset = lineEnd + 1
+		offset = next
 	}
 	closeBlock()
 
@@ -552,28 +559,38 @@ func closesFence(trimmed string, marker byte, width int) bool {
 	return strings.TrimLeft(trimmed[run:], " \t\r") == ""
 }
 
-// isIndentedCode reports whether a line is indented far enough to render as a
-// code block. Blank lines do not start one.
+const (
+	tabStop          = 4
+	codeIndentColumn = 4
+)
+
 func isIndentedCode(line string) bool {
 	if strings.TrimSpace(line) == "" {
 		return false
 	}
-	if strings.HasPrefix(line, "\t") {
-		return true
-	}
-	return strings.HasPrefix(line, "    ")
+	return leadingColumns(line) >= codeIndentColumn
 }
 
-// codeSpanRanges finds inline code spans of any backtick width.
-//
-// Hand-scanned because matching a closing run of the same length as the opener
-// needs a backreference, which RE2 does not have. An opener with no matching
-// closer is literal text and is deliberately left unprotected.
+func leadingColumns(line string) int {
+	column := 0
+	for i := 0; i < len(line); i++ {
+		switch line[i] {
+		case ' ':
+			column++
+		case '\t':
+			column += tabStop - column%tabStop
+		default:
+			return column
+		}
+	}
+	return column
+}
+
 func codeSpanRanges(message string) []byteRange {
 	var ranges []byteRange
 
 	for i := 0; i < len(message); {
-		if message[i] != '`' {
+		if message[i] != '`' || isBackslashEscaped(message, i) {
 			i++
 			continue
 		}
@@ -591,6 +608,14 @@ func codeSpanRanges(message string) []byteRange {
 	}
 
 	return ranges
+}
+
+func isBackslashEscaped(message string, i int) bool {
+	backslashes := 0
+	for j := i - 1; j >= 0 && message[j] == '\\'; j-- {
+		backslashes++
+	}
+	return backslashes%2 == 1
 }
 
 // findClosingRun locates a backtick run of exactly the given width.

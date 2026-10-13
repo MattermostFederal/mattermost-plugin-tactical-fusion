@@ -215,19 +215,9 @@ function withinAxis(near: number, far: number, sizePx: number): [number, number]
     return [Math.floor(near * scale), Math.floor(far * scale)];
 }
 
-/**
- * The same longitudes, made continuous across the antimeridian.
- *
- * A shape that crosses 180 arrives as a jump from 179 to -179, and every
- * consumer reads that as traveling 358 degrees the wrong way round: the line
- * is drawn straight back across the whole map, and the bounding box frames the
- * planet instead of the two degrees the shape occupies.
- *
- * Each step is taken the short way instead, which can carry a longitude past
- * 180. That is deliberate and is what both consumers want. MapLibre draws
- * geometry beyond the meridian in the adjacent world copy, so the shape stays
- * one unbroken outline, and `fitBounds` reads 179 to 181 as two degrees.
- */
+const HALF_TURN = 180;
+const FULL_TURN = 360;
+
 export function unwrapLongitudes(lons: readonly number[]): number[] {
     const out: number[] = [];
 
@@ -238,17 +228,24 @@ export function unwrapLongitudes(lons: readonly number[]): number[] {
         }
 
         const previous = out[out.length - 1];
-        let moved = lon;
-        while (moved - previous > 180) {
-            moved -= 360;
-        }
-        while (moved - previous < -180) {
-            moved += 360;
-        }
-        out.push(moved);
+        out.push(previous + shortestStep(lon - previous));
     }
 
     return out;
+}
+
+function shortestStep(delta: number): number {
+    if (delta > HALF_TURN) {
+        return delta - (FULL_TURN * Math.ceil((delta - HALF_TURN) / FULL_TURN));
+    }
+    if (delta < -HALF_TURN) {
+        return delta + (FULL_TURN * Math.ceil((-HALF_TURN - delta) / FULL_TURN));
+    }
+    return delta;
+}
+
+export function isPlaceableLongitude(lon: number): boolean {
+    return Number.isFinite(lon) && Math.abs(lon) <= HALF_TURN;
 }
 
 /**

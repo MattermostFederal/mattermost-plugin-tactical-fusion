@@ -48,6 +48,26 @@ const packagesPath = "/packages"
 // keeps them testable and what keeps a page from growing a workspace lookup;
 // this gate decides who may ask, not what the answer is built from.
 func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Request) {
+	p.serveRecovered(w, r, p.route)
+}
+
+func (p *Plugin) serveRecovered(w http.ResponseWriter, r *http.Request, handler http.HandlerFunc) {
+	api := p.API
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			api.LogError("HTTP request panicked",
+				"error_code", errcode.HTTPPanic,
+				"path", r.URL.Path,
+				"panic", fmt.Sprint(recovered))
+			decorators.WriteError(w, http.StatusInternalServerError,
+				errcode.WithCode(errcode.HTTPPanic, "Internal error."))
+		}
+	}()
+
+	handler(w, r)
+}
+
+func (p *Plugin) route(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 
 	if strings.HasPrefix(r.URL.Path, apiPath+"/") {
@@ -138,14 +158,10 @@ func (p *Plugin) ServeHTTP(_ *plugin.Context, w http.ResponseWriter, r *http.Req
 	decorator.RenderPage(w, r.URL.Query())
 }
 
-// sessionUserID is the reader Mattermost authenticated, or "" for no session.
-//
-// Mattermost sets this header itself and strips any copy a client tries to send,
-// so an empty value means there is no session and a non-empty one is
-// trustworthy. One function rather than one call site, so the two routes that
-// ask can differ in what they do about the answer without differing in how they
-// get it.
 func sessionUserID(r *http.Request) string {
+	if callingPluginID(r) != "" {
+		return ""
+	}
 	return r.Header.Get("Mattermost-User-Id")
 }
 

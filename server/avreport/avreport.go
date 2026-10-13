@@ -158,7 +158,11 @@ func carriesASecondReport(text string) bool {
 }
 
 func LooksLikeReportText(text string) bool {
-	return !strings.ContainsFunc(text, unicode.IsLower)
+	return !strings.ContainsFunc(text, isUncasedOrLowerLetter)
+}
+
+func isUncasedOrLowerLetter(r rune) bool {
+	return unicode.IsLetter(r) && !unicode.IsUpper(r)
 }
 
 func LooksLikeHeader(line string) bool {
