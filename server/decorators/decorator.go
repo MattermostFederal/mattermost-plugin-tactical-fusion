@@ -52,12 +52,12 @@ const ForcePageParam = "_page"
 // value reaches a stylesheet and must never be interpolated freely.
 const ThemeParam = "_theme"
 
-// ThemeFromParams returns the requested theme, or "" to follow the operating
-// system preference.
 func ThemeFromParams(params url.Values) string {
-	switch theme := params.Get(ThemeParam); theme {
-	case "light", "dark":
-		return theme
+	switch params.Get(ThemeParam) {
+	case "light":
+		return "light"
+	case "dark":
+		return "dark"
 	default:
 		return ""
 	}

@@ -59,7 +59,9 @@ const (
 	packageSeparator = ","
 )
 
-var attributeEscaper = strings.NewReplacer(`&`, "&amp;", `'`, "&#39;", `<`, "&lt;", `>`, "&gt;", `"`, "&#34;")
+func escapeAttribute(value string) string {
+	return strings.ReplaceAll(html.EscapeString(value), `"`, "&#34;")
+}
 
 // renderRoot is the whole body of both standalone pages.
 //
@@ -90,31 +92,20 @@ func renderRoot(page pageData, mode string, maps Maps, packages []string) string
 	// the sidebar cannot come to disagree about what a token converts to.
 	if conversion, ok := Convert(loc.Format, loc.Canonical(), page.raw); ok {
 		if encoded, err := json.Marshal(conversion); err == nil {
-			attrs += ` data-conversion="` + attributeEscaper.Replace(string(encoded)) + `"`
+			attrs += ` data-conversion="` + escapeAttribute(string(encoded)) + `"`
 		}
 	}
 
 	return attrs + `></div>`
 }
 
-// renderOverlayRoot is the body of the map page opened for a stamped post.
-//
-// It carries no `data-f` and no conversion, because an overlay is not a
-// coordinate: a block of events or a document of polygons has no canonical
-// token, which is the whole reason this mode exists. What it carries instead is
-// the props blob, which the bundle reads with the card's own reader.
-//
-// The blob is escaped into a double-quoted attribute, and that escaping is the
-// only defense: this page declares PageMapping, which admits same-origin
-// script. The blob is server-authored JSON rather than author text, but it
-// contains author text throughout, so it is treated exactly as `r` is.
 func renderOverlayRoot(kind, blob string, maps Maps, packages []string) string {
 	return `<div id="root"` +
 		` data-mode="` + html.EscapeString(pageModeOverlay) + `"` +
 		` ` + MapSurfacesAttr + `="` + html.EscapeString(mapSurfaces(maps)) + `"` +
 		` ` + PackagesAttr + `="` + html.EscapeString(strings.Join(packages, packageSeparator)) + `"` +
 		` ` + OverlayKindAttr + `="` + html.EscapeString(kind) + `"` +
-		` ` + OverlayAttr + `="` + html.EscapeString(blob) + `"` +
+		` ` + OverlayAttr + `="` + escapeAttribute(blob) + `"` +
 		`></div>`
 }
 
