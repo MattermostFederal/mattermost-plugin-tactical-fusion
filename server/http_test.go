@@ -442,3 +442,46 @@ func TestAPackageThatVanishedAfterDiscoveryIs404(t *testing.T) {
 		t.Error("nothing was logged, so an operator has no way to learn which file went away")
 	}
 }
+
+func TestAPluginRequestCarriesNoReader(t *testing.T) {
+	p, _ := newAPIPlugin(t)
+
+	pluginRequest := func(method, path string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(method, path, strings.NewReader("{}"))
+		req.Header.Set("Mattermost-User-Id", testUserID)
+		req.Header.Set("Mattermost-Plugin-ID", callerPluginID)
+		rec := httptest.NewRecorder()
+		p.ServeHTTP(&plugin.Context{}, rec, req)
+		return rec
+	}
+
+	for _, method := range []string{http.MethodGet, http.MethodPut, http.MethodDelete} {
+		rec := pluginRequest(method, preferencesPath)
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("%s preferences from a plugin: status = %d, want 401", method, rec.Code)
+		}
+		assertCode(t, rec.Body.String(), errcode.APINotAuthorized)
+	}
+
+	for _, path := range []string{
+		"/map?post=" + strings.Repeat("a", 26),
+		"/decorate/dtg?t=1786293000000&dtg=091630ZAUG26&z=Z&a=",
+	} {
+		if rec := pluginRequest(http.MethodGet, path); rec.Code != http.StatusFound {
+			t.Fatalf("%s from a plugin: status = %d, want the no-session redirect", path, rec.Code)
+		}
+	}
+}
+
+func TestServeHTTPRecoversAPanicAndLogsItsCode(t *testing.T) {
+	p := newTestPlugin(t, "https://example.com", true)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/decorate/dtg", nil)
+	p.serveRecovered(rec, req, func(http.ResponseWriter, *http.Request) { panic("boom") })
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500", rec.Code)
+	}
+	assertCode(t, rec.Body.String(), errcode.HTTPPanic)
+}

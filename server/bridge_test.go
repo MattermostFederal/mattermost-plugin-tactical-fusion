@@ -132,8 +132,11 @@ func TestBridgeOperationsRefuseTheWrongMethod(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.method+" "+c.path, func(t *testing.T) {
 			req := httptest.NewRequest(c.method, c.path, strings.NewReader("{}"))
-			req.Header.Set("Mattermost-Plugin-ID", callerPluginID)
-			req.Header.Set("Mattermost-User-Id", "reader")
+			if strings.HasPrefix(c.path, bridgePath) {
+				req.Header.Set("Mattermost-Plugin-ID", callerPluginID)
+			} else {
+				req.Header.Set("Mattermost-User-Id", "reader")
+			}
 			rec := httptest.NewRecorder()
 			p.ServeHTTP(&plugin.Context{}, rec, req)
 

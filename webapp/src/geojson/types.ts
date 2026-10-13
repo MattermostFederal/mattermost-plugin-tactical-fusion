@@ -24,6 +24,9 @@ export const GEOJSON_PROPS_VERSION = 1;
  */
 const READABLE_VERSIONS = [1];
 
+export const MAX_FEATURES = 256;
+export const MAX_VERTICES = 4096;
+
 export const SOURCE_FENCE = 'fence';
 export const SOURCE_FILE = 'file';
 
@@ -232,6 +235,11 @@ export function fromProps(props: unknown): GeoJsonPayload | null {
         return null;
     }
 
+    const features = readFeatures(rawBlob);
+    if (features.length > MAX_FEATURES || positionCount(features) > MAX_VERTICES) {
+        return null;
+    }
+
     return {
         source,
         lead: text(rawBlob, 'lead'),
@@ -245,8 +253,20 @@ export function fromProps(props: unknown): GeoJsonPayload | null {
         unplaceable: text(rawBlob, 'unplaceable') !== '',
         propertiesDropped: text(rawBlob, 'properties_dropped') !== '',
         counts: readCounts(rawBlob),
-        features: readFeatures(rawBlob),
+        features,
     };
+}
+
+function positionCount(features: readonly GeoJsonFeature[]): number {
+    let total = 0;
+    for (const feature of features) {
+        for (const part of feature.parts) {
+            for (const ring of part.rings) {
+                total += ring.length;
+            }
+        }
+    }
+    return total;
 }
 
 function readCounts(rawBlob: Record<string, unknown>): GeoJsonCounts {

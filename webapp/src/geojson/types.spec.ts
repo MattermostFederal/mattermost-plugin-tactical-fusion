@@ -1,6 +1,6 @@
 import {expect, test} from '@playwright/test';
 
-import {GEOJSON_PROPS_KEY, GEOJSON_PROPS_VERSION, fromProps, isLinkable, ringCount, solePosition, vertexCount} from './types';
+import {GEOJSON_PROPS_KEY, GEOJSON_PROPS_VERSION, MAX_FEATURES, MAX_VERTICES, fromProps, isLinkable, ringCount, solePosition, vertexCount} from './types';
 
 function props(blob: unknown): unknown {
     return {[GEOJSON_PROPS_KEY]: blob};
@@ -48,6 +48,23 @@ test.describe('refusing a blob it cannot honor', () => {
     test('a source naming neither fence nor file is refused', () => {
         expect(fromProps(wellFormed({source: 'telepathy'}))).toBeNull();
         expect(fromProps(wellFormed({source: ''}))).toBeNull();
+    });
+
+    const point = (lon: string) => ({kind: 'Point', parts: [{kind: 'Point', rings: [[{lat: '0', lon}]]}]});
+
+    test('more features than the server ever writes is refused, never truncated', () => {
+        const atCap = Array.from({length: MAX_FEATURES}, () => point('0'));
+
+        expect(fromProps(wellFormed({features: atCap}))?.features).toHaveLength(MAX_FEATURES);
+        expect(fromProps(wellFormed({features: [...atCap, point('0')]}))).toBeNull();
+    });
+
+    test('more positions than the server ever writes is refused, never truncated', () => {
+        const ring = (count: number) => Array.from({length: count}, () => ({lat: '0', lon: '0'}));
+        const line = (count: number) => ({kind: 'LineString', parts: [{kind: 'LineString', rings: [ring(count)]}]});
+
+        expect(fromProps(wellFormed({features: [line(MAX_VERTICES)]}))).not.toBeNull();
+        expect(fromProps(wellFormed({features: [line(MAX_VERTICES), line(1)]}))).toBeNull();
     });
 });
 

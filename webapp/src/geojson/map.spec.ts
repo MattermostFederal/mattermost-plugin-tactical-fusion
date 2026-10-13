@@ -101,6 +101,18 @@ test('a latitude past the Mercator limit is not drawn', () => {
     expect(markersFor(features)).toHaveLength(0);
 });
 
+test('a longitude off the globe is not drawn', () => {
+    for (const lon of ['181', '-180.5', '1e300']) {
+        const features = [
+            feature({kind: 'Point', parts: [part('Point', [[[lon, '0']]])]}),
+            feature({kind: 'LineString', parts: [part('LineString', [[['0', '0'], [lon, '0']]])]}),
+        ];
+
+        expect(markersFor(features)).toHaveLength(0);
+        expect(shapesFor(features)).toHaveLength(0);
+    }
+});
+
 test('a ring left with fewer than two usable points is dropped', () => {
     const features = [feature({
         kind: 'LineString',

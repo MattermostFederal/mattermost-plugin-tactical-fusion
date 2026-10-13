@@ -923,12 +923,16 @@ func TestProseAfterABareReportIsNotSwallowed(t *testing.T) {
 	prose := "@alice please divert *now*, hold at [plan](http://p.example) ~ops-team"
 
 	for name, message := range map[string]string{
-		"on the next line":      reportMETAR + "\n" + prose,
-		"after a blank line":    reportTAF + "\n\n" + prose,
-		"in plain words":        reportTAF + "\nplease divert now",
-		"markdown in capitals":  reportTAF + "\nSEE [PLAN](HTTP://P.EXAMPLE)",
-		"on the same line":      reportMETAR + " please divert now",
-		"after a notam heading": reportFAANotam + "\n\n" + prose,
+		"on the next line":             reportMETAR + "\n" + prose,
+		"after a blank line":           reportTAF + "\n\n" + prose,
+		"in plain words":               reportTAF + "\nplease divert now",
+		"markdown in capitals":         reportTAF + "\nSEE [PLAN](HTTP://P.EXAMPLE)",
+		"on the same line":             reportMETAR + " please divert now",
+		"after a notam heading":        reportFAANotam + "\n\n" + prose,
+		"in arabic":                    reportMETAR + "\nالرحلة متأخرة",
+		"in chinese":                   reportTAF + "\n明天的航班取消了",
+		"in hebrew after a notam":      reportFAANotam + "\n\nהטיסה מתעכבת",
+		"in japanese on the same line": reportMETAR + " 便は遅れています",
 	} {
 		for _, shape := range []struct {
 			name      string

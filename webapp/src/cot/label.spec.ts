@@ -81,6 +81,13 @@ test('an event past the projection is not drawable', () => {
     expect(drawableEvents([ev('friend', '88.0000', '10.0000')])).toHaveLength(0);
 });
 
+test('an event whose longitude is off the globe is not drawable', () => {
+    for (const lon of ['180.0001', '-181', '1e300', 'Infinity']) {
+        expect(drawableEvents([ev('friend', '0', lon)])).toHaveLength(0);
+    }
+    expect(drawableEvents([ev('friend', '0', '180'), ev('friend', '0', '-180')])).toHaveLength(2);
+});
+
 function outlined(uid: string, points: Array<{lat: number; lon: number}>): CotEvent {
     return {
         ...ev('unknown'),

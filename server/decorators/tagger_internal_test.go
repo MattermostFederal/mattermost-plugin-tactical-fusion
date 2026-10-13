@@ -58,6 +58,9 @@ func TestIsIndentedCode(t *testing.T) {
 		{"empty line", "", false},
 		{"tab only", "\t", false},
 		{"spaces only", "        ", false},
+		{"one space then a tab", " \tcode", true},
+		{"two spaces then a tab", "  \tcode", true},
+		{"three spaces then a tab", "   \tcode", true},
 	}
 
 	for _, tc := range cases {
@@ -84,6 +87,9 @@ func TestCodeSpanRangesMatchesRunWidth(t *testing.T) {
 		{"wider run does not close a narrower opener", "`a``b` c", []byteRange{{0, 6}}},
 		{"unterminated opener is literal text", "a `code b", nil},
 		{"unterminated wider opener", "``a`b c", nil},
+		{"escaped backtick before an opener", "\\`` x `", []byteRange{{2, 7}}},
+		{"escaped backtick is not an opener", "\\`a` b", nil},
+		{"escaped backslash leaves the opener", "\\\\`a` b", []byteRange{{2, 5}}},
 	}
 
 	for _, tc := range cases {

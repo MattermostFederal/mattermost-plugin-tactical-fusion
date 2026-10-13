@@ -932,6 +932,12 @@ func TestTaggerLeavesProtectedTimestampsAlone(t *testing.T) {
 		"the format is `2026-08-09T16:30:00Z`",
 		"see https://example.com/logs/2026-08-09T16:30:00Z for detail",
 		"[2026-08-09T16:30:00Z](https://example.com/window)",
+		"para\n\n \t2026-08-09T16:30:00Z",
+		"para\n\n  \t2026-08-09T16:30:00Z",
+		"para\n\n   \t2026-08-09T16:30:00Z",
+		"run \\``x 2026-08-09T16:30:00Z` ok",
+		"x\r\r    see 2026-08-09T16:30:00Z now\r",
+		"x\r```\r2026-08-09T16:30:00Z\r```\r",
 	} {
 		t.Run(message, func(t *testing.T) {
 			if got := tagger.Decorate(message, ref); got != message {

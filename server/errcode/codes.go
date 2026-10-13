@@ -164,6 +164,8 @@ const (
 
 	HTTPPackageNotAuthorized = 12010
 
+	HTTPPanic = 12011
+
 	// server/api.go (13000-13999)
 
 	// APINotAuthorized is returned when a request to the authenticated API
@@ -502,6 +504,7 @@ var AllCodes = []int{
 	HTTPMapPostUnavailable,
 	HTTPMapAirportUnavailable,
 	HTTPPackageNotAuthorized,
+	HTTPPanic,
 
 	APINotAuthorized,
 	APINotFound,

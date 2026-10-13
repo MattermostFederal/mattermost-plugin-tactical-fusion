@@ -41,7 +41,6 @@
     "eslint-plugin-import": "2.32.0",
     "eslint-plugin-react": "7.37.5",
     "eslint-plugin-react-hooks": "7.1.1",
-    "react-dom": "19.3.0",
     "sass": "1.105.1",
     "sass-loader": "17.0.1",
     "style-loader": "4.0.0",
@@ -54,6 +53,7 @@
     "maplibre-gl": "6.11.2",
     "pmtiles": "4.5.0",
     "react": "19.3.0",
+    "react-dom": "19.3.0",
     "react-redux": "9.3.0",
     "redux": "5.0.1"
   }

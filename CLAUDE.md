@@ -306,6 +306,7 @@ side moves alone. Change both halves together.
 | The GeoJSON panel's hideable sections: ids, labels, order | `TestWebappGeoJSONSectionCatalogMatches` |
 | The GeoJSON props shape, walked rather than scraped | `TestWebappGeoJSONShapeMatches` |
 | The GeoJSON reader truncating nothing | `TestWebappGeoJSONTruncatesNothing` |
+| The GeoJSON caps a forged blob is refused at, rather than truncated to | `TestWebappGeoJSONCapsMatch` |
 | The CoT props shape: every key Go writes and the webapp reads | `TestWebappCotShapeMatches`, on a fixture built from `cot.FixtureDetail()` |
 | The `<detail>` extension registry: every key it can write | Same test, plus `TestEveryRegisteredKeyIsWrittenFromTheFixture` |
 | The CoT semantic classes | `TestWebappCotClassesMatch` |
