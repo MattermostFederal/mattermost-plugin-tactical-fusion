@@ -279,7 +279,7 @@ func archiveSchema(file io.ReadSeeker, header []byte) (int, error) {
 }
 
 func validPackageHeader(path string) error {
-	file, err := os.Open(path) // #nosec G304 -- a path built from a whitelisted name
+	file, err := os.Open(path) // #nosec G304 G703 -- a path built from a whitelisted name
 	if err != nil {
 		return err
 	}
@@ -352,7 +352,7 @@ func (p *Plugin) installPackage(name string, body io.Reader) error {
 
 	defer func() {
 		_ = temp.Close()
-		_ = os.Remove(tempPath)
+		_ = os.Remove(tempPath) // #nosec G703 -- os.CreateTemp named it inside the configured directory
 	}()
 
 	written, err := io.Copy(temp, io.LimitReader(body, maxUploadBytes+1))
@@ -373,7 +373,7 @@ func (p *Plugin) installPackage(name string, body io.Reader) error {
 			"that is not a map archive built for zoom %d and up: %v", seamZoom, err)
 	}
 
-	if err := os.Rename(tempPath, filepath.Join(dir, name+packageSuffix)); err != nil {
+	if err := os.Rename(tempPath, filepath.Join(dir, name+packageSuffix)); err != nil { // #nosec G703 -- name matched packageNamePattern above
 		return errcode.Errorf(errcode.PackagesUploadWriteFailed,
 			"the package could not be put in place: %v", err)
 	}
@@ -394,7 +394,7 @@ func (p *Plugin) removePackage(name string) error {
 			"that area ships inside the plugin and is replaced by a release, not from here")
 	}
 
-	if err := os.Remove(filepath.Join(dir, name+packageSuffix)); err != nil {
+	if err := os.Remove(filepath.Join(dir, name+packageSuffix)); err != nil { // #nosec G703 -- name matched packageNamePattern above
 		return errcode.Errorf(errcode.PackagesUploadWriteFailed,
 			"the package could not be removed: %v", err)
 	}

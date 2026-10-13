@@ -201,8 +201,8 @@ func Open(dirs []string) (*Set, []*FileError) {
 	}
 
 	for name, paths := range tabular {
-		for i := len(paths) - 1; i >= 0; i-- {
-			dataset, err := openDataset(paths[i])
+		for i, path := range slices.Backward(paths) {
+			dataset, err := openDataset(path)
 			if err != nil {
 				class := ErrorUnreadable
 				switch {
@@ -211,7 +211,7 @@ func Open(dirs []string) (*Set, []*FileError) {
 				case errors.Is(err, ErrWatchlistTooLarge):
 					class = ErrorTooLarge
 				}
-				problems = append(problems, &FileError{Path: paths[i], Class: class, Err: err})
+				problems = append(problems, &FileError{Path: path, Class: class, Err: err})
 				continue
 			}
 			set.datasets[name] = dataset

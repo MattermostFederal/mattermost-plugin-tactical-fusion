@@ -19,7 +19,7 @@ func datasets(t *testing.T, files map[string][]string) *intel.Set {
 	dir := t.TempDir()
 	for name, rows := range files {
 		var body strings.Builder
-		body.WriteString(fmt.Sprintf("%s%d\t%s\t2026-09-01T00:00:00Z\ttest\n", intel.SchemaPrefix, intel.SchemaVersion, name))
+		fmt.Fprintf(&body, "%s%d\t%s\t2026-09-01T00:00:00Z\ttest\n", intel.SchemaPrefix, intel.SchemaVersion, name)
 		for _, row := range rows {
 			body.WriteString(row + "\n")
 		}

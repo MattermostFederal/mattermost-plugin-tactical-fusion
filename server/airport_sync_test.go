@@ -40,7 +40,7 @@ func assertWebappInterfaceMatches(t *testing.T, goType reflect.Type, seen map[re
 		if !ok {
 			t.Fatalf("%s.%s has no json tag, so the webapp cannot read it", goType.Name(), field.Name)
 		}
-		key := strings.Split(tag, ",")[0]
+		key, _, _ := strings.Cut(tag, ",")
 		optional := ""
 		if strings.Contains(tag, ",omitempty") {
 			optional = "?"

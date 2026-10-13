@@ -758,11 +758,52 @@ dist: apply server webapp bundle
 # Quality Targets
 # ====================================================================================
 
+GOLANGCI_LINT_VERSION ?= 2.14.0
+GOLANGCI_LINT_SHA256_linux_amd64 ?= ab90aeb7b066f92a33415b638a50fe5344bbb75a0d32ad30cc248d88f81032ab
+GOLANGCI_LINT_SHA256_linux_arm64 ?= ee7ec5f3453d15ddf106fae5a4d6c71737712348a979d1fe9cd52ec7ea299bae
+GOLANGCI_LINT_SHA256_darwin_amd64 ?= a5667c1c3536be1740133213e1e822bfb8f0d98ea12903174d6d5f635e4ed68d
+GOLANGCI_LINT_SHA256_darwin_arm64 ?= 5ef5f36a7147e91dc58ef9ef4d11bb7bad5ead0c76eb6c01327a73c641d1dcc3
+
 ## Install go tools
-install-go-tools:
+.PHONY: install-go-tools
+install-go-tools: install-golangci-lint
 	@echo Installing go tools
-	GOTOOLCHAIN=$$($(GO) env GOVERSION) $(GO) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.8.0
 	GOTOOLCHAIN=$$($(GO) env GOVERSION) $(GO) install gotest.tools/gotestsum@v1.13.0
+
+## Install the pinned golangci-lint release binary, verified against its checksum
+.PHONY: install-golangci-lint
+install-golangci-lint:
+	@if $(GOBIN)/golangci-lint version 2>/dev/null | grep -q "version $(GOLANGCI_LINT_VERSION) "; then \
+		echo "golangci-lint $(GOLANGCI_LINT_VERSION) already installed"; \
+	else \
+		echo "Installing golangci-lint v$(GOLANGCI_LINT_VERSION)..."; \
+		LINT_OS=$$(uname -s | tr '[:upper:]' '[:lower:]'); \
+		LINT_ARCH=$$(uname -m); \
+		case "$$LINT_ARCH" in \
+			x86_64|amd64) LINT_ARCH=amd64 ;; \
+			aarch64|arm64) LINT_ARCH=arm64 ;; \
+		esac; \
+		case "$$LINT_OS-$$LINT_ARCH" in \
+			linux-amd64) LINT_SHA256="$(GOLANGCI_LINT_SHA256_linux_amd64)" ;; \
+			linux-arm64) LINT_SHA256="$(GOLANGCI_LINT_SHA256_linux_arm64)" ;; \
+			darwin-amd64) LINT_SHA256="$(GOLANGCI_LINT_SHA256_darwin_amd64)" ;; \
+			darwin-arm64) LINT_SHA256="$(GOLANGCI_LINT_SHA256_darwin_arm64)" ;; \
+			*) echo "ERROR: no golangci-lint checksum pinned for $$LINT_OS-$$LINT_ARCH."; exit 1 ;; \
+		esac; \
+		LINT_NAME="golangci-lint-$(GOLANGCI_LINT_VERSION)-$$LINT_OS-$$LINT_ARCH"; \
+		LINT_TMP=$$(mktemp -d) || exit 1; \
+		curl -sSfL -o "$$LINT_TMP/$$LINT_NAME.tar.gz" "https://github.com/golangci/golangci-lint/releases/download/v$(GOLANGCI_LINT_VERSION)/$$LINT_NAME.tar.gz" || { rm -rf "$$LINT_TMP"; exit 1; }; \
+		if [ "$$(shasum -a 256 "$$LINT_TMP/$$LINT_NAME.tar.gz" | cut -d' ' -f1)" != "$$LINT_SHA256" ]; then \
+			echo "ERROR: $$LINT_NAME.tar.gz does not match GOLANGCI_LINT_SHA256_$${LINT_OS}_$$LINT_ARCH."; \
+			rm -rf "$$LINT_TMP"; \
+			exit 1; \
+		fi; \
+		tar -xzf "$$LINT_TMP/$$LINT_NAME.tar.gz" -C "$$LINT_TMP" || { rm -rf "$$LINT_TMP"; exit 1; }; \
+		mkdir -p $(GOBIN); \
+		install -m 0755 "$$LINT_TMP/$$LINT_NAME/golangci-lint" $(GOBIN)/golangci-lint || { rm -rf "$$LINT_TMP"; exit 1; }; \
+		rm -rf "$$LINT_TMP"; \
+		echo "golangci-lint v$(GOLANGCI_LINT_VERSION) installed"; \
+	fi
 
 ## Runs eslint and golangci-lint
 .PHONY: check-style
