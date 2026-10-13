@@ -276,8 +276,10 @@ jobs:
             The plugin bundles two offline detail-map areas (Hawaii and Guam). Every other area is
             built from OpenStreetMap and attached as a separate `.pmtiles` asset, with
             `PACKAGES.sha256` beside them and `MAP-SOURCES.lock` naming the Geofabrik extracts and
-            the one cut they were built from. A major release rebuilds them from a fresh cut; a
-            minor or patch release carries the previous release's packages forward unchanged. The map assets arrive after the plugin bundle:
+            the one cut they were built from. A major release rebuilds them from a fresh cut. A
+            minor or patch release carries the previous release's packages forward unchanged when
+            the map recipe has not changed since, and rebuilds them when it has or when no earlier
+            release carries a full set. The map assets arrive after the plugin bundle:
             they build in their own job, which starts once the plugin build succeeds. Download only what you need, then set **Detail map package
             directory** (`LocationMapPackagesDir`) in the System Console and copy the files
             there, or upload them under **Installed detail areas**. They are separate
@@ -327,7 +329,9 @@ jobs:
         id: carry
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: echo "from=$(./build/maposm/previous-release.sh "$RELEASE_TAG")" >> "$GITHUB_OUTPUT"
+        run: |
+          from=$(./build/maposm/previous-release.sh "$RELEASE_TAG")
+          echo "from=$from" >> "$GITHUB_OUTPUT"
 
       - name: Copy the map packages from the previous release
         if: steps.carry.outputs.from != ''

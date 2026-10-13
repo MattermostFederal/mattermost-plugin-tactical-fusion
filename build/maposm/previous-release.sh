@@ -30,20 +30,23 @@ wanted=$(printf '%s\n' PACKAGES.sha256 MAP-SOURCES.lock
 
 for previous in $earlier; do
     [ "${previous%%.*}" = "$major" ] || rebuild "${TAG} is a major version bump over v${previous}"
+
+    assets=$(gh api "repos/{owner}/{repo}/releases/tags/v${previous}" --jq '.assets[].name')
+    missing=$(grep -vxF -f <(printf '%s\n' "$assets") <<<"$wanted" || true)
+    if [ -n "$missing" ]; then
+        echo "v${previous} is missing $(echo $missing), trying the release before it" >&2
+        continue
+    fi
+
     if ! git diff --quiet "v${previous}" "$TAG" -- $RECIPE; then
         rebuild "the map recipe changed since v${previous}"
     fi
     [ "$(toolchain_pins "v${previous}")" = "$(toolchain_pins "$TAG")" ] ||
         rebuild "the map toolchain pins changed since v${previous}"
 
-    assets=$(gh api "repos/{owner}/{repo}/releases/tags/v${previous}" --jq '.assets[].name')
-    missing=$(grep -vxF -f <(printf '%s\n' "$assets") <<<"$wanted" || true)
-    if [ -z "$missing" ]; then
-        echo "carrying the map packages forward from v${previous}" >&2
-        echo "v${previous}"
-        exit 0
-    fi
-    echo "v${previous} is missing $(echo $missing), trying the release before it" >&2
+    echo "carrying the map packages forward from v${previous}" >&2
+    echo "v${previous}"
+    exit 0
 done
 
 rebuild "no earlier ${major}.x release carries every map package"

@@ -302,6 +302,9 @@ map-carry:
 	@for name in $$(grep -v '^#' build/maposm/regions.txt | awk -v p="$(MAP_RELEASE_PROFILE)" 'NF && index("," $$2 ",", "," p ",") { print $$1 }'); do \
 		[ -f "$(MAP_RELEASE_DIR)/$$name.pmtiles" ] || { echo "error: $(FROM) does not carry $$name.pmtiles"; exit 1; }; \
 	done
+	@cd $(MAP_RELEASE_DIR) && for file in *.pmtiles MAP-SOURCES.lock; do \
+		awk '{ sub(/^\*/, "", $$2); print $$2 }' PACKAGES.sha256 | grep -qxF "$$file" || { echo "error: PACKAGES.sha256 in $(FROM) does not cover $$file"; exit 1; }; \
+	done
 	@ls -l $(MAP_RELEASE_DIR)
 
 ## Attaches the release-asset map packages in build/maposm/out/ to an existing
