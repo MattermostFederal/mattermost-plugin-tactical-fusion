@@ -9,6 +9,8 @@ import {OVERLAY_UNREADABLE} from './OverlayPageView';
 import type {LocationPageData, OverlayPageData, PageData} from './payload';
 
 import {expect, test} from '../../playwright/ct-coverage';
+import {HONOLULU_METAR, NOTAM_WITH_RADIUS, propsFor as reportProps} from '../avreport/report_fixtures';
+import {HICKAM, HONOLULU} from '../decorators/airport/route_fixtures';
 import {parseCanonical} from '../decorators/location/format';
 import LocationReadings from '../decorators/location/LocationReadings';
 import {serveMapAssets} from '../decorators/location/map/asset_fixtures';
@@ -633,6 +635,65 @@ test.describe('the overlay page', () => {
         await expect(component.getByTestId('drawn-pins')).toHaveText('Point:1|Point:1');
     });
 
+    const AIRPORT_BLOB = {
+        ident: 'PHNL',
+        name: 'Daniel K. Inouye International Airport',
+        coordinate: {format: 'dd', value: '21.3184,-157.9257', region: 'United States of America'},
+        runways: [{
+            designation: '08L/26R',
+            ends: [{format: 'dd', value: '21.3252,-157.9430'}, {format: 'dd', value: '21.3252,-157.9070'}],
+        }],
+    };
+
+    function airfieldsProps(airfields: unknown[]): Record<string, unknown> {
+        return {tactical_fusion_airfields: {version: 1, airfields}};
+    }
+
+    test('draws an airfield and names it with its runways', async ({mount}) => {
+        const component = await mount(
+            <OverlayPageView data={overlay({kind: 'airport', props: AIRPORT_BLOB})}/>,
+        );
+
+        await expect(component).not.toContainText(OVERLAY_UNREADABLE);
+        await expect(component).toContainText('Daniel K. Inouye International Airport (PHNL), the airfield, with 1 runway drawn');
+    });
+
+    test('names an airfield by its ident when it carries no name', async ({mount}) => {
+        const component = await mount(
+            <OverlayPageView data={overlay({kind: 'airport', props: {...AIRPORT_BLOB, name: '', runways: []}})}/>,
+        );
+
+        await expect(component).toContainText('PHNL (PHNL), the airfield');
+        await expect(component).not.toContainText('runway');
+    });
+
+    test('draws an airfield route and counts its legs', async ({mount}) => {
+        const component = await mount(
+            <OverlayPageView data={overlay({kind: 'custom_tf_airfields', props: airfieldsProps([HICKAM, HONOLULU])})}/>,
+        );
+
+        await expect(component).not.toContainText(OVERLAY_UNREADABLE);
+        await expect(component).toContainText('2 airfields and 1 leg in message order');
+    });
+
+    test('draws an aviation report at its station', async ({mount}) => {
+        const component = await mount(
+            <OverlayPageView data={overlay({kind: 'custom_tf_avreport', props: reportProps(HONOLULU_METAR)})}/>,
+        );
+
+        await expect(component).not.toContainText(OVERLAY_UNREADABLE);
+        await expect(component).toContainText('Daniel K. Inouye International Airport (PHNL)');
+        await expect(component).not.toContainText('radius');
+    });
+
+    test('says how far a NOTAM reaches', async ({mount}) => {
+        const component = await mount(
+            <OverlayPageView data={overlay({kind: 'custom_tf_avreport', props: reportProps(NOTAM_WITH_RADIUS)})}/>,
+        );
+
+        await expect(component).toContainText('Daniel K. Inouye International Airport (PHNL), 5 NM radius');
+    });
+
     test('carries no link out of itself', async ({mount}) => {
         const component = await mount(
             <OverlayPageView data={overlay({kind: 'custom_tf_geojson', props: GEOJSON_PROPS})}/>,
@@ -658,6 +719,21 @@ test.describe('the overlay page', () => {
          * null, and the page used to render that null inside a framed window
          * with a populated label bar: an empty map captioned "1 event".
          */
+        ['an airfield blob this build cannot read', overlay({kind: 'airport', props: {}})],
+        ['an airfield it cannot place', overlay({
+            kind: 'airport',
+            props: {...AIRPORT_BLOB, coordinate: {...AIRPORT_BLOB.coordinate, value: 'nowhere'}},
+        })],
+        ['a route blob this build cannot read', overlay({kind: 'custom_tf_airfields', props: {}})],
+        ['a route whose airfields carry no position', overlay({
+            kind: 'custom_tf_airfields',
+            props: airfieldsProps([{ident: 'QZQZ', code: 'QZQZ', name: 'Somewhere Unplaced', format: '', value: ''}]),
+        })],
+        ['a report blob this build cannot read', overlay({kind: 'custom_tf_avreport', props: {}})],
+        ['a report with no station position', overlay({
+            kind: 'custom_tf_avreport',
+            props: reportProps({...HONOLULU_METAR, format: '', value: '', region: ''}),
+        })],
         ['a document the server would not place', overlay({
             kind: 'custom_tf_geojson',
             props: {
