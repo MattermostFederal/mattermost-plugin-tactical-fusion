@@ -57,8 +57,9 @@ func countLines(source io.ReaderAt, from, to int64) (int, error) {
 		want := min(int64(len(buffer)), to-at)
 		n, err := source.ReadAt(buffer[:want], at)
 		if n > 0 {
-			lines += bytes.Count(buffer[:n], []byte{'\n'})
-			lastByte = buffer[n-1]
+			chunk := buffer[:n]
+			lines += bytes.Count(chunk, []byte{'\n'})
+			lastByte = chunk[len(chunk)-1]
 			at += int64(n)
 		}
 		if err != nil && !errors.Is(err, io.EOF) {

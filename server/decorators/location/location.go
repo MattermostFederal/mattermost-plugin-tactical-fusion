@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -329,12 +330,7 @@ func (d *Decorator) Patterns() []decorators.Pattern {
 		}
 	}
 
-	// Capped to its own length, so a caller that appends writes into a fresh
-	// array rather than into the one every other caller is ranging over. Every
-	// other decorator allocates a new slice per call, so "the slice is yours"
-	// was true everywhere before this cache existed and stays true now.
-	patterns := buildPatterns(formats)
-	patterns = patterns[:len(patterns):len(patterns)]
+	patterns := slices.Clip(buildPatterns(formats))
 
 	patternCache.Store(formats, patterns)
 	return patterns

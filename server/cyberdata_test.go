@@ -18,7 +18,7 @@ func writeKEV(t *testing.T, dir string, rows ...string) {
 	t.Helper()
 
 	var body strings.Builder
-	body.WriteString(fmt.Sprintf("%s%d\t%s\t2026-09-01T00:00:00Z\ttest\n", intel.SchemaPrefix, intel.SchemaVersion, intel.NameKEV))
+	fmt.Fprintf(&body, "%s%d\t%s\t2026-09-01T00:00:00Z\ttest\n", intel.SchemaPrefix, intel.SchemaVersion, intel.NameKEV)
 	for _, row := range rows {
 		body.WriteString(row + "\n")
 	}

@@ -1,6 +1,7 @@
 package avreport
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -140,10 +141,7 @@ func TestATFRTableIsHeadedByTheRestrictionAndShowsAnImmediateStart(t *testing.T)
 }
 
 func twoDigits(n int) string {
-	if n < 10 {
-		return "0" + string(rune('0'+n))
-	}
-	return string(rune('0'+n/10)) + string(rune('0'+n%10))
+	return fmt.Sprintf("%02d", n)
 }
 
 func TestATFRTableLeavesItsTextToTheReportAsPosted(t *testing.T) {
