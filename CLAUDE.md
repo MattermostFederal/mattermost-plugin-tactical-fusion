@@ -6,8 +6,8 @@ Mattermost Tactical Fusion enriches conversations with mission-relevant context:
 geospatial data, CoT, time zones, IP intelligence, CVEs, and other operational
 information. The server is Go, the webapp TypeScript/React.
 
-Shipped today: the decorator framework and six decorators, DTG, Location,
-Airfields, Aviation reports, Frequencies and Cyber context, plus the bundled
+Shipped today: the decorator framework and seven decorators, DTG, Location,
+Airfields, Aviation reports, Frequencies, Notes and Cyber context, plus the bundled
 offline map, the Cursor on Target renderer and the GeoJSON renderer. The rest is
 not implemented.
 
@@ -27,10 +27,14 @@ right-hand sidebar, and a standalone server-rendered page.
 | `configuration.go` | Config struct and `OnConfigurationChange`, plus `dtgFormats`/`locationFormats`/`locationMaps` |
 | `hooks.go` | `MessageWillBePosted`, `decoratePost`, `stampStandalonePost`, the post size constants |
 | `hooks_stamp.go` | The forged-type strip, `runStamper`, the props ladder, the attachment ownership check |
+| `hooks_cot.go`, `hooks_geojson.go` | The Cursor on Target and GeoJSON stampers: the fence and attachment sources, the refusal notices |
 | `hooks_avreport.go` | The aviation report stamper: the fence and bare sources, the attachment gate, the two rungs |
-| `http.go` | `ServeHTTP`: `/decorate/<type>`, `/map`, `/api/v1/*`, and the session gate |
-| `api.go` | Authenticated JSON API: `/preferences`, `/convert`, `/features`, `/airport`, `/avreport`, `/decorate`, `/link` |
+| `http.go` | `ServeHTTP`: its recover, `/decorate/<type>`, `/map`, `/packages/<name>`, `/api/v1/*`, `/bridge/v1/*`, `/mcp`, and the session gate |
+| `api.go` | Authenticated JSON API: `/preferences`, `/convert`, `/features`, `/airport`, `/avreport`, `/packages`, `/decorate`, `/link` |
+| `api_cyber.go`, `api_cyber_datasets.go` | `/api/v1/cyber`, and the system-admin-only `/api/v1/cyber/datasets` behind the System Console's loaded-datasets view |
+| `mappost.go` | `/map?post=<id>`: the overlay map page for a stamped post, found through `stampedTypes` |
 | `mapairport.go` | `/map?airport=<ident>`: the airfield map page, rendered through the overlay shell |
+| `packages.go` | Detail map packages: discovery in the package directory, header validation, install and remove |
 | `bridge.go` | The plugin bridge: `/bridge/v1/{decorate,link,info,airport}` for other plugins, and the `decorate`/`link` operations `/api/v1` shares |
 | `mcp.go`, `mcp_tools.go`, `mcp_decode_tools.go`, `mcp_create_tools.go`, `mcp_cyber_tool.go` | The Agents MCP server: the `/mcp` endpoint, its lifecycle, the link and lookup tools, the tools that decode reports, CoT, GeoJSON, frequencies and date-time groups, the two that build CoT and GeoJSON, and the batch cyber indicator lookup |
 | `preferences.go`, `preferences_cache.go` | Per-reader KV store and its cluster-aware cache |
@@ -61,7 +65,9 @@ right-hand sidebar, and a standalone server-rendered page.
 | `src/decorators/location/map/` | `LocationMap` (presentation) and `use_map_instance.ts` (the MapLibre lifecycle); `paint.ts` (the simplestyle gate), `overlay.ts` (what is drawn), `bounds.ts` (framing), `label.ts` (the accessible text); MapLibre loading, the basemap reader, span arithmetic |
 | `src/page/` | Standalone pages' entry point, built by a second webpack config into `public/app/page.js` |
 | `src/components/rhs/` | `RhsView` and `RhsTitle` |
-| `src/preferences/`, `src/features/` | Module-state caches in front of the two API routes |
+| `src/panels.ts` | The table of what the right-hand sidebar can show, decorators and the non-decorator cards alike |
+| `src/preferences/`, `src/features/`, `src/packages/` | Module-state caches in front of `/preferences`, `/features` and `/packages` |
+| `src/admin/` | The System Console custom settings: the detail map package uploader and the loaded cyber datasets |
 | `src/bridge/` | `window.TacticalFusion` for other plugins' webapps: `decorate`, `link`, the `Link` component, the ready event |
 
 ### Elsewhere
@@ -214,14 +220,17 @@ a type a later release adds render as genuine once it ships. Decoration writes
 `stampedTypes` is only how `/map?post=` finds a blob.
 
 **A bare report is only the report.** A report posted without a fence is read
-only when the text carries no lower case, and, over several lines, no markdown
+only when the text carries no letter that is not upper case, so caseless
+scripts such as Arabic and CJK stay prose too, and, over several lines, no markdown
 metacharacter; otherwise the author's own words would be folded into a "Not
 decoded" cell or a card forever. A fence is the author saying what it holds.
 
 **`/bridge/v1` is gated only on `Mattermost-Plugin-ID`, so it may never answer
 with per-user or per-channel data.** A plugin request carries no reader. Every
 bridge answer is a pure function of the request and the admin switches; a route
-that needs a reader belongs somewhere a user id is proven. Within `v1` changes are
+that needs a reader belongs somewhere a user id is proven. `sessionUserID` returns
+no reader for any request carrying that header, so a plugin request reaching
+`/api/v1` or a page route is treated as signed out. Within `v1` changes are
 additive only, because the callers are other teams' plugins.
 
 **`/mcp` is the one transport that may read a reader, and only through

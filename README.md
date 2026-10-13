@@ -12,8 +12,8 @@ Nobody has to change how they write. The formats are the ones already used in
 mission traffic.
 
 > **Status:** early. Date-time groups, coordinates, airfields, aviation reports
-> (METAR, TAF, NOTAM), frequencies, Cursor on Target and GeoJSON work today. IP intelligence
-> and CVE lookups are planned and not yet built.
+> (METAR, TAF, NOTAM), frequencies, notes, cyber indicators (CVE, CWE, ATT&CK,
+> IP addresses, file hashes), Cursor on Target and GeoJSON work today.
 
 Requires Mattermost **11.8.0** or later.
 
@@ -35,7 +35,7 @@ Military date-time groups (`091630ZAUG26`, `091630Z`) and RFC 3339 timestamps
 A coordinate in any recognized notation becomes a link showing the same position
 in all the others: decimal degrees, degrees/minutes/seconds, degrees and decimal
 minutes, the fixed-width USMTF shapes used in ATO traffic, military grid
-references (MGRS) and UTM.
+references (MGRS), UTM, GEOREF, GARS and Plus Codes.
 
 ```
 34.0561, -118.2500          34°03'22"N 118°15'00"W
@@ -55,6 +55,40 @@ Two things worth knowing:
 - **Grid conversion is computed in the plugin**, with no external service and no
   network call, so it works on an air-gapped host.
 
+### Airfields, aviation reports and frequencies
+
+- **Airfields.** An ICAO code behind a field label (`ICAO:PHNL`, `DEPLOC:PHIK`,
+  `ARRLOC:PGUA`) or an IATA code behind `IATA:` links to the field's name,
+  position, runways and frequencies. A message of nothing but airfield codes
+  gets a route map under it.
+- **Aviation reports.** A METAR, SPECI, TAF or NOTAM is decoded into plain
+  language. Posted on its own it becomes a table; in a fenced block labeled
+  `metar`, `taf` or `notam` it becomes a card with the station on a map.
+- **Frequencies.** `FREQ:121.5` names the band and any known allocation.
+
+### Cyber context
+
+CVE, CWE and MITRE ATT&CK identifiers, IP addresses and MD5, SHA-1 and SHA-256
+hashes become links. The panel shows what the bundled and installed datasets
+say: severity and known exploitation for a CVE, the hierarchy for a weakness or
+technique, network and location for an address, and any watchlist entry. A
+missing dataset is reported as missing, never as a clean result.
+
+### Cursor on Target and GeoJSON
+
+A Cursor on Target event or a GeoJSON document, in a fenced block labeled `cot`,
+`xml` or `geojson`, or attached as a `.cot`, `.xml` or `.geojson` file, renders as a
+card with its contents on a map.
+
+### Notes and the Agents plugin
+
+- `/tactical-fusion note <label> | <markdown>` posts a link whose hover card
+  renders the markdown.
+- With the Mattermost Agents plugin installed, its agents can call Tactical
+  Fusion's tools over MCP: decorate text, convert coordinates, look up
+  airfields and cyber indicators, decode reports, CoT, GeoJSON, frequencies and
+  date-time groups, and build CoT and GeoJSON.
+
 ### Deliberately recognizing less
 
 Decorating a message rewrites what was posted, so a false positive edits somebody
@@ -68,8 +102,9 @@ Two slash commands make this visible:
 - `/tactical-fusion examples` posts a demonstration **to the channel**, one message
   per format, each row showing what you would type and the link it becomes. Two of
   the date-time rows are live, either side of now, so the countdown is actually
-  moving, and it ends with two Cursor on Target events that arrive as cards. This
-  is the one for introducing the plugin to a team.
+  moving. It ends with the card formats (Cursor on Target, GeoJSON and a TFR
+  NOTAM), two notes and a set of prompts for the Agents plugin. This is the one
+  for introducing the plugin to a team.
 - `/tactical-fusion check <text>` tells you what would be decorated in some text,
   and what would not, without posting anything.
 
@@ -108,9 +143,11 @@ Plugin Management**, then enable it.
 
 ## Admin settings
 
-Fifteen switches in **System Console → Plugins → Tactical Fusion**, in three
-sections. All on by default except `EnableLocationUTM`. Each section opens with
-its own parent switch, which gates everything below it.
+Forty switches in **System Console → Plugins → Tactical Fusion**, in nine
+sections, plus directories for detail map packages and cyber datasets. All on
+by default except `EnableLocationUTM` and `EnableGeoJSONUnlabeled`. Each section
+opens with its own parent switch, which gates everything below it. The built-in
+help's admin page describes every one.
 
 **Date and time**
 
@@ -125,12 +162,15 @@ its own parent switch, which gates everything below it.
 
 | Setting | Controls | Default |
 |---|---|---|
-| `EnableLocation` | The coordinate feature, and the six below it | On |
+| `EnableLocation` | The coordinate feature, and the nine below it | On |
 | `EnableLocationDDSigned` | `34.0561, -118.2500` | On |
 | `EnableLocationLatLon` | Hemisphere and degrees/minutes/seconds forms | On |
 | `EnableLocationUSMTF` | The fixed-width USMTF shapes | On |
 | `EnableLocationMGRS` | MGRS, `18S UJ 23478 06483` | On |
 | `EnableLocationUTM` | UTM, `33U 291000 5628000` | **Off** |
+| `EnableLocationGEOREF` | GEOREF behind its label, `GEOREF:GJPJ3718` | On |
+| `EnableLocationGARS` | GARS behind its label, `GARS:006AG39` | On |
+| `EnableLocationPlusCode` | Plus Codes, `849VCWC8+R9` | On |
 | `EnableLocationMoniker` | USMTF field labels in front of a coordinate | On |
 
 **Maps**
@@ -152,15 +192,30 @@ The file still ships in the bundle either way: Mattermost serves `public/` befor
 the plugin sees the request, so the switch stops clients asking rather than
 making it unreachable.
 
-`EnableLocationMapInline` is the one that changes a stored post. Drawing a map
-under a message means marking that post with a custom type, and Elasticsearch and
-OpenSearch index a marked post but never match it, so it is missing from search
-and from Recent Mentions; link previews, embeds and auto-translation are dropped
-for it too. Postgres search is unaffected. Turning it off leaves those messages
-ordinary. Posts already marked keep their mark.
+`EnableLocationMapInline`, `EnableAirportRoute`, `EnableAvReportCard`,
+`EnableCot` and `EnableGeoJSON` are the switches that change a stored post.
+Drawing a map or a card under a message means marking that post with a custom
+type, and Elasticsearch and OpenSearch index a marked post but never match it, so
+it is missing from search and from Recent Mentions; link previews, embeds and
+auto-translation are dropped for it too. Postgres search is unaffected. Turning
+one off leaves those messages ordinary. Posts already marked keep their mark.
 
-**`EnableLocationUTM` is the only switch that ships off**, and the reason is a
-difference in kind. Every other switch trades a false positive against a missed
+**The other sections**
+
+| Section | Parent switch | Below it |
+|---|---|---|
+| Airfields | `EnableAirport` | `EnableAirportIATA`, `EnableAirportTable`, `EnableAirportRoute` |
+| Aviation reports | `EnableAvReport` | `EnableAvReportMETAR`, `EnableAvReportTAF`, `EnableAvReportNOTAM`, `EnableAvReportTable`, `EnableAvReportCard` |
+| Frequencies | `EnableFrequency` | |
+| Cursor on Target | `EnableCot` | `EnableCotFile` |
+| GeoJSON | `EnableGeoJSON` | `EnableGeoJSONFile`, `EnableGeoJSONUnlabeled` (**off**) |
+| Cyber context | `EnableCyber` | `EnableCyberCVE`, `EnableCyberCWE`, `EnableCyberAttack`, `EnableCyberIP`, `EnableCyberHash` |
+
+`EnableGeoJSONUnlabeled` ships off because ordinary JSON is pasted into chat
+constantly, and a wrongly stamped post loses its search matches for good.
+
+**`EnableLocationUTM` ships off** for a reason that is a difference in kind.
+Every other switch trades a false positive against a missed
 decoration. UTM can decorate a real coordinate and point at the **wrong place**:
 `11S` is band S here (34° N) and "zone 11, southern hemisphere" to a civilian
 (56° S), and nothing in the token says which was meant. The northing has to
