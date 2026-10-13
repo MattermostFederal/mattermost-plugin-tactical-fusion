@@ -1202,13 +1202,13 @@ install-codeql:
 
 ## Run CodeQL analysis on Go code
 .PHONY: codeql-go
-codeql-go: install-codeql
+codeql-go: install-codeql apply
 ifneq ($(HAS_SERVER),)
 	@echo "Running CodeQL analysis on Go code..."
 	@rm -rf $(CODEQL_DB_DIR)/go
 	@mkdir -p $(CODEQL_DB_DIR)/go
 	@mkdir -p dist
-	$(CODEQL) database create $(CODEQL_DB_DIR)/go --language=go --source-root=server --overwrite
+	$(CODEQL) database create $(CODEQL_DB_DIR)/go --language=go --source-root=. --command='$(GO) build ./server/... ./bridgeclient/...' --overwrite
 	$(CODEQL) database analyze $(CODEQL_DB_DIR)/go --format=sarif-latest --output=dist/codeql-go.sarif -- codeql/go-queries
 	@echo "Go CodeQL results: dist/codeql-go.sarif"
 endif
