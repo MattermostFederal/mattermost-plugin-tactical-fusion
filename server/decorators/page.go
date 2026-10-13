@@ -163,14 +163,12 @@ func (p Page) scriptSrc() string {
 	return src
 }
 
-// themeAttribute renders the theme as a root attribute, or nothing at all.
-//
-// The value reaches a stylesheet, so it is re-checked here rather than trusted
-// from the caller. Only the two known keywords can ever be emitted.
 func (p Page) themeAttribute() string {
 	switch p.Theme {
-	case "light", "dark":
-		return ` data-theme="` + p.Theme + `"`
+	case "light":
+		return ` data-theme="light"`
+	case "dark":
+		return ` data-theme="dark"`
 	default:
 		return ""
 	}
