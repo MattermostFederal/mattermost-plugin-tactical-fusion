@@ -274,9 +274,12 @@ jobs:
             ### Map packages
 
             The plugin bundles two offline detail-map areas (Hawaii and Guam). Every other area is
-            built from OpenStreetMap for this release and attached as a separate `.pmtiles` asset,
-            with `PACKAGES.sha256` beside them and `MAP-SOURCES.lock` naming the Geofabrik extracts
-            and the one cut they were built from. The map assets arrive after the plugin bundle:
+            built from OpenStreetMap and attached as a separate `.pmtiles` asset, with
+            `PACKAGES.sha256` beside them and `MAP-SOURCES.lock` naming the Geofabrik extracts and
+            the one cut they were built from. A major release rebuilds them from a fresh cut. A
+            minor or patch release carries the previous release's packages forward unchanged when
+            the map recipe has not changed since, and rebuilds them when it has or when no earlier
+            release carries a full set. The map assets arrive after the plugin bundle:
             they build in their own job, which starts once the plugin build succeeds. Download only what you need, then set **Detail map package
             directory** (`LocationMapPackagesDir`) in the System Console and copy the files
             there, or upload them under **Installed detail areas**. They are separate
@@ -319,15 +322,32 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
           persist-credentials: false
 
+      - name: Choose whether to carry the previous release's maps forward
+        id: carry
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          from=$(./build/maposm/previous-release.sh "$RELEASE_TAG")
+          echo "from=$from" >> "$GITHUB_OUTPUT"
+
+      - name: Copy the map packages from the previous release
+        if: steps.carry.outputs.from != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: make map-carry FROM="${{ steps.carry.outputs.from }}"
+
       - name: Set up Go
+        if: steps.carry.outputs.from == ''
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           cache: true
 
       - name: Build the map packages from the latest shared Geofabrik cut
+        if: steps.carry.outputs.from == ''
         run: make map-release
 
       - name: Attach the map packages to the release

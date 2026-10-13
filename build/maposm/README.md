@@ -499,12 +499,29 @@ discovery and the byte-range reader all working.
 
 ## Publishing the release-asset regions
 
-Every release builds and attaches them. `release.yml` has a `maps` job that
-starts once the plugin build succeeds and runs:
+Every release attaches them. `release.yml` has a `maps` job that starts once
+the plugin build succeeds. On a major version bump it builds them:
 
 ```
 make map-release
 ```
+
+On a minor or patch release it copies them from the previous release instead:
+
+```
+make map-carry FROM=v0.9.0
+```
+
+`previous-release.sh` makes the call. It names the most recent earlier published
+release that carries every package, `PACKAGES.sha256` and `MAP-SOURCES.lock`,
+walking back past releases that do not. It falls back to a rebuild when there is
+no such release, when the major version differs, or when `regions.txt`,
+`build.sh`, `filter.json`, the `Dockerfile` or the Makefile's tippecanoe and
+planetiler pins changed since that release. `map-carry`
+verifies every archive against the copied `PACKAGES.sha256`, so a carried set is
+byte for byte what the earlier release shipped, `MAP-SOURCES.lock` included.
+
+The rest of this section describes a rebuild.
 
 That builds every row carrying the `release` profile, which is every row that is
 not `bundled`, from **one fresh Geofabrik cut**. `latest-cut.sh` resolves each
