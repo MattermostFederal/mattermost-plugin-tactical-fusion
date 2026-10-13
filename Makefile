@@ -252,7 +252,8 @@ MAX_MAP_PACKAGE_BYTES ?= 536870912
 ## from. latest-cut.sh picks the newest date every extract in the profile shares, because
 ## Geofabrik rolls regions over through the day and build.sh refuses to merge two cuts. The
 ## lock in build/maposm/sources.lock is re-pinned to that cut for the rows in scope; commit it
-## or leave it. The release workflow runs this in its own job once the plugin build succeeds; MAP_RELEASE_PROFILE builds a
+## or leave it. The release workflow runs this in its own job once the plugin build succeeds,
+## unless map-carry can copy the set from the previous release; MAP_RELEASE_PROFILE builds a
 ## smaller set locally, e.g. MAP_RELEASE_PROFILE=taiwan. Each package must fit under
 ## MAX_MAP_PACKAGE_BYTES, the 512 MiB maxUploadBytes in server/packages.go. Needs Docker,
 ## network access and about 50 GB of free disk for the full set.
@@ -279,6 +280,28 @@ map-release:
 	done
 	cp build/maposm/sources.lock $(MAP_RELEASE_DIR)/MAP-SOURCES.lock
 	cd $(MAP_RELEASE_DIR) && shasum -a 256 *.pmtiles MAP-SOURCES.lock > PACKAGES.sha256
+	@ls -l $(MAP_RELEASE_DIR)
+
+## Fills build/maposm/release from an earlier release instead of building it: downloads
+## its map packages, PACKAGES.sha256 and MAP-SOURCES.lock, verifies every archive against
+## the checksums, and fails unless every MAP_RELEASE_PROFILE row is present. The release
+## workflow runs it in place of map-release when previous-release.sh names a release to
+## carry forward from: the same major version, built from the same map recipe.
+##
+##   make map-carry FROM=v0.9.0
+##
+## Copies the map packages of an earlier release into build/maposm/release
+.PHONY: map-carry
+map-carry:
+	@[ -n "$(FROM)" ] || { echo "error: set FROM=<release tag>"; exit 1; }
+	rm -rf $(MAP_RELEASE_DIR)
+	mkdir -p $(MAP_RELEASE_DIR)
+	gh release download "$(FROM)" --dir $(MAP_RELEASE_DIR) \
+		--pattern '*.pmtiles' --pattern PACKAGES.sha256 --pattern MAP-SOURCES.lock
+	cd $(MAP_RELEASE_DIR) && shasum -a 256 -c PACKAGES.sha256
+	@for name in $$(grep -v '^#' build/maposm/regions.txt | awk -v p="$(MAP_RELEASE_PROFILE)" 'NF && index("," $$2 ",", "," p ",") { print $$1 }'); do \
+		[ -f "$(MAP_RELEASE_DIR)/$$name.pmtiles" ] || { echo "error: $(FROM) does not carry $$name.pmtiles"; exit 1; }; \
+	done
 	@ls -l $(MAP_RELEASE_DIR)
 
 ## Attaches the release-asset map packages in build/maposm/out/ to an existing

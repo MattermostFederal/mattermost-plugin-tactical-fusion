@@ -410,8 +410,12 @@ Releases are automated with **release-please** driven by
   map-release`: every `release`-profile row of `build/maposm/regions.txt` built
   from one fresh Geofabrik cut (`latest-cut.sh` picks the newest date every
   extract shares), each held under the 512 MiB package upload limit, attached
-  with `PACKAGES.sha256` and `MAP-SOURCES.lock`. The bundled Hawaii and Guam
-  archives are never rebuilt by a release.
+  with `PACKAGES.sha256` and `MAP-SOURCES.lock`. Only a major version bump
+  rebuilds them that way: a minor or patch release runs `make map-carry` instead,
+  copying and re-verifying the previous release's set, unless
+  `build/maposm/previous-release.sh` finds the map recipe or toolchain pins
+  changed since that release or a package missing from it. The bundled Hawaii
+  and Guam archives are never rebuilt by a release.
 
 ## CI and security
 
