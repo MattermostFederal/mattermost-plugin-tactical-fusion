@@ -7,10 +7,12 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/cyber"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/cyber/intel"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/decorators/dtg"
 	"github.com/MattermostFederal/mattermost-plugin-tactical-fusion/server/errcode"
@@ -186,5 +188,105 @@ func TestCyberLinksATimestampRowToTheDateTimeGroupDecorator(t *testing.T) {
 				t.Errorf("%s carries the query %q although it names no instant", row.Label, row.Query)
 			}
 		}
+	}
+}
+
+func TestCyberBodyCarriesEveryCollection(t *testing.T) {
+	at := time.Date(2026, time.September, 22, 16, 51, 0, 0, time.UTC)
+	details := cyber.Details{
+		Kind:           cyber.KindCVE,
+		Value:          "CVE-2021-44228",
+		Title:          "Log4Shell",
+		Headline:       "Critical",
+		Summary:        "Remote code execution",
+		Status:         "listed",
+		Rows:           []cyber.Row{{Label: "Published", Value: "2021-12-10", At: at}, {Label: "Vendor", Value: "Apache"}},
+		Related:        []cyber.Link{{Kind: cyber.KindCWE, Value: "CWE-502", Label: "Deserialization"}},
+		Watchlist:      []cyber.WatchEntry{{Verdict: "listed", Source: "KEV", Note: "ransomware", Updated: "2021-12-10", Known: true}},
+		Datasets:       []cyber.DatasetStatus{{Name: "kev", Label: "known exploited", Present: true, Generated: "2026-09-01"}},
+		Score:          "10.0",
+		Severity:       "Critical",
+		Exploited:      true,
+		Vector:         []cyber.VectorMetric{{Metric: "Attack vector", Value: "Network", Severe: true}},
+		Affected:       []string{"log4j-core"},
+		Configurations: []string{"cpe:2.3:a:apache:log4j"},
+		References:     []cyber.Reference{{URL: "https://example.test/advisory", Tags: "Vendor Advisory"}},
+		Sections: []cyber.Section{{Title: "Weaknesses", Items: []cyber.Item{
+			{Head: "CWE-502", Text: "Deserialization", Link: &cyber.Link{Kind: cyber.KindCWE, Value: "CWE-502"}},
+			{Head: "Note", Text: "plain", URL: "https://example.test/note"},
+		}}},
+		Credits:   []cyber.Credit{{Text: "NVD", URL: "https://nvd.example.test"}},
+		Glance:    cyber.Glance{Subtitle: "sub", Summary: "sum", Tags: []string{"rce"}, Facts: []string{"fact"}, Status: "st"},
+		Reports:   []cyber.Report{{Source: "feed", Malicious: true, Threat: "botnet", Detail: "seen", URL: "https://example.test/r"}},
+		Freshness: []cyber.Freshness{{Label: "KEV", File: "kev.tsv", Compiled: at}},
+	}
+
+	got := cyberBody(details)
+
+	want := cyberResponse{
+		Kind: "cve", Value: "CVE-2021-44228", Title: "Log4Shell", Headline: "Critical", Summary: "Remote code execution", Status: "listed",
+		Rows: []cyberRow{
+			{Label: "Published", Value: "2021-12-10", Query: dtg.QueryForZulu(at)},
+			{Label: "Vendor", Value: "Apache"},
+		},
+		Related:        []cyberLink{{Kind: "cwe", Value: "CWE-502", Label: "Deserialization"}},
+		Watchlist:      []cyberWatchEntry{{Verdict: "listed", Source: "KEV", Note: "ransomware", Updated: "2021-12-10", Known: true}},
+		Datasets:       []cyberDataset{{Name: "kev", Label: "known exploited", Present: true, Generated: "2026-09-01"}},
+		Score:          "10.0",
+		Severity:       "Critical",
+		Exploited:      true,
+		Vector:         []cyberVectorMetric{{Metric: "Attack vector", Value: "Network", Severe: true}},
+		Affected:       []string{"log4j-core"},
+		Configurations: []string{"cpe:2.3:a:apache:log4j"},
+		References:     []cyberReference{{URL: "https://example.test/advisory", Tags: "Vendor Advisory"}},
+		Sections: []cyberSection{{Title: "Weaknesses", Items: []cyberItem{
+			{Head: "CWE-502", Text: "Deserialization", Kind: "cwe", Value: "CWE-502"},
+			{Head: "Note", Text: "plain", URL: "https://example.test/note"},
+		}}},
+		Credits:  []cyberCredit{{Text: "NVD", URL: "https://nvd.example.test"}},
+		Glance:   cyberGlance{Subtitle: "sub", Summary: "sum", Tags: []string{"rce"}, Facts: []string{"fact"}, Status: "st"},
+		Reports:  []cyberReport{{Source: "feed", Malicious: true, Threat: "botnet", Detail: "seen", URL: "https://example.test/r"}},
+		Compiled: []cyberCompiled{{Label: "KEV", File: "kev.tsv", Date: cyber.CompiledText(at), Query: dtg.QueryForZulu(at)}},
+	}
+	if !reflect.DeepEqual(got, want) {
+		gotJSON, _ := json.MarshalIndent(got, "", " ")
+		wantJSON, _ := json.MarshalIndent(want, "", " ")
+		t.Errorf("body =\n%s\nwant\n%s", gotJSON, wantJSON)
+	}
+	if want.Rows[0].Query == "" {
+		t.Error("a dated row carries no DTG query")
+	}
+}
+
+func TestCyberBodyMarshalsEmptyCollectionsAsArrays(t *testing.T) {
+	raw, err := json.Marshal(cyberBody(cyber.Details{Kind: cyber.KindIP, Value: "192.0.2.1"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &fields); err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"rows", "related", "watchlist", "datasets", "vector", "affected", "configurations", "references", "sections", "credits", "reports", "compiled"} {
+		if got := string(fields[key]); got != "[]" {
+			t.Errorf("%s = %s, want []", key, got)
+		}
+	}
+	var glance map[string]json.RawMessage
+	if err := json.Unmarshal(fields["glance"], &glance); err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"tags", "facts"} {
+		if got := string(glance[key]); got != "[]" {
+			t.Errorf("glance.%s = %s, want []", key, got)
+		}
+	}
+}
+
+func TestCyberSectionOfAnEmptySectionIsAnEmptyArray(t *testing.T) {
+	got := cyberSectionOf(cyber.Section{Title: "Empty"})
+	if got.Items == nil || len(got.Items) != 0 {
+		t.Errorf("items = %#v, want an empty slice", got.Items)
 	}
 }
