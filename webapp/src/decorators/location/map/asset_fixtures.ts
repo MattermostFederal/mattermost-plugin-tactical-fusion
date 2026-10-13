@@ -122,7 +122,7 @@ export async function serveMapAssets(
         contentType: 'text/javascript',
     }));
 
-    await page.route('**/maplibre-gl-worker.mjs', async (route) => {
+    await page.route('**/maplibre-gl-worker.mjs*', async (route) => {
         if (holdWorker) {
             await holdWorker;
         }
