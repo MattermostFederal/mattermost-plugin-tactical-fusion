@@ -295,10 +295,11 @@ own running server instead, via the bundled `pluginctl`.
 | `make license-check` | Enforces `.licenses.json` over the shipped dependencies (after `make sbom`) |
 | `make bundle` | Also writes `THIRD-PARTY-NOTICES.txt` into the bundle |
 | `make sbom-audit` | SBOM + CVE scan + license policy |
+| `make govulncheck` | Fails on a Go vulnerability the server can reach |
 | `make release` | The full security-gated pipeline CI runs on a tag |
 
 CI runs the same targets: `pr.yml` (style, tests, build), `security.yml` (SBOM +
-Grype + CodeQL to Code Scanning), `release-please.yml` and `release.yml`.
+Grype + CodeQL to Code Scanning, and govulncheck), `release-please.yml` and `release.yml`.
 Releases are automated with
 [release-please](https://github.com/googleapis/release-please) driven by
 [Conventional Commits](https://www.conventionalcommits.org/), so versions and the

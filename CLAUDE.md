@@ -398,8 +398,8 @@ Releases are automated with **release-please** driven by
   passphrase as secrets of that environment, never of the repository or the
   organization, where any branch's workflow could read them. A release refuses
   a tag whose commit is not on `main`.
-- Every tool the release runs is pinned: `GRYPE_VERSION`, `cyclonedx-npm` as an
-  exact dev dependency, and the CodeQL bundle by `CODEQL_SHA256_linux64` and
+- Every tool the release runs is pinned: `GRYPE_VERSION`,
+  `GOVULNCHECK_VERSION`, `cyclonedx-npm` as an exact dev dependency, and the CodeQL bundle by `CODEQL_SHA256_linux64` and
   `CODEQL_SHA256_osx64`. Bump a pin deliberately, never to `latest`.
 - `make release` refreshes the cyber data before it builds: `cyber-refresh`
   fetches every source and rebuilds the embedded catalogs and `assets/cyber` in
@@ -430,10 +430,11 @@ Releases are automated with **release-please** driven by
 ## CI and security
 
 Workflows: `pr.yml` (style/test/build), `security.yml` (SBOM plus Grype plus
-CodeQL into Code Scanning), `release-please.yml`, `release.yml`. Everything is
-reproducible locally, so verify with `make check-style && make test`,
-`make sbom-audit`, `make codeql-analyze && make security-gate`, and `make
-release` for the full tagged pipeline.
+CodeQL into Code Scanning, and govulncheck), `release-please.yml`,
+`release.yml`. Everything is reproducible locally, so verify with `make
+check-style && make test`, `make sbom-audit`, `make govulncheck`, `make
+codeql-analyze && make security-gate`, and `make release` for the full tagged
+pipeline.
 
 Suppress a false-positive CVE in `.grype.yaml` with a documented reason, never
 blanket-ignore, and note that suppression is not available for anything that

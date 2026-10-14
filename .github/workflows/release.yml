@@ -2,7 +2,7 @@
 # merged). Runs the full security-gated release pipeline via `make
 # release`, which chains:
 #   release-check -> cyber-refresh -> cyber-release-package -> clean
-#   -> all -> sbom-audit -> codeql-analyze
+#   -> all -> sbom-audit -> govulncheck -> codeql-analyze
 #   -> security-gate -> release-bundle -> virus-scan -> release-sign
 #   -> release-checksum
 #

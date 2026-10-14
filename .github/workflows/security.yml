@@ -1,6 +1,7 @@
 # Supply-chain scanning on every PR and every push to main:
 #   - SBOM (CycloneDX) for the Go server and the npm webapp
 #   - Grype CVE scan of both SBOMs, gated at HIGH
+#   - govulncheck of the Go module, gated on any reachable vulnerability
 #   - CodeQL static analysis of Go and JavaScript/TypeScript
 # SARIF from every scanner is uploaded to GitHub Code Scanning so
 # findings show up inline on the PR and in the Security tab.
@@ -13,6 +14,8 @@
 # Build gates:
 #   - Grype:  --fail-on high blocks HIGH/CRITICAL CVEs (see .grype.yaml
 #             for any documented, time-boxed exceptions)
+#   - govulncheck: `make govulncheck` fails on a vulnerability the code
+#             can reach
 #   - CodeQL: `make security-gate` fails on error-level SARIF findings
 #   - SARIF upload to Code Scanning: required, no bypass
 #
@@ -146,6 +149,24 @@ jobs:
         with:
           sarif_file: ${{ steps.grype-webapp.outputs.sarif }}
           category: grype-webapp
+
+  govulncheck:
+    name: govulncheck (reachable Go vulnerabilities)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run govulncheck
+        run: make govulncheck
 
   codeql:
     name: CodeQL static analysis (Go + JS/TS)

@@ -185,9 +185,9 @@ release-tag:
 
 CYBER_REFRESH ?= 1
 
-## Full release build: checks, a cyber data refresh, clean, style, tests, build, SBOM audit, CodeQL, bundle with SBOMs, the full bundle, sign, and checksum.
+## Full release build: checks, a cyber data refresh, clean, style, tests, build, SBOM audit, govulncheck, CodeQL, bundle with SBOMs, the full bundle, sign, and checksum.
 .PHONY: release
-release: release-check $(if $(filter 1,$(CYBER_REFRESH)),cyber-refresh cyber-release-package) clean all sbom-audit codeql-analyze security-gate release-bundle bundle-size-check $(if $(filter 1,$(CYBER_REFRESH)),release-full-bundle) virus-scan release-sign release-checksum
+release: release-check $(if $(filter 1,$(CYBER_REFRESH)),cyber-refresh cyber-release-package) clean all sbom-audit govulncheck codeql-analyze security-gate release-bundle bundle-size-check $(if $(filter 1,$(CYBER_REFRESH)),release-full-bundle) virus-scan release-sign release-checksum
 	@echo ""
 	@echo "=========================================="
 	@echo "Release build complete!"
@@ -1227,6 +1227,28 @@ endif
 ## Generate SBOMs, scan for vulnerabilities, and enforce the license policy
 .PHONY: sbom-audit
 sbom-audit: sbom sbom-scan license-check
+
+GOVULNCHECK_VERSION ?= v1.9.0
+GOVULNCHECK_DIR := $(GOBIN)/govulncheck-$(GOVULNCHECK_VERSION)
+GOVULNCHECK := $(GOVULNCHECK_DIR)/govulncheck
+
+## Install govulncheck
+.PHONY: install-govulncheck
+install-govulncheck:
+	@if [ ! -x "$(GOVULNCHECK)" ]; then \
+		echo "Installing govulncheck $(GOVULNCHECK_VERSION)..."; \
+		mkdir -p $(GOVULNCHECK_DIR); \
+		GOBIN=$(GOVULNCHECK_DIR) $(GO) install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION); \
+	else \
+		echo "govulncheck already installed"; \
+	fi
+
+## Fail on any Go vulnerability the server's code can reach
+.PHONY: govulncheck
+govulncheck: install-govulncheck apply
+ifneq ($(HAS_SERVER),)
+	$(GOVULNCHECK) ./...
+endif
 
 # ====================================================================================
 # CodeQL Security Analysis
