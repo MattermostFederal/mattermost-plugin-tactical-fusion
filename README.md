@@ -304,6 +304,8 @@ Releases are automated with
 [release-please](https://github.com/googleapis/release-please) driven by
 [Conventional Commits](https://www.conventionalcommits.org/), so versions and the
 changelog are never hand-edited. Dependabot opens weekly dependency PRs.
+A pull request labeled `preview` gets a throwaway preview server with the
+latest release's map packages and cyber datasets installed.
 
 Further reading: [CLAUDE.md](CLAUDE.md) for the architecture and the reasoning
 behind it, and the [Mattermost plugin developer docs](https://developers.mattermost.com/extend/plugins/).
