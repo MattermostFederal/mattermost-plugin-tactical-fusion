@@ -380,8 +380,8 @@ Releases are automated with **release-please** driven by
   footer sets the version directly.
 - **Do not hand-edit `plugin.json`'s `version` or `CHANGELOG.md`.**
   release-please owns them through its Release PR.
-- A release ships when the maintainer merges the open "chore(main): release
-  X.Y.Z" PR.
+- release-please opens its "chore(main): release X.Y.Z" PR as a draft. A
+  release ships when the maintainer marks it ready and merges it.
 - Only `release.yml`'s `publish` job holds the signing key. It runs in the
   `release` environment and runs no repository code; the build job, which runs
   the whole toolchain, never sees the key. Keep `PLUGIN_SIGNING_KEY` and its
