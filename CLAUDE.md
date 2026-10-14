@@ -438,7 +438,8 @@ pipeline.
 
 The `preview` label on a PR runs `preview.yml`, which stands up a throwaway
 Mattermost server with the `plugin-dist` artifact `pr.yml` built and posts the
-URL on the PR. It never runs PR code, and it is a verbatim copy of
+URL on the PR. The workflow never runs PR code on its runner, though the
+preview server does run the PR's plugin build, and it is a verbatim copy of
 `templates/preview.yml` in the private `MattermostFederal/pr-preview` repo, whose
 README documents the hook contract. What a preview does beyond installing the
 bundle lives in `.preview/deploy.sh`, the part of `make deploy` a preview can do:
