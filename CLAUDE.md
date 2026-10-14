@@ -431,10 +431,23 @@ Releases are automated with **release-please** driven by
 
 Workflows: `pr.yml` (style/test/build), `security.yml` (SBOM plus Grype plus
 CodeQL into Code Scanning, and govulncheck), `release-please.yml`,
-`release.yml`. Everything is reproducible locally, so verify with `make
+`release.yml`, `preview.yml`. Everything is reproducible locally, so verify with `make
 check-style && make test`, `make sbom-audit`, `make govulncheck`, `make
 codeql-analyze && make security-gate`, and `make release` for the full tagged
 pipeline.
+
+The `preview` label on a PR runs `preview.yml`, which stands up a throwaway
+Mattermost server with the `plugin-dist` artifact `pr.yml` built and posts the
+URL on the PR. It never runs PR code, and it is a verbatim copy of
+`templates/preview.yml` in the private `MattermostFederal/pr-preview` repo, whose
+README documents the hook contract. What a preview does beyond installing the
+bundle lives in `.preview/deploy.sh`, the part of `make deploy` a preview can do:
+it fetches the latest release's map packages and cyber datasets into the
+server's data directory, verified against `PACKAGES.sha256` and
+`DATASETS.sha256` and kept across redeploys, and points `LocationMapPackagesDir`
+and `CyberDatasetsDir` at them. The `@fusion` agent is left out because it needs
+an OpenAI key. The hook is read from the base branch, so a change to it reaches
+previews only after it merges. Keep it in step with `make deploy`.
 
 Suppress a false-positive CVE in `.grype.yaml` with a documented reason, never
 blanket-ignore, and note that suppression is not available for anything that
