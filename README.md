@@ -286,6 +286,9 @@ That serves Mattermost on `http://localhost:8065` with an `admin` / `password`
 system admin (override the port with `MM_PORT`). `make deploy-local` targets your
 own running server instead, via the bundled `pluginctl`.
 
+Add the `preview` label to a pull request to stand up a throwaway Mattermost
+server running that PR's plugin build; the workflow posts its URL on the PR.
+
 | Command | Does |
 |---|---|
 | `make dist` | Build the plugin bundle |
