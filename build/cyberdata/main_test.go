@@ -394,6 +394,20 @@ func TestTheAttackDetailRowsMatchTheGoldenFileTheReaderParses(t *testing.T) {
 	matchGolden(t, "attackdetail", rows)
 }
 
+func TestAWebShellPathIsDefangedSoClamAVDoesNotFlagTheProcedure(t *testing.T) {
+	cases := map[string]string{
+		`installed web shells to C:\inetpub\wwwroot\aspnet_client\system_web\IISpool.aspx.`: `installed web shells to C:\inetpub\wwwroot\aspnet_client\system_web\IISpool[.]aspx.`,
+		`dropped D:\wwwroot\ASPNET_CLIENT\shell.ASHX on the host`:                           `dropped D:\wwwroot\ASPNET_CLIENT\shell[.]ASHX on the host`,
+		`served pages from C:\inetpub\wwwroot\owa\auth\logon.aspx`:                          `served pages from C:\inetpub\wwwroot\owa\auth\logon.aspx`,
+	}
+
+	for text, want := range cases {
+		if got := attackText(text); got != want {
+			t.Errorf("attackText(%q) = %q, want %q", text, got, want)
+		}
+	}
+}
+
 func TestAnAttackNameCarriesNoTypographicDash(t *testing.T) {
 	if got := attackName("Drive-by Compromise \u2014 Behavior-based \u2013 multi-signal"); got != "Drive-by Compromise - Behavior-based - multi-signal" {
 		t.Fatalf("attackName = %q", got)

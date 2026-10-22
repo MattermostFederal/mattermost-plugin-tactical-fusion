@@ -363,6 +363,7 @@ var (
 	attackCitation     = regexp.MustCompile(`\(Citation:[^)]*\)`)
 	attackMarkdownLink = regexp.MustCompile(`\[([^\]]*)\]\([^)]*\)`)
 	attackMarkup       = regexp.MustCompile("</?code>|`")
+	webShellPath       = regexp.MustCompile(`(?i)(\\aspnet_client\\\S*?)\.(as[hp]x)\b`)
 )
 
 var typographicPunctuation = strings.NewReplacer("\u2018", "'", "\u2019", "'", "\u201c", `"`, "\u201d", `"`, "\u2013", "-", "\u2014", " - ")
@@ -372,6 +373,7 @@ func attackText(text string) string {
 	plain = typographicPunctuation.Replace(plain)
 	plain = attackMarkdownLink.ReplaceAllString(plain, "$1")
 	plain = attackMarkup.ReplaceAllString(plain, "")
+	plain = webShellPath.ReplaceAllString(plain, "${1}[.]${2}")
 	return clean(plain)
 }
 

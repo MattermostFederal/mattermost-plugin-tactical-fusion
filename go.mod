@@ -1,6 +1,6 @@
 module github.com/MattermostFederal/mattermost-plugin-tactical-fusion
 
-go 1.26.9
+go 1.26.10
 
 require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7

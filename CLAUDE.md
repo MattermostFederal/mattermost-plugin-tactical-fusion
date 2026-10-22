@@ -458,8 +458,10 @@ or pin.
 `make virus-scan` (`build/virus-scan.sh`) unpacks each bundle and fails on any
 ClamAV finding `build/virus-allowlist.txt` does not name as a (path glob,
 signature) pair, and on any scan error. Allow a pair only for a proven false
-positive, with the reason and how it was found; the bundled MITRE ATT&CK text is
-the one entry today.
+positive, with the reason and how it was found, and prefer changing the
+generated text when the match is in data we build: `attackText` defangs web shell
+paths (`IISpool[.]aspx`) because the bundled MITRE ATT&CK text matched
+`Win.Downloader.Agent-9865457-0`, so the list has no entries today.
 
 GitHub Actions are pinned to full commit SHAs with a `# vX.Y.Z` comment. Resolve
 the tag to its SHA when adding or bumping one, and keep the comment accurate.
