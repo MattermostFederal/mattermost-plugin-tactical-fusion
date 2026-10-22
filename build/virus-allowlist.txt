@@ -5,9 +5,6 @@
 #
 # Add an entry only for a false positive, with the reason and how it was found.
 #
-# MITRE ATT&CK's own text. attackdetail.tsv carries the procedure examples MITRE
-# publishes, which quote real download and execution commands; this signature
-# is assembled from parts that match across them. Bisected on 2026-09-25 to the
-# rows T1027.017 through T1105 (Ingress Tool Transfer) of the committed file: no
-# single row matches, only the span does.
-*/assets/cyber/attackdetail.tsv  Win.Downloader.Agent-9865457-0
+# There are no entries. MITRE ATT&CK's procedure text once matched
+# Win.Downloader.Agent-9865457-0 on a web shell path in T1105; build/cyberdata
+# now writes that path defanged (IISpool[.]aspx) instead of allowing the match.
