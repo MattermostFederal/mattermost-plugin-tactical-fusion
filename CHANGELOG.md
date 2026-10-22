@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.9.2](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/compare/v0.9.1...v0.9.2) (2026-10-22)
+
+
+### Bug Fixes
+
+* **build:** build Go tools with the module's toolchain ([#92](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/92)) ([a063c69](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/a063c6960886473f23843d97e537b720a3bfdf96))
+* **cyber:** defang the ATT&CK web shell path ClamAV flags instead of allowlisting it ([#104](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/104)) ([67a8470](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/67a84700dac75e8f5991e2b67d9cc6302511051e))
+
+
+### Dependencies
+
+* bump maplibre-gl to 6.13.0 ([#91](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/91)) ([f85355d](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/f85355d703c2e1ffe7e5405c6835ac8c29d5ac1f))
+* combine Dependabot Actions and webapp updates, hold maplibre-gl at 6.11.2 ([#88](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/issues/88)) ([29380ac](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/commit/29380ac26bf2c5d3840939c1c279c8498c5d27ea))
+
 ## [0.9.1](https://github.com/MattermostFederal/mattermost-plugin-tactical-fusion/compare/v0.9.0...v0.9.1) (2026-10-13)
 
 
