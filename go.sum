@@ -114,8 +114,8 @@ github.com/mattermost/ldap v3.0.4+incompatible h1:SOeNnz+JNR+foQ3yHkYqijb9MLPhXN
 github.com/mattermost/ldap v3.0.4+incompatible/go.mod h1:b4reDCcGpBxJ4WX0f224KFY+OR0npin7or7EFpeIko4=
 github.com/mattermost/logr/v2 v2.0.23 h1:BnOksEREt3xfKS1UdELEnlFgmG6GJlslLxU3OZKjVUM=
 github.com/mattermost/logr/v2 v2.0.23/go.mod h1:0sUKpO+XNMZApeumaid7PYaUZPBIydfuWZ0dqixXo+s=
-github.com/mattermost/mattermost-plugin-agents/v2 v2.9.0 h1:h2AmWSAeXe3GcDOWSDHDVhpC24RIaaTu19axngwtH/s=
-github.com/mattermost/mattermost-plugin-agents/v2 v2.9.0/go.mod h1:tS0qJRR16rfLm4Gb1Cb7uHgVHJZqlWYarDXAZ23JsSU=
+github.com/mattermost/mattermost-plugin-agents/v2 v2.10.0 h1:SunE72dodlWpEXDfUFp9USe34RbbsX5ve2Lhv+kyHjU=
+github.com/mattermost/mattermost-plugin-agents/v2 v2.10.0/go.mod h1:SBcUDBrg91vxT4SjxWMyISmXkZ+hDlC+85kIuTidbeI=
 github.com/mattermost/mattermost/server/public v0.5.0 h1:gdzb0wcbdaVxI74fhCErwt6YzrrjePnX3cey98DlyPk=
 github.com/mattermost/mattermost/server/public v0.5.0/go.mod h1:yx1ZvIF0iLgQMvVH4ZpTyR34JIvNFl+89+Va57tlHpw=
 github.com/mattermost/xml-roundtrip-validator v0.1.0 h1:RXbVD2UAl7A7nOTR4u7E3ILa4IbtvKBHw64LDsmu9hU=

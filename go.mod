@@ -4,7 +4,7 @@ go 1.26.10
 
 require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7
-	github.com/mattermost/mattermost-plugin-agents/v2 v2.9.0
+	github.com/mattermost/mattermost-plugin-agents/v2 v2.10.0
 	github.com/mattermost/mattermost/server/public v0.5.0
 	github.com/modelcontextprotocol/go-sdk v1.8.0
 	github.com/oschwald/maxminddb-golang/v2 v2.8.0
